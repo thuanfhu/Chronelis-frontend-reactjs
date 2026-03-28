@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import { toast } from 'sonner'
+import { CheckCircle2, Circle, MessageSquare, CalendarClock, Loader2, Trash2, Send } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
@@ -45,10 +50,7 @@ export function TaskDetailsDrawer() {
   })
 
   const invalidateTaskData = async () => {
-    if (!hasTask) {
-      return
-    }
-
+    if (!hasTask) return
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) }),
@@ -62,43 +64,36 @@ export function TaskDetailsDrawer() {
 
   const toggleCompletionMutation = useMutation({
     mutationFn: () => {
-      if (!taskQuery.data) {
-        throw new Error('Task khong ton tai')
-      }
+      if (!taskQuery.data) throw new Error('Task không tồn tại')
       return taskApi.updateCompletion(taskQuery.data.id, !taskQuery.data.isCompleted)
     },
     onSuccess: () => {
       void invalidateTaskData()
-      toast.success('Cap nhat completion thanh cong')
+      toast.success('Cập nhật trạng thái thành công')
     },
     onError: (error: Error) => {
-      toast.error('Cap nhat completion that bai', { description: error.message })
+      toast.error('Cập nhật thất bại', { description: error.message })
     },
   })
 
   const addCommentMutation = useMutation({
     mutationFn: () => {
-      if (!hasTask) {
-        throw new Error('Task chua duoc chon')
-      }
-      return taskCommentApi.add(taskId, newComment)
+      if (!hasTask) throw new Error('Task chưa được chọn')
+      return taskCommentApi.add(taskId, newComment.trim())
     },
     onSuccess: () => {
       setNewComment('')
       void invalidateTaskData()
-      toast.success('Them comment thanh cong')
+      toast.success('Thêm comment thành công')
     },
     onError: (error: Error) => {
-      toast.error('Them comment that bai', { description: error.message })
+      toast.error('Thêm comment thất bại', { description: error.message })
     },
   })
 
   const addScheduleMutation = useMutation({
     mutationFn: () => {
-      if (!hasTask) {
-        throw new Error('Task chua duoc chon')
-      }
-
+      if (!hasTask) throw new Error('Task chưa được chọn')
       return taskScheduleApi.create({
         taskId,
         scheduledStart: toLocalDateTimePayload(scheduledStart),
@@ -109,10 +104,10 @@ export function TaskDetailsDrawer() {
       setScheduledStart('')
       setScheduledEnd('')
       void invalidateTaskData()
-      toast.success('Them schedule thanh cong')
+      toast.success('Thêm lịch thành công')
     },
     onError: (error: Error) => {
-      toast.error('Them schedule that bai', { description: error.message })
+      toast.error('Thêm lịch thất bại', { description: error.message })
     },
   })
 
@@ -120,148 +115,186 @@ export function TaskDetailsDrawer() {
     mutationFn: (scheduleId: number) => taskScheduleApi.remove(scheduleId),
     onSuccess: () => {
       void invalidateTaskData()
-      toast.success('Xoa schedule thanh cong')
+      toast.success('Xóa lịch thành công')
     },
     onError: (error: Error) => {
-      toast.error('Xoa schedule that bai', { description: error.message })
+      toast.error('Xóa lịch thất bại', { description: error.message })
     },
   })
 
   const comments = commentsQuery.data ?? []
   const schedules = schedulesQuery.data ?? []
-
   const canCreateSchedule = Boolean(scheduledStart && scheduledEnd && scheduledEnd >= scheduledStart)
-
-  if (!hasTask) {
-    return null
-  }
+  const task = taskQuery.data
 
   return (
-    <>
-      <div className="fixed inset-0 z-30 bg-black/35" onClick={() => setTaskDrawerTaskId(null)} />
-
-      <aside className="fixed right-0 top-0 z-40 h-dvh w-full max-w-xl border-l border-border bg-background p-4 shadow-xl">
-        <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Task details</p>
-            <h2 className="text-lg font-semibold">#{taskId}</h2>
+    <Sheet open={hasTask} onOpenChange={(open) => { if (!open) setTaskDrawerTaskId(null) }}>
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
+        <SheetHeader className="border-b px-6 py-4">
+          <div className="flex items-center gap-2">
+            <SheetTitle className="text-base">Chi tiết task</SheetTitle>
+            <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
           </div>
-          <Button size="icon" variant="ghost" onClick={() => setTaskDrawerTaskId(null)}>
-            <X className="size-4" />
-          </Button>
-        </div>
+          <SheetDescription className="sr-only">Xem và quản lý chi tiết task</SheetDescription>
+        </SheetHeader>
 
         {taskQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Dang tai task...</p>
-        ) : taskQuery.data ? (
-          <div className="h-[calc(100dvh-96px)] space-y-3 overflow-y-auto pr-1">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{taskQuery.data.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Priority</span>
-                  <TaskPriorityBadge priority={taskQuery.data.priority} />
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : task ? (
+          <ScrollArea className="flex-1">
+            <div className="space-y-5 px-6 py-4">
+              {/* Task info */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">{task.title}</h3>
+                {task.description && (
+                  <p className="text-sm text-muted-foreground">{task.description}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Mức ưu tiên</p>
+                    <TaskPriorityBadge priority={task.priority} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Trạng thái</p>
+                    <Badge variant="secondary">{task.status.name}</Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Người giao</p>
+                    <p className="text-sm">{task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Chưa giao'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Hạn chót</p>
+                    <p className="text-sm">{task.dueDate ? formatDateTime(task.dueDate) : 'Chưa đặt'}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <span>{taskQuery.data.status.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Assignee</span>
-                  <span>{taskQuery.data.assignee ? `${taskQuery.data.assignee.firstName} ${taskQuery.data.assignee.lastName}` : 'Unassigned'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Due date</span>
-                  <span>{formatDateTime(taskQuery.data.dueDate)}</span>
-                </div>
+
                 <Button
-                  className="w-full"
-                  variant={taskQuery.data.isCompleted ? 'secondary' : 'default'}
+                  className="w-full gap-2"
+                  variant={task.isCompleted ? 'secondary' : 'default'}
                   onClick={() => toggleCompletionMutation.mutate()}
                   disabled={toggleCompletionMutation.isPending}
                 >
-                  {taskQuery.data.isCompleted ? 'Mark incomplete' : 'Mark completed'}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Comments</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  value={newComment}
-                  onChange={(event) => setNewComment(event.target.value)}
-                  placeholder="Nhap noi dung comment"
-                />
-                <Button
-                  onClick={() => addCommentMutation.mutate()}
-                  disabled={addCommentMutation.isPending || newComment.trim().length === 0}
-                >
-                  Add comment
-                </Button>
-
-                <div className="space-y-2">
-                  {comments.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Chua co comment nao</p>
+                  {toggleCompletionMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : task.isCompleted ? (
+                    <CheckCircle2 className="size-4" />
                   ) : (
-                    comments.map((comment) => (
-                      <div key={comment.id} className="rounded-md border bg-card p-3 text-sm">
-                        <p className="font-medium">{comment.user.firstName} {comment.user.lastName}</p>
-                        <p className="mt-1 text-muted-foreground">{comment.content}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(comment.createdAt)}</p>
-                      </div>
-                    ))
+                    <Circle className="size-4" />
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Schedules</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Input type="datetime-local" value={scheduledStart} onChange={(event) => setScheduledStart(event.target.value)} />
-                <Input type="datetime-local" value={scheduledEnd} onChange={(event) => setScheduledEnd(event.target.value)} />
-                <Button
-                  onClick={() => addScheduleMutation.mutate()}
-                  disabled={addScheduleMutation.isPending || !canCreateSchedule}
-                >
-                  Add schedule
+                  {task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                 </Button>
+              </div>
+
+              <Separator />
+
+              {/* Comments */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="size-4 text-muted-foreground" />
+                  <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
+                </div>
+
+                <div className="flex gap-2">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Nhập nội dung comment..."
+                    rows={2}
+                    className="flex-1"
+                  />
+                  <Button
+                    size="icon"
+                    className="shrink-0 self-end"
+                    onClick={() => addCommentMutation.mutate()}
+                    disabled={addCommentMutation.isPending || !newComment.trim()}
+                  >
+                    {addCommentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  </Button>
+                </div>
+
+                {comments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Chưa có comment nào</p>
+                ) : (
+                  <div className="space-y-2">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-2.5">
+                        <Avatar className="mt-0.5 size-7 shrink-0">
+                          <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                            {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
+                            <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
+                          </div>
+                          <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Schedules */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="size-4 text-muted-foreground" />
+                  <h4 className="text-sm font-semibold">Lịch biểu ({schedules.length})</h4>
+                </div>
 
                 <div className="space-y-2">
-                  {schedules.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Chua co schedule nao</p>
-                  ) : (
-                    schedules.map((schedule) => (
-                      <div key={schedule.id} className="rounded-md border bg-card p-3 text-sm">
-                        <p>Start: {formatDateTime(schedule.scheduledStart)}</p>
-                        <p>End: {formatDateTime(schedule.scheduledEnd)}</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Bắt đầu</Label>
+                    <Input type="datetime-local" value={scheduledStart} onChange={(e) => setScheduledStart(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Kết thúc</Label>
+                    <Input type="datetime-local" value={scheduledEnd} onChange={(e) => setScheduledEnd(e.target.value)} />
+                  </div>
+                  <Button className="w-full" size="sm" onClick={() => addScheduleMutation.mutate()} disabled={addScheduleMutation.isPending || !canCreateSchedule}>
+                    {addScheduleMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Thêm lịch biểu
+                  </Button>
+                </div>
+
+                {schedules.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Chưa có lịch biểu nào</p>
+                ) : (
+                  <div className="space-y-2">
+                    {schedules.map((schedule) => (
+                      <div key={schedule.id} className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <p className="text-xs"><span className="text-muted-foreground">Bắt đầu:</span> {formatDateTime(schedule.scheduledStart)}</p>
+                          <p className="text-xs"><span className="text-muted-foreground">Kết thúc:</span> {formatDateTime(schedule.scheduledEnd)}</p>
+                        </div>
                         <Button
-                          className="mt-2"
-                          size="sm"
-                          variant="destructive"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
                           onClick={() => removeScheduleMutation.mutate(schedule.id)}
                           disabled={removeScheduleMutation.isPending}
                         >
-                          Remove
+                          <Trash2 className="size-3.5" />
                         </Button>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
         ) : (
-          <p className="text-sm text-muted-foreground">Khong tim thay task.</p>
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-muted-foreground">Không tìm thấy task.</p>
+          </div>
         )}
-      </aside>
-    </>
+      </SheetContent>
+    </Sheet>
   )
 }

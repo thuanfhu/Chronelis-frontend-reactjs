@@ -4,46 +4,50 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d
 const phonePattern = /^(\+84|0)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/
 const emailPattern = /^[\w._%+-]+@(gmail\.com|yopmail\.com)$/
 
-export const loginSchema = z
-  .object({
-    email: z.string().optional(),
-    phoneNumber: z.string().optional(),
-    password: z.string().regex(passwordPattern, 'Mat khau khong dung dinh dang backend yeu cau'),
-  })
-  .refine((value) => Boolean(value.email || value.phoneNumber), {
-    message: 'Vui long nhap email hoac so dien thoai',
-    path: ['email'],
-  })
-  .refine((value) => !(value.email && value.phoneNumber), {
-    message: 'Chi nhap mot trong hai: email hoac so dien thoai',
-    path: ['phoneNumber'],
-  })
+export const loginSchema = z.object({
+  identifier: z
+    .string()
+    .min(1, 'Vui lòng nhập email hoặc số điện thoại')
+    .refine(
+      (value) => {
+        const trimmed = value.trim()
+        if (trimmed.includes('@')) return emailPattern.test(trimmed)
+        return phonePattern.test(trimmed)
+      },
+      (value) => ({
+        message: value.trim().includes('@')
+          ? 'Chỉ hỗ trợ gmail.com hoặc yopmail.com'
+          : 'Số điện thoại Việt Nam không hợp lệ',
+      }),
+    ),
+  password: z.string().regex(passwordPattern, 'Mật khẩu không đúng định dạng'),
+})
 
 export const registerSchema = z
   .object({
-    email: z.string().regex(emailPattern, 'Chi ho tro gmail.com hoac yopmail.com'),
-    phoneNumber: z.string().regex(phonePattern, 'So dien thoai Viet Nam khong hop le'),
-    password: z.string().regex(passwordPattern, 'Mat khau khong dung dinh dang backend yeu cau'),
-    confirmPassword: z.string().regex(passwordPattern, 'Xac nhan mat khau khong hop le'),
+    email: z.string().regex(emailPattern, 'Chỉ hỗ trợ gmail.com hoặc yopmail.com'),
+    phoneNumber: z.string().regex(phonePattern, 'Số điện thoại Việt Nam không hợp lệ'),
+    password: z.string().regex(passwordPattern, 'Mật khẩu không đúng định dạng'),
+    confirmPassword: z.string().regex(passwordPattern, 'Xác nhận mật khẩu không hợp lệ'),
     firstName: z.string().min(2).max(50),
     lastName: z.string().min(2).max(50),
   })
   .refine((value) => value.password === value.confirmPassword, {
-    message: 'Mat khau va xac nhan mat khau khong khop',
+    message: 'Mật khẩu và xác nhận mật khẩu không khớp',
     path: ['confirmPassword'],
   })
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().regex(emailPattern, 'Chi ho tro gmail.com hoac yopmail.com'),
+  email: z.string().regex(emailPattern, 'Chỉ hỗ trợ gmail.com hoặc yopmail.com'),
 })
 
 export const resetPasswordSchema = z
   .object({
     token: z.string().min(1),
-    newPassword: z.string().regex(passwordPattern, 'Mat khau khong dung dinh dang backend yeu cau'),
-    confirmPassword: z.string().regex(passwordPattern, 'Xac nhan mat khau khong hop le'),
+    newPassword: z.string().regex(passwordPattern, 'Mật khẩu không đúng định dạng'),
+    confirmPassword: z.string().regex(passwordPattern, 'Xác nhận mật khẩu không hợp lệ'),
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
-    message: 'Mat khau va xac nhan mat khau khong khop',
+    message: 'Mật khẩu và xác nhận mật khẩu không khớp',
     path: ['confirmPassword'],
   })

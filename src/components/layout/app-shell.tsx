@@ -2,6 +2,7 @@ import { Outlet, useParams } from 'react-router-dom'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppTopbar } from '@/components/layout/app-topbar'
 import { TaskDetailsDrawer } from '@/features/tasks/task-details-drawer'
+import { CommandPalette } from '@/components/shared/command-palette'
 
 export function AppShell() {
   const params = useParams()
@@ -13,11 +14,14 @@ export function AppShell() {
       <AppSidebar workspaceId={workspaceId} projectId={projectId} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopbar />
-        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-5 md:px-6">
-          <Outlet />
+        <main className="flex-1 px-4 py-6 md:px-8">
+          <div className="mx-auto w-full max-w-6xl">
+            <Outlet />
+          </div>
         </main>
       </div>
       <TaskDetailsDrawer />
+      <CommandPalette />
     </div>
   )
 }

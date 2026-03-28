@@ -89,6 +89,7 @@ export interface Project {
   id: number
   workspaceId: number
   name: string
+  description?: string
   status: ProjectStatusType
   createdBy: UserSummary
   createdAt: string
@@ -123,6 +124,7 @@ export interface Task {
   goalId?: number
   status: TaskStatus
   title: string
+  description?: string
   priority: TaskPriorityType
   assignee?: UserSummary
   createdBy: UserSummary

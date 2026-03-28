@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { authApi, type RegisterPayload } from '@/lib/api/modules/auth-api'
 import { registerSchema } from '@/features/auth/auth-schemas'
 import { AuthLayout } from '@/features/auth/auth-layout'
@@ -28,11 +29,11 @@ export function RegisterPage() {
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     onSuccess: () => {
-      toast.success('Dang ky thanh cong, vui long kiem tra email de xac thuc')
+      toast.success('Đăng ký thành công', { description: 'Vui lòng kiểm tra email để xác thực tài khoản.' })
       navigate('/login', { replace: true })
     },
     onError: (error: Error) => {
-      toast.error('Dang ky that bai', { description: error.message })
+      toast.error('Đăng ký thất bại', { description: error.message })
     },
   })
 
@@ -41,51 +42,46 @@ export function RegisterPage() {
   })
 
   return (
-    <AuthLayout title="Tao tai khoan" subtitle="Dang ky de su dung he thong quan tri cong viec Chronelis">
-      <form className="space-y-3" onSubmit={onSubmit}>
-        <TwoColumns>
-          <Field label="Ho" id="lastName" error={form.formState.errors.lastName?.message}>
-            <Input id="lastName" {...form.register('lastName')} />
+    <AuthLayout title="Tạo tài khoản" subtitle="Đăng ký để bắt đầu quản lý công việc cùng đội nhóm">
+      <form className="space-y-4" onSubmit={onSubmit}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Họ" id="lastName" error={form.formState.errors.lastName?.message}>
+            <Input id="lastName" placeholder="Nguyễn" autoComplete="family-name" {...form.register('lastName')} />
           </Field>
-          <Field label="Ten" id="firstName" error={form.formState.errors.firstName?.message}>
-            <Input id="firstName" {...form.register('firstName')} />
+          <Field label="Tên" id="firstName" error={form.formState.errors.firstName?.message}>
+            <Input id="firstName" placeholder="Văn A" autoComplete="given-name" {...form.register('firstName')} />
           </Field>
-        </TwoColumns>
+        </div>
 
         <Field label="Email" id="email" error={form.formState.errors.email?.message}>
-          <Input id="email" {...form.register('email')} />
+          <Input id="email" placeholder="name@gmail.com" autoComplete="email" {...form.register('email')} />
         </Field>
 
-        <Field label="So dien thoai" id="phoneNumber" error={form.formState.errors.phoneNumber?.message}>
-          <Input id="phoneNumber" {...form.register('phoneNumber')} />
+        <Field label="Số điện thoại" id="phoneNumber" error={form.formState.errors.phoneNumber?.message}>
+          <Input id="phoneNumber" placeholder="098xxxxxxx" autoComplete="tel" {...form.register('phoneNumber')} />
         </Field>
 
-        <TwoColumns>
-          <Field label="Mat khau" id="password" error={form.formState.errors.password?.message}>
-            <Input id="password" type="password" {...form.register('password')} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Mật khẩu" id="password" error={form.formState.errors.password?.message}>
+            <Input id="password" type="password" autoComplete="new-password" {...form.register('password')} />
           </Field>
-          <Field label="Xac nhan" id="confirmPassword" error={form.formState.errors.confirmPassword?.message}>
-            <Input id="confirmPassword" type="password" {...form.register('confirmPassword')} />
+          <Field label="Xác nhận mật khẩu" id="confirmPassword" error={form.formState.errors.confirmPassword?.message}>
+            <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register('confirmPassword')} />
           </Field>
-        </TwoColumns>
+        </div>
 
         <Button className="w-full" type="submit" disabled={registerMutation.isPending}>
-          {registerMutation.isPending ? 'Dang tao tai khoan...' : 'Dang ky'}
+          {registerMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+          Đăng ký
         </Button>
       </form>
 
-      <p className="mt-4 text-sm text-muted-foreground">
-        Da co tai khoan?{' '}
-        <Link className="text-primary hover:underline" to="/login">
-          Dang nhap ngay
-        </Link>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Đã có tài khoản?{' '}
+        <Link className="font-medium text-primary hover:underline" to="/login">Đăng nhập ngay</Link>
       </p>
     </AuthLayout>
   )
-}
-
-function TwoColumns({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-3 sm:grid-cols-2">{children}</div>
 }
 
 function Field({ label, id, error, children }: { label: string; id: string; error?: string; children: React.ReactNode }) {
@@ -93,7 +89,7 @@ function Field({ label, id, error, children }: { label: string; id: string; erro
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

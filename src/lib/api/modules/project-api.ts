@@ -4,6 +4,7 @@ import type { PageResult, Project, ProjectStatusType } from '@/types/domain'
 
 interface ProjectPayload {
   name: string
+  description?: string
 }
 
 interface CreateProjectPayload extends ProjectPayload {

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { authApi } from '@/lib/api/modules/auth-api'
 import { useAuthStore } from '@/app/store/auth-store'
 import { AuthLayout } from '@/features/auth/auth-layout'
@@ -22,26 +23,57 @@ export function VerifyAccountPage() {
         accessToken: data.accessToken,
         currentUser: data.userSecured,
       })
-      toast.success('Xac thuc tai khoan thanh cong')
+      toast.success('Xác thực tài khoản thành công')
       navigate('/dashboard', { replace: true })
     },
     onError: (error: Error) => {
-      toast.error('Xac thuc that bai', { description: error.message })
+      toast.error('Xác thực thất bại', { description: error.message })
     },
   })
 
-  return (
-    <AuthLayout title="Xac thuc tai khoan" subtitle="Dinh kem token tu email kich hoat cua ban">
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="token">Token kich hoat</Label>
-          <Input id="token" value={token} onChange={(event) => setToken(event.target.value)} />
-        </div>
+  // Auto-verify if token is in URL
+  useEffect(() => {
+    const urlToken = searchParams.get('token')
+    if (urlToken && !verifyMutation.isPending && !verifyMutation.isSuccess && !verifyMutation.isError) {
+      verifyMutation.mutate(urlToken)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-        <Button className="w-full" onClick={() => verifyMutation.mutate(token)} disabled={verifyMutation.isPending || !token}>
-          {verifyMutation.isPending ? 'Dang xac thuc...' : 'Xac thuc tai khoan'}
-        </Button>
-      </div>
+  return (
+    <AuthLayout title="Xác thực tài khoản" subtitle="Nhập mã xác thực từ email kích hoạt của bạn">
+      {verifyMutation.isPending ? (
+        <div className="flex flex-col items-center gap-3 py-6">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Đang xác thực tài khoản...</p>
+        </div>
+      ) : verifyMutation.isError ? (
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-3 py-4">
+            <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+              <XCircle className="size-6 text-destructive" />
+            </div>
+            <p className="text-sm text-muted-foreground">Xác thực thất bại. Vui lòng thử lại.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="token">Mã xác thực</Label>
+            <Input id="token" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Nhập mã từ email" />
+          </div>
+          <Button className="w-full" onClick={() => verifyMutation.mutate(token)} disabled={!token.trim()}>
+            Thử lại
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="token">Mã xác thực</Label>
+            <Input id="token" value={token} onChange={(event) => setToken(event.target.value)} placeholder="Nhập mã từ email" />
+          </div>
+          <Button className="w-full" onClick={() => verifyMutation.mutate(token)} disabled={!token.trim()}>
+            Xác thực tài khoản
+          </Button>
+        </div>
+      )}
     </AuthLayout>
   )
 }
