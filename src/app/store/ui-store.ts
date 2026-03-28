@@ -4,12 +4,14 @@ export type ThemeMode = 'light' | 'dark'
 
 interface UiState {
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   taskDrawerTaskId: number | null
   selectedWorkspaceId: number | null
   selectedProjectId: number | null
   commandPaletteOpen: boolean
   theme: ThemeMode
   setSidebarOpen: (value: boolean) => void
+  setSidebarCollapsed: (value: boolean) => void
   setTaskDrawerTaskId: (taskId: number | null) => void
   setSelectedWorkspaceId: (workspaceId: number | null) => void
   setSelectedProjectId: (projectId: number | null) => void
@@ -19,12 +21,14 @@ interface UiState {
 
 export const useUiStore = create<UiState>((set, get) => ({
   sidebarOpen: true,
+  sidebarCollapsed: false,
   taskDrawerTaskId: null,
   selectedWorkspaceId: null,
   selectedProjectId: null,
   commandPaletteOpen: false,
   theme: 'light',
   setSidebarOpen: (value) => set({ sidebarOpen: value }),
+  setSidebarCollapsed: (value) => set({ sidebarCollapsed: value }),
   setTaskDrawerTaskId: (taskId) => set({ taskDrawerTaskId: taskId }),
   setSelectedWorkspaceId: (workspaceId) => set({ selectedWorkspaceId: workspaceId }),
   setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),

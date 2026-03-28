@@ -176,8 +176,8 @@ export function ProjectOverviewPage() {
             <Link key={link.to} to={link.to}>
               <Card className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <link.icon className="size-4 text-muted-foreground" />
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover:bg-primary/10">
+                    <link.icon className="size-4 text-muted-foreground icon-hover-bounce transition-colors group-hover:text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{link.label}</p>

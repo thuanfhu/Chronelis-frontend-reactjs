@@ -132,10 +132,10 @@ function StatCard({
   accent: string
 }) {
   return (
-    <Card>
+    <Card className="group transition-all hover:shadow-sm">
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${accent}`}>
-          <Icon className="size-5" />
+          <Icon className="size-5 icon-hover-bounce" />
         </div>
         <div>
           <p className="text-sm text-muted-foreground">{label}</p>

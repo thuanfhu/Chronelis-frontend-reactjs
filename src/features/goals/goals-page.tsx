@@ -22,6 +22,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import type { GoalStatusType, GoalType } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
@@ -40,7 +41,10 @@ const goalStatusConfig: Record<GoalStatusType, { label: string; variant: 'defaul
 export function GoalsPage() {
   const params = useParams()
   const projectId = Number(params.projectId)
+  const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
+
+  useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [title, setTitle] = useState('')

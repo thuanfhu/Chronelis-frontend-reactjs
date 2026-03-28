@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { activityLogApi } from '@/lib/api/modules/activity-log-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { formatDateTime } from '@/lib/utils/datetime'
 
 const actionBadgeVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -29,6 +30,8 @@ export function ActivityLogPage() {
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
+
+  useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
   const logsQuery = useQuery({
     queryKey: queryKeys.activityLogs.byWorkspace(workspaceId, `project:${projectId}`, 1, 100),

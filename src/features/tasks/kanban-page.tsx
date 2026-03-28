@@ -1,16 +1,28 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Loader2, GripVertical, Columns3 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import {
   Dialog,
   DialogContent,
@@ -20,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils/cn'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
@@ -28,14 +41,129 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { TaskPriorityType } from '@/types/domain'
+import type { Task, TaskPriorityType, TaskStatus } from '@/types/domain'
+
+// ─── Sortable Task Card ───
+
+function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `task-${task.id}`,
+    data: { type: 'task', task },
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md',
+        isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
+      )}
+      onClick={onClick}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
+        <button
+          {...attributes}
+          {...listeners}
+          className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-muted-foreground/30 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+      </div>
+      {task.description && (
+        <p className="mb-2 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
+      )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <TaskPriorityBadge priority={task.priority} />
+          <span className="text-[10px] text-muted-foreground">#{task.id}</span>
+        </div>
+        <span className="max-w-20 truncate text-[10px] text-muted-foreground">
+          {task.assignee?.firstName ?? 'Unassigned'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Drag Overlay Card ───
+
+function TaskDragOverlay({ task }: { task: Task }) {
+  return (
+    <div className="w-72 rounded-lg border border-primary/30 bg-card p-3 shadow-xl ring-2 ring-primary/10">
+      <div className="mb-2">
+        <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <TaskPriorityBadge priority={task.priority} />
+        <span className="text-[10px] text-muted-foreground">#{task.id}</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Droppable Column ───
+
+function KanbanColumn({
+  status,
+  tasks,
+  onTaskClick,
+  isOver,
+}: {
+  status: TaskStatus
+  tasks: Task[]
+  onTaskClick: (taskId: number) => void
+  isOver?: boolean
+}) {
+  const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
+
+  return (
+    <div
+      className={cn(
+        'flex w-72 shrink-0 flex-col rounded-xl border bg-muted/20 transition-colors duration-200',
+        isOver && 'border-primary/40 bg-primary/5',
+      )}
+    >
+      {/* Column header */}
+      <div className="flex items-center justify-between border-b px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">{status.name}</h3>
+          <Badge variant="secondary" className="text-[10px]">{tasks.length}</Badge>
+        </div>
+        {status.isClosed && (
+          <Badge variant="outline" className="text-[9px]">Closed</Badge>
+        )}
+      </div>
+
+      {/* Column body */}
+      <ScrollArea className="flex-1">
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          <div className="min-h-[4rem] space-y-2 p-2">
+            {tasks.map((task) => (
+              <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} />
+            ))}
+          </div>
+        </SortableContext>
+      </ScrollArea>
+    </div>
+  )
+}
+
+// ─── Main Kanban Page ───
 
 export function KanbanPage() {
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
-  const setTaskDrawerTaskId = useUiStore((state) => state.setTaskDrawerTaskId)
+  const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
@@ -47,6 +175,12 @@ export function KanbanPage() {
   const [taskDescription, setTaskDescription] = useState('')
   const [taskStatusId, setTaskStatusId] = useState<number | null>(null)
   const [taskPriority, setTaskPriority] = useState<TaskPriorityType>('MEDIUM')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [overColumnId, setOverColumnId] = useState<number | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
 
   const statusesQuery = useQuery({
     queryKey: queryKeys.statuses.byProject(projectId),
@@ -102,17 +236,76 @@ export function KanbanPage() {
     },
   })
 
+  // DnD handlers
+  function handleDragStart(event: DragStartEvent) {
+    const { active } = event
+    const data = active.data.current
+    if (data?.type === 'task') {
+      setActiveTask(data.task as Task)
+    }
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { over } = event
+    if (!over) {
+      setOverColumnId(null)
+      return
+    }
+
+    // Determine which column we're over
+    const overData = over.data.current
+    if (overData?.type === 'task') {
+      const overTask = overData.task as Task
+      setOverColumnId(overTask.status.id)
+    } else {
+      // Over a column droppable area
+      const overIdStr = String(over.id)
+      if (overIdStr.startsWith('column-')) {
+        setOverColumnId(Number(overIdStr.replace('column-', '')))
+      }
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveTask(null)
+    setOverColumnId(null)
+
+    if (!over) return
+
+    const activeData = active.data.current
+    if (activeData?.type !== 'task') return
+
+    const draggedTask = activeData.task as Task
+    let targetStatusId: number | null = null
+
+    const overData = over.data.current
+    if (overData?.type === 'task') {
+      const overTask = overData.task as Task
+      targetStatusId = overTask.status.id
+    } else {
+      const overIdStr = String(over.id)
+      if (overIdStr.startsWith('column-')) {
+        targetStatusId = Number(overIdStr.replace('column-', ''))
+      }
+    }
+
+    if (targetStatusId && targetStatusId !== draggedTask.status.id) {
+      moveTaskMutation.mutate({ taskId: draggedTask.id, statusId: targetStatusId })
+    }
+  }
+
   if (statusesQuery.isLoading || tasksQuery.isLoading) {
     return <LoadingPanel />
   }
 
   const statuses = statusesQuery.data ?? []
   const tasks = tasksQuery.data?.content ?? []
-  const grouped = new Map<number, typeof tasks>()
+  const grouped = new Map<number, Task[]>()
   for (const status of statuses) grouped.set(status.id, [])
   for (const task of tasks) {
     if (!grouped.has(task.status.id)) grouped.set(task.status.id, [])
-    grouped.get(task.status.id)?.push(task)
+    grouped.get(task.status.id)!.push(task)
   }
   for (const bucket of grouped.values()) bucket.sort((a, b) => a.boardPosition - b.boardPosition)
 
@@ -221,65 +414,31 @@ export function KanbanPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {statuses.map((status) => {
-            const columnTasks = grouped.get(status.id) ?? []
-            return (
-              <div
-                key={status.id}
-                className="flex w-72 shrink-0 flex-col rounded-xl border bg-muted/20"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  const taskId = Number(e.dataTransfer.getData('text/task-id'))
-                  if (taskId) moveTaskMutation.mutate({ taskId, statusId: status.id })
-                }}
-              >
-                {/* Column header */}
-                <div className="flex items-center justify-between border-b px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">{status.name}</h3>
-                    <Badge variant="secondary" className="text-[10px]">{columnTasks.length}</Badge>
-                  </div>
-                  {status.isClosed && (
-                    <Badge variant="outline" className="text-[9px]">Closed</Badge>
-                  )}
-                </div>
-
-                {/* Column tasks */}
-                <ScrollArea className="flex-1">
-                  <div className="space-y-2 p-2">
-                    {columnTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/task-id', String(task.id))}
-                        onClick={() => setTaskDrawerTaskId(task.id)}
-                        className="group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-                      >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
-                          <GripVertical className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/30 opacity-0 transition-opacity group-hover:opacity-100" />
-                        </div>
-                        {task.description && (
-                          <p className="mb-2 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <TaskPriorityBadge priority={task.priority} />
-                            <span className="text-[10px] text-muted-foreground">#{task.id}</span>
-                          </div>
-                          <span className="max-w-20 truncate text-[10px] text-muted-foreground">
-                            {task.assignee?.firstName ?? 'Unassigned'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20">
+            {statuses.map((status) => {
+              const columnTasks = grouped.get(status.id) ?? []
+              return (
+                <KanbanColumn
+                  key={status.id}
+                  status={status}
+                  tasks={columnTasks}
+                  onTaskClick={(taskId) => setTaskDrawerTaskId(taskId)}
+                  isOver={overColumnId === status.id}
+                />
+              )
+            })}
+          </div>
+          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+            {activeTask ? <TaskDragOverlay task={activeTask} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
     </div>
   )

@@ -67,9 +67,9 @@ export function AppTopbar() {
         {/* Theme toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8" onClick={toggleTheme}>
-              <Sun className="size-4 dark:hidden" />
-              <Moon className="hidden size-4 dark:block" />
+            <Button variant="ghost" size="icon" className="group size-8" onClick={toggleTheme}>
+              <Sun className="size-4 icon-hover-rotate dark:hidden" />
+              <Moon className="hidden size-4 icon-hover-rotate dark:block" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>{theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}</TooltipContent>
@@ -79,8 +79,8 @@ export function AppTopbar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Link to="/notifications" className="relative">
-              <Button variant="ghost" size="icon" className="size-8">
-                <Bell className="size-4" />
+              <Button variant="ghost" size="icon" className="group size-8">
+                <Bell className="size-4 icon-hover-bounce" />
               </Button>
               {unreadCount > 0 && (
                 <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, ArrowRight, Loader2, UserPlus, Trash2, Crown, Shield, User } from 'lucide-react'
+import { Plus, FolderKanban, Users, ArrowRight, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,13 +28,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { projectApi } from '@/lib/api/modules/project-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
-import type { WorkspaceMemberRoleType } from '@/types/domain'
+import type { ProjectStatusType, WorkspaceMemberRoleType } from '@/types/domain'
 
 const roleIcon = {
   OWNER: Crown,
@@ -59,6 +60,12 @@ export function WorkspaceDetailPage() {
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [memberUserId, setMemberUserId] = useState('')
   const [memberRole, setMemberRole] = useState<WorkspaceMemberRoleType>('MEMBER')
+  const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
+  const [editWsName, setEditWsName] = useState('')
+  const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false)
+  const [editProjectId, setEditProjectId] = useState<number | null>(null)
+  const [editProjectName, setEditProjectName] = useState('')
+  const [editProjectDescription, setEditProjectDescription] = useState('')
 
   useWorkspaceRealtime(Number.isFinite(workspaceId) ? workspaceId : null)
 
@@ -108,6 +115,50 @@ export function WorkspaceDetailPage() {
     },
   })
 
+  const updateWorkspaceMutation = useMutation({
+    mutationFn: () => workspaceApi.update(workspaceId, { name: editWsName.trim() }),
+    onSuccess: () => {
+      setEditWsDialogOpen(false)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+      toast.success('Cập nhật workspace thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật workspace thất bại', { description: error.message })
+    },
+  })
+
+  const updateProjectMutation = useMutation({
+    mutationFn: () => {
+      if (!editProjectId) throw new Error('Project không tồn tại')
+      return projectApi.update(editProjectId, {
+        name: editProjectName.trim(),
+        description: editProjectDescription.trim() || undefined,
+      })
+    },
+    onSuccess: () => {
+      setEditProjectDialogOpen(false)
+      setEditProjectId(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success('Cập nhật project thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật project thất bại', { description: error.message })
+    },
+  })
+
+  const updateProjectStatusMutation = useMutation({
+    mutationFn: ({ projectId, status }: { projectId: number; status: ProjectStatusType }) =>
+      projectApi.updateStatus(projectId, status),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success('Cập nhật trạng thái project thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật trạng thái thất bại', { description: error.message })
+    },
+  })
+
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
 
   if (isLoading) {
@@ -131,6 +182,43 @@ export function WorkspaceDetailPage() {
       <PageHeader
         title={workspaceQuery.data.name}
         description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project`}
+        actions={
+          <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditWsName(workspaceQuery.data!.name)}
+              >
+                <Pencil className="mr-1.5 size-3.5" />
+                Chỉnh sửa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Chỉnh sửa workspace</DialogTitle>
+                <DialogDescription>Đổi tên workspace.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label>Tên workspace</Label>
+                <Input
+                  value={editWsName}
+                  onChange={(e) => setEditWsName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
+                  }}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
+                <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
+                  {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  Lưu
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
       />
 
       <Tabs defaultValue="projects">
@@ -204,9 +292,9 @@ export function WorkspaceDetailPage() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {projects.map((project) => (
-                <Link key={project.id} to={`/workspaces/${workspaceId}/projects/${project.id}`}>
-                  <Card className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
-                    <CardContent className="flex items-start gap-3 p-4">
+                <Card key={project.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground">
                         {project.name.charAt(0).toUpperCase()}
                       </div>
@@ -224,13 +312,79 @@ export function WorkspaceDetailPage() {
                           </span>
                         </div>
                       </div>
-                      <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                    </CardContent>
-                  </Card>
-                </Link>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditProjectId(project.id)
+                            setEditProjectName(project.name)
+                            setEditProjectDescription(project.description ?? '')
+                            setEditProjectDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="mr-2 size-3.5" />
+                          Chỉnh sửa
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {project.status !== 'ACTIVE' && (
+                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
+                            <RotateCcw className="mr-2 size-3.5" />
+                            Kích hoạt lại
+                          </DropdownMenuItem>
+                        )}
+                        {project.status !== 'COMPLETED' && (
+                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
+                            <CheckCircle2 className="mr-2 size-3.5" />
+                            Hoàn thành
+                          </DropdownMenuItem>
+                        )}
+                        {project.status !== 'ARCHIVED' && (
+                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
+                            <Archive className="mr-2 size-3.5" />
+                            Lưu trữ
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
+
+          {/* Edit project dialog */}
+          <Dialog open={editProjectDialogOpen} onOpenChange={setEditProjectDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Chỉnh sửa project</DialogTitle>
+                  <DialogDescription>Cập nhật thông tin project.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Tên project</Label>
+                    <Input value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mô tả</Label>
+                    <Textarea value={editProjectDescription} onChange={(e) => setEditProjectDescription(e.target.value)} rows={3} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>Hủy</Button>
+                  <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim()}>
+                    {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Lưu
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </TabsContent>
 
         {/* Members tab */}

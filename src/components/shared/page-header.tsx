@@ -11,7 +11,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className="flex flex-col gap-3 border-b border-border/70 pb-4 md:flex-row md:items-end md:justify-between"
     >
       <div>

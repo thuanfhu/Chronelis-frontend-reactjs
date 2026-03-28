@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, PanelsTopLeft, ArrowRight, Loader2, Users } from 'lucide-react'
+import { Plus, PanelsTopLeft, Loader2, Users, MoreHorizontal, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,12 +18,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 
 export function WorkspacesPage() {
   const [name, setName] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editWsId, setEditWsId] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
   const queryClient = useQueryClient()
 
   const listQuery = useQuery({
@@ -42,6 +51,22 @@ export function WorkspacesPage() {
     onError: (error: unknown) => {
       const description = error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn, vui lòng thử lại.'
       toast.error('Tạo workspace thất bại', { description })
+    },
+  })
+
+  const editMutation = useMutation({
+    mutationFn: () => {
+      if (!editWsId) throw new Error('Workspace không tồn tại')
+      return workspaceApi.update(editWsId, { name: editName.trim() })
+    },
+    onSuccess: () => {
+      setEditDialogOpen(false)
+      setEditWsId(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+      toast.success('Cập nhật workspace thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật workspace thất bại', { description: error.message })
     },
   })
 
@@ -117,33 +142,75 @@ export function WorkspacesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {workspaces.map((ws) => (
-            <Link key={ws.id} to={`/workspaces/${ws.id}`}>
-              <Card className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      {ws.name.charAt(0).toUpperCase()}
+            <Card key={ws.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex items-start gap-3">
+                  <Link to={`/workspaces/${ws.id}`} className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    {ws.name.charAt(0).toUpperCase()}
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link to={`/workspaces/${ws.id}`}>
+                      <CardTitle className="truncate text-base hover:text-primary">{ws.name}</CardTitle>
+                    </Link>
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Users className="size-3" />
+                      <span>{ws.owner.firstName} {ws.owner.lastName}</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="truncate text-base">{ws.name}</CardTitle>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Users className="size-3" />
-                        <span>{ws.owner.firstName} {ws.owner.lastName}</span>
-                      </div>
-                    </div>
-                    <ArrowRight className="size-4 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover:opacity-100">
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => { setEditWsId(ws.id); setEditName(ws.name); setEditDialogOpen(true) }}>
+                        <Pencil className="mr-2 size-4" />
+                        Chỉnh sửa
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Link to={`/workspaces/${ws.id}`} className="block">
                   <p className="text-xs text-muted-foreground">
                     Tạo lúc: {new Date(ws.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </p>
-                </CardContent>
-              </Card>
-            </Link>
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
+
+      {/* Edit workspace dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa workspace</DialogTitle>
+            <DialogDescription>Đổi tên workspace của bạn.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ws-name">Tên workspace</Label>
+            <Input
+              id="edit-ws-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && editName.trim()) editMutation.mutate()
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}>
+              {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

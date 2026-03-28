@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle2, Circle, MessageSquare, CalendarClock, Loader2, Trash2, Send } from 'lucide-react'
+import { CheckCircle2, Circle, MessageSquare, CalendarClock, Loader2, Trash2, Send, Pencil, MoreHorizontal } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,12 +12,19 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { formatDateTime, toLocalDateTimePayload } from '@/lib/utils/datetime'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
+import type { TaskPriorityType } from '@/types/domain'
 
 export function TaskDetailsDrawer() {
   const taskDrawerTaskId = useUiStore((state) => state.taskDrawerTaskId)
@@ -27,6 +34,12 @@ export function TaskDetailsDrawer() {
   const [newComment, setNewComment] = useState('')
   const [scheduledStart, setScheduledStart] = useState('')
   const [scheduledEnd, setScheduledEnd] = useState('')
+  const [isEditingTask, setIsEditingTask] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editPriority, setEditPriority] = useState<TaskPriorityType>('MEDIUM')
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentContent, setEditingCommentContent] = useState('')
 
   const hasTask = taskDrawerTaskId !== null
   const taskId = taskDrawerTaskId ?? 0
@@ -122,6 +135,64 @@ export function TaskDetailsDrawer() {
     },
   })
 
+  const updateTaskMutation = useMutation({
+    mutationFn: () =>
+      taskApi.update(taskId, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        priority: editPriority,
+      }),
+    onSuccess: () => {
+      setIsEditingTask(false)
+      void invalidateTaskData()
+      toast.success('Cập nhật task thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật task thất bại', { description: error.message })
+    },
+  })
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: () => taskApi.remove(taskId),
+    onSuccess: () => {
+      setTaskDrawerTaskId(null)
+      if (taskQuery.data) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(taskQuery.data.projectId, 1, 200) })
+      }
+      toast.success('Xóa task thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Xóa task thất bại', { description: error.message })
+    },
+  })
+
+  const updateCommentMutation = useMutation({
+    mutationFn: () => {
+      if (!editingCommentId) throw new Error('Comment không tồn tại')
+      return taskCommentApi.update(editingCommentId, editingCommentContent.trim())
+    },
+    onSuccess: () => {
+      setEditingCommentId(null)
+      setEditingCommentContent('')
+      void invalidateTaskData()
+      toast.success('Cập nhật comment thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật comment thất bại', { description: error.message })
+    },
+  })
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId: number) => taskCommentApi.remove(commentId),
+    onSuccess: () => {
+      void invalidateTaskData()
+      toast.success('Xóa comment thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Xóa comment thất bại', { description: error.message })
+    },
+  })
+
   const comments = commentsQuery.data ?? []
   const schedules = schedulesQuery.data ?? []
   const canCreateSchedule = Boolean(scheduledStart && scheduledEnd && scheduledEnd >= scheduledStart)
@@ -134,6 +205,32 @@ export function TaskDetailsDrawer() {
           <div className="flex items-center gap-2">
             <SheetTitle className="text-base">Chi tiết task</SheetTitle>
             <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
+            {task && (
+              <div className="ml-auto flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => {
+                    setIsEditingTask(true)
+                    setEditTitle(task.title)
+                    setEditDescription(task.description ?? '')
+                    setEditPriority(task.priority)
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-destructive hover:text-destructive"
+                  onClick={() => deleteTaskMutation.mutate()}
+                  disabled={deleteTaskMutation.isPending}
+                >
+                  {deleteTaskMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                </Button>
+              </div>
+            )}
           </div>
           <SheetDescription className="sr-only">Xem và quản lý chi tiết task</SheetDescription>
         </SheetHeader>
@@ -147,9 +244,41 @@ export function TaskDetailsDrawer() {
             <div className="space-y-5 px-6 py-4">
               {/* Task info */}
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold">{task.title}</h3>
-                {task.description && (
-                  <p className="text-sm text-muted-foreground">{task.description}</p>
+                {isEditingTask ? (
+                  <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tiêu đề</Label>
+                      <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Mô tả</Label>
+                      <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Mức ưu tiên</Label>
+                      <div className="flex gap-1.5">
+                        {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
+                          <Button key={p} type="button" variant={editPriority === p ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setEditPriority(p)}>
+                            {p}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => updateTaskMutation.mutate()} disabled={updateTaskMutation.isPending || !editTitle.trim()}>
+                        {updateTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                        Lưu
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditingTask(false)}>Hủy</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold">{task.title}</h3>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                    )}
+                  </>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
@@ -220,7 +349,7 @@ export function TaskDetailsDrawer() {
                 ) : (
                   <div className="space-y-2">
                     {comments.map((comment) => (
-                      <div key={comment.id} className="flex gap-2.5">
+                      <div key={comment.id} className="group/comment flex gap-2.5">
                         <Avatar className="mt-0.5 size-7 shrink-0">
                           <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
                             {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
@@ -230,8 +359,51 @@ export function TaskDetailsDrawer() {
                           <div className="flex items-baseline gap-2">
                             <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
                             <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
+                                  <MoreHorizontal className="size-3" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setEditingCommentId(comment.id)
+                                    setEditingCommentContent(comment.content)
+                                  }}
+                                >
+                                  <Pencil className="mr-2 size-3" />
+                                  Chỉnh sửa
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => deleteCommentMutation.mutate(comment.id)}
+                                >
+                                  <Trash2 className="mr-2 size-3" />
+                                  Xóa
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                          <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
+                          {editingCommentId === comment.id ? (
+                            <div className="mt-1 space-y-1.5">
+                              <Textarea
+                                value={editingCommentContent}
+                                onChange={(e) => setEditingCommentContent(e.target.value)}
+                                rows={2}
+                                className="text-sm"
+                              />
+                              <div className="flex gap-1.5">
+                                <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
+                                  {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
+                                  Lưu
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
+                          )}
                         </div>
                       </div>
                     ))}
