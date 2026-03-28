@@ -39,8 +39,9 @@ export function WorkspacesPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Tạo workspace thành công')
     },
-    onError: (error: Error) => {
-      toast.error('Tạo workspace thất bại', { description: error.message })
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn, vui lòng thử lại.'
+      toast.error('Tạo workspace thất bại', { description })
     },
   })
 
