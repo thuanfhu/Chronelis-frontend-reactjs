@@ -63,7 +63,7 @@ export function ActivityLogPage() {
         </Card>
       ) : (
         <div className="relative ml-4 border-l-2 border-muted">
-          {logs.map((log, index) => (
+          {logs.map((log) => (
             <div key={log.id} className="relative pb-6 pl-6 last:pb-0">
               {/* Timeline dot */}
               <div className="absolute -left-[9px] top-0.5 size-4 rounded-full border-2 border-background bg-primary/60" />

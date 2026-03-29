@@ -42,4 +42,20 @@ export const queryKeys = {
     byWorkspace: (workspaceId: number, queryKey: string, page: number, size: number) =>
       ['activity-logs', workspaceId, queryKey, page, size] as const,
   },
+  taskTypes: {
+    byProject: (projectId: number) => ['task-types', 'project', projectId] as const,
+    detail: (taskTypeId: number) => ['task-types', 'detail', taskTypeId] as const,
+  },
+  teams: {
+    byWorkspace: (workspaceId: number) => ['workspace-teams', 'workspace', workspaceId] as const,
+    detail: (teamId: number) => ['workspace-teams', 'detail', teamId] as const,
+    members: (teamId: number) => ['workspace-teams', 'members', teamId] as const,
+  },
+  invites: {
+    byWorkspace: (workspaceId: number) => ['workspace-invites', 'workspace', workspaceId] as const,
+    validate: (code: string) => ['workspace-invites', 'validate', code] as const,
+  },
+  checkItems: {
+    byTask: (taskId: number) => ['task-check-items', 'task', taskId] as const,
+  },
 }

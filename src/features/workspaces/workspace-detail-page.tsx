@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, ArrowRight, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw } from 'lucide-react'
+import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,8 +13,6 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +31,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { projectApi } from '@/lib/api/modules/project-api'
+import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
+import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import type { ProjectStatusType, WorkspaceMemberRoleType } from '@/types/domain'
@@ -66,6 +66,12 @@ export function WorkspaceDetailPage() {
   const [editProjectId, setEditProjectId] = useState<number | null>(null)
   const [editProjectName, setEditProjectName] = useState('')
   const [editProjectDescription, setEditProjectDescription] = useState('')
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [inviteRole, setInviteRole] = useState<WorkspaceMemberRoleType>('MEMBER')
+  const [inviteMaxUses, setInviteMaxUses] = useState('')
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false)
+  const [teamName, setTeamName] = useState('')
+  const [teamDescription, setTeamDescription] = useState('')
 
   useWorkspaceRealtime(Number.isFinite(workspaceId) ? workspaceId : null)
 
@@ -84,6 +90,18 @@ export function WorkspaceDetailPage() {
   const projectsQuery = useQuery({
     queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50),
     queryFn: () => projectApi.listByWorkspace(workspaceId, { page: 1, size: 50 }),
+    enabled: Number.isFinite(workspaceId),
+  })
+
+  const invitesQuery = useQuery({
+    queryKey: queryKeys.invites.byWorkspace(workspaceId),
+    queryFn: () => workspaceInviteApi.listActive(workspaceId),
+    enabled: Number.isFinite(workspaceId),
+  })
+
+  const teamsQuery = useQuery({
+    queryKey: queryKeys.teams.byWorkspace(workspaceId),
+    queryFn: () => workspaceTeamApi.listByWorkspace(workspaceId),
     enabled: Number.isFinite(workspaceId),
   })
 
@@ -159,6 +177,55 @@ export function WorkspaceDetailPage() {
     },
   })
 
+  const createInviteMutation = useMutation({
+    mutationFn: () => workspaceInviteApi.create({
+      workspaceId,
+      roleToAssign: inviteRole,
+      maxUses: inviteMaxUses ? Number(inviteMaxUses) : undefined,
+    }),
+    onSuccess: () => {
+      setInviteDialogOpen(false)
+      setInviteMaxUses('')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
+      toast.success('Tạo invite link thành công')
+    },
+    onError: (error: Error) => toast.error('Tạo invite thất bại', { description: error.message }),
+  })
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (inviteId: number) => workspaceInviteApi.revoke(inviteId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
+      toast.success('Thu hồi invite thành công')
+    },
+    onError: (error: Error) => toast.error('Thu hồi thất bại', { description: error.message }),
+  })
+
+  const createTeamMutation = useMutation({
+    mutationFn: () => workspaceTeamApi.create({
+      workspaceId,
+      name: teamName.trim(),
+      description: teamDescription.trim() || undefined,
+    }),
+    onSuccess: () => {
+      setTeamDialogOpen(false)
+      setTeamName('')
+      setTeamDescription('')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      toast.success('Tạo team thành công')
+    },
+    onError: (error: Error) => toast.error('Tạo team thất bại', { description: error.message }),
+  })
+
+  const deleteTeamMutation = useMutation({
+    mutationFn: (teamId: number) => workspaceTeamApi.remove(teamId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      toast.success('Xóa team thành công')
+    },
+    onError: (error: Error) => toast.error('Xóa team thất bại', { description: error.message }),
+  })
+
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
 
   if (isLoading) {
@@ -176,6 +243,8 @@ export function WorkspaceDetailPage() {
 
   const members = membersQuery.data ?? []
   const projects = projectsQuery.data?.content ?? []
+  const invites = invitesQuery.data ?? []
+  const teams = teamsQuery.data ?? []
 
   return (
     <div className="space-y-6">
@@ -231,6 +300,14 @@ export function WorkspaceDetailPage() {
             <Users className="size-3.5" />
             Thành viên ({members.length})
           </TabsTrigger>
+          <TabsTrigger value="invites" className="gap-1.5">
+            <Link2 className="size-3.5" />
+            Invites ({invites.length})
+          </TabsTrigger>
+          <TabsTrigger value="teams" className="gap-1.5">
+            <UsersRound className="size-3.5" />
+            Teams ({teams.length})
+          </TabsTrigger>
         </TabsList>
 
         {/* Projects tab */}
@@ -247,7 +324,7 @@ export function WorkspaceDetailPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Tạo project mới</DialogTitle>
-                  <DialogDescription>Project sẽ tự động tạo 4 cột trạng thái: Inbox, Planned, Doing, Done.</DialogDescription>
+                  <DialogDescription>Project sẽ tự động tạo 3 cột trạng thái: To do, In Progress, Done.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
@@ -496,6 +573,182 @@ export function WorkspaceDetailPage() {
               )
             })}
           </div>
+        </TabsContent>
+
+        {/* Invites tab */}
+        <TabsContent value="invites" className="mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Quản lý invite link cho workspace</p>
+            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-1.5 size-3.5" />
+                  Tạo invite
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tạo invite link</DialogTitle>
+                  <DialogDescription>Chia sẻ link hoặc QR code để mời thành viên tham gia workspace.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Vai trò được gán</Label>
+                    <div className="flex gap-2">
+                      {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                        <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
+                          {r}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Giới hạn lượt dùng (tùy chọn)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={inviteMaxUses}
+                      onChange={(e) => setInviteMaxUses(e.target.value)}
+                      placeholder="Không giới hạn"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Hủy</Button>
+                  <Button onClick={() => createInviteMutation.mutate()} disabled={createInviteMutation.isPending}>
+                    {createInviteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Tạo
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {invites.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Link2 className="mb-3 size-10 text-muted-foreground/30" />
+                <p className="text-sm font-medium">Chưa có invite nào</p>
+                <p className="mt-1 text-xs text-muted-foreground">Tạo invite link để mời thành viên</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {invites.map((invite) => {
+                const inviteUrl = `${window.location.origin}/join?code=${invite.inviteCode}`
+                return (
+                  <div key={invite.id} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                    <QrCode className="size-8 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs font-mono">{invite.inviteCode}</code>
+                        <Badge variant="outline" className="text-[10px]">{invite.roleToAssign}</Badge>
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {invite.usedCount}{invite.maxUses ? `/${invite.maxUses}` : ''} lượt dùng
+                        {invite.expiresAt ? ` · Hết hạn: ${invite.expiresAt}` : ''}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(inviteUrl)
+                        toast.success('Đã copy invite link')
+                      }}
+                    >
+                      <Copy className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => revokeInviteMutation.mutate(invite.id)}
+                      disabled={revokeInviteMutation.isPending}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Teams tab */}
+        <TabsContent value="teams" className="mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Quản lý team trong workspace</p>
+            <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-1.5 size-3.5" />
+                  Tạo team
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tạo team mới</DialogTitle>
+                  <DialogDescription>Nhóm thành viên lại để phân công hiệu quả hơn.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Tên team</Label>
+                    <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Ví dụ: Frontend Team" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Mô tả (tùy chọn)</Label>
+                    <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder="Mô tả ngắn về team..." />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Hủy</Button>
+                  <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending || !teamName.trim()}>
+                    {createTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Tạo
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {teams.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
+                <p className="text-sm font-medium">Chưa có team nào</p>
+                <p className="mt-1 text-xs text-muted-foreground">Tạo team để nhóm thành viên</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {teams.map((team) => (
+                <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                        onClick={() => deleteTeamMutation.mutate(team.id)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                    {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Users className="size-3" />
+                      <span>{team.memberCount} thành viên</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -1,28 +1,20 @@
 import { useState } from 'react'
 import {
-  FolderKanban, Gauge, Bell, CalendarClock, Goal, PanelsTopLeft, Activity,
-  ChevronRight, Search, LogOut, LayoutDashboard, Menu,
-  ChevronsLeft, ChevronDown,
+  FolderKanban, ChevronRight, Search, LogOut, Menu,
+  ChevronsLeft, ChevronDown, Target,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils/cn'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
-import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { projectApi } from '@/lib/api/modules/project-api'
+import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
-
-const mainNav = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/workspaces', label: 'Workspaces', icon: PanelsTopLeft },
-  { to: '/notifications', label: 'Thông báo', icon: Bell },
-]
 
 interface AppSidebarProps {
   workspaceId?: number
@@ -38,29 +30,31 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
   const clearSession = useAuthStore((s) => s.clearSession)
 
-  const [workspacesExpanded, setWorkspacesExpanded] = useState(true)
   const [projectsExpanded, setProjectsExpanded] = useState(true)
-  const [projectViewExpanded, setProjectViewExpanded] = useState(true)
-
-  const projectBase = workspaceId && projectId ? `/workspaces/${workspaceId}/projects/${projectId}` : undefined
-
-  const workspacesQuery = useQuery({
-    queryKey: queryKeys.workspaces.list(1, 20),
-    queryFn: () => workspaceApi.list({ page: 1, size: 20 }),
-  })
+  const [expandedProjects, setExpandedProjects] = useState<Set<number>>(
+    () => new Set(projectId ? [projectId] : []),
+  )
 
   const projectsQuery = useQuery({
-    queryKey: queryKeys.projects.byWorkspace(workspaceId ?? 0, 1, 20),
-    queryFn: () => projectApi.listByWorkspace(workspaceId!, { page: 1, size: 20 }),
+    queryKey: queryKeys.projects.byWorkspace(workspaceId ?? 0, 1, 50),
+    queryFn: () => projectApi.listByWorkspace(workspaceId!, { page: 1, size: 50 }),
     enabled: !!workspaceId,
   })
 
-  const workspaces = workspacesQuery.data?.content ?? []
   const projects = projectsQuery.data?.content ?? []
 
   const handleLogout = () => {
     clearSession()
     navigate('/login')
+  }
+
+  const toggleProjectExpand = (id: number) => {
+    setExpandedProjects((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   // Desktop collapsed = sidebarCollapsed && not forced open by mobile toggle
@@ -151,67 +145,18 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
         {/* ─── Scrollable navigation ─── */}
         <ScrollArea className="flex-1">
-          {/* Main navigation */}
-          <nav className="space-y-0.5 px-2 pb-2">
-            {!collapsed && (
-              <p className="mb-1 px-2 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                Chính
-              </p>
-            )}
-            {mainNav.map((item) =>
-              collapsed ? (
-                <Tooltip key={item.to}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      to={item.to}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex items-center justify-center rounded-lg p-2.5 transition-all duration-150',
-                          isActive
-                            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                        )
-                      }
-                    >
-                      <item.icon className="size-4 icon-hover" />
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
-                      isActive
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                        : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    )
-                  }
-                >
-                  <item.icon className="size-4 icon-hover-bounce" />
-                  {item.label}
-                </NavLink>
-              ),
-            )}
-          </nav>
-
-          {!collapsed && <Separator className="mx-3 bg-sidebar-border" />}
-
-          {/* ─── Workspaces section ─── */}
-          {workspaces.length > 0 && !collapsed && (
+          {/* ─── Projects section ─── */}
+          {workspaceId && !collapsed && (
             <div className="px-2 py-2">
               <button
-                onClick={() => setWorkspacesExpanded(!workspacesExpanded)}
+                onClick={() => setProjectsExpanded(!projectsExpanded)}
                 className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
               >
-                <ChevronDown className={cn('size-3 transition-transform duration-200', !workspacesExpanded && '-rotate-90')} />
-                Workspaces
+                <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
+                Projects
               </button>
               <AnimatePresence initial={false}>
-                {workspacesExpanded && (
+                {projectsExpanded && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -220,24 +165,15 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                     className="overflow-hidden"
                   >
                     <div className="space-y-0.5">
-                      {workspaces.map((ws) => (
-                        <NavLink
-                          key={ws.id}
-                          to={`/workspaces/${ws.id}`}
-                          className={({ isActive }) =>
-                            cn(
-                              'flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-all duration-150',
-                              isActive
-                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                                : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                            )
-                          }
-                        >
-                          <div className="flex size-5 shrink-0 items-center justify-center rounded bg-linear-to-br from-primary/15 to-accent/10 text-[10px] font-bold text-primary">
-                            {ws.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="truncate">{ws.name}</span>
-                        </NavLink>
+                      {projects.map((proj) => (
+                        <ProjectItem
+                          key={proj.id}
+                          project={proj}
+                          workspaceId={workspaceId}
+                          isActive={projectId === proj.id}
+                          isExpanded={expandedProjects.has(proj.id)}
+                          onToggleExpand={() => toggleProjectExpand(proj.id)}
+                        />
                       ))}
                     </div>
                   </motion.div>
@@ -246,145 +182,27 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             </div>
           )}
 
-          {/* Collapsed: workspace icons only */}
-          {workspaces.length > 0 && collapsed && (
+          {/* Collapsed: project icons only */}
+          {workspaceId && collapsed && (
             <div className="flex flex-col items-center gap-0.5 px-2 py-2">
-              {workspaces.slice(0, 5).map((ws) => (
-                <Tooltip key={ws.id}>
+              {projects.map((proj) => (
+                <Tooltip key={proj.id}>
                   <TooltipTrigger asChild>
                     <NavLink
-                      to={`/workspaces/${ws.id}`}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex size-9 items-center justify-center rounded-lg transition-all duration-150',
-                          isActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                        )
-                      }
-                    >
-                      <div className="flex size-6 items-center justify-center rounded bg-linear-to-br from-primary/15 to-accent/10 text-[10px] font-bold text-primary">
-                        {ws.name.charAt(0).toUpperCase()}
-                      </div>
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{ws.name}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          )}
-
-          {/* ─── Projects section ─── */}
-          {workspaceId && projects.length > 0 && !collapsed && (
-            <>
-              <Separator className="mx-3 bg-sidebar-border" />
-              <div className="px-2 py-2">
-                <button
-                  onClick={() => setProjectsExpanded(!projectsExpanded)}
-                  className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-                >
-                  <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
-                  Projects
-                </button>
-                <AnimatePresence initial={false}>
-                  {projectsExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-0.5">
-                        {projects.map((proj) => (
-                          <NavLink
-                            key={proj.id}
-                            to={`/workspaces/${workspaceId}/projects/${proj.id}`}
-                            className={({ isActive }) =>
-                              cn(
-                                'flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-all duration-150',
-                                isActive
-                                  ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                                  : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                              )
-                            }
-                          >
-                            <FolderKanban className="size-3.5 shrink-0 text-muted-foreground icon-hover" />
-                            <span className="truncate">{proj.name}</span>
-                            <ChevronRight className="ml-auto size-3 text-muted-foreground/40" />
-                          </NavLink>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </>
-          )}
-
-          {/* ─── Project sub-navigation ─── */}
-          {projectBase && !collapsed && (
-            <>
-              <Separator className="mx-3 bg-sidebar-border" />
-              <div className="px-2 py-2">
-                <button
-                  onClick={() => setProjectViewExpanded(!projectViewExpanded)}
-                  className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-                >
-                  <ChevronDown className={cn('size-3 transition-transform duration-200', !projectViewExpanded && '-rotate-90')} />
-                  Project View
-                </button>
-                <AnimatePresence initial={false}>
-                  {projectViewExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="space-y-0.5">
-                        <SidebarSubLink to={projectBase} label="Tổng quan" icon={Gauge} end />
-                        <SidebarSubLink to={`${projectBase}/kanban`} label="Kanban Board" icon={FolderKanban} />
-                        <SidebarSubLink to={`${projectBase}/goals`} label="Goals" icon={Goal} />
-                        <SidebarSubLink to={`${projectBase}/calendar`} label="Lịch" icon={CalendarClock} />
-                        <SidebarSubLink to={`${projectBase}/activity`} label="Hoạt động" icon={Activity} />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </>
-          )}
-
-          {/* Collapsed: project view icons only */}
-          {projectBase && collapsed && (
-            <div className="flex flex-col items-center gap-0.5 px-2 py-2">
-              {[
-                { to: projectBase, label: 'Tổng quan', icon: Gauge, end: true },
-                { to: `${projectBase}/kanban`, label: 'Kanban', icon: FolderKanban },
-                { to: `${projectBase}/goals`, label: 'Goals', icon: Goal },
-                { to: `${projectBase}/calendar`, label: 'Lịch', icon: CalendarClock },
-                { to: `${projectBase}/activity`, label: 'Hoạt động', icon: Activity },
-              ].map((item) => (
-                <Tooltip key={item.to}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      to={item.to}
-                      end={item.end}
+                      to={`/workspaces/${workspaceId}/projects/${proj.id}`}
                       className={({ isActive }) =>
                         cn(
                           'flex size-9 items-center justify-center rounded-lg transition-all duration-150',
                           isActive
                             ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
                         )
                       }
                     >
-                      <item.icon className="size-4" />
+                      <FolderKanban className="size-4" />
                     </NavLink>
                   </TooltipTrigger>
-                  <TooltipContent side="right">{item.label}</TooltipContent>
+                  <TooltipContent side="right">{proj.name}</TooltipContent>
                 </Tooltip>
               ))}
             </div>
@@ -420,22 +238,84 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   )
 }
 
-function SidebarSubLink({ to, label, icon: Icon, end }: { to: string; label: string; icon: typeof FolderKanban; end?: boolean }) {
+// ─── Project Item with expandable Goals ───
+
+function ProjectItem({
+  project,
+  workspaceId,
+  isActive,
+  isExpanded,
+  onToggleExpand,
+}: {
+  project: { id: number; name: string }
+  workspaceId: number
+  isActive: boolean
+  isExpanded: boolean
+  onToggleExpand: () => void
+}) {
+  const goalsQuery = useQuery({
+    queryKey: queryKeys.goals.byProject(project.id, 1, 50),
+    queryFn: () => goalApi.listByProject(project.id, { page: 1, size: 50 }),
+    enabled: isExpanded,
+  })
+
+  const goals = goalsQuery.data?.content ?? []
+
   return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        cn(
-          'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150',
-          isActive
-            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-        )
-      }
-    >
-      <Icon className="size-3.5 icon-hover" />
-      {label}
-    </NavLink>
+    <div>
+      <div className="flex items-center">
+        <button
+          onClick={onToggleExpand}
+          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+        >
+          <ChevronRight className={cn('size-3 transition-transform duration-200', isExpanded && 'rotate-90')} />
+        </button>
+        <NavLink
+          to={`/workspaces/${workspaceId}/projects/${project.id}`}
+          className={cn(
+            'flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150',
+            isActive
+              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+              : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+          )}
+        >
+          <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{project.name}</span>
+        </NavLink>
+      </div>
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="ml-6 space-y-0.5 border-l border-sidebar-border py-1 pl-2">
+              {goalsQuery.isLoading && (
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/50">Đang tải...</p>
+              )}
+              {goals.length === 0 && !goalsQuery.isLoading && (
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/50">Chưa có goal nào</p>
+              )}
+              {goals.map((goal) => (
+                <NavLink
+                  key={goal.id}
+                  to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
+                  className="group flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                >
+                  <Target className="size-3 shrink-0 text-muted-foreground/60" />
+                  <span className="flex-1 truncate">{goal.title}</span>
+                  {goal.progressPercent != null && goal.progressPercent > 0 && (
+                    <span className="text-[10px] text-muted-foreground/50">{goal.progressPercent}%</span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

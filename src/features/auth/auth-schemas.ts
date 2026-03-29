@@ -8,18 +8,18 @@ export const loginSchema = z.object({
   identifier: z
     .string()
     .min(1, 'Vui lòng nhập email hoặc số điện thoại')
-    .refine(
-      (value) => {
-        const trimmed = value.trim()
-        if (trimmed.includes('@')) return emailPattern.test(trimmed)
-        return phonePattern.test(trimmed)
-      },
-      (value) => ({
-        message: value.trim().includes('@')
-          ? 'Chỉ hỗ trợ gmail.com hoặc yopmail.com'
-          : 'Số điện thoại Việt Nam không hợp lệ',
-      }),
-    ),
+    .superRefine((value, ctx) => {
+      const trimmed = value.trim()
+      const valid = trimmed.includes('@') ? emailPattern.test(trimmed) : phonePattern.test(trimmed)
+      if (!valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: trimmed.includes('@')
+            ? 'Chỉ hỗ trợ gmail.com hoặc yopmail.com'
+            : 'Số điện thoại Việt Nam không hợp lệ',
+        })
+      }
+    }),
   password: z.string().regex(passwordPattern, 'Mật khẩu không đúng định dạng'),
 })
 

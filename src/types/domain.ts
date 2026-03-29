@@ -5,6 +5,9 @@ export type ProjectStatusType = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
 export type GoalType = 'SHORT_TERM' | 'MEDIUM_TERM' | 'LONG_TERM'
 export type GoalStatusType = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD'
 export type TaskPriorityType = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+export type ImportanceLevel = 'LOW' | 'HIGH'
+export type UrgencyLevel = 'LOW' | 'HIGH'
+export type SourceViewType = 'KANBAN' | 'TODO' | 'CALENDAR' | 'EISENHOWER'
 
 export type NotificationType =
   | 'TASK_ASSIGNED'
@@ -16,8 +19,9 @@ export type NotificationType =
   | 'WORKSPACE_MEMBER_REMOVED'
   | 'TASK_CREATED'
   | 'TASK_UPDATED'
+  | 'WORKSPACE_INVITE_USED'
 
-export type ReferenceType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE'
+export type ReferenceType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE' | 'TASK_TYPE' | 'TEAM' | 'INVITE' | 'CHECK_ITEM'
 
 export type ActivityActionType =
   | 'WORKSPACE_CREATED'
@@ -41,8 +45,22 @@ export type ActivityActionType =
   | 'COMMENT_ADDED'
   | 'COMMENT_UPDATED'
   | 'COMMENT_DELETED'
+  | 'TASK_TYPE_CREATED'
+  | 'TASK_TYPE_UPDATED'
+  | 'TASK_TYPE_DELETED'
+  | 'TEAM_CREATED'
+  | 'TEAM_UPDATED'
+  | 'TEAM_DELETED'
+  | 'TEAM_MEMBER_ADDED'
+  | 'TEAM_MEMBER_REMOVED'
+  | 'INVITE_CREATED'
+  | 'INVITE_REVOKED'
+  | 'INVITE_USED'
+  | 'CHECK_ITEM_CREATED'
+  | 'CHECK_ITEM_UPDATED'
+  | 'CHECK_ITEM_DELETED'
 
-export type ActivityTargetType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE' | 'MEMBER' | 'STATUS'
+export type ActivityTargetType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE' | 'MEMBER' | 'STATUS' | 'TASK_TYPE' | 'TEAM' | 'INVITE' | 'CHECK_ITEM'
 
 export interface UserSummary {
   userId: string
@@ -126,6 +144,10 @@ export interface Task {
   title: string
   description?: string
   priority: TaskPriorityType
+  taskType?: TaskType
+  importanceLevel?: ImportanceLevel
+  urgencyLevel?: UrgencyLevel
+  sourceView?: SourceViewType
   assignee?: UserSummary
   createdBy: UserSummary
   dueDate?: string
@@ -133,6 +155,8 @@ export interface Task {
   boardPosition: number
   isCompleted: boolean
   completedAt?: string
+  checkItemCount: number
+  checkItemDoneCount: number
   createdAt: string
   updatedAt: string
 }
@@ -192,4 +216,59 @@ export interface RealtimeEvent<T = unknown> {
 export interface PageResult<T> {
   meta: PaginationMeta
   content: T[]
+}
+
+export interface TaskType {
+  id: number
+  workspaceId: number
+  projectId: number
+  goalId?: number
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TaskCheckItem {
+  id: number
+  taskId: number
+  title: string
+  isChecked: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WorkspaceTeam {
+  id: number
+  workspaceId: number
+  name: string
+  description?: string
+  createdBy: UserSummary
+  memberCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WorkspaceTeamMember {
+  id: number
+  teamId: number
+  user: UserSummary
+  joinedAt: string
+}
+
+export interface WorkspaceInvite {
+  id: number
+  workspaceId: number
+  workspaceName: string
+  inviteCode: string
+  roleToAssign: WorkspaceMemberRoleType
+  createdBy: UserSummary
+  maxUses?: number
+  usedCount: number
+  expiresAt?: string
+  isActive: boolean
+  createdAt: string
 }

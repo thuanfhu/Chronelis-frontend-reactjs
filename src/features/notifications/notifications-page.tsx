@@ -24,6 +24,7 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
   WORKSPACE_MEMBER_REMOVED: UserMinus,
   TASK_CREATED: ListTodo,
   TASK_UPDATED: ListTodo,
+  WORKSPACE_INVITE_USED: UserPlus,
 }
 
 export function NotificationsPage() {

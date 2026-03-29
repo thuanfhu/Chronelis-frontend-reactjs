@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { CheckCircle2, Circle, MessageSquare, CalendarClock, Loader2, Trash2, Send, Pencil, MoreHorizontal } from 'lucide-react'
+import {
+  CheckCircle2, Circle, MessageSquare, CalendarClock, Loader2, Trash2, Send, Pencil, MoreHorizontal,
+  ListChecks, Plus, Square, CheckSquare,
+} from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +24,7 @@ import {
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
+import { taskCheckItemApi } from '@/lib/api/modules/task-check-item-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { formatDateTime, toLocalDateTimePayload } from '@/lib/utils/datetime'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
@@ -40,6 +44,7 @@ export function TaskDetailsDrawer() {
   const [editPriority, setEditPriority] = useState<TaskPriorityType>('MEDIUM')
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
+  const [newCheckItemTitle, setNewCheckItemTitle] = useState('')
 
   const hasTask = taskDrawerTaskId !== null
   const taskId = taskDrawerTaskId ?? 0
@@ -62,12 +67,19 @@ export function TaskDetailsDrawer() {
     enabled: hasTask,
   })
 
+  const checkItemsQuery = useQuery({
+    queryKey: queryKeys.checkItems.byTask(taskId),
+    queryFn: () => taskCheckItemApi.listByTask(taskId),
+    enabled: hasTask,
+  })
+
   const invalidateTaskData = async () => {
     if (!hasTask) return
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkItems.byTask(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount }),
       taskQuery.data
         ? queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(taskQuery.data.projectId, 1, 200) })
@@ -193,8 +205,30 @@ export function TaskDetailsDrawer() {
     },
   })
 
+  const addCheckItemMutation = useMutation({
+    mutationFn: () => taskCheckItemApi.create({ taskId, title: newCheckItemTitle.trim() }),
+    onSuccess: () => {
+      setNewCheckItemTitle('')
+      void invalidateTaskData()
+    },
+    onError: (error: Error) => toast.error('Thêm check item thất bại', { description: error.message }),
+  })
+
+  const toggleCheckItemMutation = useMutation({
+    mutationFn: (checkItemId: number) => taskCheckItemApi.toggle(checkItemId),
+    onSuccess: () => void invalidateTaskData(),
+    onError: (error: Error) => toast.error('Cập nhật thất bại', { description: error.message }),
+  })
+
+  const deleteCheckItemMutation = useMutation({
+    mutationFn: (checkItemId: number) => taskCheckItemApi.remove(checkItemId),
+    onSuccess: () => void invalidateTaskData(),
+    onError: (error: Error) => toast.error('Xóa thất bại', { description: error.message }),
+  })
+
   const comments = commentsQuery.data ?? []
   const schedules = schedulesQuery.data ?? []
+  const checkItems = checkItemsQuery.data ?? []
   const canCreateSchedule = Boolean(scheduledStart && scheduledEnd && scheduledEnd >= scheduledStart)
   const task = taskQuery.data
 
@@ -315,6 +349,96 @@ export function TaskDetailsDrawer() {
                   )}
                   {task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                 </Button>
+
+                {/* Extra info: importance, urgency, task type */}
+                {(task.importanceLevel || task.urgencyLevel || task.taskType) && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    {task.importanceLevel && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Mức quan trọng</p>
+                        <Badge variant={task.importanceLevel === 'HIGH' ? 'default' : 'outline'} className="text-[10px]">
+                          {task.importanceLevel === 'HIGH' ? 'Quan trọng' : 'Không quan trọng'}
+                        </Badge>
+                      </div>
+                    )}
+                    {task.urgencyLevel && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Mức khẩn cấp</p>
+                        <Badge variant={task.urgencyLevel === 'HIGH' ? 'destructive' : 'outline'} className="text-[10px]">
+                          {task.urgencyLevel === 'HIGH' ? 'Khẩn cấp' : 'Không khẩn'}
+                        </Badge>
+                      </div>
+                    )}
+                    {task.taskType && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Loại task</p>
+                        <Badge variant="secondary" className="gap-1 text-[10px]" style={task.taskType.color ? { backgroundColor: task.taskType.color + '20', color: task.taskType.color } : undefined}>
+                          {task.taskType.icon && <span>{task.taskType.icon}</span>}
+                          {task.taskType.name}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Check Items */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="size-4 text-muted-foreground" />
+                  <h4 className="text-sm font-semibold">
+                    Check Items ({checkItems.filter((c) => c.isChecked).length}/{checkItems.length})
+                  </h4>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    value={newCheckItemTitle}
+                    onChange={(e) => setNewCheckItemTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && newCheckItemTitle.trim()) addCheckItemMutation.mutate() }}
+                    placeholder="Thêm check item..."
+                    className="h-8 text-xs"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8 shrink-0"
+                    onClick={() => addCheckItemMutation.mutate()}
+                    disabled={addCheckItemMutation.isPending || !newCheckItemTitle.trim()}
+                  >
+                    {addCheckItemMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                  </Button>
+                </div>
+
+                {checkItems.length > 0 && (
+                  <div className="space-y-1">
+                    {checkItems.map((item) => (
+                      <div key={item.id} className="group/check flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-muted/50">
+                        <button
+                          onClick={() => toggleCheckItemMutation.mutate(item.id)}
+                          className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+                        >
+                          {item.isChecked ? (
+                            <CheckSquare className="size-4 text-primary" />
+                          ) : (
+                            <Square className="size-4" />
+                          )}
+                        </button>
+                        <span className={`flex-1 text-xs ${item.isChecked ? 'text-muted-foreground line-through' : ''}`}>
+                          {item.title}
+                        </span>
+                        <button
+                          onClick={() => deleteCheckItemMutation.mutate(item.id)}
+                          className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/check:opacity-100"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Separator />

@@ -216,6 +216,7 @@ export function KanbanPage() {
         description: taskDescription.trim() || undefined,
         statusId: taskStatusId ?? 0,
         priority: taskPriority,
+        sourceView: 'KANBAN',
       }),
     onSuccess: () => {
       setTaskTitle('')
@@ -231,6 +232,14 @@ export function KanbanPage() {
 
   const moveTaskMutation = useMutation({
     mutationFn: ({ taskId, statusId }: { taskId: number; statusId: number }) => taskApi.move(taskId, statusId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+    },
+  })
+
+  const reorderTaskMutation = useMutation({
+    mutationFn: ({ taskId, targetPosition }: { taskId: number; targetPosition: number }) =>
+      taskApi.reorder(taskId, targetPosition),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
     },
@@ -278,11 +287,16 @@ export function KanbanPage() {
 
     const draggedTask = activeData.task as Task
     let targetStatusId: number | null = null
+    let targetPosition: number | undefined
 
     const overData = over.data.current
     if (overData?.type === 'task') {
       const overTask = overData.task as Task
       targetStatusId = overTask.status.id
+      // Calculate target position from the over task's position in its column
+      const columnTasks = grouped.get(overTask.status.id) ?? []
+      const overIndex = columnTasks.findIndex((t) => t.id === overTask.id)
+      targetPosition = overIndex >= 0 ? overIndex : undefined
     } else {
       const overIdStr = String(over.id)
       if (overIdStr.startsWith('column-')) {
@@ -290,8 +304,14 @@ export function KanbanPage() {
       }
     }
 
-    if (targetStatusId && targetStatusId !== draggedTask.status.id) {
+    if (!targetStatusId) return
+
+    if (targetStatusId !== draggedTask.status.id) {
+      // Cross-column move
       moveTaskMutation.mutate({ taskId: draggedTask.id, statusId: targetStatusId })
+    } else if (targetPosition != null && active.id !== over.id) {
+      // Same column reorder
+      reorderTaskMutation.mutate({ taskId: draggedTask.id, targetPosition })
     }
   }
 
@@ -421,7 +441,7 @@ export function KanbanPage() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20">
+          <div className="flex gap-4 overflow-x-auto pb-4">
             {statuses.map((status) => {
               const columnTasks = grouped.get(status.id) ?? []
               return (

@@ -1,23 +1,31 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Clock, Plus,
+  ChevronLeft, ChevronRight, Plus, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
-import type { Task, TaskSchedule } from '@/types/domain'
+import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
 
@@ -81,12 +89,61 @@ export function CalendarPage() {
   const params = useParams()
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
+  const queryClient = useQueryClient()
   const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
+
+  // Create task+schedule from calendar click
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; date: Date; hour: number } | null>(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriorityType>('MEDIUM')
+  const [newTaskHourEnd, setNewTaskHourEnd] = useState(1) // duration offset
+
+  const statusesQuery = useQuery({
+    queryKey: queryKeys.statuses.byProject(projectId),
+    queryFn: () => taskStatusApi.listByProject(projectId),
+    enabled: Number.isFinite(projectId),
+  })
+
+  const createCalendarTaskMutation = useMutation({
+    mutationFn: async () => {
+      const defaultStatus = statusesQuery.data?.[0]
+      if (!defaultStatus) throw new Error('Chưa có cột trạng thái')
+      if (!createDialog) throw new Error('Thiếu thông tin ngày')
+      const task = await taskApi.create({
+        projectId,
+        title: newTaskTitle.trim(),
+        statusId: defaultStatus.id,
+        priority: newTaskPriority,
+        sourceView: 'CALENDAR',
+      })
+      const start = new Date(createDialog.date)
+      start.setHours(createDialog.hour, 0, 0, 0)
+      const end = new Date(start)
+      end.setHours(createDialog.hour + newTaskHourEnd, 0, 0, 0)
+      await taskScheduleApi.create({
+        taskId: task.id,
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+      })
+      return task
+    },
+    onSuccess: (task) => {
+      setCreateDialog(null)
+      setNewTaskTitle('')
+      setNewTaskPriority('MEDIUM')
+      setNewTaskHourEnd(1)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
+      void queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
+      toast.success('Tạo task thành công')
+      setTaskDrawerTaskId(task.id)
+    },
+    onError: (err: Error) => toast.error('Tạo task thất bại', { description: err.message }),
+  })
 
   const weekStart = useMemo(() => startOfWeek(currentDate), [currentDate])
 
@@ -201,14 +258,106 @@ export function CalendarPage() {
           weekStart={weekStart}
           schedulesByDate={schedulesByDate}
           onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
+          onDateClick={(date, hour) => {
+            setCreateDialog({ open: true, date, hour })
+            setNewTaskTitle('')
+          }}
         />
       ) : (
         <MonthView
           currentDate={currentDate}
           schedulesByDate={schedulesByDate}
           onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
+          onDateClick={(date) => {
+            setCreateDialog({ open: true, date, hour: 9 })
+            setNewTaskTitle('')
+          }}
         />
       )}
+
+      {/* Create task dialog */}
+      <Dialog open={!!createDialog?.open} onOpenChange={(o) => !o && setCreateDialog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tạo task từ lịch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label>Tiêu đề task</Label>
+              <Input
+                autoFocus
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newTaskTitle.trim()) createCalendarTaskMutation.mutate() }}
+                placeholder="Tên task..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Giờ bắt đầu</Label>
+                <Select
+                  value={String(createDialog?.hour ?? 9)}
+                  onValueChange={(v) => setCreateDialog((d) => d ? { ...d, hour: Number(v) } : d)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Thời lượng</Label>
+                <Select value={String(newTaskHourEnd)} onValueChange={(v) => setNewTaskHourEnd(Number(v))}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4].map((h) => (
+                      <SelectItem key={h} value={String(h)}>{h} giờ</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Độ ưu tiên</Label>
+              <div className="flex gap-1.5">
+                {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
+                  <Button
+                    key={p}
+                    type="button"
+                    size="sm"
+                    variant={newTaskPriority === p ? 'default' : 'outline'}
+                    className="h-7 flex-1 text-xs"
+                    onClick={() => setNewTaskPriority(p)}
+                  >{p}</Button>
+                ))}
+              </div>
+            </div>
+            {createDialog && (
+              <p className="text-xs text-muted-foreground">
+                {createDialog.date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {' · '}{String(createDialog.hour).padStart(2, '0')}:00 – {String(createDialog.hour + newTaskHourEnd).padStart(2, '0')}:00
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setCreateDialog(null)}>Hủy</Button>
+            <Button
+              size="sm"
+              onClick={() => createCalendarTaskMutation.mutate()}
+              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim()}
+            >
+              {createCalendarTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              Tạo task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -219,9 +368,10 @@ interface WeekViewProps {
   weekStart: Date
   schedulesByDate: Map<string, ScheduleWithTask[]>
   onEventClick: (schedule: ScheduleWithTask) => void
+  onDateClick: (date: Date, hour: number) => void
 }
 
-function WeekView({ weekStart, schedulesByDate, onEventClick }: WeekViewProps) {
+function WeekView({ weekStart, schedulesByDate, onEventClick, onDateClick }: WeekViewProps) {
   const today = new Date()
   const now = new Date()
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -271,16 +421,21 @@ function WeekView({ weekStart, schedulesByDate, onEventClick }: WeekViewProps) {
                   </span>
                 )}
               </div>
-              {/* Day cells */}
-              {days.map((_, dayIdx) => (
+              {/* Day cells — click to create task at this time */}
+              {days.map((day, dayIdx) => (
                 <div
                   key={dayIdx}
+                  onClick={() => onDateClick(day, hour)}
                   className={cn(
-                    'h-12 border-b border-border/50',
+                    'group/cell h-12 cursor-pointer border-b border-border/50 transition-colors hover:bg-primary/5',
                     dayIdx < 6 && 'border-r border-border/50',
                     hour === 0 && 'border-t-0',
                   )}
-                />
+                >
+                  <div className="flex h-full items-center justify-center opacity-0 transition-opacity group-hover/cell:opacity-100">
+                    <Plus className="size-3 text-muted-foreground/50" />
+                  </div>
+                </div>
               ))}
             </div>
           ))}
@@ -381,9 +536,10 @@ interface MonthViewProps {
   currentDate: Date
   schedulesByDate: Map<string, ScheduleWithTask[]>
   onEventClick: (schedule: ScheduleWithTask) => void
+  onDateClick: (date: Date) => void
 }
 
-function MonthView({ currentDate, schedulesByDate, onEventClick }: MonthViewProps) {
+function MonthView({ currentDate, schedulesByDate, onEventClick, onDateClick }: MonthViewProps) {
   const today = new Date()
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -424,8 +580,9 @@ function MonthView({ currentDate, schedulesByDate, onEventClick }: MonthViewProp
             return (
               <div
                 key={di}
+                onClick={() => onDateClick(day)}
                 className={cn(
-                  'min-h-24 p-1.5',
+                  'group/cell min-h-24 cursor-pointer p-1.5 transition-colors hover:bg-primary/5',
                   di < 6 && 'border-r border-border',
                   !isCurrentMonth && 'bg-muted/20',
                 )}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Target, Loader2, Timer, Clock, Milestone } from 'lucide-react'
+import { Plus, Target, Loader2, Timer, Clock, Milestone, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -18,12 +18,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
-import type { GoalStatusType, GoalType } from '@/types/domain'
+import type { Goal, GoalStatusType, GoalType } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
   SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
@@ -51,6 +58,16 @@ export function GoalsPage() {
   const [goalType, setGoalType] = useState<GoalType>('SHORT_TERM')
   const [status, setStatus] = useState<GoalStatusType>('NOT_STARTED')
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editGoal, setEditGoal] = useState<Goal | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editGoalType, setEditGoalType] = useState<GoalType>('SHORT_TERM')
+  const [editStatus, setEditStatus] = useState<GoalStatusType>('NOT_STARTED')
+  const [editProgress, setEditProgress] = useState(0)
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null)
+
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(projectId, 1, 50),
     queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
@@ -76,6 +93,43 @@ export function GoalsPage() {
     },
     onError: (error: Error) => {
       toast.error('Tạo goal thất bại', { description: error.message })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!editGoal) throw new Error('Goal không tồn tại')
+      return goalApi.update(editGoal.id, {
+        title: editTitle.trim(),
+        goalType: editGoalType,
+        status: editStatus,
+        progressPercent: editProgress,
+      })
+    },
+    onSuccess: () => {
+      setEditDialogOpen(false)
+      setEditGoal(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
+      toast.success('Cập nhật goal thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật goal thất bại', { description: error.message })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => {
+      if (!deleteGoalId) throw new Error('Goal không tồn tại')
+      return goalApi.remove(deleteGoalId)
+    },
+    onSuccess: () => {
+      setDeleteDialogOpen(false)
+      setDeleteGoalId(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
+      toast.success('Xóa goal thành công')
+    },
+    onError: (error: Error) => {
+      toast.error('Xóa goal thất bại', { description: error.message })
     },
   })
 
@@ -179,9 +233,44 @@ export function GoalsPage() {
                     <div className={`flex size-8 items-center justify-center rounded-lg ${typeConfig.color}`}>
                       <TypeIcon className="size-4" />
                     </div>
-                    <Badge variant={statusConfig.variant} className="text-[10px]">
-                      {statusConfig.label}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={statusConfig.variant} className="text-[10px]">
+                        {statusConfig.label}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-foreground">
+                            <MoreHorizontal className="size-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditGoal(goal)
+                              setEditTitle(goal.title)
+                              setEditGoalType(goal.goalType)
+                              setEditStatus(goal.status)
+                              setEditProgress(goal.progressPercent)
+                              setEditDialogOpen(true)
+                            }}
+                          >
+                            <Pencil className="mr-2 size-3.5" />
+                            Chỉnh sửa
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setDeleteGoalId(goal.id)
+                              setDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="mr-2 size-3.5" />
+                            Xóa goal
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   <h4 className="line-clamp-2 font-medium">{goal.title}</h4>
@@ -204,6 +293,82 @@ export function GoalsPage() {
           })}
         </div>
       )}
+
+      {/* ─── Edit goal dialog ─── */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa goal</DialogTitle>
+            <DialogDescription>Cập nhật thông tin mục tiêu.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tiêu đề</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Tiêu đề goal" />
+            </div>
+            <div className="space-y-2">
+              <Label>Loại mục tiêu</Label>
+              <div className="flex gap-2">
+                {(Object.keys(goalTypeConfig) as GoalType[]).map((t) => (
+                  <Button key={t} type="button" variant={editGoalType === t ? 'default' : 'outline'} size="sm" onClick={() => setEditGoalType(t)}>
+                    {goalTypeConfig[t].label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái</Label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(goalStatusConfig) as GoalStatusType[]).map((s) => (
+                  <Button key={s} type="button" variant={editStatus === s ? 'default' : 'outline'} size="sm" onClick={() => setEditStatus(s)}>
+                    {goalStatusConfig[s].label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Tiến độ: {editProgress}%</Label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={editProgress}
+                onChange={(e) => setEditProgress(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !editTitle.trim()}>
+              {updateMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Delete confirmation dialog ─── */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa goal</DialogTitle>
+            <DialogDescription>Bạn có chắc muốn xóa goal này không? Hành động này không thể hoàn tác. Goal chỉ xóa được khi không còn task liên kết.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

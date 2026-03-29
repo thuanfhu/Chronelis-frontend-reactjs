@@ -1,6 +1,6 @@
 import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
-import type { PageResult, Task, TaskPriorityType } from '@/types/domain'
+import type { ImportanceLevel, PageResult, SourceViewType, Task, TaskPriorityType, UrgencyLevel } from '@/types/domain'
 
 interface PageQuery {
   page?: number
@@ -18,6 +18,10 @@ export interface CreateTaskPayload {
   dueDate?: string
   estimatedMinutes?: number
   boardPosition?: number
+  taskTypeId?: number
+  importanceLevel?: ImportanceLevel
+  urgencyLevel?: UrgencyLevel
+  sourceView?: SourceViewType
 }
 
 export interface UpdateTaskPayload {
@@ -27,6 +31,9 @@ export interface UpdateTaskPayload {
   priority?: TaskPriorityType
   dueDate?: string
   estimatedMinutes?: number
+  taskTypeId?: number
+  importanceLevel?: ImportanceLevel
+  urgencyLevel?: UrgencyLevel
 }
 
 export const taskApi = {

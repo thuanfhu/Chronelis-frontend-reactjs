@@ -9,14 +9,10 @@ import { VerifyAccountPage } from '@/features/auth/verify-account-page'
 import { ForbiddenPage } from '@/pages/forbidden-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { DashboardPage } from '@/pages/dashboard-page'
-import { WorkspacesPage } from '@/features/workspaces/workspaces-page'
 import { WorkspaceDetailPage } from '@/features/workspaces/workspace-detail-page'
-import { ProjectOverviewPage } from '@/features/projects/project-overview-page'
-import { GoalsPage } from '@/features/goals/goals-page'
-import { KanbanPage } from '@/features/tasks/kanban-page'
-import { CalendarPage } from '@/features/tasks/calendar-page'
-import { ActivityLogPage } from '@/features/activity/activity-log-page'
+import { TasksLayout } from '@/features/tasks/tasks-layout'
 import { NotificationsPage } from '@/features/notifications/notifications-page'
+import { JoinByInvitePage } from '@/features/workspaces/join-by-invite-page'
 
 export function AppRouter() {
   return (
@@ -74,14 +70,10 @@ export function AppRouter() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId" element={<ProjectOverviewPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId/goals" element={<GoalsPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId/kanban" element={<KanbanPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId/calendar" element={<CalendarPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId/activity" element={<ActivityLogPage />} />
+          <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/join" element={<JoinByInvitePage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
