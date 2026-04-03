@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -24,6 +25,9 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,6 +41,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
@@ -123,9 +128,11 @@ function KanbanColumn({
   isOver?: boolean
 }) {
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
+  const { setNodeRef: setDropRef } = useDroppable({ id: `column-${status.id}` })
 
   return (
     <div
+      ref={setDropRef}
       className={cn(
         'flex w-72 shrink-0 flex-col rounded-xl border bg-muted/20 transition-colors duration-200',
         isOver && 'border-primary/40 bg-primary/5',
@@ -175,6 +182,7 @@ export function KanbanPage() {
   const [taskDescription, setTaskDescription] = useState('')
   const [taskStatusId, setTaskStatusId] = useState<number | null>(null)
   const [taskPriority, setTaskPriority] = useState<TaskPriorityType>('MEDIUM')
+  const [taskGoalId, setTaskGoalId] = useState<number | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
 
@@ -191,6 +199,12 @@ export function KanbanPage() {
   const tasksQuery = useQuery({
     queryKey: queryKeys.tasks.byProject(projectId, 1, 200),
     queryFn: () => taskApi.listByProject(projectId, { page: 1, size: 200 }),
+    enabled: Number.isFinite(projectId),
+  })
+
+  const goalsQuery = useQuery({
+    queryKey: queryKeys.goals.byProject(projectId, 1, 50),
+    queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
     enabled: Number.isFinite(projectId),
   })
 
@@ -216,11 +230,13 @@ export function KanbanPage() {
         description: taskDescription.trim() || undefined,
         statusId: taskStatusId ?? 0,
         priority: taskPriority,
+        goalId: taskGoalId ?? undefined,
         sourceView: 'KANBAN',
       }),
     onSuccess: () => {
       setTaskTitle('')
       setTaskDescription('')
+      setTaskGoalId(null)
       setTaskDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
       toast.success('Tạo task thành công')
@@ -410,6 +426,20 @@ export function KanbanPage() {
                         </Button>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Goal (tùy chọn)</Label>
+                    <Select value={taskGoalId ? String(taskGoalId) : '__none'} onValueChange={(v) => setTaskGoalId(v === '__none' ? null : Number(v))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Không chọn goal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">Không chọn goal</SelectItem>
+                        {(goalsQuery.data?.content ?? []).map((g) => (
+                          <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <DialogFooter>

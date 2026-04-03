@@ -21,11 +21,15 @@ import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils/cn'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
+import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
@@ -96,6 +100,7 @@ export function TodoPage() {
   useProjectRealtime(workspaceId, projectId)
 
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
   const [showCompleted, setShowCompleted] = useState(false)
   const [groupMode, setGroupMode] = useState<GroupMode>('none')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
@@ -116,6 +121,12 @@ export function TodoPage() {
     enabled: Number.isFinite(projectId),
   })
 
+  const goalsQuery = useQuery({
+    queryKey: queryKeys.goals.byProject(projectId, 1, 50),
+    queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
+    enabled: Number.isFinite(projectId),
+  })
+
   const createTaskMutation = useMutation({
     mutationFn: () => {
       const statuses = statusesQuery.data
@@ -126,11 +137,13 @@ export function TodoPage() {
         title: newTaskTitle.trim(),
         statusId: defaultStatus.id,
         priority: 'MEDIUM',
+        goalId: newTaskGoalId ?? undefined,
         sourceView: 'TODO',
       })
     },
     onSuccess: () => {
       setNewTaskTitle('')
+      setNewTaskGoalId(null)
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
       toast.success('Tạo task thành công')
     },
@@ -213,26 +226,42 @@ export function TodoPage() {
       </div>
 
       {/* Quick add */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newTaskTitle.trim()) createTaskMutation.mutate()
-            }}
-            placeholder="Thêm task mới..."
-            className="pl-9"
-          />
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTaskTitle.trim()) createTaskMutation.mutate()
+              }}
+              placeholder="Thêm task mới..."
+              className="pl-9"
+            />
+          </div>
+          <Button
+            onClick={() => createTaskMutation.mutate()}
+            disabled={createTaskMutation.isPending || !newTaskTitle.trim()}
+            size="sm"
+          >
+            {createTaskMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Thêm'}
+          </Button>
         </div>
-        <Button
-          onClick={() => createTaskMutation.mutate()}
-          disabled={createTaskMutation.isPending || !newTaskTitle.trim()}
-          size="sm"
-        >
-          {createTaskMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Thêm'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Target className="size-3.5 shrink-0 text-muted-foreground" />
+          <Select value={newTaskGoalId ? String(newTaskGoalId) : '__none'} onValueChange={(v) => setNewTaskGoalId(v === '__none' ? null : Number(v))}>
+            <SelectTrigger className="h-8 w-full text-xs sm:w-56">
+              <SelectValue placeholder="Không chọn goal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">Không chọn goal</SelectItem>
+              {(goalsQuery.data?.content ?? []).map((g) => (
+                <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Pending tasks */}

@@ -350,34 +350,16 @@ export function TaskDetailsDrawer() {
                   {task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                 </Button>
 
-                {/* Extra info: importance, urgency, task type */}
-                {(task.importanceLevel || task.urgencyLevel || task.taskType) && (
+                {/* Extra info: task type */}
+                {task.taskType && (
                   <div className="grid grid-cols-2 gap-3 pt-2">
-                    {task.importanceLevel && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Mức quan trọng</p>
-                        <Badge variant={task.importanceLevel === 'HIGH' ? 'default' : 'outline'} className="text-[10px]">
-                          {task.importanceLevel === 'HIGH' ? 'Quan trọng' : 'Không quan trọng'}
-                        </Badge>
-                      </div>
-                    )}
-                    {task.urgencyLevel && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Mức khẩn cấp</p>
-                        <Badge variant={task.urgencyLevel === 'HIGH' ? 'destructive' : 'outline'} className="text-[10px]">
-                          {task.urgencyLevel === 'HIGH' ? 'Khẩn cấp' : 'Không khẩn'}
-                        </Badge>
-                      </div>
-                    )}
-                    {task.taskType && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Loại task</p>
-                        <Badge variant="secondary" className="gap-1 text-[10px]" style={task.taskType.color ? { backgroundColor: task.taskType.color + '20', color: task.taskType.color } : undefined}>
-                          {task.taskType.icon && <span>{task.taskType.icon}</span>}
-                          {task.taskType.name}
-                        </Badge>
-                      </div>
-                    )}
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Loại task</p>
+                      <Badge variant="secondary" className="gap-1 text-[10px]" style={task.taskType.color ? { backgroundColor: task.taskType.color + '20', color: task.taskType.color } : undefined}>
+                        {task.taskType.icon && <span>{task.taskType.icon}</span>}
+                        {task.taskType.name}
+                      </Badge>
+                    </div>
                   </div>
                 )}
               </div>

@@ -63,7 +63,6 @@ export function GoalsPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editGoalType, setEditGoalType] = useState<GoalType>('SHORT_TERM')
   const [editStatus, setEditStatus] = useState<GoalStatusType>('NOT_STARTED')
-  const [editProgress, setEditProgress] = useState(0)
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null)
@@ -103,7 +102,6 @@ export function GoalsPage() {
         title: editTitle.trim(),
         goalType: editGoalType,
         status: editStatus,
-        progressPercent: editProgress,
       })
     },
     onSuccess: () => {
@@ -250,7 +248,6 @@ export function GoalsPage() {
                               setEditTitle(goal.title)
                               setEditGoalType(goal.goalType)
                               setEditStatus(goal.status)
-                              setEditProgress(goal.progressPercent)
                               setEditDialogOpen(true)
                             }}
                           >
@@ -327,16 +324,11 @@ export function GoalsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tiến độ: {editProgress}%</Label>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={editProgress}
-                onChange={(e) => setEditProgress(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
+              <Label>Tiến độ (tự động tính theo tasks hoàn thành)</Label>
+              <div className="flex items-center gap-2">
+                <Progress value={editGoal?.progressPercent ?? 0} className="h-2 flex-1" />
+                <span className="text-sm font-semibold">{editGoal?.progressPercent ?? 0}%</span>
+              </div>
             </div>
           </div>
           <DialogFooter>

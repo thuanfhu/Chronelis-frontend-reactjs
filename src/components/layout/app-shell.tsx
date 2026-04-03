@@ -14,7 +14,7 @@ export function AppShell() {
       <AppSidebar workspaceId={workspaceId} projectId={projectId} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppTopbar />
-        <main className="flex-1 px-4 py-6 md:px-8">
+        <main className="flex-1 px-3 py-4 sm:px-4 sm:py-6 md:px-8">
           <div className="mx-auto w-full max-w-6xl">
             <Outlet />
           </div>

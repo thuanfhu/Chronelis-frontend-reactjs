@@ -57,8 +57,8 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     })
   }
 
-  // Desktop collapsed = sidebarCollapsed && not forced open by mobile toggle
-  const collapsed = sidebarCollapsed && !sidebarOpen
+  // Desktop collapsed = sidebarCollapsed (independent of mobile sidebarOpen)
+  const collapsed = sidebarCollapsed
 
   return (
     <>

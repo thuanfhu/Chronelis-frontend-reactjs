@@ -5,9 +5,7 @@ export type ProjectStatusType = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
 export type GoalType = 'SHORT_TERM' | 'MEDIUM_TERM' | 'LONG_TERM'
 export type GoalStatusType = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD'
 export type TaskPriorityType = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-export type ImportanceLevel = 'LOW' | 'HIGH'
-export type UrgencyLevel = 'LOW' | 'HIGH'
-export type SourceViewType = 'KANBAN' | 'TODO' | 'CALENDAR' | 'EISENHOWER'
+export type SourceViewType = 'KANBAN' | 'TODO' | 'CALENDAR'
 
 export type NotificationType =
   | 'TASK_ASSIGNED'
@@ -145,8 +143,6 @@ export interface Task {
   description?: string
   priority: TaskPriorityType
   taskType?: TaskType
-  importanceLevel?: ImportanceLevel
-  urgencyLevel?: UrgencyLevel
   sourceView?: SourceViewType
   assignee?: UserSummary
   createdBy: UserSummary

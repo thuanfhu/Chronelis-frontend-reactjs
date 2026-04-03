@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Plus, Loader2,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
+import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
@@ -83,6 +85,12 @@ interface ScheduleWithTask extends TaskSchedule {
 
 type CalendarView = 'week' | 'month'
 
+const CALENDAR_SLIDE_VARIANTS = {
+  enter: (direction: 1 | -1) => ({ x: direction > 0 ? 72 : -72, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: 1 | -1) => ({ x: direction > 0 ? -72 : 72, opacity: 0 }),
+}
+
 // ─── Main Component ───
 
 export function CalendarPage() {
@@ -96,16 +104,25 @@ export function CalendarPage() {
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
+  const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
 
   // Create task+schedule from calendar click
   const [createDialog, setCreateDialog] = useState<{ open: boolean; date: Date; hour: number } | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriorityType>('MEDIUM')
-  const [newTaskHourEnd, setNewTaskHourEnd] = useState(1) // duration offset
+  const [newStartTime, setNewStartTime] = useState('09:00')
+  const [newEndTime, setNewEndTime] = useState('10:00')
+  const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
 
   const statusesQuery = useQuery({
     queryKey: queryKeys.statuses.byProject(projectId),
     queryFn: () => taskStatusApi.listByProject(projectId),
+    enabled: Number.isFinite(projectId),
+  })
+
+  const goalsQuery = useQuery({
+    queryKey: queryKeys.goals.byProject(projectId, 1, 50),
+    queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
     enabled: Number.isFinite(projectId),
   })
 
@@ -119,12 +136,15 @@ export function CalendarPage() {
         title: newTaskTitle.trim(),
         statusId: defaultStatus.id,
         priority: newTaskPriority,
+        goalId: newTaskGoalId ?? undefined,
         sourceView: 'CALENDAR',
       })
+      const [startH, startM] = newStartTime.split(':').map(Number)
+      const [endH, endM] = newEndTime.split(':').map(Number)
       const start = new Date(createDialog.date)
-      start.setHours(createDialog.hour, 0, 0, 0)
-      const end = new Date(start)
-      end.setHours(createDialog.hour + newTaskHourEnd, 0, 0, 0)
+      start.setHours(startH, startM, 0, 0)
+      const end = new Date(createDialog.date)
+      end.setHours(endH, endM, 0, 0)
       await taskScheduleApi.create({
         taskId: task.id,
         scheduledStart: start.toISOString(),
@@ -136,7 +156,9 @@ export function CalendarPage() {
       setCreateDialog(null)
       setNewTaskTitle('')
       setNewTaskPriority('MEDIUM')
-      setNewTaskHourEnd(1)
+      setNewStartTime('09:00')
+      setNewEndTime('10:00')
+      setNewTaskGoalId(null)
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
       void queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
       toast.success('Tạo task thành công')
@@ -172,6 +194,7 @@ export function CalendarPage() {
     queryKey: queryKeys.schedules.projectCalendar(projectId, fromDate, toDate, 1, 500),
     queryFn: () => taskScheduleApi.projectCalendar(projectId, fromDate, toDate, { page: 1, size: 500 }),
     enabled: Number.isFinite(projectId),
+    placeholderData: keepPreviousData,
   })
 
   // Fetch tasks for the project to join with schedules
@@ -179,6 +202,7 @@ export function CalendarPage() {
     queryKey: queryKeys.tasks.byProject(projectId, 1, 500),
     queryFn: () => taskApi.listByProject(projectId, { page: 1, size: 500 }),
     enabled: Number.isFinite(projectId),
+    placeholderData: keepPreviousData,
   })
 
   // Join schedules with task data
@@ -203,17 +227,26 @@ export function CalendarPage() {
   const isLoading = schedulesQuery.isLoading || tasksQuery.isLoading
 
   // Navigation
-  const goToday = () => setCurrentDate(new Date())
+  const goToday = () => {
+    const today = new Date()
+    setNavigationDirection(today.getTime() >= currentDate.getTime() ? 1 : -1)
+    setCurrentDate(today)
+  }
   const goPrev = () => {
+    setNavigationDirection(-1)
     if (view === 'week') setCurrentDate(addDays(weekStart, -7))
     else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
   }
   const goNext = () => {
+    setNavigationDirection(1)
     if (view === 'week') setCurrentDate(addDays(weekStart, 7))
     else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
   }
 
   const headerTitle = view === 'week' ? formatWeekRange(weekStart) : formatMonthYear(currentDate)
+  const calendarContentKey = view === 'week'
+    ? `week-${toDateKey(weekStart)}`
+    : `month-${currentDate.getFullYear()}-${currentDate.getMonth()}`
 
   if (isLoading) return <LoadingPanel />
 
@@ -253,27 +286,43 @@ export function CalendarPage() {
       </div>
 
       {/* Calendar views */}
-      {view === 'week' ? (
-        <WeekView
-          weekStart={weekStart}
-          schedulesByDate={schedulesByDate}
-          onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
-          onDateClick={(date, hour) => {
-            setCreateDialog({ open: true, date, hour })
-            setNewTaskTitle('')
-          }}
-        />
-      ) : (
-        <MonthView
-          currentDate={currentDate}
-          schedulesByDate={schedulesByDate}
-          onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
-          onDateClick={(date) => {
-            setCreateDialog({ open: true, date, hour: 9 })
-            setNewTaskTitle('')
-          }}
-        />
-      )}
+      <AnimatePresence mode="wait" initial={false} custom={navigationDirection}>
+        <motion.div
+          key={calendarContentKey}
+          custom={navigationDirection}
+          variants={CALENDAR_SLIDE_VARIANTS}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {view === 'week' ? (
+            <WeekView
+              weekStart={weekStart}
+              schedulesByDate={schedulesByDate}
+              onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
+              onDateClick={(date, hour) => {
+                setCreateDialog({ open: true, date, hour })
+                setNewTaskTitle('')
+                setNewStartTime(`${String(hour).padStart(2, '0')}:00`)
+                setNewEndTime(`${String(hour + 1).padStart(2, '0')}:00`)
+              }}
+            />
+          ) : (
+            <MonthView
+              currentDate={currentDate}
+              schedulesByDate={schedulesByDate}
+              onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
+              onDateClick={(date) => {
+                setCreateDialog({ open: true, date, hour: 9 })
+                setNewTaskTitle('')
+                setNewStartTime('09:00')
+                setNewEndTime('10:00')
+              }}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Create task dialog */}
       <Dialog open={!!createDialog?.open} onOpenChange={(o) => !o && setCreateDialog(null)}>
@@ -295,32 +344,21 @@ export function CalendarPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Giờ bắt đầu</Label>
-                <Select
-                  value={String(createDialog?.hour ?? 9)}
-                  onValueChange={(v) => setCreateDialog((d) => d ? { ...d, hour: Number(v) } : d)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  type="time"
+                  value={newStartTime}
+                  onChange={(e) => setNewStartTime(e.target.value)}
+                  className="h-9"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label>Thời lượng</Label>
-                <Select value={String(newTaskHourEnd)} onValueChange={(v) => setNewTaskHourEnd(Number(v))}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4].map((h) => (
-                      <SelectItem key={h} value={String(h)}>{h} giờ</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Giờ kết thúc</Label>
+                <Input
+                  type="time"
+                  value={newEndTime}
+                  onChange={(e) => setNewEndTime(e.target.value)}
+                  className="h-9"
+                />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -338,10 +376,24 @@ export function CalendarPage() {
                 ))}
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Goal (tùy chọn)</Label>
+              <Select value={newTaskGoalId ? String(newTaskGoalId) : '__none'} onValueChange={(v) => setNewTaskGoalId(v === '__none' ? null : Number(v))}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Không chọn goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Không chọn goal</SelectItem>
+                  {(goalsQuery.data?.content ?? []).map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {createDialog && (
               <p className="text-xs text-muted-foreground">
                 {createDialog.date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                {' · '}{String(createDialog.hour).padStart(2, '0')}:00 – {String(createDialog.hour + newTaskHourEnd).padStart(2, '0')}:00
+                {' · '}{newStartTime} – {newEndTime}
               </p>
             )}
           </div>
@@ -377,7 +429,8 @@ function WeekView({ weekStart, schedulesByDate, onEventClick, onDateClick }: Wee
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+      <div className="min-w-160">
       {/* Day header row */}
       <div className="grid grid-cols-[3.5rem_repeat(7,1fr)] border-b border-border bg-muted/30">
         <div className="border-r border-border" />
@@ -526,6 +579,7 @@ function WeekView({ weekStart, schedulesByDate, onEventClick, onDateClick }: Wee
           )
         })()}
       </div>
+      </div>
     </div>
   )
 }
@@ -557,7 +611,8 @@ function MonthView({ currentDate, schedulesByDate, onEventClick, onDateClick }: 
   const rows = Array.from({ length: weeks }, (_, w) => allDays.slice(w * 7, (w + 1) * 7))
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+      <div className="min-w-120">
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b border-border bg-muted/30">
         {DAY_NAMES_SHORT.map((name) => (
@@ -625,6 +680,7 @@ function MonthView({ currentDate, schedulesByDate, onEventClick, onDateClick }: 
           })}
         </div>
       ))}
+      </div>
     </div>
   )
 }
