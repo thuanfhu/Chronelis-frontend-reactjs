@@ -219,3 +219,92 @@
     scrollbar-color: color-mix(in oklab, var(--muted-foreground) 28%, transparent) transparent;
   }
 }
+
+/* Chronelis task calendar polish */
+@layer base {
+  .chronelis-calendar-frame .fc {
+    --fc-page-bg-color: transparent;
+    --fc-border-color: color-mix(in oklab, var(--border) 88%, transparent);
+    --fc-today-bg-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    --fc-now-indicator-color: color-mix(in oklab, var(--destructive) 85%, transparent);
+    font-size: 0.92rem;
+  }
+
+  .chronelis-calendar-frame .fc .fc-col-header-cell-cushion {
+    padding: 0.25rem 0.2rem;
+    text-decoration: none;
+  }
+
+  .chronelis-calendar-frame .fc .fc-timegrid-slot {
+    height: 1.75rem;
+  }
+
+  .chronelis-calendar-frame .fc .fc-timegrid-axis-cushion,
+  .chronelis-calendar-frame .fc .fc-timegrid-slot-label-cushion {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    color: color-mix(in oklab, var(--muted-foreground) 78%, transparent);
+  }
+
+  .chronelis-calendar-frame .fc .fc-timegrid-slot-label-cushion {
+    transform: translateY(-0.2rem);
+  }
+
+  .chronelis-day-header {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 2.15rem;
+    line-height: 1;
+  }
+
+  .chronelis-day-header__weekday {
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+  }
+
+  .chronelis-day-header__date {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: color-mix(in oklab, var(--foreground) 88%, transparent);
+  }
+
+  .chronelis-day-header.is-today .chronelis-day-header__weekday {
+    color: color-mix(in oklab, var(--primary) 78%, var(--foreground) 22%);
+  }
+
+  .chronelis-day-header.is-today .chronelis-day-header__date {
+    background: color-mix(in oklab, var(--primary) 84%, transparent);
+    color: var(--primary-foreground);
+    box-shadow: 0 2px 8px color-mix(in oklab, var(--primary) 26%, transparent);
+  }
+
+  .chronelis-day-header--month {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .chronelis-day-header--month .chronelis-day-header__weekday {
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+  }
+
+  .chronelis-day-header--month.is-today .chronelis-day-header__weekday {
+    color: color-mix(in oklab, var(--primary) 82%, var(--foreground) 18%);
+  }
+
+  .chronelis-calendar-frame .fc .fc-daygrid-day-number,
+  .chronelis-calendar-frame .fc .fc-timegrid-axis-frame {
+    color: color-mix(in oklab, var(--foreground) 86%, transparent);
+  }
+}

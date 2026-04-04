@@ -23,15 +23,16 @@ const PROJECT_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDa
 export function TasksLayout() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = (searchParams.get('view') as TaskViewTab) || 'calendar'
+  const isCalendarView = activeTab === 'calendar'
 
   const setActiveTab = (tab: TaskViewTab) => {
     setSearchParams({ view: tab }, { replace: true })
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className={`flex h-full min-h-0 flex-col ${isCalendarView ? 'gap-2' : 'gap-4'}`}>
       {/* ─── View tabs ─── */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3 sm:gap-3">
+      <div className={`flex flex-wrap items-center gap-2 border-b border-border/60 sm:gap-3 ${isCalendarView ? 'pb-2' : 'pb-3'}`}>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
           <TabsList className="h-9 bg-muted/60">
             {TASK_TABS.map((tab) => (

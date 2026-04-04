@@ -22,7 +22,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskApi } from '@/lib/api/modules/task-api'
@@ -50,17 +49,52 @@ function addDays(date: Date, days: number): Date {
   return d
 }
 
+function addMinutes(date: Date, minutes: number): Date {
+  const d = new Date(date)
+  d.setMinutes(d.getMinutes() + minutes)
+  return d
+}
+
+function roundToQuarter(date: Date): Date {
+  const d = new Date(date)
+  d.setSeconds(0, 0)
+  const roundedMinutes = Math.round(d.getMinutes() / 15) * 15
+  if (roundedMinutes === 60) {
+    d.setHours(d.getHours() + 1, 0, 0, 0)
+  } else {
+    d.setMinutes(roundedMinutes, 0, 0)
+  }
+  return d
+}
+
 function formatMonthYear(date: Date): string {
-  return date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+  return `Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
 }
 
 function formatWeekRange(start: Date): string {
   const end = addDays(start, 6)
-  const sameMonth = start.getMonth() === end.getMonth()
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
   if (sameMonth) {
-    return `${start.getDate()} – ${end.getDate()} ${start.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}`
+    return `${start.getDate()} – ${end.getDate()} Tháng ${start.getMonth() + 1}, ${start.getFullYear()}`
   }
-  return `${start.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${start.getDate()} Thg ${start.getMonth() + 1} – ${end.getDate()} Thg ${end.getMonth() + 1}, ${start.getFullYear()}`
+  }
+  return `${start.getDate()}/${start.getMonth() + 1}/${start.getFullYear()} – ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`
+}
+
+function formatWeekdayCompact(date: Date): string {
+  const raw = date.toLocaleDateString('vi-VN', { weekday: 'short' }).replace(/\./g, '').trim()
+  const lower = raw.toLowerCase()
+  if (lower === 'cn' || lower === 'chủ nhật') {
+    return 'CN'
+  }
+
+  return raw
+    .replace(/^thứ\s*/i, 'T')
+    .replace(/^th\s*/i, 'T')
+    .replace(/\s+/g, '')
+    .toUpperCase()
 }
 
 function toDateKey(date: Date): string {
@@ -172,7 +206,7 @@ function resolveEventRange(start: Date | null, end: Date | null): { start: Date;
 
   const resolvedEnd = end && end > start
     ? end
-    : new Date(start.getTime() + 60 * 60 * 1000)
+    : addMinutes(start, 15)
 
   return {
     start,
@@ -181,8 +215,8 @@ function resolveEventRange(start: Date | null, end: Date | null): { start: Date;
 }
 
 function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start: Date; end: Date } {
-  const safeStart = new Date(start)
-  const safeEnd = new Date(end)
+  const safeStart = roundToQuarter(start)
+  const safeEnd = roundToQuarter(end)
 
   if (allDay) {
     safeStart.setHours(9, 0, 0, 0)
@@ -191,7 +225,7 @@ function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start:
   }
 
   if (safeEnd <= safeStart) {
-    safeEnd.setTime(safeStart.getTime() + 60 * 60 * 1000)
+    safeEnd.setTime(safeStart.getTime() + 15 * 60 * 1000)
   }
 
   return { start: safeStart, end: safeEnd }
@@ -515,29 +549,21 @@ export function CalendarPage() {
   if (isLoading) return <LoadingPanel />
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <PageHeader
-        title="Lịch"
-        description="Lịch biểu task theo tuần hoặc tháng"
-        actions={
-          <div className="flex items-center gap-2">
-            <Tabs value={view} onValueChange={(v) => handleViewChange(v as CalendarView)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="week" className="px-3 text-xs">Tuần</TabsTrigger>
-                <TabsTrigger value="month" className="px-3 text-xs">Tháng</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        }
-      />
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Lịch</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">Lịch biểu task theo tuần hoặc tháng</p>
+        </div>
+      </div>
 
       {/* Calendar toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={goToday}>
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/70 bg-card/70 px-2.5 py-2 backdrop-blur-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-medium" onClick={goToday}>
             Hôm nay
           </Button>
-          <div className="flex items-center rounded-lg border border-border">
+          <div className="flex items-center rounded-md border border-border bg-background/80">
             <Button variant="ghost" size="icon" className="size-8 rounded-r-none" onClick={goPrev}>
               <ChevronLeft className="size-4" />
             </Button>
@@ -546,7 +572,17 @@ export function CalendarPage() {
             </Button>
           </div>
         </div>
-        <h2 className="text-sm font-semibold capitalize">{headerTitle}</h2>
+        <h2 className="truncate text-center text-sm font-semibold tracking-tight text-foreground/90 sm:px-3 sm:text-base">
+          {headerTitle}
+        </h2>
+        <div className="justify-self-start sm:justify-self-end">
+          <Tabs value={view} onValueChange={(v) => handleViewChange(v as CalendarView)}>
+            <TabsList className="h-8 bg-muted/70">
+              <TabsTrigger value="week" className="px-3 text-xs">Tuần</TabsTrigger>
+              <TabsTrigger value="month" className="px-3 text-xs">Tháng</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* Calendar view */}
@@ -557,7 +593,7 @@ export function CalendarPage() {
           custom={navigationDirection}
           className="flex h-full min-h-0 flex-col"
         >
-          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="chronelis-calendar-frame flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -569,7 +605,9 @@ export function CalendarPage() {
               height="100%"
               nowIndicator={view === 'week'}
               allDaySlot={false}
-              slotDuration="00:30:00"
+              slotDuration="00:15:00"
+              slotLabelInterval="01:00:00"
+              snapDuration="00:15:00"
               scrollTime="08:00:00"
               selectable
               selectMirror
@@ -581,6 +619,22 @@ export function CalendarPage() {
               dayMaxEvents={3}
               events={calendarEvents}
               datesSet={handleDatesSet}
+              dayHeaderContent={(arg) => {
+                if (arg.view.type === 'timeGridWeek') {
+                  return (
+                    <div className={`chronelis-day-header ${arg.isToday ? 'is-today' : ''}`}>
+                      <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
+                      <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className={`chronelis-day-header chronelis-day-header--month ${arg.isToday ? 'is-today' : ''}`}>
+                    <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
+                  </div>
+                )
+              }}
               dateClick={handleDateClick}
               select={handleSelect}
               eventClick={handleEventClick}
@@ -593,7 +647,8 @@ export function CalendarPage() {
                 const priority = String(arg.event.extendedProps.priority ?? 'MEDIUM') as TaskPriorityType
                 return PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM
               }}
-              eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+              slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
+              eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
               eventContent={(arg) => (
                 <div className="flex min-w-0 flex-col px-1 py-0.5">
                   <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
@@ -629,6 +684,7 @@ export function CalendarPage() {
                 <Label>Bắt đầu</Label>
                 <Input
                   type="datetime-local"
+                  step={900}
                   value={newStartDateTime}
                   onChange={(e) => setNewStartDateTime(e.target.value)}
                   className="h-9"
@@ -638,6 +694,7 @@ export function CalendarPage() {
                 <Label>Kết thúc</Label>
                 <Input
                   type="datetime-local"
+                  step={900}
                   value={newEndDateTime}
                   onChange={(e) => setNewEndDateTime(e.target.value)}
                   className="h-9"
