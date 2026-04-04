@@ -2,6 +2,7 @@ import { Outlet, useParams } from 'react-router-dom'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppTopbar } from '@/components/layout/app-topbar'
 import { TaskDetailsDrawer } from '@/features/tasks/task-details-drawer'
+import { TaskDeleteConfirmDialog } from '@/features/tasks/task-delete-confirm-dialog'
 import { CommandPalette } from '@/components/shared/command-palette'
 
 export function AppShell() {
@@ -21,6 +22,7 @@ export function AppShell() {
         </main>
       </div>
       <TaskDetailsDrawer />
+      <TaskDeleteConfirmDialog />
       <CommandPalette />
     </div>
   )

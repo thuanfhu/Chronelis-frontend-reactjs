@@ -38,6 +38,7 @@ import {
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
@@ -255,6 +256,8 @@ export function CalendarPage() {
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
+  const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
+  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
   const calendarRef = useRef<FullCalendar | null>(null)
   const calendarMotionControls = useAnimationControls()
 
@@ -431,11 +434,12 @@ export function CalendarPage() {
           scheduleId: schedule.id,
           taskId: schedule.taskId,
           priority,
+          canDelete: schedule.task?.createdBy.userId === currentUserId,
           task: schedule.task,
         },
       }
     })
-  }, [enrichedSchedules])
+  }, [currentUserId, enrichedSchedules])
 
   const runCalendarTransition = async (direction: 1 | -1, action: () => void) => {
     setNavigationDirection(direction)
@@ -691,8 +695,9 @@ export function CalendarPage() {
                 arg.el.oncontextmenu = (event) => {
                   event.preventDefault()
                   const taskId = Number(arg.event.extendedProps.taskId)
-                  if (Number.isFinite(taskId)) {
-                    openTaskDrawer(taskId, 'edit')
+                  const canDelete = Boolean(arg.event.extendedProps.canDelete)
+                  if (canDelete && Number.isFinite(taskId)) {
+                    openTaskDeleteConfirm(taskId)
                   }
                 }
               }}

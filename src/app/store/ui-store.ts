@@ -8,6 +8,7 @@ interface UiState {
   sidebarCollapsed: boolean
   taskDrawerTaskId: number | null
   taskDrawerMode: TaskDrawerMode
+  taskDeleteConfirmTaskId: number | null
   selectedWorkspaceId: number | null
   selectedProjectId: number | null
   commandPaletteOpen: boolean
@@ -18,6 +19,8 @@ interface UiState {
   openTaskDrawer: (taskId: number, mode?: TaskDrawerMode) => void
   closeTaskDrawer: () => void
   setTaskDrawerMode: (mode: TaskDrawerMode) => void
+  openTaskDeleteConfirm: (taskId: number) => void
+  closeTaskDeleteConfirm: () => void
   setSelectedWorkspaceId: (workspaceId: number | null) => void
   setSelectedProjectId: (projectId: number | null) => void
   setCommandPaletteOpen: (value: boolean) => void
@@ -29,6 +32,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   sidebarCollapsed: false,
   taskDrawerTaskId: null,
   taskDrawerMode: 'view',
+  taskDeleteConfirmTaskId: null,
   selectedWorkspaceId: null,
   selectedProjectId: null,
   commandPaletteOpen: false,
@@ -39,6 +43,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   openTaskDrawer: (taskId, mode = 'view') => set({ taskDrawerTaskId: taskId, taskDrawerMode: mode }),
   closeTaskDrawer: () => set({ taskDrawerTaskId: null, taskDrawerMode: 'view' }),
   setTaskDrawerMode: (mode) => set({ taskDrawerMode: mode }),
+  openTaskDeleteConfirm: (taskId) => set({ taskDeleteConfirmTaskId: taskId }),
+  closeTaskDeleteConfirm: () => set({ taskDeleteConfirmTaskId: null }),
   setSelectedWorkspaceId: (workspaceId) => set({ selectedWorkspaceId: workspaceId }),
   setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
   setCommandPaletteOpen: (value) => set({ commandPaletteOpen: value }),

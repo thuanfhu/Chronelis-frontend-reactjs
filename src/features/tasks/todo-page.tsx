@@ -33,6 +33,7 @@ import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import {
   applyTaskCompletion,
@@ -41,9 +42,11 @@ import {
   restoreProjectTaskQueries,
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
-import type { Task } from '@/types/domain'
+import type { Task, TaskPriorityType } from '@/types/domain'
 
 type GroupMode = 'none' | 'day' | 'goal'
+type GoalFilterValue = 'all' | '__nogoal' | `${number}`
+type PriorityFilterValue = 'all' | TaskPriorityType
 
 function isToday(date: Date): boolean {
   const now = new Date()
@@ -87,11 +90,11 @@ function buildDayGroups(tasks: Task[]): Map<string, Task[]> {
   return map
 }
 
-function buildGoalGroups(tasks: Task[]): Map<string, { label: string; tasks: Task[] }> {
+function buildGoalGroups(tasks: Task[], goalTitleById: Map<number, string>): Map<string, { label: string; tasks: Task[] }> {
   const map = new Map<string, { label: string; tasks: Task[] }>()
   for (const task of tasks) {
     const key = task.goalId ? String(task.goalId) : '__nogoal'
-    const label = task.goalId ? `Goal #${task.goalId}` : 'Không có goal'
+    const label = task.goalId ? goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}` : 'Không có goal'
     if (!map.has(key)) map.set(key, { label, tasks: [] })
     map.get(key)!.tasks.push(task)
   }
@@ -106,12 +109,15 @@ export function TodoPage() {
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
+  const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
+  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
   useProjectRealtime(workspaceId, projectId)
 
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
   const [showCompleted, setShowCompleted] = useState(false)
   const [groupMode, setGroupMode] = useState<GroupMode>('none')
+  const [goalFilter, setGoalFilter] = useState<GoalFilterValue>('all')
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilterValue>('all')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
@@ -146,13 +152,11 @@ export function TodoPage() {
         title: newTaskTitle.trim(),
         statusId: defaultStatus.id,
         priority: 'MEDIUM',
-        goalId: newTaskGoalId ?? undefined,
         sourceView: 'TODO',
       })
     },
     onSuccess: () => {
       setNewTaskTitle('')
-      setNewTaskGoalId(null)
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
       toast.success('Tạo task thành công')
     },
@@ -244,14 +248,29 @@ export function TodoPage() {
 
   if (tasksQuery.isLoading) return <LoadingPanel />
 
+  const goalTitleById = new Map(
+    (goalsQuery.data?.content ?? []).map((goal) => [goal.id, goal.title] as const),
+  )
+
   const allTasks = tasksQuery.data?.content ?? []
-  const pendingTasks = allTasks.filter((t) => !t.isCompleted)
-  const completedTasks = allTasks.filter((t) => t.isCompleted)
+  const filteredTasks = allTasks.filter((task) => {
+    const matchesGoal =
+      goalFilter === 'all'
+      || (goalFilter === '__nogoal' ? !task.goalId : task.goalId === Number(goalFilter))
+
+    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
+
+    return matchesGoal && matchesPriority
+  })
+
+  const hasActiveFilters = goalFilter !== 'all' || priorityFilter !== 'all'
+  const pendingTasks = filteredTasks.filter((t) => !t.isCompleted)
+  const completedTasks = filteredTasks.filter((t) => t.isCompleted)
 
   const pendingTaskIds = pendingTasks.map((t) => `todo-${t.id}`)
 
   const dayGroups = groupMode === 'day' ? buildDayGroups(pendingTasks) : null
-  const goalGroups = groupMode === 'goal' ? buildGoalGroups(pendingTasks) : null
+  const goalGroups = groupMode === 'goal' ? buildGoalGroups(pendingTasks, goalTitleById) : null
 
   const openTaskPomodoro = (taskId: number) => {
     if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
@@ -263,6 +282,12 @@ export function TodoPage() {
     })
   }
 
+  const openDeleteConfirmIfCreator = (task: Task) => {
+    if (task.createdBy.userId === currentUserId) {
+      openTaskDeleteConfirm(task.id)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -270,21 +295,50 @@ export function TodoPage() {
         description="Quản lý task theo danh sách — kéo thả để sắp xếp lại"
       />
 
-      {/* Group controls */}
-      <div className="flex gap-1.5">
-        {(['none', 'day', 'goal'] as GroupMode[]).map((mode) => (
-          <Button
-            key={mode}
-            variant={groupMode === mode ? 'default' : 'outline'}
-            size="sm"
-            className="h-7 px-3 text-xs"
-            onClick={() => setGroupMode(mode)}
-          >
-            {mode === 'none' && 'Tất cả'}
-            {mode === 'day' && <><Calendar className="mr-1 size-3" />Theo ngày</>}
-            {mode === 'goal' && <><Target className="mr-1 size-3" />Theo goal</>}
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(['none', 'day', 'goal'] as GroupMode[]).map((mode) => (
+            <Button
+              key={mode}
+              variant={groupMode === mode ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 px-3 text-xs"
+              onClick={() => setGroupMode(mode)}
+            >
+              {mode === 'none' && 'Tất cả'}
+              {mode === 'day' && <><Calendar className="mr-1 size-3" />Theo ngày</>}
+              {mode === 'goal' && <><Target className="mr-1 size-3" />Theo goal</>}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto">
+          <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
+            <SelectTrigger className="h-7 w-39.5 text-xs">
+              <SelectValue placeholder="Goal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả goal</SelectItem>
+              <SelectItem value="__nogoal">Không có goal</SelectItem>
+              {(goalsQuery.data?.content ?? []).map((goal) => (
+                <SelectItem key={goal.id} value={String(goal.id)}>{goal.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
+            <SelectTrigger className="h-7 w-33 text-xs">
+              <SelectValue placeholder="Ưu tiên" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả ưu tiên</SelectItem>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+              <SelectItem value="URGENT">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Quick add */}
@@ -310,20 +364,6 @@ export function TodoPage() {
             {createTaskMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Thêm'}
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Target className="size-3.5 shrink-0 text-muted-foreground" />
-          <Select value={newTaskGoalId ? String(newTaskGoalId) : '__none'} onValueChange={(v) => setNewTaskGoalId(v === '__none' ? null : Number(v))}>
-            <SelectTrigger className="h-8 w-full text-xs sm:w-56">
-              <SelectValue placeholder="Không chọn goal" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none">Không chọn goal</SelectItem>
-              {(goalsQuery.data?.content ?? []).map((g) => (
-                <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* Pending tasks */}
@@ -331,8 +371,10 @@ export function TodoPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ListTodo className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">Chưa có task nào</p>
-            <p className="mt-1 text-xs text-muted-foreground">Thêm task đầu tiên ở phía trên</p>
+            <p className="text-sm font-medium">{hasActiveFilters ? 'Không có task phù hợp bộ lọc' : 'Chưa có task nào'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {hasActiveFilters ? 'Thử đổi bộ lọc goal hoặc mức ưu tiên.' : 'Thêm task đầu tiên ở phía trên'}
+            </p>
           </CardContent>
         </Card>
       ) : groupMode === 'day' && dayGroups ? (
@@ -352,7 +394,7 @@ export function TodoPage() {
                       task={task}
                       onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                      onContextAction={() => openDeleteConfirmIfCreator(task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
                     />
                   ))}
@@ -376,12 +418,25 @@ export function TodoPage() {
                     task={task}
                     onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
                     onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                    onContextAction={() => openDeleteConfirmIfCreator(task)}
                     onPomodoro={() => openTaskPomodoro(task.id)}
                   />
                 ))}
               </div>
             </div>
+          ))}
+        </div>
+      ) : hasActiveFilters ? (
+        <div className="space-y-1">
+          {pendingTasks.map((task) => (
+            <TodoItem
+              key={task.id}
+              task={task}
+              onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
+              onClick={() => openTaskDrawer(task.id, 'view')}
+              onContextAction={() => openDeleteConfirmIfCreator(task)}
+              onPomodoro={() => openTaskPomodoro(task.id)}
+            />
           ))}
         </div>
       ) : (
@@ -399,7 +454,7 @@ export function TodoPage() {
                   task={task}
                   onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
                   onClick={() => openTaskDrawer(task.id, 'view')}
-                  onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                  onContextAction={() => openDeleteConfirmIfCreator(task)}
                   onPomodoro={() => openTaskPomodoro(task.id)}
                 />
               ))}
@@ -440,7 +495,7 @@ export function TodoPage() {
                     task={task}
                     onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: false })}
                     onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                    onContextAction={() => openDeleteConfirmIfCreator(task)}
                     onPomodoro={() => openTaskPomodoro(task.id)}
                   />
                 ))}

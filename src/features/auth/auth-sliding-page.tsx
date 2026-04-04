@@ -20,6 +20,8 @@ interface AuthSlidingPageProps {
   initialMode: AuthMode
 }
 
+const ROUTE_SWITCH_DELAY_MS = 680
+
 interface FieldErrorProps {
   message?: string
 }
@@ -47,6 +49,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   }, [])
 
   const switchMode = (nextMode: AuthMode) => {
+    if (nextMode === mode) {
+      return
+    }
+
     setMode(nextMode)
 
     if (routeSwitchTimeoutRef.current !== null) {
@@ -56,7 +62,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     routeSwitchTimeoutRef.current = window.setTimeout(() => {
       navigate(nextMode === 'sign-in' ? '/login' : '/register', { replace: true })
       routeSwitchTimeoutRef.current = null
-    }, 420)
+    }, ROUTE_SWITCH_DELAY_MS)
   }
 
   const loginForm = useForm<LoginFormValues>({

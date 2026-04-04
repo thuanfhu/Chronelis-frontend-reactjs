@@ -1,6 +1,11 @@
 /* Sliding auth experience inspired by sefyudem/Sliding-Sign-In-Sign-Up-Form, adapted for Chronelis */
 
 .chronelis-auth-page {
+  --auth-slide-duration: 0.78s;
+  --auth-slide-delay: 0.12s;
+  --auth-fade-duration: 0.24s;
+  --auth-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --auth-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   width: 100%;
   min-height: 100dvh;
@@ -18,12 +23,13 @@
   height: min(130vw, 1500px);
   top: -8%;
   right: 50%;
-  transform: translateY(-50%);
+  transform: translate3d(0, -50%, 0);
   border-radius: 50%;
   background: linear-gradient(-35deg,
     color-mix(in oklab, var(--primary) 88%, white 12%) 0%,
     color-mix(in oklab, var(--accent) 84%, white 16%) 100%);
-  transition: 1.2s ease-in-out;
+  transition: transform var(--auth-slide-duration) var(--auth-ease);
+  will-change: transform;
   z-index: 3;
 }
 
@@ -39,10 +45,13 @@
   top: 50%;
   left: 75%;
   width: min(52%, 760px);
-  transform: translate(-50%, -50%);
+  transform: translate3d(-50%, -50%, 0);
   display: grid;
   grid-template-columns: 1fr;
-  transition: 1s 0.45s ease-in-out;
+  transition:
+    left var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay),
+    transform var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay);
+  will-change: left, transform;
   z-index: 7;
 }
 
@@ -53,7 +62,8 @@
   flex-direction: column;
   justify-content: center;
   padding: 0 4.2rem;
-  transition: all 0.25s 0.6s;
+  backface-visibility: hidden;
+  transition: opacity var(--auth-fade-duration) var(--auth-ease-soft) var(--auth-slide-delay);
 }
 
 .chronelis-auth-sign-up-form {
@@ -223,12 +233,13 @@
 .chronelis-auth-panel-content {
   max-width: 24rem;
   text-align: center;
-  transform: translateX(0);
-  transition: transform 0.95s ease-in-out;
+  transform: translate3d(0, 0, 0);
+  transition: transform var(--auth-slide-duration) var(--auth-ease);
+  will-change: transform;
 }
 
 .chronelis-auth-right-panel .chronelis-auth-panel-content {
-  transform: translateX(900px);
+  transform: translate3d(900px, 0, 0);
 }
 
 .chronelis-auth-panel-content h3 {
@@ -282,7 +293,7 @@
 
 /* Sliding state */
 .chronelis-auth-page.sign-up-mode::before {
-  transform: translate(100%, -50%);
+  transform: translate3d(100%, -50%, 0);
   right: 52%;
 }
 
@@ -309,11 +320,11 @@
 }
 
 .chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel .chronelis-auth-panel-content {
-  transform: translateX(-900px);
+  transform: translate3d(-900px, 0, 0);
 }
 
 .chronelis-auth-page.sign-up-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* Dark mode refinement */
@@ -353,8 +364,10 @@
     width: 100%;
     left: 50%;
     top: 96%;
-    transform: translate(-50%, -100%);
-    transition: 1s 0.7s ease-in-out;
+    transform: translate3d(-50%, -100%, 0);
+    transition:
+      top var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay),
+      transform var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay);
   }
 
   .chronelis-auth-form {
@@ -393,31 +406,42 @@
     bottom: 68%;
     width: 1700px;
     height: 1700px;
-    transform: translateX(-50%);
-    transition: 1.6s ease-in-out;
+    transform: translate3d(-50%, 0, 0);
+    transition: transform var(--auth-slide-duration) var(--auth-ease);
   }
 
   .chronelis-auth-page.sign-up-mode::before {
     left: 50%;
     bottom: 30%;
-    transform: translate(-50%, 100%);
+    transform: translate3d(-50%, 100%, 0);
   }
 
   .chronelis-auth-right-panel .chronelis-auth-panel-content {
-    transform: translateY(320px);
+    transform: translate3d(0, 320px, 0);
   }
 
   .chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel .chronelis-auth-panel-content {
-    transform: translateY(-320px);
+    transform: translate3d(0, -320px, 0);
   }
 
   .chronelis-auth-page.sign-up-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 
   .chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
     top: 5%;
-    transform: translate(-50%, 0);
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronelis-auth-page::before,
+  .chronelis-auth-signin-signup,
+  .chronelis-auth-form,
+  .chronelis-auth-panel-content {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 

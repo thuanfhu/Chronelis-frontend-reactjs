@@ -45,6 +45,7 @@ import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import {
   applyTaskMove,
@@ -154,7 +155,7 @@ function KanbanColumn({
   status: TaskStatus
   tasks: Task[]
   onTaskClick: (taskId: number) => void
-  onTaskContextMenu: (taskId: number) => void
+  onTaskContextMenu: (task: Task) => void
   isOver?: boolean
 }) {
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
@@ -188,7 +189,7 @@ function KanbanColumn({
                 key={task.id}
                 task={task}
                 onClick={() => onTaskClick(task.id)}
-                onContextAction={() => onTaskContextMenu(task.id)}
+                onContextAction={() => onTaskContextMenu(task)}
               />
             ))}
           </div>
@@ -206,6 +207,8 @@ export function KanbanPage() {
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
+  const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
+  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
@@ -565,7 +568,11 @@ export function KanbanPage() {
                   status={status}
                   tasks={columnTasks}
                   onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
-                  onTaskContextMenu={(taskId) => openTaskDrawer(taskId, 'edit')}
+                  onTaskContextMenu={(task) => {
+                    if (task.createdBy.userId === currentUserId) {
+                      openTaskDeleteConfirm(task.id)
+                    }
+                  }}
                   isOver={overColumnId === status.id}
                 />
               )
