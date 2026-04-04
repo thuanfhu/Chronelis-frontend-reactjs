@@ -29,7 +29,7 @@ export function TasksLayout() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* ─── View tabs ─── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3 sm:gap-3">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
@@ -66,7 +66,7 @@ export function TasksLayout() {
       </div>
 
       {/* ─── Active view ─── */}
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {activeTab === 'calendar' && <CalendarPage />}
         {activeTab === 'kanban' && <KanbanPage />}
         {activeTab === 'todo' && <TodoPage />}

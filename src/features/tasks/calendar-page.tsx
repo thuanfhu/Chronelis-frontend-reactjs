@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AnimatePresence, motion } from 'framer-motion'
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import viLocale from '@fullcalendar/core/locales/vi'
+import type { EventInput } from '@fullcalendar/core'
+import { motion, useAnimationControls } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Plus, Loader2,
+  ChevronLeft, ChevronRight, Loader2,
 } from 'lucide-react'
-import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,7 +22,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
@@ -46,10 +50,6 @@ function addDays(date: Date, days: number): Date {
   return d
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
 function formatMonthYear(date: Date): string {
   return date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
 }
@@ -67,14 +67,11 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i)
-const DAY_NAMES_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-
-const PRIORITY_COLORS: Record<string, string> = {
-  URGENT: 'bg-destructive/15 border-destructive/30 text-destructive',
-  HIGH: 'bg-orange-500/10 border-orange-500/25 text-orange-700 dark:text-orange-400',
-  MEDIUM: 'bg-primary/10 border-primary/25 text-primary',
-  LOW: 'bg-muted border-muted-foreground/15 text-muted-foreground',
+const PRIORITY_EVENT_CLASSNAMES: Record<TaskPriorityType, string[]> = {
+  URGENT: ['!bg-destructive/15', '!border-destructive/35', '!text-destructive'],
+  HIGH: ['!bg-orange-500/10', '!border-orange-500/30', '!text-orange-700', 'dark:!text-orange-400'],
+  MEDIUM: ['!bg-primary/10', '!border-primary/30', '!text-primary'],
+  LOW: ['!bg-muted', '!border-muted-foreground/20', '!text-muted-foreground'],
 }
 
 // ─── Types ───
@@ -85,10 +82,119 @@ interface ScheduleWithTask extends TaskSchedule {
 
 type CalendarView = 'week' | 'month'
 
-const CALENDAR_SLIDE_VARIANTS = {
-  enter: (direction: 1 | -1) => ({ x: direction > 0 ? 72 : -72, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: 1 | -1) => ({ x: direction > 0 ? -72 : 72, opacity: 0 }),
+interface CalendarDateClickArg {
+  date: Date
+  allDay: boolean
+}
+
+interface CalendarSelectArg {
+  start: Date
+  end: Date
+  allDay: boolean
+  view: {
+    calendar: {
+      unselect: () => void
+    }
+  }
+}
+
+interface CalendarEventInteractionArg {
+  event: {
+    id: string
+    start: Date | null
+    end: Date | null
+    extendedProps: Record<string, unknown>
+    title: string
+  }
+  revert?: () => void
+  jsEvent?: {
+    preventDefault?: () => void
+  }
+}
+
+interface CalendarDatesSetArg {
+  start: Date
+  end: Date
+  view: {
+    type: string
+    currentStart: Date
+  }
+}
+
+function toInputDateTimeValue(date: Date): string {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+}
+
+function parseInputDateTimeValue(value: string): Date {
+  const [datePart, timePart = '00:00'] = value.split('T')
+  const [yyyy, mm, dd] = datePart.split('-').map(Number)
+  const [hh, mi, ss = 0] = timePart.split(':').map(Number)
+  return new Date(yyyy, (mm - 1), dd, hh, mi, ss)
+}
+
+function toApiLocalDateTime(date: Date): string {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  const ss = String(date.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`
+}
+
+function getRangeForView(view: CalendarView, referenceDate: Date): { fromDate: string; toDate: string } {
+  if (view === 'week') {
+    const weekStart = startOfWeek(referenceDate)
+    return {
+      fromDate: toDateKey(weekStart),
+      toDate: toDateKey(addDays(weekStart, 6)),
+    }
+  }
+
+  const first = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
+  const last = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0)
+  const displayStart = startOfWeek(first)
+  const displayEndDate = addDays(startOfWeek(addDays(last, 6)), 6)
+
+  return {
+    fromDate: toDateKey(displayStart),
+    toDate: toDateKey(displayEndDate),
+  }
+}
+
+function resolveEventRange(start: Date | null, end: Date | null): { start: Date; end: Date } | null {
+  if (!start) return null
+
+  const resolvedEnd = end && end > start
+    ? end
+    : new Date(start.getTime() + 60 * 60 * 1000)
+
+  return {
+    start,
+    end: resolvedEnd,
+  }
+}
+
+function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start: Date; end: Date } {
+  const safeStart = new Date(start)
+  const safeEnd = new Date(end)
+
+  if (allDay) {
+    safeStart.setHours(9, 0, 0, 0)
+    safeEnd.setTime(safeStart.getTime() + 60 * 60 * 1000)
+    return { start: safeStart, end: safeEnd }
+  }
+
+  if (safeEnd <= safeStart) {
+    safeEnd.setTime(safeStart.getTime() + 60 * 60 * 1000)
+  }
+
+  return { start: safeStart, end: safeEnd }
 }
 
 // ─── Main Component ───
@@ -99,19 +205,23 @@ export function CalendarPage() {
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
   const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
+  const calendarRef = useRef<FullCalendar | null>(null)
+  const calendarMotionControls = useAnimationControls()
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
+  const [headerTitle, setHeaderTitle] = useState(() => formatWeekRange(startOfWeek(new Date())))
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
+  const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
 
-  // Create task+schedule from calendar click
-  const [createDialog, setCreateDialog] = useState<{ open: boolean; date: Date; hour: number } | null>(null)
+  // Create task+schedule from calendar slot click/select
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; start: Date; end: Date } | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriorityType>('MEDIUM')
-  const [newStartTime, setNewStartTime] = useState('09:00')
-  const [newEndTime, setNewEndTime] = useState('10:00')
+  const [newStartDateTime, setNewStartDateTime] = useState('')
+  const [newEndDateTime, setNewEndDateTime] = useState('')
   const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
 
   const statusesQuery = useQuery({
@@ -126,11 +236,27 @@ export function CalendarPage() {
     enabled: Number.isFinite(projectId),
   })
 
+  const invalidateTaskAndCalendarQueries = async (taskId?: number) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
+      queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+      queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task'] }),
+      taskId ? queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }) : Promise.resolve(),
+    ])
+  }
+
   const createCalendarTaskMutation = useMutation({
     mutationFn: async () => {
       const defaultStatus = statusesQuery.data?.[0]
       if (!defaultStatus) throw new Error('Chưa có cột trạng thái')
       if (!createDialog) throw new Error('Thiếu thông tin ngày')
+
+      const start = parseInputDateTimeValue(newStartDateTime)
+      const end = parseInputDateTimeValue(newEndDateTime)
+      if (!(end > start)) {
+        throw new Error('Giờ kết thúc phải sau giờ bắt đầu')
+      }
+
       const task = await taskApi.create({
         projectId,
         title: newTaskTitle.trim(),
@@ -139,60 +265,46 @@ export function CalendarPage() {
         goalId: newTaskGoalId ?? undefined,
         sourceView: 'CALENDAR',
       })
-      const [startH, startM] = newStartTime.split(':').map(Number)
-      const [endH, endM] = newEndTime.split(':').map(Number)
-      const start = new Date(createDialog.date)
-      start.setHours(startH, startM, 0, 0)
-      const end = new Date(createDialog.date)
-      end.setHours(endH, endM, 0, 0)
+
       await taskScheduleApi.create({
         taskId: task.id,
-        scheduledStart: start.toISOString(),
-        scheduledEnd: end.toISOString(),
+        scheduledStart: toApiLocalDateTime(start),
+        scheduledEnd: toApiLocalDateTime(end),
       })
+
       return task
     },
     onSuccess: (task) => {
       setCreateDialog(null)
       setNewTaskTitle('')
       setNewTaskPriority('MEDIUM')
-      setNewStartTime('09:00')
-      setNewEndTime('10:00')
+      setNewStartDateTime('')
+      setNewEndDateTime('')
       setNewTaskGoalId(null)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
-      void queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
+
+      void invalidateTaskAndCalendarQueries(task.id)
       toast.success('Tạo task thành công')
       setTaskDrawerTaskId(task.id)
     },
     onError: (err: Error) => toast.error('Tạo task thất bại', { description: err.message }),
   })
 
-  const weekStart = useMemo(() => startOfWeek(currentDate), [currentDate])
-
-  // Compute date range for API query
-  const { fromDate, toDate } = useMemo(() => {
-    if (view === 'week') {
-      return {
-        fromDate: toDateKey(weekStart),
-        toDate: toDateKey(addDays(weekStart, 6)),
-      }
-    }
-    // Month view: first day of month to last day of month (with buffer for display)
-    const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-    const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-    // Extend to cover full weeks
-    const displayStart = startOfWeek(first)
-    const displayEndDate = addDays(startOfWeek(addDays(last, 6)), 6)
-    return {
-      fromDate: toDateKey(displayStart),
-      toDate: toDateKey(displayEndDate),
-    }
-  }, [view, weekStart, currentDate])
+  const updateScheduleMutation = useMutation({
+    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; start: Date; end: Date }) =>
+      taskScheduleApi.update(scheduleId, {
+        scheduledStart: toApiLocalDateTime(start),
+        scheduledEnd: toApiLocalDateTime(end),
+      }),
+    onSuccess: async () => {
+      await invalidateTaskAndCalendarQueries()
+    },
+  })
 
   // Fetch schedules
   const schedulesQuery = useQuery({
-    queryKey: queryKeys.schedules.projectCalendar(projectId, fromDate, toDate, 1, 500),
-    queryFn: () => taskScheduleApi.projectCalendar(projectId, fromDate, toDate, { page: 1, size: 500 }),
+    queryKey: queryKeys.schedules.projectCalendar(projectId, visibleRange.fromDate, visibleRange.toDate, 1, 500),
+    queryFn: () =>
+      taskScheduleApi.projectCalendar(projectId, visibleRange.fromDate, visibleRange.toDate, { page: 1, size: 500 }),
     enabled: Number.isFinite(projectId),
     placeholderData: keepPreviousData,
   })
@@ -213,51 +325,203 @@ export function CalendarPage() {
     return schedules.map((s) => ({ ...s, task: taskMap.get(s.taskId) }))
   }, [schedulesQuery.data, tasksQuery.data])
 
-  // Group schedules by date key
-  const schedulesByDate = useMemo(() => {
-    const map = new Map<string, ScheduleWithTask[]>()
-    for (const s of enrichedSchedules) {
-      const key = toDateKey(new Date(s.scheduledStart))
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(s)
-    }
-    return map
-  }, [enrichedSchedules])
-
   const isLoading = schedulesQuery.isLoading || tasksQuery.isLoading
 
-  // Navigation
-  const goToday = () => {
-    const today = new Date()
-    setNavigationDirection(today.getTime() >= currentDate.getTime() ? 1 : -1)
-    setCurrentDate(today)
-  }
-  const goPrev = () => {
-    setNavigationDirection(-1)
-    if (view === 'week') setCurrentDate(addDays(weekStart, -7))
-    else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-  }
-  const goNext = () => {
-    setNavigationDirection(1)
-    if (view === 'week') setCurrentDate(addDays(weekStart, 7))
-    else setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+  const calendarEvents = useMemo<EventInput[]>(() => {
+    return enrichedSchedules.map((schedule) => {
+      const priority = schedule.task?.priority ?? 'MEDIUM'
+
+      return {
+        id: String(schedule.id),
+        title: schedule.task?.title ?? `Task #${schedule.taskId}`,
+        start: schedule.scheduledStart,
+        end: schedule.scheduledEnd,
+        extendedProps: {
+          scheduleId: schedule.id,
+          taskId: schedule.taskId,
+          priority,
+          task: schedule.task,
+        },
+      }
+    })
+  }, [enrichedSchedules])
+
+  const runCalendarTransition = async (direction: 1 | -1, action: () => void) => {
+    setNavigationDirection(direction)
+
+    await calendarMotionControls.start({
+      x: direction > 0 ? -36 : 36,
+      opacity: 0,
+      transition: { duration: 0.12, ease: [0.22, 1, 0.36, 1] },
+    })
+
+    action()
+
+    await calendarMotionControls.set({
+      x: direction > 0 ? 36 : -36,
+      opacity: 0,
+    })
+
+    await calendarMotionControls.start({
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+    })
+
+    calendarRef.current?.getApi().updateSize()
   }
 
-  const headerTitle = view === 'week' ? formatWeekRange(weekStart) : formatMonthYear(currentDate)
-  const calendarContentKey = view === 'week'
-    ? `week-${toDateKey(weekStart)}`
-    : `month-${currentDate.getFullYear()}-${currentDate.getMonth()}`
+  const openCreateDialog = (start: Date, end: Date, allDay: boolean) => {
+    const normalizedRange = normalizeCreateRange(start, end, allDay)
+
+    setCreateDialog({
+      open: true,
+      start: normalizedRange.start,
+      end: normalizedRange.end,
+    })
+    setNewTaskTitle('')
+    setNewTaskGoalId(null)
+    setNewTaskPriority('MEDIUM')
+    setNewStartDateTime(toInputDateTimeValue(normalizedRange.start))
+    setNewEndDateTime(toInputDateTimeValue(normalizedRange.end))
+  }
+
+  const handleDateClick = (arg: CalendarDateClickArg) => {
+    openCreateDialog(arg.date, new Date(arg.date.getTime() + 60 * 60 * 1000), arg.allDay)
+  }
+
+  const handleSelect = (arg: CalendarSelectArg) => {
+    openCreateDialog(arg.start, arg.end, arg.allDay)
+    arg.view.calendar.unselect()
+  }
+
+  const handleEventClick = (arg: CalendarEventInteractionArg) => {
+    arg.jsEvent?.preventDefault?.()
+    const taskId = Number(arg.event.extendedProps.taskId)
+    if (Number.isFinite(taskId)) {
+      setTaskDrawerTaskId(taskId)
+    }
+  }
+
+  const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
+    const scheduleId = Number(arg.event.id)
+    const taskId = Number(arg.event.extendedProps.taskId)
+    const range = resolveEventRange(arg.event.start, arg.event.end)
+    if (!Number.isFinite(scheduleId) || !range) {
+      arg.revert?.()
+      return
+    }
+
+    try {
+      await updateScheduleMutation.mutateAsync({
+        scheduleId,
+        start: range.start,
+        end: range.end,
+      })
+      if (Number.isFinite(taskId)) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) })
+      }
+      toast.success('Cập nhật lịch thành công')
+    } catch (error) {
+      arg.revert?.()
+      const message = error instanceof Error ? error.message : 'Không thể cập nhật lịch'
+      toast.error('Cập nhật lịch thất bại', { description: message })
+    }
+  }
+
+  const handleEventResize = async (arg: CalendarEventInteractionArg) => {
+    const scheduleId = Number(arg.event.id)
+    const taskId = Number(arg.event.extendedProps.taskId)
+    const range = resolveEventRange(arg.event.start, arg.event.end)
+    if (!Number.isFinite(scheduleId) || !range) {
+      arg.revert?.()
+      return
+    }
+
+    try {
+      await updateScheduleMutation.mutateAsync({
+        scheduleId,
+        start: range.start,
+        end: range.end,
+      })
+      if (Number.isFinite(taskId)) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) })
+      }
+      toast.success('Cập nhật thời lượng thành công')
+    } catch (error) {
+      arg.revert?.()
+      const message = error instanceof Error ? error.message : 'Không thể cập nhật thời lượng'
+      toast.error('Cập nhật thời lượng thất bại', { description: message })
+    }
+  }
+
+  const handleDatesSet = (arg: CalendarDatesSetArg) => {
+    const fromDate = toDateKey(arg.start)
+    const toDate = toDateKey(addDays(arg.end, -1))
+
+    setVisibleRange((prev) =>
+      prev.fromDate === fromDate && prev.toDate === toDate
+        ? prev
+        : { fromDate, toDate },
+    )
+
+    setCurrentDate(new Date(arg.view.currentStart))
+    if (arg.view.type === 'timeGridWeek') {
+      setHeaderTitle(formatWeekRange(arg.start))
+    } else {
+      setHeaderTitle(formatMonthYear(arg.view.currentStart))
+    }
+  }
+
+  const goToday = () => {
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+
+    const today = new Date()
+    const direction: 1 | -1 = today.getTime() >= currentDate.getTime() ? 1 : -1
+    void runCalendarTransition(direction, () => api.today())
+  }
+
+  const goPrev = () => {
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+    void runCalendarTransition(-1, () => api.prev())
+  }
+
+  const goNext = () => {
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+    void runCalendarTransition(1, () => api.next())
+  }
+
+  const handleViewChange = (nextView: CalendarView) => {
+    if (nextView === view) return
+    const api = calendarRef.current?.getApi()
+    const fullCalendarView = nextView === 'week' ? 'timeGridWeek' : 'dayGridMonth'
+    const direction: 1 | -1 = nextView === 'month' ? 1 : -1
+
+    if (!api) {
+      setView(nextView)
+      setVisibleRange(getRangeForView(nextView, currentDate))
+      return
+    }
+
+    void runCalendarTransition(direction, () => {
+      setView(nextView)
+      api.changeView(fullCalendarView)
+    })
+  }
 
   if (isLoading) return <LoadingPanel />
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <PageHeader
         title="Lịch"
         description="Lịch biểu task theo tuần hoặc tháng"
         actions={
           <div className="flex items-center gap-2">
-            <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)}>
+            <Tabs value={view} onValueChange={(v) => handleViewChange(v as CalendarView)}>
               <TabsList className="h-8">
                 <TabsTrigger value="week" className="px-3 text-xs">Tuần</TabsTrigger>
                 <TabsTrigger value="month" className="px-3 text-xs">Tháng</TabsTrigger>
@@ -285,44 +549,63 @@ export function CalendarPage() {
         <h2 className="text-sm font-semibold capitalize">{headerTitle}</h2>
       </div>
 
-      {/* Calendar views */}
-      <AnimatePresence mode="wait" initial={false} custom={navigationDirection}>
+      {/* Calendar view */}
+      <div className="flex min-h-0 flex-1 flex-col">
         <motion.div
-          key={calendarContentKey}
+          initial={false}
+          animate={calendarMotionControls}
           custom={navigationDirection}
-          variants={CALENDAR_SLIDE_VARIANTS}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          className="flex h-full min-h-0 flex-col"
         >
-          {view === 'week' ? (
-            <WeekView
-              weekStart={weekStart}
-              schedulesByDate={schedulesByDate}
-              onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
-              onDateClick={(date, hour) => {
-                setCreateDialog({ open: true, date, hour })
-                setNewTaskTitle('')
-                setNewStartTime(`${String(hour).padStart(2, '0')}:00`)
-                setNewEndTime(`${String(hour + 1).padStart(2, '0')}:00`)
+          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+              initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+              locale={viLocale}
+              firstDay={1}
+              initialDate={currentDate}
+              headerToolbar={false}
+              height="100%"
+              nowIndicator={view === 'week'}
+              allDaySlot={false}
+              slotDuration="00:30:00"
+              scrollTime="08:00:00"
+              selectable
+              selectMirror
+              editable
+              eventStartEditable
+              eventDurationEditable
+              eventResizableFromStart
+              expandRows
+              dayMaxEvents={3}
+              events={calendarEvents}
+              datesSet={handleDatesSet}
+              dateClick={handleDateClick}
+              select={handleSelect}
+              eventClick={handleEventClick}
+              eventDrop={handleEventDrop}
+              eventResize={handleEventResize}
+              viewDidMount={() => {
+                requestAnimationFrame(() => calendarRef.current?.getApi().updateSize())
               }}
-            />
-          ) : (
-            <MonthView
-              currentDate={currentDate}
-              schedulesByDate={schedulesByDate}
-              onEventClick={(s) => setTaskDrawerTaskId(s.taskId)}
-              onDateClick={(date) => {
-                setCreateDialog({ open: true, date, hour: 9 })
-                setNewTaskTitle('')
-                setNewStartTime('09:00')
-                setNewEndTime('10:00')
+              eventClassNames={(arg) => {
+                const priority = String(arg.event.extendedProps.priority ?? 'MEDIUM') as TaskPriorityType
+                return PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM
               }}
+              eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+              eventContent={(arg) => (
+                <div className="flex min-w-0 flex-col px-1 py-0.5">
+                  <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
+                  {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
+                    <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
+                  ) : null}
+                </div>
+              )}
             />
-          )}
+          </div>
         </motion.div>
-      </AnimatePresence>
+      </div>
 
       {/* Create task dialog */}
       <Dialog open={!!createDialog?.open} onOpenChange={(o) => !o && setCreateDialog(null)}>
@@ -341,22 +624,22 @@ export function CalendarPage() {
                 placeholder="Tên task..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Giờ bắt đầu</Label>
+                <Label>Bắt đầu</Label>
                 <Input
-                  type="time"
-                  value={newStartTime}
-                  onChange={(e) => setNewStartTime(e.target.value)}
+                  type="datetime-local"
+                  value={newStartDateTime}
+                  onChange={(e) => setNewStartDateTime(e.target.value)}
                   className="h-9"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Giờ kết thúc</Label>
+                <Label>Kết thúc</Label>
                 <Input
-                  type="time"
-                  value={newEndTime}
-                  onChange={(e) => setNewEndTime(e.target.value)}
+                  type="datetime-local"
+                  value={newEndDateTime}
+                  onChange={(e) => setNewEndDateTime(e.target.value)}
                   className="h-9"
                 />
               </div>
@@ -392,8 +675,11 @@ export function CalendarPage() {
             </div>
             {createDialog && (
               <p className="text-xs text-muted-foreground">
-                {createDialog.date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                {' · '}{newStartTime} – {newEndTime}
+                {createDialog.start.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                {' · '}
+                {newStartDateTime ? newStartDateTime.slice(11, 16) : '--:--'}
+                {' – '}
+                {newEndDateTime ? newEndDateTime.slice(11, 16) : '--:--'}
               </p>
             )}
           </div>
@@ -402,7 +688,7 @@ export function CalendarPage() {
             <Button
               size="sm"
               onClick={() => createCalendarTaskMutation.mutate()}
-              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim()}
+              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim() || !newStartDateTime || !newEndDateTime}
             >
               {createCalendarTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               Tạo task
@@ -410,277 +696,6 @@ export function CalendarPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
-
-// ─── Week View (Google Calendar-like time grid) ───
-
-interface WeekViewProps {
-  weekStart: Date
-  schedulesByDate: Map<string, ScheduleWithTask[]>
-  onEventClick: (schedule: ScheduleWithTask) => void
-  onDateClick: (date: Date, hour: number) => void
-}
-
-function WeekView({ weekStart, schedulesByDate, onEventClick, onDateClick }: WeekViewProps) {
-  const today = new Date()
-  const now = new Date()
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-      <div className="min-w-160">
-      {/* Day header row */}
-      <div className="grid grid-cols-[3.5rem_repeat(7,1fr)] border-b border-border bg-muted/30">
-        <div className="border-r border-border" />
-        {days.map((day, i) => {
-          const isToday = isSameDay(day, today)
-          return (
-            <div
-              key={i}
-              className={cn(
-                'flex flex-col items-center py-2.5 text-center',
-                i < 6 && 'border-r border-border',
-              )}
-            >
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                {DAY_NAMES_SHORT[i]}
-              </span>
-              <span
-                className={cn(
-                  'mt-0.5 flex size-7 items-center justify-center rounded-full text-sm font-semibold',
-                  isToday && 'bg-primary text-primary-foreground',
-                )}
-              >
-                {day.getDate()}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Time grid */}
-      <div className="relative max-h-[calc(100dvh-16rem)] overflow-y-auto">
-        <div className="grid grid-cols-[3.5rem_repeat(7,1fr)]">
-          {/* Time labels + grid lines */}
-          {HOURS.map((hour) => (
-            <div key={hour} className="contents">
-              {/* Time label */}
-              <div className="relative h-12 border-r border-border">
-                {hour > 0 && (
-                  <span className="absolute -top-2.5 right-2 text-[10px] text-muted-foreground">
-                    {String(hour).padStart(2, '0')}:00
-                  </span>
-                )}
-              </div>
-              {/* Day cells — click to create task at this time */}
-              {days.map((day, dayIdx) => (
-                <div
-                  key={dayIdx}
-                  onClick={() => onDateClick(day, hour)}
-                  className={cn(
-                    'group/cell h-12 cursor-pointer border-b border-border/50 transition-colors hover:bg-primary/5',
-                    dayIdx < 6 && 'border-r border-border/50',
-                    hour === 0 && 'border-t-0',
-                  )}
-                >
-                  <div className="flex h-full items-center justify-center opacity-0 transition-opacity group-hover/cell:opacity-100">
-                    <Plus className="size-3 text-muted-foreground/50" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* Event overlays */}
-        <div className="absolute inset-0 grid grid-cols-[3.5rem_repeat(7,1fr)] pointer-events-none">
-          <div />
-          {days.map((day, dayIdx) => {
-            const dateKey = toDateKey(day)
-            const daySchedules = schedulesByDate.get(dateKey) ?? []
-            return (
-              <div key={dayIdx} className="relative">
-                {daySchedules.map((schedule) => {
-                  const start = new Date(schedule.scheduledStart)
-                  const end = new Date(schedule.scheduledEnd)
-                  const startMinutes = start.getHours() * 60 + start.getMinutes()
-                  const endMinutes = end.getHours() * 60 + end.getMinutes()
-                  const duration = Math.max(endMinutes - startMinutes, 15)
-                  const topPx = (startMinutes / 60) * 48 // 48px per hour (h-12)
-                  const heightPx = (duration / 60) * 48
-                  const priority = schedule.task?.priority ?? 'MEDIUM'
-                  const colorClass = PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.MEDIUM
-
-                  return (
-                    <Tooltip key={schedule.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => onEventClick(schedule)}
-                          className={cn(
-                            'pointer-events-auto absolute inset-x-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left transition-all hover:shadow-md hover:ring-1 hover:ring-primary/30',
-                            colorClass,
-                          )}
-                          style={{ top: `${topPx}px`, height: `${Math.max(heightPx, 20)}px` }}
-                        >
-                          <p className="truncate text-[11px] font-medium leading-tight">
-                            {schedule.task?.title ?? `Task #${schedule.taskId}`}
-                          </p>
-                          {heightPx > 28 && (
-                            <p className="mt-0.5 truncate text-[10px] opacity-70">
-                              {String(start.getHours()).padStart(2, '0')}:{String(start.getMinutes()).padStart(2, '0')}
-                              {' – '}
-                              {String(end.getHours()).padStart(2, '0')}:{String(end.getMinutes()).padStart(2, '0')}
-                            </p>
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="font-medium">{schedule.task?.title ?? `Task #${schedule.taskId}`}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(schedule.scheduledStart).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                          {' – '}
-                          {new Date(schedule.scheduledEnd).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Current time indicator line */}
-        {days.some((d) => isSameDay(d, today)) && (() => {
-          const todayIdx = days.findIndex((d) => isSameDay(d, today))
-          const nowMinutes = now.getHours() * 60 + now.getMinutes()
-          const topPx = (nowMinutes / 60) * 48
-          return (
-            <div
-              className="absolute left-0 right-0 z-10 pointer-events-none"
-              style={{ top: `${topPx}px` }}
-            >
-              <div className="grid grid-cols-[3.5rem_repeat(7,1fr)]">
-                <div />
-                {days.map((_, i) =>
-                  i === todayIdx ? (
-                    <div key={i} className="relative">
-                      <div className="absolute -left-1 -top-1 size-2.5 rounded-full bg-destructive" />
-                      <div className="h-px bg-destructive" />
-                    </div>
-                  ) : (
-                    <div key={i} />
-                  ),
-                )}
-              </div>
-            </div>
-          )
-        })()}
-      </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Month View ───
-
-interface MonthViewProps {
-  currentDate: Date
-  schedulesByDate: Map<string, ScheduleWithTask[]>
-  onEventClick: (schedule: ScheduleWithTask) => void
-  onDateClick: (date: Date) => void
-}
-
-function MonthView({ currentDate, schedulesByDate, onEventClick, onDateClick }: MonthViewProps) {
-  const today = new Date()
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-
-  // Build calendar grid
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const gridStart = startOfWeek(firstDay)
-
-  // Calculate number of weeks needed
-  const totalDays = Math.ceil((lastDay.getTime() - gridStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  const weeks = Math.ceil(totalDays / 7)
-
-  const allDays = Array.from({ length: weeks * 7 }, (_, i) => addDays(gridStart, i))
-  const rows = Array.from({ length: weeks }, (_, w) => allDays.slice(w * 7, (w + 1) * 7))
-
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-      <div className="min-w-120">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border bg-muted/30">
-        {DAY_NAMES_SHORT.map((name) => (
-          <div key={name} className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {name}
-          </div>
-        ))}
-      </div>
-
-      {/* Day cells */}
-      {rows.map((week, wi) => (
-        <div key={wi} className={cn('grid grid-cols-7', wi < rows.length - 1 && 'border-b border-border')}>
-          {week.map((day, di) => {
-            const dateKey = toDateKey(day)
-            const isCurrentMonth = day.getMonth() === month
-            const isToday = isSameDay(day, today)
-            const daySchedules = (schedulesByDate.get(dateKey) ?? []).slice(0, 3)
-            const overflow = (schedulesByDate.get(dateKey) ?? []).length - 3
-
-            return (
-              <div
-                key={di}
-                onClick={() => onDateClick(day)}
-                className={cn(
-                  'group/cell min-h-24 cursor-pointer p-1.5 transition-colors hover:bg-primary/5',
-                  di < 6 && 'border-r border-border',
-                  !isCurrentMonth && 'bg-muted/20',
-                )}
-              >
-                <span
-                  className={cn(
-                    'mb-1 flex size-6 items-center justify-center rounded-full text-xs font-medium',
-                    isToday && 'bg-primary text-primary-foreground',
-                    !isToday && isCurrentMonth && 'text-foreground',
-                    !isToday && !isCurrentMonth && 'text-muted-foreground/50',
-                  )}
-                >
-                  {day.getDate()}
-                </span>
-                <div className="space-y-0.5">
-                  {daySchedules.map((schedule) => {
-                    const priority = schedule.task?.priority ?? 'MEDIUM'
-                    const colorClass = PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.MEDIUM
-                    return (
-                      <button
-                        key={schedule.id}
-                        onClick={() => onEventClick(schedule)}
-                        className={cn(
-                          'flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] font-medium leading-tight transition-all hover:shadow-sm',
-                          colorClass,
-                        )}
-                      >
-                        <span className="truncate">
-                          {schedule.task?.title ?? `Task #${schedule.taskId}`}
-                        </span>
-                      </button>
-                    )
-                  })}
-                  {overflow > 0 && (
-                    <p className="px-1 text-[10px] text-muted-foreground">+{overflow} khác</p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ))}
-      </div>
     </div>
   )
 }

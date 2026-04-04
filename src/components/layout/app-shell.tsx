@@ -10,12 +10,12 @@ export function AppShell() {
   const projectId = params.projectId ? Number(params.projectId) : undefined
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex h-dvh overflow-hidden">
       <AppSidebar workspaceId={workspaceId} projectId={projectId} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AppTopbar />
-        <main className="flex-1 px-3 py-4 sm:px-4 sm:py-6 md:px-8">
-          <div className="mx-auto w-full max-w-6xl">
+        <main className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6 md:px-8">
+          <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col">
             <Outlet />
           </div>
         </main>
