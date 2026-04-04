@@ -110,6 +110,9 @@ export interface Project {
   description?: string
   status: ProjectStatusType
   createdBy: UserSummary
+  managerUser?: UserSummary
+  managerTeamId?: number
+  managerTeamName?: string
   createdAt: string
   updatedAt: string
 }
@@ -122,6 +125,9 @@ export interface Goal {
   status: GoalStatusType
   progressPercent: number
   createdBy: UserSummary
+  managerUser?: UserSummary
+  managerTeamId?: number
+  managerTeamName?: string
   createdAt: string
   updatedAt: string
 }
@@ -143,6 +149,7 @@ export interface Task {
   status: TaskStatus
   title: string
   description?: string
+  notesHtml?: string
   priority: TaskPriorityType
   taskType?: TaskType
   sourceView?: SourceViewType

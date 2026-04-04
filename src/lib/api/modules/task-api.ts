@@ -13,6 +13,7 @@ export interface CreateTaskPayload {
   statusId: number
   title: string
   description?: string
+  notesHtml?: string
   priority: TaskPriorityType
   assigneeId?: string
   dueDate?: string
@@ -25,6 +26,7 @@ export interface CreateTaskPayload {
 export interface UpdateTaskPayload {
   title?: string
   description?: string
+  notesHtml?: string
   goalId?: number
   priority?: TaskPriorityType
   dueDate?: string

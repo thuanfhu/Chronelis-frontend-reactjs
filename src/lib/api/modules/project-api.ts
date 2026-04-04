@@ -5,6 +5,8 @@ import type { PageResult, Project, ProjectStatusType } from '@/types/domain'
 interface ProjectPayload {
   name: string
   description?: string
+  managerUserId?: string
+  managerTeamId?: number
 }
 
 interface CreateProjectPayload extends ProjectPayload {

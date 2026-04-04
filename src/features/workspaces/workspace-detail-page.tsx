@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import { useAuthStore } from '@/app/store/auth-store'
 import type { PageResult, Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType } from '@/types/domain'
 
 const roleIcon = {
@@ -59,6 +61,8 @@ export function WorkspaceDetailPage() {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
+  const [projectManagerUserId, setProjectManagerUserId] = useState('')
+  const [projectManagerTeamId, setProjectManagerTeamId] = useState('')
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [memberUserId, setMemberUserId] = useState('')
   const [memberRole, setMemberRole] = useState<WorkspaceMemberRoleType>('MEMBER')
@@ -68,6 +72,8 @@ export function WorkspaceDetailPage() {
   const [editProjectId, setEditProjectId] = useState<number | null>(null)
   const [editProjectName, setEditProjectName] = useState('')
   const [editProjectDescription, setEditProjectDescription] = useState('')
+  const [editProjectManagerUserId, setEditProjectManagerUserId] = useState('')
+  const [editProjectManagerTeamId, setEditProjectManagerTeamId] = useState('')
   const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false)
   const [deleteProject, setDeleteProject] = useState<Project | null>(null)
   const [deleteWorkspaceDialogOpen, setDeleteWorkspaceDialogOpen] = useState(false)
@@ -77,6 +83,8 @@ export function WorkspaceDetailPage() {
   const [teamDialogOpen, setTeamDialogOpen] = useState(false)
   const [teamName, setTeamName] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
+
+  const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
   useWorkspaceRealtime(Number.isFinite(workspaceId) ? workspaceId : null)
 
@@ -110,11 +118,51 @@ export function WorkspaceDetailPage() {
     enabled: Number.isFinite(workspaceId),
   })
 
+  const teamMembershipQuery = useQuery({
+    queryKey: ['workspace-teams', 'membership-map', workspaceId, (teamsQuery.data ?? []).map((team) => team.id).join(',')],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        (teamsQuery.data ?? []).map(async (team) => {
+          try {
+            const teamMembers = await workspaceTeamApi.listMembers(team.id)
+            return [team.id, new Set(teamMembers.map((member) => member.user.userId))] as const
+          } catch {
+            return [team.id, new Set<string>()] as const
+          }
+        }),
+      )
+
+      return new Map<number, Set<string>>(entries)
+    },
+    enabled: Number.isFinite(workspaceId) && Boolean(currentUserId) && (teamsQuery.data?.length ?? 0) > 0,
+  })
+
   const createProjectMutation = useMutation({
-    mutationFn: () => projectApi.create({ workspaceId, name: projectName.trim(), description: projectDescription.trim() || undefined }),
+    mutationFn: () => {
+      const payload: {
+        workspaceId: number
+        name: string
+        description?: string
+        managerUserId?: string
+        managerTeamId?: number
+      } = {
+        workspaceId,
+        name: projectName.trim(),
+        description: projectDescription.trim() || undefined,
+      }
+
+      if (workspaceQuery.data?.owner.userId === currentUserId) {
+        payload.managerUserId = projectManagerUserId || undefined
+        payload.managerTeamId = projectManagerTeamId ? Number(projectManagerTeamId) : undefined
+      }
+
+      return projectApi.create(payload)
+    },
     onSuccess: () => {
       setProjectName('')
       setProjectDescription('')
+      setProjectManagerUserId('')
+      setProjectManagerTeamId('')
       setProjectDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Tạo project thành công')
@@ -154,14 +202,28 @@ export function WorkspaceDetailPage() {
   const updateProjectMutation = useMutation({
     mutationFn: () => {
       if (!editProjectId) throw new Error('Project không tồn tại')
-      return projectApi.update(editProjectId, {
+      const payload: {
+        name: string
+        description?: string
+        managerUserId?: string
+        managerTeamId?: number
+      } = {
         name: editProjectName.trim(),
         description: editProjectDescription.trim() || undefined,
-      })
+      }
+
+      if (workspaceQuery.data?.owner.userId === currentUserId) {
+        payload.managerUserId = editProjectManagerUserId
+        payload.managerTeamId = editProjectManagerTeamId ? Number(editProjectManagerTeamId) : 0
+      }
+
+      return projectApi.update(editProjectId, payload)
     },
     onSuccess: () => {
       setEditProjectDialogOpen(false)
       setEditProjectId(null)
+      setEditProjectManagerUserId('')
+      setEditProjectManagerTeamId('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Cập nhật project thành công')
     },
@@ -351,54 +413,81 @@ export function WorkspaceDetailPage() {
   const invites = invitesQuery.data ?? []
   const teams = teamsQuery.data ?? []
 
+  const currentMember = members.find((member) => member.user.userId === currentUserId)
+  const currentRole: WorkspaceMemberRoleType = workspaceQuery.data.owner.userId === currentUserId
+    ? 'OWNER'
+    : currentMember?.role ?? 'MEMBER'
+  const isOwner = currentRole === 'OWNER'
+  const isWorkspaceManager = isOwner || currentRole === 'ADMIN'
+  const canManageWorkspace = isOwner
+  const canCreateProject = isWorkspaceManager
+  const teamMembershipMap = teamMembershipQuery.data ?? new Map<number, Set<string>>()
+  const canManageProject = (project: Project) => {
+    const isProjectManagerByUser = project.managerUser?.userId === currentUserId
+    const isProjectManagerByTeam = Boolean(
+      project.managerTeamId
+      && currentUserId
+      && teamMembershipMap.get(project.managerTeamId)?.has(currentUserId),
+    )
+
+    return isWorkspaceManager || isProjectManagerByUser || isProjectManagerByTeam
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={workspaceQuery.data.name}
-        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project`}
+        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project · Vai trò của bạn: ${currentRole}`}
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
-              <Trash2 className="mr-1.5 size-3.5" />
-              Xóa workspace
-            </Button>
+          canManageWorkspace ? (
+            <div className="flex items-center gap-2">
+              <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
+                <Trash2 className="mr-1.5 size-3.5" />
+                Xóa workspace
+              </Button>
 
-            <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditWsName(workspaceQuery.data!.name)}
-                >
-                  <Pencil className="mr-1.5 size-3.5" />
-                  Chỉnh sửa
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Chỉnh sửa workspace</DialogTitle>
-                  <DialogDescription>Đổi tên workspace.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <Label>Tên workspace</Label>
-                  <Input
-                    value={editWsName}
-                    onChange={(e) => setEditWsName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
-                    }}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
-                    {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Lưu
+              <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditWsName(workspaceQuery.data!.name)}
+                  >
+                    <Pencil className="mr-1.5 size-3.5" />
+                    Chỉnh sửa
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Chỉnh sửa workspace</DialogTitle>
+                    <DialogDescription>Đổi tên workspace.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    <Label>Tên workspace</Label>
+                    <Input
+                      value={editWsName}
+                      onChange={(e) => setEditWsName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
+                      }}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
+                    <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
+                      {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Lưu
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <User className="size-3" />
+              MEMBER chỉ có quyền đọc trừ project được giao manager
+            </Badge>
+          )
         }
       />
 
@@ -425,49 +514,98 @@ export function WorkspaceDetailPage() {
         {/* Projects tab */}
         <TabsContent value="projects" className="mt-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Danh sách project trong workspace</p>
-            <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 size-3.5" />
-                  Tạo project
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Tạo project mới</DialogTitle>
-                  <DialogDescription>Project sẽ tự động tạo 3 cột trạng thái: To do, In Progress, Done.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="proj-name">Tên project</Label>
-                    <Input
-                      id="proj-name"
-                      value={projectName}
-                      onChange={(e) => setProjectName(e.target.value)}
-                      placeholder="Ví dụ: Sprint 1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="proj-desc">Mô tả (tùy chọn)</Label>
-                    <Textarea
-                      id="proj-desc"
-                      value={projectDescription}
-                      onChange={(e) => setProjectDescription(e.target.value)}
-                      placeholder="Mô tả ngắn về project..."
-                      rows={3}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createProjectMutation.mutate()} disabled={createProjectMutation.isPending || !projectName.trim()}>
-                    {createProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
+            <div>
+              <p className="text-sm text-muted-foreground">Danh sách project trong workspace</p>
+              {!canCreateProject && (
+                <p className="text-xs text-muted-foreground">Bạn đang ở chế độ read-only. Chỉ owner/admin hoặc manager được phân scope mới có thể chỉnh sửa project.</p>
+              )}
+            </div>
+            {canCreateProject && (
+              <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-1.5 size-3.5" />
+                    Tạo project
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Tạo project mới</DialogTitle>
+                    <DialogDescription>Project sẽ tự động tạo 3 cột trạng thái: To do, In Progress, Done.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="proj-name">Tên project</Label>
+                      <Input
+                        id="proj-name"
+                        value={projectName}
+                        onChange={(e) => setProjectName(e.target.value)}
+                        placeholder="Ví dụ: Sprint 1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="proj-desc">Mô tả (tùy chọn)</Label>
+                      <Textarea
+                        id="proj-desc"
+                        value={projectDescription}
+                        onChange={(e) => setProjectDescription(e.target.value)}
+                        placeholder="Mô tả ngắn về project..."
+                        rows={3}
+                      />
+                    </div>
+                    {isOwner && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Manager user (tùy chọn)</Label>
+                          <Select
+                            value={projectManagerUserId || 'none'}
+                            onValueChange={(value) => setProjectManagerUserId(value === 'none' ? '' : value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Không gán manager user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Không gán</SelectItem>
+                              {members.map((member) => (
+                                <SelectItem key={member.user.userId} value={member.user.userId}>
+                                  {member.user.firstName} {member.user.lastName} ({member.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Manager team (tùy chọn)</Label>
+                          <Select
+                            value={projectManagerTeamId || 'none'}
+                            onValueChange={(value) => setProjectManagerTeamId(value === 'none' ? '' : value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Không gán manager team" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Không gán</SelectItem>
+                              {teams.map((team) => (
+                                <SelectItem key={team.id} value={String(team.id)}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>Hủy</Button>
+                    <Button onClick={() => createProjectMutation.mutate()} disabled={createProjectMutation.isPending || !projectName.trim()}>
+                      {createProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Tạo
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {projects.length === 0 ? (
@@ -480,111 +618,193 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {projects.map((project) => (
-                <Card key={project.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
-                  <CardContent className="flex items-start gap-3 p-4">
-                    <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground">
-                        {project.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{project.name}</p>
-                        {project.description && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{project.description}</p>
-                        )}
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
-                            {project.status}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">
-                            {project.createdBy.firstName} {project.createdBy.lastName}
-                          </span>
+              {projects.map((project) => {
+                const canManageCurrentProject = canManageProject(project)
+
+                return (
+                  <Card key={project.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
+                    <CardContent className="flex items-start gap-3 p-4">
+                      <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground">
+                          {project.name.charAt(0).toUpperCase()}
                         </div>
-                      </div>
-                    </Link>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditProjectId(project.id)
-                            setEditProjectName(project.name)
-                            setEditProjectDescription(project.description ?? '')
-                            setEditProjectDialogOpen(true)
-                          }}
-                        >
-                          <Pencil className="mr-2 size-3.5" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {project.status !== 'ACTIVE' && (
-                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
-                            <RotateCcw className="mr-2 size-3.5" />
-                            Kích hoạt lại
-                          </DropdownMenuItem>
-                        )}
-                        {project.status !== 'COMPLETED' && (
-                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
-                            <CheckCircle2 className="mr-2 size-3.5" />
-                            Hoàn thành
-                          </DropdownMenuItem>
-                        )}
-                        {project.status !== 'ARCHIVED' && (
-                          <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
-                            <Archive className="mr-2 size-3.5" />
-                            Lưu trữ
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            setDeleteProject(project)
-                            setDeleteProjectDialogOpen(true)
-                          }}
-                        >
-                          <Trash2 className="mr-2 size-3.5" />
-                          Xóa project
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardContent>
-                </Card>
-              ))}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{project.name}</p>
+                          {project.description && (
+                            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{project.description}</p>
+                          )}
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
+                              {project.status}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {project.createdBy.firstName} {project.createdBy.lastName}
+                            </span>
+                          </div>
+                          {(project.managerUser || project.managerTeamName) && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              {project.managerUser && (
+                                <Badge variant="secondary" className="text-[10px]">
+                                  Manager user: {project.managerUser.firstName} {project.managerUser.lastName}
+                                </Badge>
+                              )}
+                              {project.managerTeamName && (
+                                <Badge variant="outline" className="text-[10px]">
+                                  Manager team: {project.managerTeamName}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      {canManageCurrentProject && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditProjectId(project.id)
+                                setEditProjectName(project.name)
+                                setEditProjectDescription(project.description ?? '')
+                                setEditProjectManagerUserId(project.managerUser?.userId ?? '')
+                                setEditProjectManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                setEditProjectDialogOpen(true)
+                              }}
+                            >
+                              <Pencil className="mr-2 size-3.5" />
+                              Chỉnh sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {project.status !== 'ACTIVE' && (
+                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
+                                <RotateCcw className="mr-2 size-3.5" />
+                                Kích hoạt lại
+                              </DropdownMenuItem>
+                            )}
+                            {project.status !== 'COMPLETED' && (
+                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
+                                <CheckCircle2 className="mr-2 size-3.5" />
+                                Hoàn thành
+                              </DropdownMenuItem>
+                            )}
+                            {project.status !== 'ARCHIVED' && (
+                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
+                                <Archive className="mr-2 size-3.5" />
+                                Lưu trữ
+                              </DropdownMenuItem>
+                            )}
+                            {isWorkspaceManager && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => {
+                                    setDeleteProject(project)
+                                    setDeleteProjectDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 size-3.5" />
+                                  Xóa project
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
 
           {/* Edit project dialog */}
-          <Dialog open={editProjectDialogOpen} onOpenChange={setEditProjectDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Chỉnh sửa project</DialogTitle>
-                  <DialogDescription>Cập nhật thông tin project.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Tên project</Label>
-                    <Input value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mô tả</Label>
-                    <Textarea value={editProjectDescription} onChange={(e) => setEditProjectDescription(e.target.value)} rows={3} />
-                  </div>
+          <Dialog
+            open={editProjectDialogOpen}
+            onOpenChange={(open) => {
+              setEditProjectDialogOpen(open)
+              if (!open) {
+                setEditProjectId(null)
+                setEditProjectManagerUserId('')
+                setEditProjectManagerTeamId('')
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Chỉnh sửa project</DialogTitle>
+                <DialogDescription>
+                  {isOwner
+                    ? 'Cập nhật thông tin và phân công manager cho project.'
+                    : 'Cập nhật thông tin project. Chỉ owner mới được chỉnh manager user/team.'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Tên project</Label>
+                  <Input value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} />
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim()}>
-                    {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Lưu
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                <div className="space-y-2">
+                  <Label>Mô tả</Label>
+                  <Textarea value={editProjectDescription} onChange={(e) => setEditProjectDescription(e.target.value)} rows={3} />
+                </div>
+                {isOwner && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Manager user</Label>
+                      <Select
+                        value={editProjectManagerUserId || 'none'}
+                        onValueChange={(value) => setEditProjectManagerUserId(value === 'none' ? '' : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Không gán manager user" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Không gán</SelectItem>
+                          {members.map((member) => (
+                            <SelectItem key={member.user.userId} value={member.user.userId}>
+                              {member.user.firstName} {member.user.lastName} ({member.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Manager team</Label>
+                      <Select
+                        value={editProjectManagerTeamId || 'none'}
+                        onValueChange={(value) => setEditProjectManagerTeamId(value === 'none' ? '' : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Không gán manager team" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Không gán</SelectItem>
+                          {teams.map((team) => (
+                            <SelectItem key={team.id} value={String(team.id)}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>Hủy</Button>
+                <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim()}>
+                  {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  Lưu
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <Dialog
             open={deleteProjectDialogOpen}
@@ -626,55 +846,62 @@ export function WorkspaceDetailPage() {
         {/* Members tab */}
         <TabsContent value="members" className="mt-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Quản lý thành viên và phân quyền</p>
-            <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <UserPlus className="mr-1.5 size-3.5" />
-                  Thêm thành viên
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Thêm thành viên</DialogTitle>
-                  <DialogDescription>Nhập User ID và chọn vai trò cho thành viên mới.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="member-id">User ID</Label>
-                    <Input
-                      id="member-id"
-                      value={memberUserId}
-                      onChange={(e) => setMemberUserId(e.target.value)}
-                      placeholder="UUID của user"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Vai trò</Label>
-                    <div className="flex gap-2">
-                      {(['ADMIN', 'MEMBER'] as const).map((r) => (
-                        <Button
-                          key={r}
-                          type="button"
-                          variant={memberRole === r ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setMemberRole(r)}
-                        >
-                          {r}
-                        </Button>
-                      ))}
+            <div>
+              <p className="text-sm text-muted-foreground">Quản lý thành viên và phân quyền</p>
+              {!canManageWorkspace && (
+                <p className="text-xs text-muted-foreground">Chỉ owner có quyền thêm/xóa thành viên và đổi role.</p>
+              )}
+            </div>
+            {canManageWorkspace && (
+              <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <UserPlus className="mr-1.5 size-3.5" />
+                    Thêm thành viên
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Thêm thành viên</DialogTitle>
+                    <DialogDescription>Nhập User ID và chọn vai trò cho thành viên mới.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="member-id">User ID</Label>
+                      <Input
+                        id="member-id"
+                        value={memberUserId}
+                        onChange={(e) => setMemberUserId(e.target.value)}
+                        placeholder="UUID của user"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Vai trò</Label>
+                      <div className="flex gap-2">
+                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                          <Button
+                            key={r}
+                            type="button"
+                            variant={memberRole === r ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setMemberRole(r)}
+                          >
+                            {r}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => addMemberMutation.mutate()} disabled={addMemberMutation.isPending || !memberUserId.trim()}>
-                    {addMemberMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Thêm
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>Hủy</Button>
+                    <Button onClick={() => addMemberMutation.mutate()} disabled={addMemberMutation.isPending || !memberUserId.trim()}>
+                      {addMemberMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Thêm
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -695,39 +922,41 @@ export function WorkspaceDetailPage() {
                     <RoleIcon className="size-3" />
                     {member.role}
                   </Badge>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="size-8 p-0">···</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                  {canManageWorkspace && member.role !== 'OWNER' && member.user.userId !== currentUserId && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="size-8 p-0">···</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                          <DropdownMenuItem
+                            key={r}
+                            disabled={member.role === r}
+                            onClick={() => {
+                              workspaceApi
+                                .updateMemberRole(workspaceId, member.user.userId, r)
+                                .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
+                                .catch((err: Error) => toast.error('Cập nhật role thất bại', { description: err.message }))
+                            }}
+                          >
+                            Đổi thành {r}
+                          </DropdownMenuItem>
+                        ))}
                         <DropdownMenuItem
-                          key={r}
-                          disabled={member.role === r}
+                          className="text-destructive focus:text-destructive"
                           onClick={() => {
                             workspaceApi
-                              .updateMemberRole(workspaceId, member.user.userId, r)
+                              .removeMember(workspaceId, member.user.userId)
                               .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                              .catch((err: Error) => toast.error('Cập nhật role thất bại', { description: err.message }))
+                              .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
                           }}
                         >
-                          Đổi thành {r}
+                          <Trash2 className="mr-2 size-3.5" />
+                          Xóa khỏi workspace
                         </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          workspaceApi
-                            .removeMember(workspaceId, member.user.userId)
-                            .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                            .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
-                        }}
-                      >
-                        <Trash2 className="mr-2 size-3.5" />
-                        Xóa khỏi workspace
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               )
             })}
@@ -737,50 +966,57 @@ export function WorkspaceDetailPage() {
         {/* Invites tab */}
         <TabsContent value="invites" className="mt-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Quản lý invite link cho workspace</p>
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 size-3.5" />
-                  Tạo invite
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Tạo invite link</DialogTitle>
-                  <DialogDescription>Chia sẻ link hoặc QR code để mời thành viên tham gia workspace.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Vai trò được gán</Label>
-                    <div className="flex gap-2">
-                      {(['ADMIN', 'MEMBER'] as const).map((r) => (
-                        <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
-                          {r}
-                        </Button>
-                      ))}
+            <div>
+              <p className="text-sm text-muted-foreground">Quản lý invite link cho workspace</p>
+              {!canManageWorkspace && (
+                <p className="text-xs text-muted-foreground">Chỉ owner có quyền tạo hoặc thu hồi invite.</p>
+              )}
+            </div>
+            {canManageWorkspace && (
+              <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-1.5 size-3.5" />
+                    Tạo invite
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Tạo invite link</DialogTitle>
+                    <DialogDescription>Chia sẻ link hoặc QR code để mời thành viên tham gia workspace.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Vai trò được gán</Label>
+                      <div className="flex gap-2">
+                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                          <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
+                            {r}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Giới hạn lượt dùng (tùy chọn)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={inviteMaxUses}
+                        onChange={(e) => setInviteMaxUses(e.target.value)}
+                        placeholder="Không giới hạn"
+                      />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Giới hạn lượt dùng (tùy chọn)</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={inviteMaxUses}
-                      onChange={(e) => setInviteMaxUses(e.target.value)}
-                      placeholder="Không giới hạn"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createInviteMutation.mutate()} disabled={createInviteMutation.isPending}>
-                    {createInviteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Hủy</Button>
+                    <Button onClick={() => createInviteMutation.mutate()} disabled={createInviteMutation.isPending}>
+                      {createInviteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Tạo
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {invites.length === 0 ? (
@@ -819,15 +1055,17 @@ export function WorkspaceDetailPage() {
                     >
                       <Copy className="size-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0 text-destructive hover:text-destructive"
-                      onClick={() => revokeInviteMutation.mutate(invite.id)}
-                      disabled={revokeInviteMutation.isPending}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    {canManageWorkspace && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => revokeInviteMutation.mutate(invite.id)}
+                        disabled={revokeInviteMutation.isPending}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )
               })}
@@ -838,38 +1076,45 @@ export function WorkspaceDetailPage() {
         {/* Teams tab */}
         <TabsContent value="teams" className="mt-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Quản lý team trong workspace</p>
-            <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 size-3.5" />
-                  Tạo team
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Tạo team mới</DialogTitle>
-                  <DialogDescription>Nhóm thành viên lại để phân công hiệu quả hơn.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Tên team</Label>
-                    <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Ví dụ: Frontend Team" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mô tả (tùy chọn)</Label>
-                    <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder="Mô tả ngắn về team..." />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending || !teamName.trim()}>
-                    {createTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
+            <div>
+              <p className="text-sm text-muted-foreground">Quản lý team trong workspace</p>
+              {!canManageWorkspace && (
+                <p className="text-xs text-muted-foreground">Chỉ owner có quyền tạo hoặc xóa team.</p>
+              )}
+            </div>
+            {canManageWorkspace && (
+              <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-1.5 size-3.5" />
+                    Tạo team
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Tạo team mới</DialogTitle>
+                    <DialogDescription>Nhóm thành viên lại để phân công hiệu quả hơn.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Tên team</Label>
+                      <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Ví dụ: Frontend Team" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mô tả (tùy chọn)</Label>
+                      <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder="Mô tả ngắn về team..." />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Hủy</Button>
+                    <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending || !teamName.trim()}>
+                      {createTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Tạo
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {teams.length === 0 ? (
@@ -887,14 +1132,16 @@ export function WorkspaceDetailPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                        onClick={() => deleteTeamMutation.mutate(team.id)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
+                      {canManageWorkspace && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                          onClick={() => deleteTeamMutation.mutate(team.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
                     </div>
                     {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
                   </CardHeader>
@@ -911,28 +1158,30 @@ export function WorkspaceDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={deleteWorkspaceDialogOpen} onOpenChange={setDeleteWorkspaceDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Xóa workspace</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa workspace "{workspaceQuery.data.name}" không?
-              Hành động này không thể hoàn tác và sẽ xóa toàn bộ project, goals, tasks, comment, team và invite liên quan.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>Hủy</Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteWorkspaceMutation.mutate()}
-              disabled={deleteWorkspaceMutation.isPending}
-            >
-              {deleteWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Xóa workspace
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {canManageWorkspace && (
+        <Dialog open={deleteWorkspaceDialogOpen} onOpenChange={setDeleteWorkspaceDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xóa workspace</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc muốn xóa workspace "{workspaceQuery.data.name}" không?
+                Hành động này không thể hoàn tác và sẽ xóa toàn bộ project, goals, tasks, comment, team và invite liên quan.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>Hủy</Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteWorkspaceMutation.mutate()}
+                disabled={deleteWorkspaceMutation.isPending}
+              >
+                {deleteWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                Xóa workspace
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

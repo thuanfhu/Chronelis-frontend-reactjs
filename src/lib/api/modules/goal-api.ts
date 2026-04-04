@@ -13,6 +13,8 @@ export interface CreateGoalPayload {
   goalType: GoalType
   status?: GoalStatusType
   progressPercent?: number
+  managerUserId?: string
+  managerTeamId?: number
 }
 
 export interface UpdateGoalPayload {
@@ -20,6 +22,8 @@ export interface UpdateGoalPayload {
   goalType?: GoalType
   status?: GoalStatusType
   progressPercent?: number
+  managerUserId?: string
+  managerTeamId?: number
 }
 
 export const goalApi = {

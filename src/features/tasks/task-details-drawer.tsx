@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X, CornerDownRight,
+  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X, CornerDownRight, NotebookText,
 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -189,9 +189,6 @@ export function TaskDetailsDrawer() {
   const updateTaskMutation = useMutation({
     mutationFn: () => {
       if (!taskQuery.data) throw new Error('Task không tồn tại')
-      if (!currentUserId || taskQuery.data.createdBy.userId !== currentUserId) {
-        throw new Error('Bạn không có quyền chỉnh sửa task này')
-      }
 
       return taskApi.update(taskId, {
         title: (editTitle ?? taskQuery.data.title).trim(),
@@ -318,7 +315,7 @@ export function TaskDetailsDrawer() {
   }, new Map<number, TaskComment[]>())
 
   const task = taskQuery.data
-  const canManageTask = Boolean(task && currentUserId && task.createdBy.userId === currentUserId)
+  const canManageTask = Boolean(task && currentUserId)
   const isEditingTask = taskDrawerMode === 'edit' && canManageTask
 
   const enterEditMode = () => {
@@ -343,6 +340,20 @@ export function TaskDetailsDrawer() {
     if (!Number.isFinite(workspaceId) || !Number.isFinite(resolvedProjectId)) return
 
     navigate(`/workspaces/${workspaceId}/projects/${resolvedProjectId}/pomodoro/${task.id}`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
+    handleCloseDrawer()
+  }
+
+  const openNotes = () => {
+    if (!task) return
+
+    const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
+    if (!Number.isFinite(workspaceId) || !Number.isFinite(resolvedProjectId)) return
+
+    navigate(`/workspaces/${workspaceId}/projects/${resolvedProjectId}/tasks/${task.id}/notes`, {
       state: {
         returnTo: `${location.pathname}${location.search}`,
       },
@@ -481,6 +492,10 @@ export function TaskDetailsDrawer() {
                         <Button variant="outline" className="gap-2" onClick={openPomodoro}>
                           <Timer className="size-4" />
                           Pomodoro
+                        </Button>
+                        <Button variant="outline" className="gap-2" onClick={openNotes}>
+                          <NotebookText className="size-4" />
+                          Notes
                         </Button>
                       </div>
 
