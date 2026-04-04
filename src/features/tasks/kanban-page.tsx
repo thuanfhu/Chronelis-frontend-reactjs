@@ -46,11 +46,33 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
+import {
+  applyTaskMove,
+  applyTaskReorder,
+  patchProjectTaskQueries,
+  restoreProjectTaskQueries,
+  snapshotProjectTaskQueries,
+} from '@/lib/tasks/optimistic-task-cache'
 import type { Task, TaskPriorityType, TaskStatus } from '@/types/domain'
+
+const PRIORITY_CARD_CLASSNAMES: Record<TaskPriorityType, string> = {
+  URGENT: 'chronelis-task-card chronelis-task-card--urgent',
+  HIGH: 'chronelis-task-card chronelis-task-card--high',
+  MEDIUM: 'chronelis-task-card chronelis-task-card--medium',
+  LOW: 'chronelis-task-card chronelis-task-card--low',
+}
 
 // ─── Sortable Task Card ───
 
-function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+function SortableTaskCard({
+  task,
+  onClick,
+  onContextAction,
+}: {
+  task: Task
+  onClick: () => void
+  onContextAction: () => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `task-${task.id}`,
     data: { type: 'task', task },
@@ -66,31 +88,37 @@ function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md',
+        'group cursor-pointer rounded-lg border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+        PRIORITY_CARD_CLASSNAMES[task.priority],
         isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
       )}
       onClick={onClick}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onContextAction()
+      }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
-        <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
+        <p className="chronelis-task-card__title line-clamp-2 text-sm font-semibold">{task.title}</p>
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-muted-foreground/30 opacity-0 transition-opacity hover:text-muted-foreground group-hover:opacity-100 active:cursor-grabbing"
+          className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-current/40 opacity-0 transition-opacity hover:text-current/70 group-hover:opacity-100 active:cursor-grabbing"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="size-3.5" />
         </button>
       </div>
       {task.description && (
-        <p className="mb-2 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
+        <p className="chronelis-task-card__description mb-2 line-clamp-1 text-xs">{task.description}</p>
       )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+        <div className="chronelis-task-card__meta flex items-center gap-1.5">
           <TaskPriorityBadge priority={task.priority} />
-          <span className="text-[10px] text-muted-foreground">#{task.id}</span>
+          <span className="text-[10px]">#{task.id}</span>
         </div>
-        <span className="max-w-20 truncate text-[10px] text-muted-foreground">
+        <span className="chronelis-task-card__meta max-w-20 truncate text-[10px]">
           {task.assignee?.firstName ?? 'Unassigned'}
         </span>
       </div>
@@ -120,11 +148,13 @@ function KanbanColumn({
   status,
   tasks,
   onTaskClick,
+  onTaskContextMenu,
   isOver,
 }: {
   status: TaskStatus
   tasks: Task[]
   onTaskClick: (taskId: number) => void
+  onTaskContextMenu: (taskId: number) => void
   isOver?: boolean
 }) {
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
@@ -152,9 +182,14 @@ function KanbanColumn({
       {/* Column body */}
       <ScrollArea className="flex-1">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          <div className="min-h-[4rem] space-y-2 p-2">
+          <div className="min-h-16 space-y-2 p-2">
             {tasks.map((task) => (
-              <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} />
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                onClick={() => onTaskClick(task.id)}
+                onContextAction={() => onTaskContextMenu(task.id)}
+              />
             ))}
           </div>
         </SortableContext>
@@ -170,7 +205,7 @@ export function KanbanPage() {
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
-  const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
+  const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
 
@@ -246,18 +281,60 @@ export function KanbanPage() {
     },
   })
 
-  const moveTaskMutation = useMutation({
-    mutationFn: ({ taskId, statusId }: { taskId: number; statusId: number }) => taskApi.move(taskId, statusId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+  const reorderTaskMutation = useMutation({
+    mutationFn: ({ taskId, targetPosition }: { taskId: number; statusId: number; targetPosition: number }) =>
+      taskApi.reorder(taskId, targetPosition),
+    onMutate: async ({ taskId, statusId, targetPosition }: { taskId: number; statusId: number; targetPosition: number }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      patchProjectTaskQueries(queryClient, projectId, (tasks) =>
+        applyTaskReorder(tasks, {
+          taskId,
+          statusId,
+          targetPosition,
+        }),
+      )
+
+      return { snapshot }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+      toast.error('Di chuyển task thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
     },
   })
 
-  const reorderTaskMutation = useMutation({
-    mutationFn: ({ taskId, targetPosition }: { taskId: number; targetPosition: number }) =>
-      taskApi.reorder(taskId, targetPosition),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+  const moveTaskMutation = useMutation({
+    mutationFn: ({ taskId, statusId, targetPosition }: { taskId: number; statusId: number; targetPosition?: number }) =>
+      taskApi.move(taskId, statusId, targetPosition),
+    onMutate: async ({ taskId, statusId, targetPosition }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      patchProjectTaskQueries(queryClient, projectId, (tasks) =>
+        applyTaskMove(tasks, {
+          taskId,
+          targetStatusId: statusId,
+          targetPosition,
+          statuses: statusesQuery.data ?? [],
+        }),
+      )
+
+      return { snapshot }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+      toast.error('Di chuyển task thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
     },
   })
 
@@ -324,10 +401,18 @@ export function KanbanPage() {
 
     if (targetStatusId !== draggedTask.status.id) {
       // Cross-column move
-      moveTaskMutation.mutate({ taskId: draggedTask.id, statusId: targetStatusId })
+      moveTaskMutation.mutate({
+        taskId: draggedTask.id,
+        statusId: targetStatusId,
+        targetPosition,
+      })
     } else if (targetPosition != null && active.id !== over.id) {
       // Same column reorder
-      reorderTaskMutation.mutate({ taskId: draggedTask.id, targetPosition })
+      reorderTaskMutation.mutate({
+        taskId: draggedTask.id,
+        statusId: draggedTask.status.id,
+        targetPosition,
+      })
     }
   }
 
@@ -479,7 +564,8 @@ export function KanbanPage() {
                   key={status.id}
                   status={status}
                   tasks={columnTasks}
-                  onTaskClick={(taskId) => setTaskDrawerTaskId(taskId)}
+                  onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
+                  onTaskContextMenu={(taskId) => openTaskDrawer(taskId, 'edit')}
                   isOver={overColumnId === status.id}
                 />
               )

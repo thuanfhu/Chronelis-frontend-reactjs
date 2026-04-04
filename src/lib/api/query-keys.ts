@@ -55,7 +55,4 @@ export const queryKeys = {
     byWorkspace: (workspaceId: number) => ['workspace-invites', 'workspace', workspaceId] as const,
     validate: (code: string) => ['workspace-invites', 'validate', code] as const,
   },
-  checkItems: {
-    byTask: (taskId: number) => ['task-check-items', 'task', taskId] as const,
-  },
 }

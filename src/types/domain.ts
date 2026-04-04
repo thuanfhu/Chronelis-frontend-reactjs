@@ -151,8 +151,6 @@ export interface Task {
   boardPosition: number
   isCompleted: boolean
   completedAt?: string
-  checkItemCount: number
-  checkItemDoneCount: number
   createdAt: string
   updatedAt: string
 }
@@ -223,16 +221,6 @@ export interface TaskType {
   description?: string
   color?: string
   icon?: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface TaskCheckItem {
-  id: number
-  taskId: number
-  title: string
-  isChecked: boolean
-  position: number
   createdAt: string
   updatedAt: string
 }

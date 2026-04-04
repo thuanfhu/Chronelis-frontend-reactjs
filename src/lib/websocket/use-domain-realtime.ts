@@ -35,6 +35,7 @@ export function useProjectRealtime(workspaceId: number | null, projectId: number
     queryClient.invalidateQueries({ queryKey: queryKeys.statuses.byProject(projectId) })
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
     queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task'] })
   }, [projectId, queryClient, workspaceId])
 
   const projectDestination = workspaceId && projectId ? `/public/workspaces/${workspaceId}/projects/${projectId}/events` : null

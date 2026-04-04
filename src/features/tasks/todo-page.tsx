@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar, Target, GripVertical,
+  Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar, Target, GripVertical, Timer,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -34,6 +34,13 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
+import {
+  applyTaskCompletion,
+  applyTaskReorder,
+  patchProjectTaskQueries,
+  restoreProjectTaskQueries,
+  snapshotProjectTaskQueries,
+} from '@/lib/tasks/optimistic-task-cache'
 import type { Task } from '@/types/domain'
 
 type GroupMode = 'none' | 'day' | 'goal'
@@ -92,11 +99,13 @@ function buildGoalGroups(tasks: Task[]): Map<string, { label: string; tasks: Tas
 }
 
 export function TodoPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
-  const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
+  const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   useProjectRealtime(workspaceId, projectId)
 
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -155,16 +164,55 @@ export function TodoPage() {
   const toggleCompletionMutation = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: number; isCompleted: boolean }) =>
       taskApi.updateCompletion(taskId, isCompleted),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
+    onMutate: async ({ taskId, isCompleted }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      patchProjectTaskQueries(queryClient, projectId, (tasks) =>
+        applyTaskCompletion(tasks, {
+          taskId,
+          isCompleted,
+        }),
+      )
+
+      return { snapshot }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+      toast.error('Cập nhật thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
     },
   })
 
   const reorderMutation = useMutation({
-    mutationFn: ({ taskId, targetPosition }: { taskId: number; targetPosition: number }) =>
+    mutationFn: ({ taskId, targetPosition }: { taskId: number; statusId: number; targetPosition: number }) =>
       taskApi.reorder(taskId, targetPosition),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
+    onMutate: async ({ taskId, statusId, targetPosition }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      patchProjectTaskQueries(queryClient, projectId, (tasks) =>
+        applyTaskReorder(tasks, {
+          taskId,
+          statusId,
+          targetPosition,
+        }),
+      )
+
+      return { snapshot }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+      toast.error('Sắp xếp task thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
     },
   })
 
@@ -184,7 +232,11 @@ export function TodoPage() {
       if (overIndex >= 0) {
         const draggedTask = active.data.current?.task as Task
         if (draggedTask) {
-          reorderMutation.mutate({ taskId: draggedTask.id, targetPosition: overIndex })
+          reorderMutation.mutate({
+            taskId: draggedTask.id,
+            statusId: draggedTask.status.id,
+            targetPosition: overIndex,
+          })
         }
       }
     }
@@ -196,10 +248,20 @@ export function TodoPage() {
   const pendingTasks = allTasks.filter((t) => !t.isCompleted)
   const completedTasks = allTasks.filter((t) => t.isCompleted)
 
-  const pendingTaskIds = useMemo(() => pendingTasks.map((t) => `todo-${t.id}`), [pendingTasks])
+  const pendingTaskIds = pendingTasks.map((t) => `todo-${t.id}`)
 
   const dayGroups = groupMode === 'day' ? buildDayGroups(pendingTasks) : null
   const goalGroups = groupMode === 'goal' ? buildGoalGroups(pendingTasks) : null
+
+  const openTaskPomodoro = (taskId: number) => {
+    if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
+
+    navigate(`/workspaces/${workspaceId}/projects/${projectId}/pomodoro/${taskId}`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
+  }
 
   return (
     <div className="space-y-5">
@@ -289,7 +351,9 @@ export function TodoPage() {
                       key={task.id}
                       task={task}
                       onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
-                      onClick={() => setTaskDrawerTaskId(task.id)}
+                      onClick={() => openTaskDrawer(task.id, 'view')}
+                      onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                      onPomodoro={() => openTaskPomodoro(task.id)}
                     />
                   ))}
                 </div>
@@ -311,7 +375,9 @@ export function TodoPage() {
                     key={task.id}
                     task={task}
                     onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
-                    onClick={() => setTaskDrawerTaskId(task.id)}
+                    onClick={() => openTaskDrawer(task.id, 'view')}
+                    onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                    onPomodoro={() => openTaskPomodoro(task.id)}
                   />
                 ))}
               </div>
@@ -332,7 +398,9 @@ export function TodoPage() {
                   key={task.id}
                   task={task}
                   onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
-                  onClick={() => setTaskDrawerTaskId(task.id)}
+                  onClick={() => openTaskDrawer(task.id, 'view')}
+                  onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                  onPomodoro={() => openTaskPomodoro(task.id)}
                 />
               ))}
             </div>
@@ -371,7 +439,9 @@ export function TodoPage() {
                     key={task.id}
                     task={task}
                     onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: false })}
-                    onClick={() => setTaskDrawerTaskId(task.id)}
+                    onClick={() => openTaskDrawer(task.id, 'view')}
+                    onContextAction={() => openTaskDrawer(task.id, 'edit')}
+                    onPomodoro={() => openTaskPomodoro(task.id)}
                   />
                 ))}
               </motion.div>
@@ -383,7 +453,19 @@ export function TodoPage() {
   )
 }
 
-function SortableTodoItem({ task, onToggle, onClick }: { task: Task; onToggle: () => void; onClick: () => void }) {
+function SortableTodoItem({
+  task,
+  onToggle,
+  onClick,
+  onContextAction,
+  onPomodoro,
+}: {
+  task: Task
+  onToggle: () => void
+  onClick: () => void
+  onContextAction: () => void
+  onPomodoro: () => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `todo-${task.id}`,
     data: { type: 'task', task },
@@ -403,6 +485,11 @@ function SortableTodoItem({ task, onToggle, onClick }: { task: Task; onToggle: (
         task.isCompleted && 'opacity-60',
         isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
       )}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onContextAction()
+      }}
     >
       <button
         {...attributes}
@@ -433,19 +520,47 @@ function SortableTodoItem({ task, onToggle, onClick }: { task: Task; onToggle: (
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation()
+            onPomodoro()
+          }}
+          aria-label="Mở Pomodoro"
+        >
+          <Timer className="size-3.5" />
+        </button>
         <TaskPriorityBadge priority={task.priority} />
       </div>
     </div>
   )
 }
 
-function TodoItem({ task, onToggle, onClick }: { task: Task; onToggle: () => void; onClick: () => void }) {
+function TodoItem({
+  task,
+  onToggle,
+  onClick,
+  onContextAction,
+  onPomodoro,
+}: {
+  task: Task
+  onToggle: () => void
+  onClick: () => void
+  onContextAction: () => void
+  onPomodoro: () => void
+}) {
   return (
     <div
       className={cn(
         'group flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-all hover:border-primary/30 hover:shadow-sm',
         task.isCompleted && 'opacity-60',
       )}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onContextAction()
+      }}
     >
       <button
         onClick={(e) => { e.stopPropagation(); onToggle() }}
@@ -471,11 +586,17 @@ function TodoItem({ task, onToggle, onClick }: { task: Task; onToggle: () => voi
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {task.checkItemCount > 0 && (
-          <span className="text-[10px] text-muted-foreground">
-            {task.checkItemDoneCount}/{task.checkItemCount}
-          </span>
-        )}
+        <button
+          type="button"
+          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation()
+            onPomodoro()
+          }}
+          aria-label="Mở Pomodoro"
+        >
+          <Timer className="size-3.5" />
+        </button>
         <TaskPriorityBadge priority={task.priority} />
         {task.assignee && (
           <span className="max-w-16 truncate text-[10px] text-muted-foreground">

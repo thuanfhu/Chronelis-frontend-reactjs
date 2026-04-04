@@ -1,0 +1,467 @@
+/* Sliding auth experience inspired by sefyudem/Sliding-Sign-In-Sign-Up-Form, adapted for Chronelis */
+
+.chronelis-auth-page {
+  position: relative;
+  width: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 38%),
+    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 42%),
+    linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 94%, var(--primary) 6%));
+}
+
+.chronelis-auth-page::before {
+  content: '';
+  position: absolute;
+  width: min(130vw, 1500px);
+  height: min(130vw, 1500px);
+  top: -8%;
+  right: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: linear-gradient(-35deg,
+    color-mix(in oklab, var(--primary) 88%, white 12%) 0%,
+    color-mix(in oklab, var(--accent) 84%, white 16%) 100%);
+  transition: 1.2s ease-in-out;
+  z-index: 3;
+}
+
+.chronelis-auth-forms-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+}
+
+.chronelis-auth-signin-signup {
+  position: absolute;
+  top: 50%;
+  left: 75%;
+  width: min(52%, 760px);
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: 1fr;
+  transition: 1s 0.45s ease-in-out;
+  z-index: 7;
+}
+
+.chronelis-auth-form {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 4.2rem;
+  transition: all 0.25s 0.6s;
+}
+
+.chronelis-auth-sign-up-form {
+  opacity: 0;
+  z-index: 1;
+}
+
+.chronelis-auth-sign-in-form {
+  z-index: 2;
+}
+
+.chronelis-auth-title {
+  font-size: clamp(1.8rem, 2.4vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: color-mix(in oklab, var(--foreground) 90%, transparent);
+}
+
+.chronelis-auth-subtitle {
+  margin-top: 0.55rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+}
+
+.chronelis-auth-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.chronelis-auth-input-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  align-items: center;
+  width: 100%;
+  min-height: 3rem;
+  margin-top: 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  box-shadow: 0 2px 6px color-mix(in oklab, var(--foreground) 6%, transparent);
+  overflow: hidden;
+}
+
+.chronelis-auth-input-icon {
+  width: 1rem;
+  height: 1rem;
+  justify-self: center;
+  color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+}
+
+.chronelis-auth-input-field input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 0.95rem 0 0;
+  font-size: 0.93rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+}
+
+.chronelis-auth-input-field input::placeholder {
+  color: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
+}
+
+.chronelis-auth-form-meta {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+.chronelis-auth-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--primary) 80%, var(--foreground) 20%);
+  text-decoration: none;
+}
+
+.chronelis-auth-link:hover {
+  text-decoration: underline;
+}
+
+.chronelis-auth-error {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--destructive);
+}
+
+.chronelis-auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  width: 10.25rem;
+  height: 2.85rem;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.chronelis-auth-btn:hover {
+  transform: translateY(-1px);
+}
+
+.chronelis-auth-btn--solid {
+  color: #fff;
+  background: linear-gradient(135deg,
+    color-mix(in oklab, var(--primary) 88%, white 12%),
+    color-mix(in oklab, var(--accent) 88%, white 12%));
+}
+
+.chronelis-auth-btn--solid:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.chronelis-auth-btn--ghost {
+  margin-top: 0.8rem;
+  border: 1px solid color-mix(in oklab, #fff 76%, transparent);
+  color: #fff;
+  background: transparent;
+}
+
+.chronelis-auth-btn-spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  animation: spin 1s linear infinite;
+}
+
+.chronelis-auth-panels-container {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  z-index: 6;
+}
+
+.chronelis-auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #fff;
+}
+
+.chronelis-auth-left-panel {
+  align-items: flex-start;
+  padding: 3.5rem 11% 3rem 12%;
+  pointer-events: all;
+}
+
+.chronelis-auth-right-panel {
+  align-items: flex-end;
+  padding: 3.5rem 12% 3rem 11%;
+  pointer-events: none;
+}
+
+.chronelis-auth-panel-content {
+  max-width: 24rem;
+  text-align: center;
+  transform: translateX(0);
+  transition: transform 0.95s ease-in-out;
+}
+
+.chronelis-auth-right-panel .chronelis-auth-panel-content {
+  transform: translateX(900px);
+}
+
+.chronelis-auth-panel-content h3 {
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.chronelis-auth-panel-content p {
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, #fff 82%, transparent);
+}
+
+.chronelis-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+}
+
+.chronelis-auth-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.68rem;
+  background: color-mix(in oklab, #fff 22%, transparent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+
+.chronelis-auth-brand-text {
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.chronelis-auth-brand--desktop {
+  margin-bottom: 1rem;
+}
+
+.chronelis-auth-brand--mobile {
+  display: none;
+  margin-bottom: 0.9rem;
+}
+
+/* Sliding state */
+.chronelis-auth-page.sign-up-mode::before {
+  transform: translate(100%, -50%);
+  right: 52%;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
+  left: 25%;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-sign-in-form {
+  opacity: 0;
+  z-index: 1;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-sign-up-form {
+  opacity: 1;
+  z-index: 2;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel {
+  pointer-events: none;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-right-panel {
+  pointer-events: all;
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel .chronelis-auth-panel-content {
+  transform: translateX(-900px);
+}
+
+.chronelis-auth-page.sign-up-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
+  transform: translateX(0);
+}
+
+/* Dark mode refinement */
+.dark .chronelis-auth-page {
+  background:
+    radial-gradient(circle at 6% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 38%),
+    linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 90%, black 10%));
+}
+
+.dark .chronelis-auth-page::before {
+  background: linear-gradient(-35deg,
+    color-mix(in oklab, var(--primary) 74%, black 26%) 0%,
+    color-mix(in oklab, var(--accent) 68%, black 32%) 100%);
+}
+
+.dark .chronelis-auth-input-field {
+  background: color-mix(in oklab, var(--card) 86%, black 14%);
+  border-color: color-mix(in oklab, var(--border) 92%, transparent);
+  box-shadow: 0 2px 8px color-mix(in oklab, black 38%, transparent);
+}
+
+.dark .chronelis-auth-input-field input {
+  color: color-mix(in oklab, var(--foreground) 94%, transparent);
+}
+
+.dark .chronelis-auth-input-field input::placeholder {
+  color: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .chronelis-auth-page {
+    min-height: 860px;
+  }
+
+  .chronelis-auth-signin-signup {
+    width: 100%;
+    left: 50%;
+    top: 96%;
+    transform: translate(-50%, -100%);
+    transition: 1s 0.7s ease-in-out;
+  }
+
+  .chronelis-auth-form {
+    padding: 0 1.6rem;
+  }
+
+  .chronelis-auth-panels-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 2fr 1fr;
+  }
+
+  .chronelis-auth-panel {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 1.35rem 7%;
+    text-align: center;
+  }
+
+  .chronelis-auth-left-panel {
+    grid-row: 1 / 2;
+  }
+
+  .chronelis-auth-right-panel {
+    grid-row: 3 / 4;
+  }
+
+  .chronelis-auth-panel-content {
+    max-width: 26rem;
+  }
+
+  .chronelis-auth-page::before {
+    top: initial;
+    right: initial;
+    left: 30%;
+    bottom: 68%;
+    width: 1700px;
+    height: 1700px;
+    transform: translateX(-50%);
+    transition: 1.6s ease-in-out;
+  }
+
+  .chronelis-auth-page.sign-up-mode::before {
+    left: 50%;
+    bottom: 30%;
+    transform: translate(-50%, 100%);
+  }
+
+  .chronelis-auth-right-panel .chronelis-auth-panel-content {
+    transform: translateY(320px);
+  }
+
+  .chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel .chronelis-auth-panel-content {
+    transform: translateY(-320px);
+  }
+
+  .chronelis-auth-page.sign-up-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
+    transform: translateY(0);
+  }
+
+  .chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
+    top: 5%;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .chronelis-auth-page {
+    min-height: 100dvh;
+    padding: 1rem;
+  }
+
+  .chronelis-auth-form {
+    padding: 0 0.25rem;
+  }
+
+  .chronelis-auth-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .chronelis-auth-panel-content p {
+    font-size: 0.79rem;
+    line-height: 1.42;
+  }
+
+  .chronelis-auth-panel-content h3 {
+    font-size: 1.06rem;
+  }
+
+  .chronelis-auth-brand--desktop {
+    display: none;
+  }
+
+  .chronelis-auth-brand--mobile {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+
+  .chronelis-auth-page::before {
+    width: 1380px;
+    height: 1380px;
+    bottom: 71%;
+    left: 50%;
+  }
+
+  .chronelis-auth-page.sign-up-mode::before {
+    bottom: 28%;
+  }
+}

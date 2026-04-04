@@ -80,13 +80,27 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           'fixed inset-y-0 left-0 z-50 flex h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 ease-out',
           'lg:static lg:z-auto',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          collapsed ? 'lg:w-17' : 'w-68',
+          collapsed ? 'lg:w-16' : 'w-68',
         )}
       >
         {/* ─── Brand header ─── */}
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-          <Link to="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-primary/80 shadow-sm">
+        <div
+          className={cn(
+            'relative flex h-14 shrink-0 items-center border-b transition-colors',
+            collapsed
+              ? 'justify-center border-border/60 bg-background/80 px-1 backdrop-blur-lg'
+              : 'justify-between border-sidebar-border bg-sidebar px-3',
+          )}
+        >
+          <Link to="/dashboard" className={cn('flex items-center overflow-hidden', !collapsed && 'gap-2.5')}>
+            <div
+              className={cn(
+                'flex shrink-0 items-center justify-center transition-all',
+                collapsed
+                  ? 'size-9 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/70 shadow-none'
+                  : 'size-8 rounded-lg bg-linear-to-br from-primary to-primary/80 shadow-sm',
+              )}
+            >
               <span className="text-xs font-bold text-primary-foreground">C</span>
             </div>
             {!collapsed && (
@@ -100,16 +114,43 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               </motion.span>
             )}
           </Link>
-          <div className="flex items-center gap-0.5">
+
+          {!collapsed && (
+            <div className="hidden items-center gap-0.5 lg:flex">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              >
+                <ChevronsLeft className="size-4" />
+              </Button>
+            </div>
+          )}
+
+          {collapsed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute -right-3 top-1/2 hidden size-6 -translate-y-1/2 rounded-full border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground lg:flex"
+                  onClick={() => setSidebarCollapsed(false)}
+                >
+                  <ChevronsLeft className="size-3.5 rotate-180" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Mở rộng sidebar</TooltipContent>
+            </Tooltip>
+          )}
+
+          <div className="absolute right-1 flex items-center lg:hidden">
             <Button
               variant="ghost"
               size="icon"
-              className="hidden size-7 text-muted-foreground hover:text-foreground lg:flex"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="size-7"
+              onClick={() => setSidebarOpen(false)}
             >
-              <ChevronsLeft className={cn('size-4 transition-transform duration-300', collapsed && 'rotate-180')} />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-7 lg:hidden" onClick={() => setSidebarOpen(false)}>
               <Menu className="size-4" />
             </Button>
           </div>

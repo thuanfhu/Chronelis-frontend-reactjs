@@ -28,6 +28,15 @@ import { taskApi } from '@/lib/api/modules/task-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import {
+  applyScheduleUpdate,
+  patchProjectCalendarQueries,
+  patchTaskScheduleQueries,
+  restoreProjectCalendarQueries,
+  restoreTaskScheduleQueries,
+  snapshotProjectCalendarQueries,
+  snapshotTaskScheduleQueries,
+} from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
@@ -102,10 +111,10 @@ function toDateKey(date: Date): string {
 }
 
 const PRIORITY_EVENT_CLASSNAMES: Record<TaskPriorityType, string[]> = {
-  URGENT: ['!bg-destructive/15', '!border-destructive/35', '!text-destructive'],
-  HIGH: ['!bg-orange-500/10', '!border-orange-500/30', '!text-orange-700', 'dark:!text-orange-400'],
-  MEDIUM: ['!bg-primary/10', '!border-primary/30', '!text-primary'],
-  LOW: ['!bg-muted', '!border-muted-foreground/20', '!text-muted-foreground'],
+  URGENT: ['chronelis-event', 'chronelis-event--urgent'],
+  HIGH: ['chronelis-event', 'chronelis-event--high'],
+  MEDIUM: ['chronelis-event', 'chronelis-event--medium'],
+  LOW: ['chronelis-event', 'chronelis-event--low'],
 }
 
 // ─── Types ───
@@ -143,6 +152,13 @@ interface CalendarEventInteractionArg {
   revert?: () => void
   jsEvent?: {
     preventDefault?: () => void
+  }
+}
+
+interface CalendarEventMountArg {
+  el: HTMLElement
+  event: {
+    extendedProps: Record<string, unknown>
   }
 }
 
@@ -238,7 +254,7 @@ export function CalendarPage() {
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
-  const setTaskDrawerTaskId = useUiStore((s) => s.setTaskDrawerTaskId)
+  const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const calendarRef = useRef<FullCalendar | null>(null)
   const calendarMotionControls = useAnimationControls()
 
@@ -318,19 +334,60 @@ export function CalendarPage() {
 
       void invalidateTaskAndCalendarQueries(task.id)
       toast.success('Tạo task thành công')
-      setTaskDrawerTaskId(task.id)
+      openTaskDrawer(task.id, 'view')
     },
     onError: (err: Error) => toast.error('Tạo task thất bại', { description: err.message }),
   })
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; start: Date; end: Date }) =>
+    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) =>
       taskScheduleApi.update(scheduleId, {
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
       }),
-    onSuccess: async () => {
-      await invalidateTaskAndCalendarQueries()
+    onMutate: async ({ scheduleId, taskId, start, end }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'task', taskId] }),
+      ])
+
+      const scheduledStart = toApiLocalDateTime(start)
+      const scheduledEnd = toApiLocalDateTime(end)
+      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, taskId)
+
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) =>
+        applyScheduleUpdate(schedules, {
+          scheduleId,
+          scheduledStart,
+          scheduledEnd,
+        }),
+      )
+
+      patchTaskScheduleQueries(queryClient, taskId, (schedules) =>
+        applyScheduleUpdate(schedules, {
+          scheduleId,
+          scheduledStart,
+          scheduledEnd,
+        }),
+      )
+
+      return {
+        projectCalendarSnapshot,
+        taskScheduleSnapshot,
+      }
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.projectCalendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
+      }
+      if (context?.taskScheduleSnapshot) {
+        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
+      }
+      toast.error('Cập nhật lịch thất bại', { description: error.message })
+    },
+    onSettled: async (_data, _error, variables) => {
+      await invalidateTaskAndCalendarQueries(variables.taskId)
     },
   })
 
@@ -433,7 +490,7 @@ export function CalendarPage() {
     arg.jsEvent?.preventDefault?.()
     const taskId = Number(arg.event.extendedProps.taskId)
     if (Number.isFinite(taskId)) {
-      setTaskDrawerTaskId(taskId)
+      openTaskDrawer(taskId, 'view')
     }
   }
 
@@ -441,7 +498,7 @@ export function CalendarPage() {
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
     const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !range) {
+    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range) {
       arg.revert?.()
       return
     }
@@ -449,17 +506,12 @@ export function CalendarPage() {
     try {
       await updateScheduleMutation.mutateAsync({
         scheduleId,
+        taskId,
         start: range.start,
         end: range.end,
       })
-      if (Number.isFinite(taskId)) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) })
-      }
-      toast.success('Cập nhật lịch thành công')
-    } catch (error) {
+    } catch {
       arg.revert?.()
-      const message = error instanceof Error ? error.message : 'Không thể cập nhật lịch'
-      toast.error('Cập nhật lịch thất bại', { description: message })
     }
   }
 
@@ -467,7 +519,7 @@ export function CalendarPage() {
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
     const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !range) {
+    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range) {
       arg.revert?.()
       return
     }
@@ -475,17 +527,12 @@ export function CalendarPage() {
     try {
       await updateScheduleMutation.mutateAsync({
         scheduleId,
+        taskId,
         start: range.start,
         end: range.end,
       })
-      if (Number.isFinite(taskId)) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) })
-      }
-      toast.success('Cập nhật thời lượng thành công')
-    } catch (error) {
+    } catch {
       arg.revert?.()
-      const message = error instanceof Error ? error.message : 'Không thể cập nhật thời lượng'
-      toast.error('Cập nhật thời lượng thất bại', { description: message })
     }
   }
 
@@ -640,6 +687,15 @@ export function CalendarPage() {
               eventClick={handleEventClick}
               eventDrop={handleEventDrop}
               eventResize={handleEventResize}
+              eventDidMount={(arg: CalendarEventMountArg) => {
+                arg.el.oncontextmenu = (event) => {
+                  event.preventDefault()
+                  const taskId = Number(arg.event.extendedProps.taskId)
+                  if (Number.isFinite(taskId)) {
+                    openTaskDrawer(taskId, 'edit')
+                  }
+                }
+              }}
               viewDidMount={() => {
                 requestAnimationFrame(() => calendarRef.current?.getApi().updateSize())
               }}
