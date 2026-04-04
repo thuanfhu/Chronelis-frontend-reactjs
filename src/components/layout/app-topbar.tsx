@@ -112,7 +112,7 @@ export function AppTopbar() {
 
   return (
     <>
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-lg">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-lg dark:border-border/85 dark:bg-background/92">
       {/* Mobile menu toggle */}
       <Button variant="ghost" size="icon" className="size-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
         <Menu className="size-4" />
@@ -122,7 +122,7 @@ export function AppTopbar() {
       <div className="flex flex-1 items-center gap-3">
         <button
           onClick={() => setCommandPaletteOpen(true)}
-          className="hidden items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted sm:flex"
+          className="hidden items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75 sm:flex"
         >
           <Search className="size-3.5" />
           <span>Tìm kiếm...</span>
@@ -135,7 +135,7 @@ export function AppTopbar() {
         {/* Workspace selector dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted">
+            <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75">
               <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
                 {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
               </div>
@@ -217,7 +217,7 @@ export function AppTopbar() {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted">
+            <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
               <Avatar className="size-7">
                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials}</AvatarFallback>
               </Avatar>

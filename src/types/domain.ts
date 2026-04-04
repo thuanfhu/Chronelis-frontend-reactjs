@@ -24,11 +24,13 @@ export type ReferenceType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT
 export type ActivityActionType =
   | 'WORKSPACE_CREATED'
   | 'WORKSPACE_UPDATED'
+  | 'WORKSPACE_DELETED'
   | 'MEMBER_ADDED'
   | 'MEMBER_REMOVED'
   | 'MEMBER_ROLE_UPDATED'
   | 'PROJECT_CREATED'
   | 'PROJECT_UPDATED'
+  | 'PROJECT_DELETED'
   | 'GOAL_CREATED'
   | 'GOAL_UPDATED'
   | 'GOAL_DELETED'
@@ -169,6 +171,7 @@ export interface TaskSchedule {
 export interface TaskComment {
   id: number
   taskId: number
+  parentCommentId?: number | null
   user: UserSummary
   content: string
   createdAt: string

@@ -1,4 +1,4 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { WorkspaceInvite, WorkspaceMemberRoleType } from '@/types/domain'
 
@@ -26,7 +26,7 @@ export const workspaceInviteApi = {
 
   async revoke(inviteId: number) {
     const response = await http.patch<ApiResponse<void>>(`/workspace-invites/${inviteId}/revoke`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async validate(inviteCode: string) {
@@ -36,6 +36,6 @@ export const workspaceInviteApi = {
 
   async join(payload: JoinByInvitePayload) {
     const response = await http.post<ApiResponse<void>>('/workspace-invites/join', payload)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

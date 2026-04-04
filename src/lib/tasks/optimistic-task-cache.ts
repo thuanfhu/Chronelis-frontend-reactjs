@@ -5,6 +5,7 @@ type TaskPage = PageResult<Task>
 type SchedulePage = PageResult<TaskSchedule>
 
 export type TaskProjectSnapshot = Array<[QueryKey, TaskPage | undefined]>
+export type GoalTaskSnapshot = Array<[QueryKey, TaskPage | undefined]>
 export type ProjectCalendarSnapshot = Array<[QueryKey, SchedulePage | undefined]>
 export type TaskScheduleSnapshot = Array<[QueryKey, TaskSchedule[] | undefined]>
 
@@ -143,11 +144,25 @@ export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Ta
   })
 }
 
+export function applyTaskDelete(tasks: Task[], taskId: number): Task[] {
+  return tasks.filter((task) => task.id !== taskId)
+}
+
 export function snapshotProjectTaskQueries(queryClient: QueryClient, projectId: number): TaskProjectSnapshot {
   return queryClient.getQueriesData<TaskPage>({ queryKey: ['tasks', 'project', projectId] })
 }
 
 export function restoreProjectTaskQueries(queryClient: QueryClient, snapshot: TaskProjectSnapshot): void {
+  for (const [queryKey, data] of snapshot) {
+    queryClient.setQueryData(queryKey, data)
+  }
+}
+
+export function snapshotGoalTaskQueries(queryClient: QueryClient): GoalTaskSnapshot {
+  return queryClient.getQueriesData<TaskPage>({ queryKey: ['tasks', 'goal'] })
+}
+
+export function restoreGoalTaskQueries(queryClient: QueryClient, snapshot: GoalTaskSnapshot): void {
   for (const [queryKey, data] of snapshot) {
     queryClient.setQueryData(queryKey, data)
   }
@@ -160,6 +175,22 @@ export function patchProjectTaskQueries(
 ): void {
   queryClient.setQueriesData<TaskPage>(
     { queryKey: ['tasks', 'project', projectId] },
+    (oldData) => {
+      if (!oldData) return oldData
+      return {
+        ...oldData,
+        content: updater(oldData.content),
+      }
+    },
+  )
+}
+
+export function patchGoalTaskQueries(
+  queryClient: QueryClient,
+  updater: (tasks: Task[]) => Task[],
+): void {
+  queryClient.setQueriesData<TaskPage>(
+    { queryKey: ['tasks', 'goal'] },
     (oldData) => {
       if (!oldData) return oldData
       return {

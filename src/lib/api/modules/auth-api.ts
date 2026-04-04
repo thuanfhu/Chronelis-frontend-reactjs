@@ -1,4 +1,4 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { AuthenticationPayload, UserSecure } from '@/types/domain'
 
@@ -30,7 +30,7 @@ export interface ResetPasswordPayload {
 export const authApi = {
   async register(payload: RegisterPayload) {
     const response = await http.post<ApiResponse<void>>('/auth/register', payload)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async verifyActiveAccount(payload: VerifyPayload) {
@@ -40,7 +40,7 @@ export const authApi = {
 
   async resendVerify(email: string) {
     const response = await http.post<ApiResponse<void>>('/auth/resend-verify', { email })
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async login(payload: LoginPayload) {
@@ -50,7 +50,7 @@ export const authApi = {
 
   async logout() {
     const response = await http.post<ApiResponse<void>>('/auth/logout')
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async getAccount() {
@@ -65,11 +65,11 @@ export const authApi = {
 
   async forgotPassword(email: string) {
     const response = await http.post<ApiResponse<void>>('/auth/forgot-password', { email })
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async resetPassword(payload: ResetPasswordPayload) {
     const response = await http.post<ApiResponse<void>>('/auth/reset-password', payload)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

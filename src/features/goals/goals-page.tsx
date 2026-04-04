@@ -30,7 +30,8 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
-import type { Goal, GoalStatusType, GoalType } from '@/types/domain'
+import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import type { Goal, GoalStatusType, GoalType, PageResult } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
   SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
@@ -120,14 +121,53 @@ export function GoalsPage() {
       if (!deleteGoalId) throw new Error('Goal không tồn tại')
       return goalApi.remove(deleteGoalId)
     },
+    onMutate: async () => {
+      if (!deleteGoalId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['goals', projectId] })
+
+      const goalsSnapshot = queryClient.getQueriesData<PageResult<Goal>>({ queryKey: ['goals', projectId] })
+      queryClient.setQueriesData<PageResult<Goal>>(
+        { queryKey: ['goals', projectId] },
+        (oldData) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            content: oldData.content.filter((goal) => goal.id !== deleteGoalId),
+          }
+        },
+      )
+
+      return {
+        goalsSnapshot,
+      }
+    },
     onSuccess: () => {
       setDeleteDialogOpen(false)
       setDeleteGoalId(null)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
       toast.success('Xóa goal thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.goalsSnapshot) {
+        for (const [queryKey, snapshotData] of context.goalsSnapshot) {
+          queryClient.setQueryData(queryKey, snapshotData)
+        }
+      }
+
+      if (isNotFoundError(error)) {
+        setDeleteDialogOpen(false)
+        setDeleteGoalId(null)
+        toast.success('Goal đã được xóa trước đó')
+        return
+      }
+
       toast.error('Xóa goal thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['goals', projectId] })
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
     },
   })
 

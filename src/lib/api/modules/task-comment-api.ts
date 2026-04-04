@@ -1,10 +1,14 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { TaskComment } from '@/types/domain'
 
 export const taskCommentApi = {
-  async add(taskId: number, content: string) {
-    const response = await http.post<ApiResponse<TaskComment>>('/task-comments', { taskId, content })
+  async add(taskId: number, content: string, parentCommentId?: number) {
+    const response = await http.post<ApiResponse<TaskComment>>('/task-comments', {
+      taskId,
+      content,
+      parentCommentId,
+    })
     return unwrapData(response.data)
   },
 
@@ -15,7 +19,7 @@ export const taskCommentApi = {
 
   async remove(commentId: number) {
     const response = await http.delete<ApiResponse<void>>(`/task-comments/${commentId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async listByTask(taskId: number) {

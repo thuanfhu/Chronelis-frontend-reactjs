@@ -1,4 +1,4 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { TaskStatus } from '@/types/domain'
 
@@ -42,6 +42,6 @@ export const taskStatusApi = {
 
   async remove(statusId: number) {
     const response = await http.delete<ApiResponse<void>>(`/task-statuses/${statusId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

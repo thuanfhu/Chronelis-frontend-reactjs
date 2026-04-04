@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { PageResult, SourceViewType, Task, TaskPriorityType } from '@/types/domain'
 
@@ -89,6 +89,6 @@ export const taskApi = {
 
   async remove(taskId: number) {
     const response = await http.delete<ApiResponse<void>>(`/tasks/${taskId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

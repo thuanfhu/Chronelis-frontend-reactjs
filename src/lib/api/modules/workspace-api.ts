@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { PageResult, Workspace, WorkspaceMember, WorkspaceMemberRoleType } from '@/types/domain'
 
@@ -37,6 +37,11 @@ export const workspaceApi = {
     return unwrapData(response.data)
   },
 
+  async remove(workspaceId: number) {
+    const response = await http.delete<ApiResponse<void>>(`/workspaces/${workspaceId}`)
+    return unwrapVoid(response.data)
+  },
+
   async members(workspaceId: number) {
     const response = await http.get<ApiResponse<WorkspaceMember[]>>(`/workspaces/${workspaceId}/members`)
     return unwrapData(response.data)
@@ -56,6 +61,6 @@ export const workspaceApi = {
 
   async removeMember(workspaceId: number, userId: string) {
     const response = await http.delete<ApiResponse<void>>(`/workspaces/${workspaceId}/members/${userId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

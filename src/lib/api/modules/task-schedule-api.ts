@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { PageResult, TaskSchedule } from '@/types/domain'
 
@@ -31,7 +31,7 @@ export const taskScheduleApi = {
 
   async remove(scheduleId: number) {
     const response = await http.delete<ApiResponse<void>>(`/task-schedules/${scheduleId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async listByTask(taskId: number) {

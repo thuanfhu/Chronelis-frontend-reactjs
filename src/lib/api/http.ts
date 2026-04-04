@@ -47,6 +47,12 @@ export function unwrapData<T>(payload: ApiResponse<T>): T {
   return payload.data
 }
 
+export function unwrapVoid(payload: ApiResponse<unknown>): void {
+  if (!payload.success) {
+    throw new Error('Phan hoi thao tac khong hop le')
+  }
+}
+
 export function unwrapPagination<T>(payload: ApiResponse<unknown>): PaginationResponse<T> {
   if (!payload.success || payload.data === undefined) {
     throw new Error('Du lieu phan trang tra ve khong hop le')

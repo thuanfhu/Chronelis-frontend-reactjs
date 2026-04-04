@@ -34,7 +34,6 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
-import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import {
   applyTaskCompletion,
   applyTaskReorder,
@@ -75,6 +74,27 @@ const DAY_GROUP_LABELS: Record<string, string> = {
   '__week': 'Tuần này',
   '__later': 'Sau đó',
   '__nodate': 'Không có hạn',
+}
+
+const TODO_PRIORITY_BORDER_CLASSNAMES: Record<TaskPriorityType, string> = {
+  LOW: 'border-l-4 border-l-emerald-600 dark:border-l-emerald-400',
+  MEDIUM: 'border-l-4 border-l-blue-600 dark:border-l-blue-400',
+  HIGH: 'border-l-4 border-l-amber-600 dark:border-l-amber-400',
+  URGENT: 'border-l-4 border-l-rose-600 dark:border-l-rose-400',
+}
+
+const TODO_PRIORITY_LABELS: Record<TaskPriorityType, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+}
+
+const TODO_PRIORITY_CHIP_CLASSNAMES: Record<TaskPriorityType, string> = {
+  LOW: 'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-400/35 dark:bg-emerald-500/20 dark:text-emerald-100',
+  MEDIUM: 'border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/20 dark:text-sky-100',
+  HIGH: 'border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/25 dark:text-amber-100',
+  URGENT: 'border-rose-200 bg-rose-100 text-rose-900 dark:border-rose-400/40 dark:bg-rose-500/25 dark:text-rose-100',
 }
 
 const DAY_GROUP_ORDER = ['__overdue', '__today', '__week', '__later', '__nodate']
@@ -536,7 +556,8 @@ function SortableTodoItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
         isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
       )}
@@ -575,9 +596,15 @@ function SortableTodoItem({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <span className={cn(
+          'rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+          TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+        )}>
+          {TODO_PRIORITY_LABELS[task.priority]}
+        </span>
         <button
           type="button"
-          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
           onClick={(event) => {
             event.stopPropagation()
             onPomodoro()
@@ -586,7 +613,6 @@ function SortableTodoItem({
         >
           <Timer className="size-3.5" />
         </button>
-        <TaskPriorityBadge priority={task.priority} />
       </div>
     </div>
   )
@@ -608,7 +634,8 @@ function TodoItem({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
       )}
       onContextMenu={(event) => {
@@ -641,9 +668,20 @@ function TodoItem({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        <span className={cn(
+          'rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+          TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+        )}>
+          {TODO_PRIORITY_LABELS[task.priority]}
+        </span>
+        {task.assignee && (
+          <span className="max-w-16 truncate text-[10px] text-muted-foreground">
+            {task.assignee.firstName}
+          </span>
+        )}
         <button
           type="button"
-          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
           onClick={(event) => {
             event.stopPropagation()
             onPomodoro()
@@ -652,12 +690,6 @@ function TodoItem({
         >
           <Timer className="size-3.5" />
         </button>
-        <TaskPriorityBadge priority={task.priority} />
-        {task.assignee && (
-          <span className="max-w-16 truncate text-[10px] text-muted-foreground">
-            {task.assignee.firstName}
-          </span>
-        )}
       </div>
     </div>
   )

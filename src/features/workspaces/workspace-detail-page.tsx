@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -35,7 +35,8 @@ import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
 import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
-import type { ProjectStatusType, WorkspaceMemberRoleType } from '@/types/domain'
+import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import type { PageResult, Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType } from '@/types/domain'
 
 const roleIcon = {
   OWNER: Crown,
@@ -50,6 +51,7 @@ const roleBadgeVariant = {
 }
 
 export function WorkspaceDetailPage() {
+  const navigate = useNavigate()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
@@ -66,6 +68,9 @@ export function WorkspaceDetailPage() {
   const [editProjectId, setEditProjectId] = useState<number | null>(null)
   const [editProjectName, setEditProjectName] = useState('')
   const [editProjectDescription, setEditProjectDescription] = useState('')
+  const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false)
+  const [deleteProject, setDeleteProject] = useState<Project | null>(null)
+  const [deleteWorkspaceDialogOpen, setDeleteWorkspaceDialogOpen] = useState(false)
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [inviteRole, setInviteRole] = useState<WorkspaceMemberRoleType>('MEMBER')
   const [inviteMaxUses, setInviteMaxUses] = useState('')
@@ -177,6 +182,106 @@ export function WorkspaceDetailPage() {
     },
   })
 
+  const deleteProjectMutation = useMutation({
+    mutationFn: (projectId: number) => projectApi.remove(projectId),
+    onMutate: async (projectId: number) => {
+      await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
+
+      const projectSnapshots = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
+
+      queryClient.setQueriesData<PageResult<Project>>(
+        { queryKey: ['projects', 'workspace', workspaceId] },
+        (oldData) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            content: oldData.content.filter((project) => project.id !== projectId),
+          }
+        },
+      )
+
+      queryClient.removeQueries({ queryKey: queryKeys.projects.detail(projectId) })
+
+      return {
+        projectSnapshots,
+      }
+    },
+    onSuccess: () => {
+      setDeleteProjectDialogOpen(false)
+      setDeleteProject(null)
+      toast.success('Xóa project thành công')
+    },
+    onError: (error: Error, _projectId, context) => {
+      if (context?.projectSnapshots) {
+        for (const [queryKey, snapshotData] of context.projectSnapshots) {
+          queryClient.setQueryData(queryKey, snapshotData)
+        }
+      }
+
+      if (isNotFoundError(error)) {
+        setDeleteProjectDialogOpen(false)
+        setDeleteProject(null)
+        toast.success('Project đã được xóa trước đó')
+        return
+      }
+
+      toast.error('Xóa project thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
+    },
+  })
+
+  const deleteWorkspaceMutation = useMutation({
+    mutationFn: () => workspaceApi.remove(workspaceId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all })
+
+      const workspaceListSnapshots = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+
+      queryClient.setQueriesData<PageResult<Workspace>>(
+        { queryKey: ['workspaces', 'list'] },
+        (oldData) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            content: oldData.content.filter((workspace) => workspace.id !== workspaceId),
+          }
+        },
+      )
+
+      return {
+        workspaceListSnapshots,
+      }
+    },
+    onSuccess: () => {
+      setDeleteWorkspaceDialogOpen(false)
+      toast.success('Xóa workspace thành công')
+      navigate('/dashboard', { replace: true })
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.workspaceListSnapshots) {
+        for (const [queryKey, snapshotData] of context.workspaceListSnapshots) {
+          queryClient.setQueryData(queryKey, snapshotData)
+        }
+      }
+
+      if (isNotFoundError(error)) {
+        setDeleteWorkspaceDialogOpen(false)
+        toast.success('Workspace đã được xóa trước đó')
+        navigate('/dashboard', { replace: true })
+        return
+      }
+
+      toast.error('Xóa workspace thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+      void queryClient.invalidateQueries({ queryKey: ['projects', 'workspace'] })
+    },
+  })
+
   const createInviteMutation = useMutation({
     mutationFn: () => workspaceInviteApi.create({
       workspaceId,
@@ -252,41 +357,48 @@ export function WorkspaceDetailPage() {
         title={workspaceQuery.data.name}
         description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project`}
         actions={
-          <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditWsName(workspaceQuery.data!.name)}
-              >
-                <Pencil className="mr-1.5 size-3.5" />
-                Chỉnh sửa
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Chỉnh sửa workspace</DialogTitle>
-                <DialogDescription>Đổi tên workspace.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2">
-                <Label>Tên workspace</Label>
-                <Input
-                  value={editWsName}
-                  onChange={(e) => setEditWsName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
-                  }}
-                />
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
-                <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
-                  {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Lưu
+          <div className="flex items-center gap-2">
+            <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
+              <Trash2 className="mr-1.5 size-3.5" />
+              Xóa workspace
+            </Button>
+
+            <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditWsName(workspaceQuery.data!.name)}
+                >
+                  <Pencil className="mr-1.5 size-3.5" />
+                  Chỉnh sửa
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Chỉnh sửa workspace</DialogTitle>
+                  <DialogDescription>Đổi tên workspace.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label>Tên workspace</Label>
+                  <Input
+                    value={editWsName}
+                    onChange={(e) => setEditWsName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
+                    }}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
+                  <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
+                    {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Lưu
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         }
       />
 
@@ -428,6 +540,17 @@ export function WorkspaceDetailPage() {
                             Lưu trữ
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => {
+                            setDeleteProject(project)
+                            setDeleteProjectDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 className="mr-2 size-3.5" />
+                          Xóa project
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </CardContent>
@@ -462,6 +585,42 @@ export function WorkspaceDetailPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+          <Dialog
+            open={deleteProjectDialogOpen}
+            onOpenChange={(open) => {
+              setDeleteProjectDialogOpen(open)
+              if (!open) {
+                setDeleteProject(null)
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Xóa project</DialogTitle>
+                <DialogDescription>
+                  Bạn có chắc muốn xóa project {deleteProject ? `"${deleteProject.name}"` : 'này'} không?
+                  Hành động này sẽ xóa toàn bộ goals, tasks, lịch và comment liên quan.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteProjectDialogOpen(false)}>Hủy</Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (!deleteProject) {
+                      return
+                    }
+                    deleteProjectMutation.mutate(deleteProject.id)
+                  }}
+                  disabled={deleteProjectMutation.isPending || !deleteProject}
+                >
+                  {deleteProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  Xóa project
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Members tab */}
@@ -751,6 +910,29 @@ export function WorkspaceDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={deleteWorkspaceDialogOpen} onOpenChange={setDeleteWorkspaceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa workspace</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc muốn xóa workspace "{workspaceQuery.data.name}" không?
+              Hành động này không thể hoàn tác và sẽ xóa toàn bộ project, goals, tasks, comment, team và invite liên quan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>Hủy</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteWorkspaceMutation.mutate()}
+              disabled={deleteWorkspaceMutation.isPending}
+            >
+              {deleteWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Xóa workspace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

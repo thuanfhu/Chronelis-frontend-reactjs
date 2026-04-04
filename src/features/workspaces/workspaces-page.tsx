@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, PanelsTopLeft, Loader2, Users, MoreHorizontal, Pencil } from 'lucide-react'
+import { Plus, PanelsTopLeft, Loader2, Users, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,10 +22,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import type { PageResult, Workspace } from '@/types/domain'
 
 export function WorkspacesPage() {
   const [name, setName] = useState('')
@@ -33,6 +36,8 @@ export function WorkspacesPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteWorkspace, setDeleteWorkspace] = useState<Workspace | null>(null)
   const queryClient = useQueryClient()
 
   const listQuery = useQuery({
@@ -67,6 +72,53 @@ export function WorkspacesPage() {
     },
     onError: (error: Error) => {
       toast.error('Cập nhật workspace thất bại', { description: error.message })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (workspaceId: number) => workspaceApi.remove(workspaceId),
+    onMutate: async (workspaceId: number) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all })
+
+      const workspaceSnapshots = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+      queryClient.setQueriesData<PageResult<Workspace>>(
+        { queryKey: ['workspaces', 'list'] },
+        (oldData) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            content: oldData.content.filter((workspace) => workspace.id !== workspaceId),
+          }
+        },
+      )
+
+      return {
+        workspaceSnapshots,
+      }
+    },
+    onSuccess: () => {
+      setDeleteDialogOpen(false)
+      setDeleteWorkspace(null)
+      toast.success('Xóa workspace thành công')
+    },
+    onError: (error: Error, _workspaceId, context) => {
+      if (context?.workspaceSnapshots) {
+        for (const [queryKey, snapshotData] of context.workspaceSnapshots) {
+          queryClient.setQueryData(queryKey, snapshotData)
+        }
+      }
+
+      if (isNotFoundError(error)) {
+        setDeleteDialogOpen(false)
+        setDeleteWorkspace(null)
+        toast.success('Workspace đã được xóa trước đó')
+        return
+      }
+
+      toast.error('Xóa workspace thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
     },
   })
 
@@ -168,6 +220,17 @@ export function WorkspacesPage() {
                         <Pencil className="mr-2 size-4" />
                         Chỉnh sửa
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => {
+                          setDeleteWorkspace(ws)
+                          setDeleteDialogOpen(true)
+                        }}
+                      >
+                        <Trash2 className="mr-2 size-4" />
+                        Xóa workspace
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -207,6 +270,42 @@ export function WorkspacesPage() {
             <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}>
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open)
+          if (!open) {
+            setDeleteWorkspace(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa workspace</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc muốn xóa workspace {deleteWorkspace ? `"${deleteWorkspace.name}"` : 'này'} không?
+              Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!deleteWorkspace) {
+                  return
+                }
+                deleteMutation.mutate(deleteWorkspace.id)
+              }}
+              disabled={deleteMutation.isPending || !deleteWorkspace}
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Xóa workspace
             </Button>
           </DialogFooter>
         </DialogContent>

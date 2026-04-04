@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { PageResult, Project, ProjectStatusType } from '@/types/domain'
 
@@ -40,5 +40,10 @@ export const projectApi = {
   async listByWorkspace(workspaceId: number, query: PageQuery) {
     const response = await http.get<ApiResponse<unknown>>(`/projects/workspace/${workspaceId}`, { params: query })
     return unwrapPagination<Project>(response.data) as PageResult<Project>
+  },
+
+  async remove(projectId: number) {
+    const response = await http.delete<ApiResponse<void>>(`/projects/${projectId}`)
+    return unwrapVoid(response.data)
   },
 }

@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { Goal, GoalStatusType, GoalType, PageResult } from '@/types/domain'
 
@@ -45,6 +45,6 @@ export const goalApi = {
 
   async remove(goalId: number) {
     const response = await http.delete<ApiResponse<void>>(`/goals/${goalId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

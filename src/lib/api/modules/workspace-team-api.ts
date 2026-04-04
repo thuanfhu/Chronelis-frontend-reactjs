@@ -1,4 +1,4 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { WorkspaceTeam, WorkspaceTeamMember } from '@/types/domain'
 
@@ -40,7 +40,7 @@ export const workspaceTeamApi = {
 
   async remove(teamId: number) {
     const response = await http.delete<ApiResponse<void>>(`/workspace-teams/${teamId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async addMember(teamId: number, payload: AddTeamMemberPayload) {
@@ -50,7 +50,7 @@ export const workspaceTeamApi = {
 
   async removeMember(teamId: number, userId: string) {
     const response = await http.delete<ApiResponse<void>>(`/workspace-teams/${teamId}/members/${userId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async listMembers(teamId: number) {

@@ -1,4 +1,4 @@
-import { http, unwrapData, unwrapPagination } from '@/lib/api/http'
+import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { Notification, NotificationUnreadCount, PageResult } from '@/types/domain'
 
@@ -20,11 +20,11 @@ export const notificationApi = {
 
   async markOneAsRead(notificationId: number) {
     const response = await http.patch<ApiResponse<void>>(`/notifications/${notificationId}/read`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 
   async markAllAsRead() {
     const response = await http.patch<ApiResponse<void>>('/notifications/read-all')
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

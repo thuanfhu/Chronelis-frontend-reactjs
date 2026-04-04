@@ -1,4 +1,4 @@
-import { http, unwrapData } from '@/lib/api/http'
+import { http, unwrapData, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
 import type { TaskType } from '@/types/domain'
 
@@ -43,6 +43,6 @@ export const taskTypeApi = {
 
   async remove(taskTypeId: number) {
     const response = await http.delete<ApiResponse<void>>(`/task-types/${taskTypeId}`)
-    return unwrapData(response.data)
+    return unwrapVoid(response.data)
   },
 }

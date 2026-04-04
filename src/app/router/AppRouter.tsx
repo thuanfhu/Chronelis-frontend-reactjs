@@ -9,6 +9,7 @@ import { VerifyAccountPage } from '@/features/auth/verify-account-page'
 import { ForbiddenPage } from '@/pages/forbidden-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { DashboardPage } from '@/pages/dashboard-page'
+import { WorkspacesPage } from '@/features/workspaces/workspaces-page'
 import { WorkspaceDetailPage } from '@/features/workspaces/workspace-detail-page'
 import { TasksLayout } from '@/features/tasks/tasks-layout'
 import { TaskPomodoroPage } from '@/features/tasks/task-pomodoro-page'
@@ -71,6 +72,7 @@ export function AppRouter() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />

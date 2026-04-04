@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X,
+  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X, CornerDownRight,
 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -32,8 +32,9 @@ import {
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { formatDateTime } from '@/lib/utils/datetime'
+import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { Task, TaskPriorityType } from '@/types/domain'
+import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
 
 export function TaskDetailsDrawer() {
   const navigate = useNavigate()
@@ -57,6 +58,7 @@ export function TaskDetailsDrawer() {
   const [editPriority, setEditPriority] = useState<TaskPriorityType | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
+  const [replyParentCommentId, setReplyParentCommentId] = useState<number | null>(null)
 
   const hasTask = taskDrawerTaskId !== null
   const taskId = taskDrawerTaskId ?? 0
@@ -80,6 +82,7 @@ export function TaskDetailsDrawer() {
     setEditPriority(null)
     setEditingCommentId(null)
     setEditingCommentContent('')
+    setReplyParentCommentId(null)
   }
 
   const handleCloseDrawer = () => {
@@ -153,6 +156,13 @@ export function TaskDetailsDrawer() {
       if (context?.projectTasksSnapshot) {
         restoreProjectTaskQueries(queryClient, context.projectTasksSnapshot)
       }
+
+      if (isNotFoundError(error)) {
+        handleCloseDrawer()
+        toast.success('Task đã được xóa trước đó')
+        return
+      }
+
       toast.error('Cập nhật thất bại', { description: error.message })
     },
     onSettled: () => {
@@ -163,10 +173,11 @@ export function TaskDetailsDrawer() {
   const addCommentMutation = useMutation({
     mutationFn: () => {
       if (!hasTask) throw new Error('Task chưa được chọn')
-      return taskCommentApi.add(taskId, newComment.trim())
+      return taskCommentApi.add(taskId, newComment.trim(), replyParentCommentId ?? undefined)
     },
     onSuccess: () => {
       setNewComment('')
+      setReplyParentCommentId(null)
       void invalidateTaskData()
       toast.success('Thêm comment thành công')
     },
@@ -197,6 +208,12 @@ export function TaskDetailsDrawer() {
       toast.success('Cập nhật task thành công')
     },
     onError: (error: Error) => {
+      if (isNotFoundError(error)) {
+        handleCloseDrawer()
+        toast.success('Task đã được xóa trước đó')
+        return
+      }
+
       toast.error('Cập nhật task thất bại', { description: error.message })
     },
   })
@@ -217,18 +234,89 @@ export function TaskDetailsDrawer() {
     },
   })
 
+  const removeCommentBranch = (commentList: TaskComment[], targetCommentId: number) => {
+    const toDelete = new Set<number>([targetCommentId])
+
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const comment of commentList) {
+        if (comment.parentCommentId != null && toDelete.has(comment.parentCommentId) && !toDelete.has(comment.id)) {
+          toDelete.add(comment.id)
+          changed = true
+        }
+      }
+    }
+
+    return commentList.filter((comment) => !toDelete.has(comment.id))
+  }
+
   const deleteCommentMutation = useMutation({
     mutationFn: (commentId: number) => taskCommentApi.remove(commentId),
+    onMutate: async (commentId: number) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.byTask(taskId) })
+
+      const commentsSnapshot = queryClient.getQueryData<typeof commentsQuery.data>(queryKeys.comments.byTask(taskId))
+
+      queryClient.setQueryData<typeof commentsQuery.data>(queryKeys.comments.byTask(taskId), (oldComments) => {
+        if (!oldComments) return oldComments
+        return removeCommentBranch(oldComments, commentId)
+      })
+
+      return {
+        commentsSnapshot,
+      }
+    },
     onSuccess: () => {
-      void invalidateTaskData()
+      if (editingCommentId != null) {
+        const stillExists = (queryClient.getQueryData<typeof commentsQuery.data>(queryKeys.comments.byTask(taskId)) ?? [])
+          .some((comment) => comment.id === editingCommentId)
+        if (!stillExists) {
+          setEditingCommentId(null)
+          setEditingCommentContent('')
+        }
+      }
+
+      if (replyParentCommentId != null) {
+        const stillExists = (queryClient.getQueryData<typeof commentsQuery.data>(queryKeys.comments.byTask(taskId)) ?? [])
+          .some((comment) => comment.id === replyParentCommentId)
+        if (!stillExists) {
+          setReplyParentCommentId(null)
+        }
+      }
+
       toast.success('Xóa comment thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _commentId, context) => {
+      if (context?.commentsSnapshot) {
+        queryClient.setQueryData(queryKeys.comments.byTask(taskId), context.commentsSnapshot)
+      }
+
+      if (isNotFoundError(error)) {
+        toast.success('Comment đã được xóa trước đó')
+        return
+      }
+
       toast.error('Xóa comment thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) })
     },
   })
 
   const comments = commentsQuery.data ?? []
+  const topLevelComments = comments.filter((comment) => comment.parentCommentId == null)
+  const repliesByParent = comments.reduce<Map<number, TaskComment[]>>((map, comment) => {
+    if (comment.parentCommentId == null) {
+      return map
+    }
+
+    const currentReplies = map.get(comment.parentCommentId) ?? []
+    currentReplies.push(comment)
+    map.set(comment.parentCommentId, currentReplies)
+    return map
+  }, new Map<number, TaskComment[]>())
+
   const task = taskQuery.data
   const canManageTask = Boolean(task && currentUserId && task.createdBy.userId === currentUserId)
   const isEditingTask = taskDrawerMode === 'edit' && canManageTask
@@ -422,11 +510,29 @@ export function TaskDetailsDrawer() {
                         <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
                       </div>
 
+                      {replyParentCommentId != null && (
+                        <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="line-clamp-1 text-primary">
+                              Đang trả lời comment #{replyParentCommentId}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="size-6"
+                              onClick={() => setReplyParentCommentId(null)}
+                            >
+                              <X className="size-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <Textarea
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Nhập nội dung comment..."
+                          placeholder={replyParentCommentId != null ? 'Nhập nội dung trả lời...' : 'Nhập nội dung comment...'}
                           rows={2}
                           className="flex-1"
                         />
@@ -440,69 +546,148 @@ export function TaskDetailsDrawer() {
                         </Button>
                       </div>
 
-                      {comments.length === 0 ? (
+                      {topLevelComments.length === 0 ? (
                         <p className="text-xs text-muted-foreground">Chưa có comment nào</p>
                       ) : (
                         <div className="space-y-2">
-                          {comments.map((comment) => (
-                            <div key={comment.id} className="group/comment flex gap-2.5">
-                              <Avatar className="mt-0.5 size-7 shrink-0">
-                                <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                  {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-baseline gap-2">
-                                  <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
-                                  <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
-                                        <MoreHorizontal className="size-3" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setEditingCommentId(comment.id)
-                                          setEditingCommentContent(comment.content)
-                                        }}
-                                      >
-                                        <Pencil className="mr-2 size-3" />
-                                        Chỉnh sửa
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive"
-                                        onClick={() => deleteCommentMutation.mutate(comment.id)}
-                                      >
-                                        <Trash2 className="mr-2 size-3" />
-                                        Xóa
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                                {editingCommentId === comment.id ? (
-                                  <div className="mt-1 space-y-1.5">
-                                    <Textarea
-                                      value={editingCommentContent}
-                                      onChange={(e) => setEditingCommentContent(e.target.value)}
-                                      rows={2}
-                                      className="text-sm"
-                                    />
-                                    <div className="flex gap-1.5">
-                                      <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
-                                        {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
-                                        Lưu
-                                      </Button>
-                                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
-                                    </div>
+                          {topLevelComments.map((comment) => {
+                            const replies = repliesByParent.get(comment.id) ?? []
+
+                            return (
+                              <div key={comment.id} className="group/comment flex gap-2.5">
+                                <Avatar className="mt-0.5 size-7 shrink-0">
+                                  <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                    {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-baseline gap-2">
+                                    <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
+                                    <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
+                                          <MoreHorizontal className="size-3" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            setReplyParentCommentId(comment.id)
+                                            setEditingCommentId(null)
+                                            setEditingCommentContent('')
+                                          }}
+                                        >
+                                          <CornerDownRight className="mr-2 size-3" />
+                                          Trả lời
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => {
+                                            setEditingCommentId(comment.id)
+                                            setEditingCommentContent(comment.content)
+                                          }}
+                                        >
+                                          <Pencil className="mr-2 size-3" />
+                                          Chỉnh sửa
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => deleteCommentMutation.mutate(comment.id)}
+                                        >
+                                          <Trash2 className="mr-2 size-3" />
+                                          Xóa
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
-                                ) : (
-                                  <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
-                                )}
+                                  {editingCommentId === comment.id ? (
+                                    <div className="mt-1 space-y-1.5">
+                                      <Textarea
+                                        value={editingCommentContent}
+                                        onChange={(e) => setEditingCommentContent(e.target.value)}
+                                        rows={2}
+                                        className="text-sm"
+                                      />
+                                      <div className="flex gap-1.5">
+                                        <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
+                                          {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
+                                          Lưu
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
+                                  )}
+
+                                  {replies.length > 0 && (
+                                    <div className="mt-2 space-y-2 border-l border-border/70 pl-3">
+                                      {replies.map((reply) => (
+                                        <div key={reply.id} className="group/reply flex gap-2">
+                                          <Avatar className="mt-0.5 size-6 shrink-0">
+                                            <AvatarFallback className="bg-secondary text-[9px] font-semibold text-secondary-foreground">
+                                              {reply.user.firstName.charAt(0)}{reply.user.lastName.charAt(0)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div className="min-w-0 flex-1 rounded-md bg-muted/35 px-2.5 py-2">
+                                            <div className="flex items-baseline gap-2">
+                                              <p className="text-[11px] font-medium">{reply.user.firstName} {reply.user.lastName}</p>
+                                              <span className="text-[10px] text-muted-foreground">{formatDateTime(reply.createdAt)}</span>
+                                              <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                  <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/reply:opacity-100">
+                                                    <MoreHorizontal className="size-3" />
+                                                  </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem
+                                                    onClick={() => {
+                                                      setEditingCommentId(reply.id)
+                                                      setEditingCommentContent(reply.content)
+                                                    }}
+                                                  >
+                                                    <Pencil className="mr-2 size-3" />
+                                                    Chỉnh sửa
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive"
+                                                    onClick={() => deleteCommentMutation.mutate(reply.id)}
+                                                  >
+                                                    <Trash2 className="mr-2 size-3" />
+                                                    Xóa
+                                                  </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                              </DropdownMenu>
+                                            </div>
+
+                                            {editingCommentId === reply.id ? (
+                                              <div className="mt-1 space-y-1.5">
+                                                <Textarea
+                                                  value={editingCommentContent}
+                                                  onChange={(e) => setEditingCommentContent(e.target.value)}
+                                                  rows={2}
+                                                  className="text-sm"
+                                                />
+                                                <div className="flex gap-1.5">
+                                                  <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
+                                                    {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
+                                                    Lưu
+                                                  </Button>
+                                                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <p className="mt-0.5 text-sm text-muted-foreground">{reply.content}</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>
