@@ -229,6 +229,10 @@
   text-decoration: underline;
 }
 
+.chronelis-auth-mobile-switch--always {
+  display: flex;
+}
+
 .chronelis-auth-strength {
   margin-top: 0.5rem;
   padding: 0.55rem 0.75rem 0.62rem;
@@ -347,6 +351,29 @@
   animation: auth-slide-from-forgot 0.38s var(--auth-ease-soft);
 }
 
+.chronelis-auth-page.forgot-standalone-mode .chronelis-auth-right-panel {
+  pointer-events: all;
+}
+
+.chronelis-auth-page.forgot-standalone-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
+  transform: translate3d(0, 0, 0);
+}
+
+.chronelis-auth-page.forgot-standalone-mode .chronelis-auth-forgot-form {
+  opacity: 1;
+  z-index: 2;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+.chronelis-auth-page.forgot-standalone-mode.forgot-from-auth-enter .chronelis-auth-signin-signup {
+  animation: auth-forgot-shared-enter 0.42s var(--auth-ease-soft);
+}
+
+.chronelis-auth-page.forgot-standalone-mode.forgot-to-login-leave .chronelis-auth-signin-signup {
+  animation: auth-forgot-shared-leave 0.28s var(--auth-ease-soft) forwards;
+}
+
 @keyframes auth-slide-from-forgot {
   0% {
     opacity: 0;
@@ -355,6 +382,28 @@
   100% {
     opacity: 1;
     transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes auth-forgot-shared-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-50% + 22px), 0) scale(0.972);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+@keyframes auth-forgot-shared-leave {
+  0% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-50% - 14px), 0) scale(0.985);
   }
 }
 
@@ -402,6 +451,38 @@
   margin-top: 0.35rem;
   font-size: 0.72rem;
   color: var(--destructive);
+}
+
+.chronelis-auth-forgot-success {
+  margin-top: 0.8rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.68rem;
+  text-align: center;
+}
+
+.chronelis-auth-forgot-success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  color: color-mix(in oklab, var(--primary) 88%, var(--foreground) 12%);
+}
+
+.chronelis-auth-forgot-success-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+}
+
+.chronelis-auth-forgot-success-description {
+  max-width: 27rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: color-mix(in oklab, var(--muted-foreground) 86%, transparent);
 }
 
 .chronelis-auth-btn {
@@ -732,6 +813,15 @@
         color-mix(in oklab, var(--background) 90%, var(--accent) 10%) 100%);
   }
 
+  .chronelis-auth-page.forgot-standalone-mode {
+    background:
+      radial-gradient(circle at 8% 10%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 52%),
+      radial-gradient(circle at 95% 92%, color-mix(in oklab, var(--accent) 27%, transparent), transparent 44%),
+      linear-gradient(158deg,
+        color-mix(in oklab, var(--background) 80%, var(--primary) 20%) 0%,
+        color-mix(in oklab, var(--background) 88%, var(--accent) 12%) 100%);
+  }
+
   .chronelis-auth-page::before {
     display: none;
   }
@@ -766,6 +856,11 @@
     transform: none !important;
   }
 
+  .chronelis-auth-page.forgot-standalone-mode .chronelis-auth-signin-signup {
+    min-height: 34.5rem;
+    height: min(40rem, calc(100dvh - 2.35rem));
+  }
+
   .chronelis-auth-form {
     padding: 1rem 0.95rem 1.2rem;
     border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
@@ -782,11 +877,14 @@
 
   .chronelis-auth-title {
     font-size: clamp(1.55rem, 6.2vw, 1.9rem);
+    line-height: 1.08;
   }
 
   .chronelis-auth-subtitle {
     margin-bottom: 1rem;
     font-size: 0.82rem;
+    line-height: 1.45;
+    letter-spacing: 0.01em;
   }
 
   .chronelis-auth-grid-2 {
@@ -812,6 +910,10 @@
 
   .chronelis-auth-mobile-switch {
     display: flex;
+  }
+
+  .chronelis-auth-mobile-switch--always {
+    margin-top: 1.05rem;
   }
 
   .chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
@@ -865,6 +967,10 @@
   .chronelis-auth-mobile-switch {
     margin-top: 0.7rem;
     font-size: 0.73rem;
+  }
+
+  .chronelis-auth-mobile-switch--always {
+    margin-top: 0.85rem;
   }
 
   .chronelis-auth-mobile-switch-trigger {

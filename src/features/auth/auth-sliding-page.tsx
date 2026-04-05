@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { useAuthStore } from '@/app/store/auth-store'
 import { authApi, type RegisterPayload } from '@/lib/api/modules/auth-api'
 import { loginSchema, registerSchema } from '@/features/auth/auth-schemas'
+import { AuthSharedShell } from '@/features/auth/auth-shared-shell'
 import '@/features/auth/auth-sliding.css'
 
 type AuthMode = 'sign-in' | 'sign-up'
@@ -242,10 +243,36 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
 
   return (
-    <div className={`chronelis-auth-page ${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''} ${fromForgotEnter ? 'from-forgot-enter' : ''}`}>
-      <div className="chronelis-auth-forms-container">
-        <div className="chronelis-auth-signin-signup">
-          <form className="chronelis-auth-form chronelis-auth-sign-in-form" onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}>
+    <AuthSharedShell
+      pageClassName={`${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''} ${fromForgotEnter ? 'from-forgot-enter' : ''}`}
+      leftPanel={(
+        <>
+          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
+            <span className="chronelis-auth-brand-badge">C</span>
+            <span className="chronelis-auth-brand-text">Chronelis</span>
+          </Link>
+          <h3>Bạn mới đến Chronelis?</h3>
+          <p>
+            Tạo tài khoản để bắt đầu quản lý workspace, theo dõi tiến độ và cộng tác realtime cùng đội nhóm.
+          </p>
+          <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-up')}>
+            Đăng ký
+          </button>
+        </>
+      )}
+      rightPanel={(
+        <>
+          <h3>Đã có tài khoản?</h3>
+          <p>
+            Đăng nhập để tiếp tục xử lý task, kế hoạch lịch và cập nhật tiến độ cho dự án của bạn.
+          </p>
+          <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-in')}>
+            Đăng nhập
+          </button>
+        </>
+      )}
+    >
+      <form className="chronelis-auth-form chronelis-auth-sign-in-form" onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}>
             <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
               <span className="chronelis-auth-brand-badge">C</span>
               <span className="chronelis-auth-brand-text">Chronelis</span>
@@ -300,12 +327,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 className="chronelis-auth-mobile-switch-trigger"
                 onClick={() => switchMode('sign-up')}
               >
-                Chuyển sang Đăng ký
+                Đăng ký
               </button>
             </div>
-          </form>
+      </form>
 
-          <form className="chronelis-auth-form chronelis-auth-sign-up-form" onSubmit={registerForm.handleSubmit((values) => registerMutation.mutate(values))}>
+      <form className="chronelis-auth-form chronelis-auth-sign-up-form" onSubmit={registerForm.handleSubmit((values) => registerMutation.mutate(values))}>
             <h2 className="chronelis-auth-title">Đăng ký</h2>
             <p className="chronelis-auth-subtitle">Tạo tài khoản để cộng tác cùng đội nhóm</p>
 
@@ -431,42 +458,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 className="chronelis-auth-mobile-switch-trigger"
                 onClick={() => switchMode('sign-in')}
               >
-                Chuyển sang Đăng nhập
+                Đăng nhập
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-
-      <div className="chronelis-auth-panels-container">
-        <section className="chronelis-auth-panel chronelis-auth-left-panel">
-          <div className="chronelis-auth-panel-content">
-            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
-              <span className="chronelis-auth-brand-badge">C</span>
-              <span className="chronelis-auth-brand-text">Chronelis</span>
-            </Link>
-            <h3>Bạn mới đến Chronelis?</h3>
-            <p>
-              Tạo tài khoản để bắt đầu quản lý workspace, theo dõi tiến độ và cộng tác realtime cùng đội nhóm.
-            </p>
-            <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-up')}>
-              Đăng ký
-            </button>
-          </div>
-        </section>
-
-        <section className="chronelis-auth-panel chronelis-auth-right-panel">
-          <div className="chronelis-auth-panel-content">
-            <h3>Đã có tài khoản?</h3>
-            <p>
-              Đăng nhập để tiếp tục xử lý task, kế hoạch lịch và cập nhật tiến độ cho dự án của bạn.
-            </p>
-            <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-in')}>
-              Đăng nhập
-            </button>
-          </div>
-        </section>
-      </div>
-    </div>
+      </form>
+    </AuthSharedShell>
   )
 }

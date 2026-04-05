@@ -1,6 +1,8 @@
-import { ChevronRight, LayoutDashboard, LogOut, Package, ShieldAlert, User2, Users, X } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronRight, LayoutDashboard, LogOut, Package, ShieldAlert, Users, X } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
+import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils/cn'
@@ -52,11 +54,13 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const navigate = useNavigate()
   const currentUser = useAuthStore((state) => state.currentUser)
   const clearSession = useAuthStore((state) => state.clearSession)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const fullName = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim()
 
   const handleLogout = () => {
     clearSession()
+    setLogoutConfirmOpen(false)
     navigate('/login', { replace: true })
   }
 
@@ -139,45 +143,46 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
 
       <div className="border-t border-sidebar-border p-3">
         <div className="rounded-lg border border-sidebar-border/80 bg-sidebar-accent/35 p-2.5">
-          <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors hover:bg-sidebar-primary/10"
+            onClick={() => {
+              onCloseMobile()
+              navigate('/profile')
+            }}
+          >
             <Avatar className="size-9">
               <AvatarFallback className="bg-sidebar-primary/15 text-xs font-semibold text-sidebar-primary">
                 {getInitials(fullName)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{fullName || 'Administrator'}</p>
-              <p className="truncate text-xs text-muted-foreground">{currentUser?.email || 'admin@chronelis.local'}</p>
-            </div>
-          </div>
-
-          <div className="mt-2 grid grid-cols-1 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                onCloseMobile()
-                navigate('/profile')
-              }}
-            >
-              <User2 className="size-3.5" />
-              Profile
-            </Button>
-          </div>
+            <span className="min-w-0 text-left">
+              <span className="block truncate text-sm font-medium">{fullName || 'Administrator'}</span>
+              <span className="block truncate text-xs text-muted-foreground">{currentUser?.email || 'admin@chronelis.local'}</span>
+            </span>
+          </button>
 
           <Button
             type="button"
             variant="ghost"
             className="mt-2 h-8 w-full justify-start px-2.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={handleLogout}
+            onClick={() => setLogoutConfirmOpen(true)}
           >
             <LogOut className="size-3.5" />
             Đăng xuất
           </Button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        title="Xác nhận đăng xuất"
+        description="Bạn có chắc chắn muốn đăng xuất khỏi Chronelis không?"
+        confirmText="Đăng xuất"
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+      />
     </aside>
   )
 }

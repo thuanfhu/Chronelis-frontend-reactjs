@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
+import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { notificationApi } from '@/lib/api/modules/notification-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
@@ -53,6 +54,7 @@ export function AppTopbar() {
   const [editOpen, setEditOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const unreadQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
@@ -110,6 +112,7 @@ export function AppTopbar() {
 
   const handleLogout = () => {
     clearSession()
+    setLogoutConfirmOpen(false)
     navigate('/login')
   }
 
@@ -255,14 +258,14 @@ export function AppTopbar() {
             {canAccessAdmin && (
               <DropdownMenuItem
                 onClick={() => navigate('/admin/users')}
-                className="bg-yellow-300 font-semibold text-yellow-950 hover:bg-yellow-300/90 focus:bg-yellow-300 focus:text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950"
+                className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100 dark:text-amber-950"
               >
                 <ShieldCheck className="mr-2 size-4" />
                 Admin dashboard
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-4" />
               Đăng xuất
             </DropdownMenuItem>
@@ -331,6 +334,16 @@ export function AppTopbar() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmModal
+      open={logoutConfirmOpen}
+      onOpenChange={setLogoutConfirmOpen}
+      title="Xác nhận đăng xuất"
+      description="Bạn có chắc chắn muốn đăng xuất khỏi Chronelis không?"
+      confirmText="Đăng xuất"
+      confirmVariant="destructive"
+      onConfirm={handleLogout}
+    />
     </>
   )
 }

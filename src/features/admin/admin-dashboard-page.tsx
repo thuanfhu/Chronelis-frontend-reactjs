@@ -18,6 +18,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/app/store/auth-store'
+import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -116,6 +117,44 @@ function resolveRoleBadgeClass(roleName: string): string {
   }
 
   return 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200'
+}
+
+function resolveMethodBadgeClass(method: string): string {
+  const normalized = method.trim().toUpperCase()
+
+  switch (normalized) {
+    case 'GET':
+      return 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200'
+    case 'POST':
+      return 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-500/45 dark:bg-blue-500/15 dark:text-blue-200'
+    case 'PUT':
+      return 'border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-500/45 dark:bg-violet-500/15 dark:text-violet-200'
+    case 'PATCH':
+      return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/45 dark:bg-amber-500/15 dark:text-amber-200'
+    case 'DELETE':
+      return 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/45 dark:bg-rose-500/15 dark:text-rose-200'
+    default:
+      return 'border-slate-300 bg-slate-100 text-slate-800 dark:border-slate-500/45 dark:bg-slate-500/15 dark:text-slate-200'
+  }
+}
+
+const MODULE_BADGE_STYLES = [
+  'border-cyan-300 bg-cyan-100 text-cyan-800 dark:border-cyan-500/45 dark:bg-cyan-500/15 dark:text-cyan-200',
+  'border-fuchsia-300 bg-fuchsia-100 text-fuchsia-800 dark:border-fuchsia-500/45 dark:bg-fuchsia-500/15 dark:text-fuchsia-200',
+  'border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-500/45 dark:bg-orange-500/15 dark:text-orange-200',
+  'border-lime-300 bg-lime-100 text-lime-800 dark:border-lime-500/45 dark:bg-lime-500/15 dark:text-lime-200',
+  'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/45 dark:bg-sky-500/15 dark:text-sky-200',
+  'border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-500/45 dark:bg-purple-500/15 dark:text-purple-200',
+] as const
+
+function resolveModuleBadgeClass(moduleName: string): string {
+  let hash = 0
+  for (let index = 0; index < moduleName.length; index += 1) {
+    hash = ((hash << 5) - hash) + moduleName.charCodeAt(index)
+    hash |= 0
+  }
+
+  return MODULE_BADGE_STYLES[Math.abs(hash) % MODULE_BADGE_STYLES.length]
 }
 
 export function AdminDashboardPage() {
@@ -320,6 +359,7 @@ const EMPTY_USER_FORM: UserEditFormState = {
 function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdminTabProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [deleteUserTarget, setDeleteUserTarget] = useState<AdminUser | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [form, setForm] = useState<UserEditFormState>(EMPTY_USER_FORM)
@@ -539,7 +579,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                 <TableHead>Email / SĐT</TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead className="w-45 text-right">Hành động</TableHead>
+                <TableHead className="w-45 text-center">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -580,24 +620,28 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                       {user.isVerified ? 'Đã xác thực' : 'Chưa xác thực'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
-                        Sửa
+                  <TableCell className="text-center">
+                    <div className="inline-flex items-center justify-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
+                        title="Sửa người dùng"
+                        onClick={() => openEditDialog(user)}
+                      >
+                        <Pencil className="size-4" />
+                        <span className="sr-only">Sửa người dùng</span>
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deleteUserMutation.isPending || user.userId === currentUserId}
-                        onClick={() => {
-                          if (!window.confirm(`Xóa người dùng ${user.email}?`)) {
-                            return
-                          }
-                          deleteUserMutation.mutate(user.userId)
-                        }}
+                        title="Xóa người dùng"
+                        onClick={() => setDeleteUserTarget(user)}
                       >
                         <Trash2 className="size-4" />
+                        <span className="sr-only">Xóa người dùng</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -791,6 +835,31 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        open={Boolean(deleteUserTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteUserTarget(null)
+          }
+        }}
+        title="Xóa người dùng"
+        description={deleteUserTarget ? `Có chắc chắn muốn xóa không? (${deleteUserTarget.email})` : 'Có chắc chắn muốn xóa không?'}
+        confirmText="Xóa"
+        confirmVariant="destructive"
+        loading={deleteUserMutation.isPending}
+        onConfirm={() => {
+          if (!deleteUserTarget) {
+            return
+          }
+
+          deleteUserMutation.mutate(deleteUserTarget.userId, {
+            onSettled: () => {
+              setDeleteUserTarget(null)
+            },
+          })
+        }}
+      />
     </Card>
   )
 }
@@ -816,6 +885,7 @@ const EMPTY_ROLE_FORM: RoleFormState = {
 function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [deleteRoleTarget, setDeleteRoleTarget] = useState<AdminRole | null>(null)
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
   const [roleDialogMode, setRoleDialogMode] = useState<'create' | 'edit'>('create')
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null)
@@ -1051,22 +1121,22 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
           <Table className="min-w-215">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-55">Role</TableHead>
+                <TableHead className="w-55 text-center">Role</TableHead>
                 <TableHead>Mô tả</TableHead>
-                <TableHead className="w-97.5 text-right">Hành động</TableHead>
+                <TableHead className="w-97.5 text-center">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedRoles.map((role) => (
                 <TableRow key={role.roleId}>
-                  <TableCell className="align-top">
+                  <TableCell className="text-center align-middle">
                     <p className="font-semibold tracking-tight">{role.name}</p>
                   </TableCell>
                   <TableCell className="max-w-136 whitespace-normal text-sm leading-relaxed text-muted-foreground align-top">
                     {role.description || 'Không có mô tả'}
                   </TableCell>
-                  <TableCell className="text-right align-top">
-                    <div className="ml-auto flex items-center justify-end gap-1.5">
+                  <TableCell className="text-center align-top">
+                    <div className="inline-flex items-center justify-center gap-1.5">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1121,12 +1191,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deleteRoleMutation.isPending}
                         title="Xóa role"
-                        onClick={() => {
-                          if (!window.confirm(`Xóa role ${role.name}?`)) {
-                            return
-                          }
-                          deleteRoleMutation.mutate(role.roleId)
-                        }}
+                        onClick={() => setDeleteRoleTarget(role)}
                       >
                         <Trash2 className="size-4" />
                         <span className="sr-only">Xóa role</span>
@@ -1329,6 +1394,31 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        open={Boolean(deleteRoleTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteRoleTarget(null)
+          }
+        }}
+        title="Xóa role"
+        description={deleteRoleTarget ? `Có chắc chắn muốn xóa không? (${deleteRoleTarget.name})` : 'Có chắc chắn muốn xóa không?'}
+        confirmText="Xóa"
+        confirmVariant="destructive"
+        loading={deleteRoleMutation.isPending}
+        onConfirm={() => {
+          if (!deleteRoleTarget) {
+            return
+          }
+
+          deleteRoleMutation.mutate(deleteRoleTarget.roleId, {
+            onSettled: () => {
+              setDeleteRoleTarget(null)
+            },
+          })
+        }}
+      />
     </Card>
   )
 }
@@ -1356,6 +1446,8 @@ const EMPTY_PERMISSION_FORM: PermissionFormState = {
 function PermissionsAdminTab({ permissions, modules, onDataChanged }: PermissionsAdminTabProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [deletePermissionTarget, setDeletePermissionTarget] = useState<AdminPermission | null>(null)
+  const [deleteModuleTarget, setDeleteModuleTarget] = useState<string | null>(null)
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false)
   const [permissionDialogMode, setPermissionDialogMode] = useState<'create' | 'edit'>('create')
   const [editingPermission, setEditingPermission] = useState<AdminPermission | null>(null)
@@ -1597,12 +1689,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                   type="button"
                   className="text-destructive"
                   disabled={deleteModuleMutation.isPending}
-                  onClick={() => {
-                    if (!window.confirm(`Gỡ module ${moduleName} khỏi tất cả permissions?`)) {
-                      return
-                    }
-                    deleteModuleMutation.mutate(moduleName)
-                  }}
+                  onClick={() => setDeleteModuleTarget(moduleName)}
                 >
                   <Trash2 className="size-3.5" />
                 </button>
@@ -1635,10 +1722,14 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                     {permission.apiPath}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{permission.httpMethod}</Badge>
+                    <Badge variant="outline" className={resolveMethodBadgeClass(permission.httpMethod)}>{permission.httpMethod}</Badge>
                   </TableCell>
                   <TableCell>
-                    {permission.module ? <Badge>{permission.module}</Badge> : <Badge variant="secondary">No module</Badge>}
+                    {permission.module ? (
+                      <Badge variant="outline" className={resolveModuleBadgeClass(permission.module)}>{permission.module}</Badge>
+                    ) : (
+                      <Badge variant="secondary">No module</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex items-center gap-1.5">
@@ -1658,12 +1749,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deletePermissionMutation.isPending}
                         title="Xóa permission"
-                        onClick={() => {
-                          if (!window.confirm(`Xóa permission ${permission.name}?`)) {
-                            return
-                          }
-                          deletePermissionMutation.mutate(permission.permissionId)
-                        }}
+                        onClick={() => setDeletePermissionTarget(permission)}
                       >
                         <Trash2 className="size-4" />
                         <span className="sr-only">Xóa permission</span>
@@ -1842,6 +1928,56 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmModal
+        open={Boolean(deletePermissionTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletePermissionTarget(null)
+          }
+        }}
+        title="Xóa permission"
+        description={deletePermissionTarget ? `Có chắc chắn muốn xóa không? (${deletePermissionTarget.name})` : 'Có chắc chắn muốn xóa không?'}
+        confirmText="Xóa"
+        confirmVariant="destructive"
+        loading={deletePermissionMutation.isPending}
+        onConfirm={() => {
+          if (!deletePermissionTarget) {
+            return
+          }
+
+          deletePermissionMutation.mutate(deletePermissionTarget.permissionId, {
+            onSettled: () => {
+              setDeletePermissionTarget(null)
+            },
+          })
+        }}
+      />
+
+      <ConfirmModal
+        open={Boolean(deleteModuleTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteModuleTarget(null)
+          }
+        }}
+        title="Gỡ module"
+        description={deleteModuleTarget ? `Có chắc chắn muốn xóa không? Module ${deleteModuleTarget} sẽ bị gỡ khỏi tất cả permissions.` : 'Có chắc chắn muốn xóa không?'}
+        confirmText="Gỡ module"
+        confirmVariant="destructive"
+        loading={deleteModuleMutation.isPending}
+        onConfirm={() => {
+          if (!deleteModuleTarget) {
+            return
+          }
+
+          deleteModuleMutation.mutate(deleteModuleTarget, {
+            onSettled: () => {
+              setDeleteModuleTarget(null)
+            },
+          })
+        }}
+      />
     </Card>
   )
 }

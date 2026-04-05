@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2, Mail } from 'lucide-react'
 import { authApi } from '@/lib/api/modules/auth-api'
 import { forgotPasswordSchema } from '@/features/auth/auth-schemas'
-import { AuthLayout } from '@/features/auth/auth-layout'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { AuthSharedShell } from '@/features/auth/auth-shared-shell'
 import { cn } from '@/lib/utils/cn'
 import '@/features/auth/auth-sliding.css'
 
@@ -43,6 +40,11 @@ export function ForgotPasswordPage() {
   const leaveTimeoutRef = useRef<number | null>(null)
   const [isLeavingToLogin, setIsLeavingToLogin] = useState(false)
   const fromAuthSlide = Boolean((location.state as { fromAuthSlide?: boolean } | null)?.fromAuthSlide)
+  const shellClassName = cn(
+    'forgot-standalone-mode',
+    fromAuthSlide && 'forgot-from-auth-enter',
+    isLeavingToLogin && 'forgot-to-login-leave',
+  )
 
   useEffect(() => () => {
     if (leaveTimeoutRef.current !== null) {
@@ -64,54 +66,85 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout title="Quên mật khẩu" subtitle="Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu">
-      <div
-        className={cn(
-          'chronelis-forgot-shell',
-          fromAuthSlide && 'chronelis-forgot-shell--enter',
-          isLeavingToLogin && 'chronelis-forgot-shell--leaving',
-        )}
-      >
+    <AuthSharedShell
+      pageClassName={shellClassName}
+      formsClassName="chronelis-auth-signin-signup--forgot"
+      leftPanel={(
+        <>
+          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
+            <span className="chronelis-auth-brand-badge">C</span>
+            <span className="chronelis-auth-brand-text">Chronelis</span>
+          </Link>
+          <h3>Cần lấy lại mật khẩu?</h3>
+          <p>
+            Nhập email bạn đã dùng đăng ký, Chronelis sẽ gửi liên kết đặt lại mật khẩu đến hộp thư ngay lập tức.
+          </p>
+        </>
+      )}
+      rightPanel={(
+        <>
+          <h3>Đã nhớ mật khẩu?</h3>
+          <p>
+            Quay về đăng nhập để tiếp tục quản lý workspace, dự án và theo dõi tiến độ công việc của bạn.
+          </p>
+          <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={handleBackToLogin}>
+            Đăng nhập
+          </button>
+        </>
+      )}
+    >
+      <form className="chronelis-auth-form chronelis-auth-forgot-form" onSubmit={form.handleSubmit((values) => forgotMutation.mutate(values))}>
+        <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
+          <span className="chronelis-auth-brand-badge">C</span>
+          <span className="chronelis-auth-brand-text">Chronelis</span>
+        </Link>
+
+        <h2 className="chronelis-auth-title">Quên mật khẩu</h2>
+        <p className="chronelis-auth-subtitle">Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
+
         {forgotMutation.isSuccess ? (
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="size-6 text-primary" />
+          <div className="chronelis-auth-forgot-success">
+            <div className="chronelis-auth-forgot-success-icon">
+              <Mail className="size-5" />
             </div>
-            <div>
-              <p className="text-sm font-medium">Kiểm tra email của bạn</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Chúng tôi đã gửi liên kết đặt lại mật khẩu đến email của bạn.
-              </p>
-            </div>
-            <Button variant="outline" className="w-full" type="button" onClick={handleBackToLogin}>
-              <ArrowLeft className="mr-2 size-4" />
+            <p className="chronelis-auth-forgot-success-title">Kiểm tra email của bạn</p>
+            <p className="chronelis-auth-forgot-success-description">
+              Chúng tôi đã gửi liên kết đặt lại mật khẩu đến hộp thư của bạn.
+            </p>
+
+            <button type="button" className="chronelis-auth-btn chronelis-auth-btn--solid" onClick={handleBackToLogin}>
+              <ArrowLeft className="size-4" />
               Quay lại đăng nhập
-            </Button>
+            </button>
           </div>
         ) : (
           <>
-            <form className="space-y-4" onSubmit={form.handleSubmit((values) => forgotMutation.mutate(values))}>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" placeholder="name@gmail.com" autoComplete="email" {...form.register('email')} />
-                {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
-              </div>
+            <div className="chronelis-auth-input-field">
+              <Mail className="chronelis-auth-input-icon" />
+              <input
+                id="forgot-email"
+                type="email"
+                autoComplete="email"
+                placeholder="name@gmail.com"
+                {...form.register('email')}
+              />
+            </div>
+            {form.formState.errors.email && <p className="chronelis-auth-error">{form.formState.errors.email.message}</p>}
 
-              <Button className="w-full" type="submit" disabled={forgotMutation.isPending}>
-                {forgotMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Gửi email đặt lại
-              </Button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              <button type="button" className="font-medium text-primary hover:underline" onClick={handleBackToLogin}>
-                <ArrowLeft className="mr-1 inline size-3" />
-                Quay lại đăng nhập
-              </button>
-            </p>
+            <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={forgotMutation.isPending}>
+              {forgotMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+              Gửi email đặt lại
+            </button>
           </>
         )}
-      </div>
-    </AuthLayout>
+
+        <div className="chronelis-auth-mobile-switch chronelis-auth-mobile-switch--always">
+          <span>Đã nhớ mật khẩu?</span>
+          <button type="button" className="chronelis-auth-mobile-switch-trigger" onClick={handleBackToLogin}>
+            Quay lại đăng nhập
+          </button>
+        </div>
+      </form>
+    </AuthSharedShell>
   )
 }
