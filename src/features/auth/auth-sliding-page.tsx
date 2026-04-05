@@ -1,27 +1,59 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { useAuthStore } from '@/app/store/auth-store'
 import { authApi, type RegisterPayload } from '@/lib/api/modules/auth-api'
-import { loginSchema, registerSchema } from '@/features/auth/auth-schemas'
+import { forgotPasswordSchema, loginSchema, registerSchema } from '@/features/auth/auth-schemas'
 import { AuthSharedShell } from '@/features/auth/auth-shared-shell'
 import '@/features/auth/auth-sliding.css'
 
-type AuthMode = 'sign-in' | 'sign-up'
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
 
 type LoginFormValues = z.infer<typeof loginSchema>
 type RegisterFormValues = z.infer<typeof registerSchema>
+type ForgotFormValues = z.infer<typeof forgotPasswordSchema>
 
 interface AuthSlidingPageProps {
   initialMode: AuthMode
 }
 
-const ROUTE_SWITCH_DELAY_MS = 680
+interface PanelCopy {
+  key: string
+  title: string
+  description: string
+  actionLabel: string
+  onAction: () => void
+  showBrand?: boolean
+}
+
+const ROUTE_SWITCH_DELAY_MS = 780
+const FORM_TRANSITION = {
+  duration: 0.32,
+  ease: [0.22, 1, 0.36, 1] as const,
+}
+
+const PANEL_TEXT_TRANSITION = {
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1] as const,
+}
+
+const AUTH_MODE_ROUTE: Record<AuthMode, string> = {
+  'sign-in': '/login',
+  'sign-up': '/register',
+  'forgot-password': '/forgot-password',
+}
+
+const AUTH_MODE_CLASS: Record<AuthMode, string> = {
+  'sign-in': '',
+  'sign-up': 'sign-up-mode',
+  'forgot-password': 'forgot-password-mode',
+}
 
 type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong' | 'very-strong'
 
@@ -96,8 +128,42 @@ function FieldError({ message }: FieldErrorProps) {
   return <p className="chronelis-auth-error">{message}</p>
 }
 
+interface AuthPanelContentProps {
+  side: 'left' | 'right'
+  content: PanelCopy
+}
+
+function AuthPanelContent({ side, content }: AuthPanelContentProps) {
+  return (
+    <AnimatePresence initial={false}>
+      <motion.div
+        key={`${side}-${content.key}`}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={PANEL_TEXT_TRANSITION}
+        className="chronelis-auth-panel-copy"
+      >
+        {content.showBrand ? (
+          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
+            <span className="chronelis-auth-brand-badge">C</span>
+            <span className="chronelis-auth-brand-text">Chronelis</span>
+          </Link>
+        ) : null}
+
+        <h3>{content.title}</h3>
+        <p>{content.description}</p>
+        <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={content.onAction}>
+          {content.actionLabel}
+        </button>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
   const [showSignInPassword, setShowSignInPassword] = useState(false)
@@ -125,24 +191,16 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
     if (routeSwitchTimeoutRef.current !== null) {
       window.clearTimeout(routeSwitchTimeoutRef.current)
-    }
-
-    routeSwitchTimeoutRef.current = window.setTimeout(() => {
-      navigate(nextMode === 'sign-in' ? '/login' : '/register', { replace: true })
-      routeSwitchTimeoutRef.current = null
-    }, ROUTE_SWITCH_DELAY_MS)
-  }
-
-  const handleForgotTransition = () => {
-    if (routeSwitchTimeoutRef.current !== null) {
-      window.clearTimeout(routeSwitchTimeoutRef.current)
       routeSwitchTimeoutRef.current = null
     }
 
-    setMode('sign-up')
+    const nextRoute = AUTH_MODE_ROUTE[nextMode]
+    if (location.pathname === nextRoute) {
+      return
+    }
 
     routeSwitchTimeoutRef.current = window.setTimeout(() => {
-      navigate('/forgot-password')
+      navigate(nextRoute, { replace: true })
       routeSwitchTimeoutRef.current = null
     }, ROUTE_SWITCH_DELAY_MS)
   }
@@ -164,6 +222,23 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       lastName: '',
       password: '',
       confirmPassword: '',
+    },
+  })
+
+  const forgotForm = useForm<ForgotFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: '',
+    },
+  })
+
+  const forgotMutation = useMutation({
+    mutationFn: (payload: ForgotFormValues) => authApi.forgotPassword(payload.email),
+    onSuccess: () => {
+      toast.success('Đã gửi email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+    },
+    onError: (error: Error) => {
+      toast.error('Gửi email thất bại', { description: error.message })
     },
   })
 
@@ -206,38 +281,59 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const signUpPassword = registerForm.watch('password')
   const passwordStrength = resolvePasswordStrength(signUpPassword)
   const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
+  const pageClassName = AUTH_MODE_CLASS[mode]
+
+  const leftPanelCopy: PanelCopy = mode === 'forgot-password'
+    ? {
+        key: 'forgot-left',
+        showBrand: true,
+        title: 'Cần lấy lại mật khẩu?',
+        description: 'Nhập email bạn đã dùng đăng ký, Chronelis sẽ gửi liên kết đặt lại mật khẩu đến hộp thư ngay lập tức.',
+        actionLabel: 'Đăng ký',
+        onAction: () => switchMode('sign-up'),
+      }
+    : {
+        key: 'welcome-left',
+        showBrand: true,
+        title: 'Bạn mới đến Chronelis?',
+        description: 'Tạo tài khoản để bắt đầu quản lý workspace, theo dõi tiến độ và cộng tác realtime cùng đội nhóm.',
+        actionLabel: 'Đăng ký',
+        onAction: () => switchMode('sign-up'),
+      }
+
+  const rightPanelCopy: PanelCopy = mode === 'forgot-password'
+    ? {
+        key: 'forgot-right',
+        title: 'Đã nhớ mật khẩu?',
+        description: 'Quay về đăng nhập để tiếp tục quản lý workspace, dự án và theo dõi tiến độ công việc của bạn.',
+        actionLabel: 'Đăng nhập',
+        onAction: () => switchMode('sign-in'),
+      }
+    : {
+        key: 'signin-right',
+        title: 'Đã có tài khoản?',
+        description: 'Đăng nhập để tiếp tục xử lý task, kế hoạch lịch và cập nhật tiến độ cho dự án của bạn.',
+        actionLabel: 'Đăng nhập',
+        onAction: () => switchMode('sign-in'),
+      }
 
   return (
     <AuthSharedShell
-      pageClassName={mode === 'sign-up' ? 'sign-up-mode' : ''}
-      leftPanel={(
-        <>
-          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
-            <span className="chronelis-auth-brand-badge">C</span>
-            <span className="chronelis-auth-brand-text">Chronelis</span>
-          </Link>
-          <h3>Bạn mới đến Chronelis?</h3>
-          <p>
-            Tạo tài khoản để bắt đầu quản lý workspace, theo dõi tiến độ và cộng tác realtime cùng đội nhóm.
-          </p>
-          <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-up')}>
-            Đăng ký
-          </button>
-        </>
-      )}
-      rightPanel={(
-        <>
-          <h3>Đã có tài khoản?</h3>
-          <p>
-            Đăng nhập để tiếp tục xử lý task, kế hoạch lịch và cập nhật tiến độ cho dự án của bạn.
-          </p>
-          <button type="button" className="chronelis-auth-btn chronelis-auth-btn--ghost" onClick={() => switchMode('sign-in')}>
-            Đăng nhập
-          </button>
-        </>
-      )}
+      pageClassName={pageClassName}
+      leftPanel={<AuthPanelContent side="left" content={leftPanelCopy} />}
+      rightPanel={<AuthPanelContent side="right" content={rightPanelCopy} />}
     >
-      <form className="chronelis-auth-form chronelis-auth-sign-in-form" onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}>
+      <AnimatePresence initial={false}>
+        {mode === 'sign-in' ? (
+          <motion.form
+            key="sign-in-form"
+            className="chronelis-auth-form chronelis-auth-sign-in-form"
+            onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            transition={FORM_TRANSITION}
+          >
             <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
               <span className="chronelis-auth-brand-badge">C</span>
               <span className="chronelis-auth-brand-text">Chronelis</span>
@@ -277,7 +373,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             <FieldError message={loginForm.formState.errors.password?.message} />
 
             <div className="chronelis-auth-form-meta">
-              <button type="button" className="chronelis-auth-link" onClick={handleForgotTransition}>Quên mật khẩu?</button>
+              <button type="button" className="chronelis-auth-link" onClick={() => switchMode('forgot-password')}>Quên mật khẩu?</button>
             </div>
 
             <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={loginMutation.isPending}>
@@ -295,9 +391,19 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 Đăng ký
               </button>
             </div>
-      </form>
+          </motion.form>
+        ) : null}
 
-      <form className="chronelis-auth-form chronelis-auth-sign-up-form" onSubmit={registerForm.handleSubmit((values) => registerMutation.mutate(values))}>
+        {mode === 'sign-up' ? (
+          <motion.form
+            key="sign-up-form"
+            className="chronelis-auth-form chronelis-auth-sign-up-form"
+            onSubmit={registerForm.handleSubmit((values) => registerMutation.mutate(values))}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={FORM_TRANSITION}
+          >
             <h2 className="chronelis-auth-title">Đăng ký</h2>
             <p className="chronelis-auth-subtitle">Tạo tài khoản để cộng tác cùng đội nhóm</p>
 
@@ -426,7 +532,61 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 Đăng nhập
               </button>
             </div>
-      </form>
+          </motion.form>
+        ) : null}
+
+        {mode === 'forgot-password' ? (
+          <motion.form
+            key="forgot-form"
+            className="chronelis-auth-form chronelis-auth-forgot-form"
+            onSubmit={forgotForm.handleSubmit((values) => forgotMutation.mutate(values))}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={FORM_TRANSITION}
+          >
+            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
+              <span className="chronelis-auth-brand-badge">C</span>
+              <span className="chronelis-auth-brand-text">Chronelis</span>
+            </Link>
+
+            <h2 className="chronelis-auth-title">Quên mật khẩu</h2>
+            <p className="chronelis-auth-subtitle">Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
+
+            {forgotMutation.isSuccess ? (
+              <div className="chronelis-auth-forgot-success">
+                <div className="chronelis-auth-forgot-success-icon">
+                  <Mail className="size-5" />
+                </div>
+                <p className="chronelis-auth-forgot-success-title">Kiểm tra email của bạn</p>
+                <p className="chronelis-auth-forgot-success-description">
+                  Chúng tôi đã gửi liên kết đặt lại mật khẩu đến hộp thư của bạn.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="chronelis-auth-input-field">
+                  <Mail className="chronelis-auth-input-icon" />
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@gmail.com"
+                    {...forgotForm.register('email')}
+                  />
+                </div>
+                <FieldError message={forgotForm.formState.errors.email?.message} />
+
+                <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={forgotMutation.isPending}>
+                  {forgotMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+                  Gửi email đặt lại
+                </button>
+              </>
+            )}
+
+          </motion.form>
+        ) : null}
+      </AnimatePresence>
     </AuthSharedShell>
   )
 }

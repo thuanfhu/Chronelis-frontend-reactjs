@@ -50,6 +50,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { RoleBadge } from '@/features/admin/components/role-badge'
 import { queryKeys } from '@/lib/api/query-keys'
 import { adminPermissionApi, type CreatePermissionPayload, type UpdatePermissionPayload } from '@/lib/api/modules/admin-permission-api'
 import { adminRoleApi, type CreateRolePayload, type UpdateRolePayload } from '@/lib/api/modules/admin-role-api'
@@ -95,28 +96,6 @@ function resolveAdminSection(value: string | undefined): AdminSection | null {
   }
 
   return null
-}
-
-function resolveRoleBadgeClass(roleName: string): string {
-  const normalized = roleName.trim().toUpperCase()
-
-  if (normalized.includes('ADMIN')) {
-    return 'border-red-300 bg-red-100 text-red-800 dark:border-red-500/45 dark:bg-red-500/15 dark:text-red-200'
-  }
-
-  if (normalized.includes('MANAGER')) {
-    return 'border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-500/45 dark:bg-violet-500/15 dark:text-violet-200'
-  }
-
-  if (normalized.includes('MOD') || normalized.includes('SUPPORT')) {
-    return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/45 dark:bg-amber-500/15 dark:text-amber-200'
-  }
-
-  if (normalized.includes('USER') || normalized.includes('MEMBER')) {
-    return 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/45 dark:bg-sky-500/15 dark:text-sky-200'
-  }
-
-  return 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200'
 }
 
 function resolveMethodBadgeClass(method: string): string {
@@ -600,12 +579,10 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                   <TableCell className="px-2">
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       {(user.roles ?? []).length === 0 ? (
-                        <Badge variant="outline">No role</Badge>
+                        <Badge variant="outline" className="text-muted-foreground">No role</Badge>
                       ) : (
                         (user.roles ?? []).map((role) => (
-                          <Badge key={role.roleId} variant="outline" className={resolveRoleBadgeClass(role.name)}>
-                            {role.name}
-                          </Badge>
+                          <RoleBadge key={role.roleId} roleName={role.name} />
                         ))
                       )}
                     </div>
@@ -1122,25 +1099,32 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
 
       <CardContent className="space-y-4">
         <div className="w-full overflow-x-auto rounded-md border">
-          <Table className="min-w-215">
+          <Table className="table-fixed min-w-232">
+            <colgroup>
+              <col className="w-42" />
+              <col />
+              <col className="w-46" />
+            </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-55 text-center">Role</TableHead>
+                <TableHead className="px-1 text-center">Role</TableHead>
                 <TableHead>Mô tả</TableHead>
-                <TableHead className="w-97.5 text-center">Hành động</TableHead>
+                <TableHead className="px-1 text-center">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedRoles.map((role) => (
                 <TableRow key={role.roleId}>
-                  <TableCell className="text-center align-middle">
-                    <p className="font-semibold tracking-tight">{role.name}</p>
+                  <TableCell className="px-1 py-2 text-center align-middle">
+                    <div className="flex items-center justify-center">
+                      <RoleBadge roleName={role.name} />
+                    </div>
                   </TableCell>
-                  <TableCell className="max-w-136 whitespace-normal text-sm leading-relaxed text-muted-foreground align-top">
+                  <TableCell className="whitespace-normal text-sm leading-relaxed text-muted-foreground align-top">
                     {role.description || 'Không có mô tả'}
                   </TableCell>
-                  <TableCell className="text-center align-top">
-                    <div className="inline-flex items-center justify-center gap-1.5">
+                  <TableCell className="px-1 py-2 text-center align-top">
+                    <div className="inline-flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
