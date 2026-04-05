@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -21,7 +21,8 @@ interface AuthSlidingPageProps {
 }
 
 const ROUTE_SWITCH_DELAY_MS = 680
-const FORGOT_TRANSITION_DELAY_MS = 420
+const FORGOT_TRANSITION_DELAY_MS = 340
+const FORGOT_RETURN_ENTER_MS = 420
 
 type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong' | 'very-strong'
 
@@ -98,9 +99,11 @@ function FieldError({ message }: FieldErrorProps) {
 
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
   const [isForgotTransitioning, setIsForgotTransitioning] = useState(false)
+  const [fromForgotEnter, setFromForgotEnter] = useState(false)
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false)
@@ -110,6 +113,22 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   useEffect(() => {
     setMode(initialMode)
   }, [initialMode])
+
+  useEffect(() => {
+    const state = location.state as { fromForgot?: boolean } | null
+    if (!state?.fromForgot) {
+      return
+    }
+
+    setFromForgotEnter(true)
+    const enterTimeout = window.setTimeout(() => {
+      setFromForgotEnter(false)
+    }, FORGOT_RETURN_ENTER_MS)
+
+    return () => {
+      window.clearTimeout(enterTimeout)
+    }
+  }, [location.state])
 
   useEffect(() => () => {
     if (routeSwitchTimeoutRef.current !== null) {
@@ -157,7 +176,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
     setIsForgotTransitioning(true)
     forgotTimeoutRef.current = window.setTimeout(() => {
-      navigate('/forgot-password')
+      navigate('/forgot-password', { state: { fromAuthSlide: true } })
       forgotTimeoutRef.current = null
     }, FORGOT_TRANSITION_DELAY_MS)
   }
@@ -223,7 +242,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
 
   return (
-    <div className={`chronelis-auth-page ${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''}`}>
+    <div className={`chronelis-auth-page ${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''} ${fromForgotEnter ? 'from-forgot-enter' : ''}`}>
       <div className="chronelis-auth-forms-container">
         <div className="chronelis-auth-signin-signup">
           <form className="chronelis-auth-form chronelis-auth-sign-in-form" onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}>
@@ -273,6 +292,17 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               {loginMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
               Đăng nhập
             </button>
+
+            <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng nhập">
+              <span>Chưa có tài khoản?</span>
+              <button
+                type="button"
+                className="chronelis-auth-mobile-switch-trigger"
+                onClick={() => switchMode('sign-up')}
+              >
+                Chuyển sang Đăng ký
+              </button>
+            </div>
           </form>
 
           <form className="chronelis-auth-form chronelis-auth-sign-up-form" onSubmit={registerForm.handleSubmit((values) => registerMutation.mutate(values))}>
@@ -393,6 +423,17 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
               Tạo tài khoản
             </button>
+
+            <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng ký">
+              <span>Đã có tài khoản?</span>
+              <button
+                type="button"
+                className="chronelis-auth-mobile-switch-trigger"
+                onClick={() => switchMode('sign-in')}
+              >
+                Chuyển sang Đăng nhập
+              </button>
+            </div>
           </form>
         </div>
       </div>

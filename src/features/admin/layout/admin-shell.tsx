@@ -8,7 +8,7 @@ export function AdminShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {mobileOpen && (
         <button
           type="button"
@@ -23,7 +23,7 @@ export function AdminShell() {
         onCloseMobile={() => setMobileOpen(false)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/70 bg-background/90 px-4 backdrop-blur md:hidden">
           <Button
             type="button"

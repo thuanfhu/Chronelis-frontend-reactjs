@@ -20,19 +20,19 @@ interface AdminNavItem {
 const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     label: 'Roles',
-    description: 'Vai tro he thong',
+    description: 'Vai trò hệ thống',
     to: '/admin/roles',
     icon: Package,
   },
   {
     label: 'Permissions',
-    description: 'Quyen truy cap API',
+    description: 'Quyền truy cập API',
     to: '/admin/permissions',
     icon: ShieldAlert,
   },
   {
     label: 'Users',
-    description: 'Quan ly tai khoan',
+    description: 'Quản lý tài khoản',
     to: '/admin/users',
     icon: Users,
   },
@@ -98,6 +98,19 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
           Administration
         </p>
 
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3 h-9 w-full justify-start border-sidebar-border bg-sidebar-primary/10 text-sidebar-primary hover:bg-sidebar-primary/15"
+          onClick={() => {
+            onCloseMobile()
+            navigate('/dashboard')
+          }}
+        >
+          <LayoutDashboard className="size-4" />
+          Quay lại Workspace
+        </Button>
+
         <nav className="mt-2 space-y-1">
           {ADMIN_NAV_ITEMS.map((item) => (
             <NavLink
@@ -138,21 +151,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                onCloseMobile()
-                navigate('/dashboard')
-              }}
-            >
-              <LayoutDashboard className="size-3.5" />
-              Dashboard
-            </Button>
-
+          <div className="mt-2 grid grid-cols-1 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -175,7 +174,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
             onClick={handleLogout}
           >
             <LogOut className="size-3.5" />
-            Dang xuat
+            Đăng xuất
           </Button>
         </div>
       </div>

@@ -33,6 +33,24 @@
   z-index: 3;
 }
 
+.chronelis-auth-page::after {
+  content: '';
+  position: absolute;
+  right: -22%;
+  bottom: -28%;
+  width: min(82vw, 520px);
+  height: min(82vw, 520px);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in oklab, var(--primary) 24%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 20%, transparent) 52%,
+    transparent 74%);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .chronelis-auth-forms-container {
   position: absolute;
   width: 100%;
@@ -45,9 +63,12 @@
   top: 50%;
   left: 75%;
   width: min(52%, 760px);
+  height: clamp(35.5rem, 74vh, 40rem);
+  min-height: clamp(35.5rem, 74vh, 40rem);
   transform: translate3d(-50%, -50%, 0);
-  display: grid;
-  grid-template-columns: 1fr;
+  isolation: isolate;
+  contain: layout paint;
+  transform-style: preserve-3d;
   transition:
     left var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay),
     transform var(--auth-slide-duration) var(--auth-ease) var(--auth-slide-delay);
@@ -56,23 +77,37 @@
 }
 
 .chronelis-auth-form {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 0 4.2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  transform: translate3d(0, 0, 0);
+  transform-style: preserve-3d;
   backface-visibility: hidden;
-  transition: opacity var(--auth-fade-duration) var(--auth-ease-soft) var(--auth-slide-delay);
+  will-change: transform, opacity;
+  transition:
+    opacity var(--auth-fade-duration) var(--auth-ease-soft) var(--auth-slide-delay),
+    transform 0.34s var(--auth-ease-soft);
 }
 
 .chronelis-auth-sign-up-form {
   opacity: 0;
   z-index: 1;
+  pointer-events: none;
+  transform: translate3d(9%, 0, 0);
 }
 
 .chronelis-auth-sign-in-form {
   z-index: 2;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
 }
 
 .chronelis-auth-title {
@@ -167,6 +202,30 @@
 }
 
 .chronelis-auth-link:hover {
+  text-decoration: underline;
+}
+
+.chronelis-auth-mobile-switch {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.78rem;
+  font-size: 0.77rem;
+  color: color-mix(in oklab, var(--muted-foreground) 92%, transparent);
+}
+
+.chronelis-auth-mobile-switch-trigger {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.77rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--primary) 92%, var(--foreground) 8%);
+  cursor: pointer;
+}
+
+.chronelis-auth-mobile-switch-trigger:hover {
   text-decoration: underline;
 }
 
@@ -265,23 +324,78 @@
 
 /* Login -> forgot password transition */
 .chronelis-auth-page.forgot-mode::before {
-  transform: translate3d(60%, -44%, 0) scale(1.03);
+  transform: translate3d(62%, -42%, 0) scale(1.02);
 }
 
 .chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
   opacity: 0;
-  filter: blur(2px);
-  transform: translate3d(-50%, calc(-50% - 14px), 0) scale(0.98);
+  filter: none;
+  transform: translate3d(-50%, calc(-50% - 12px), 0) scale(0.985);
   transition:
-    opacity 0.32s var(--auth-ease-soft),
-    filter 0.32s var(--auth-ease-soft),
-    transform 0.32s var(--auth-ease-soft);
+    opacity 0.28s var(--auth-ease-soft),
+    filter 0.28s var(--auth-ease-soft),
+    transform 0.28s var(--auth-ease-soft);
 }
 
 .chronelis-auth-page.forgot-mode .chronelis-auth-panel-content {
   opacity: 0;
-  transform: translate3d(0, -10px, 0);
-  transition: opacity 0.28s var(--auth-ease-soft), transform 0.28s var(--auth-ease-soft);
+  transform: translate3d(0, -8px, 0);
+  transition: opacity 0.24s var(--auth-ease-soft), transform 0.24s var(--auth-ease-soft);
+}
+
+.chronelis-auth-page.from-forgot-enter .chronelis-auth-signin-signup {
+  animation: auth-slide-from-forgot 0.38s var(--auth-ease-soft);
+}
+
+@keyframes auth-slide-from-forgot {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, calc(-50% + 14px), 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0) scale(1);
+  }
+}
+
+.chronelis-forgot-shell {
+  width: 100%;
+  transform: translate3d(0, 0, 0);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  contain: layout paint;
+}
+
+.chronelis-forgot-shell--enter {
+  animation: forgot-enter 0.32s var(--auth-ease-soft);
+}
+
+.chronelis-forgot-shell--leaving {
+  pointer-events: none;
+  animation: forgot-leave 0.3s var(--auth-ease-soft) forwards;
+}
+
+@keyframes forgot-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes forgot-leave {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(22px, 0, 0);
+  }
 }
 
 .chronelis-auth-error {
@@ -439,11 +553,15 @@
 .chronelis-auth-page.sign-up-mode .chronelis-auth-sign-in-form {
   opacity: 0;
   z-index: 1;
+  pointer-events: none;
+  transform: translate3d(-9%, 0, 0);
 }
 
 .chronelis-auth-page.sign-up-mode .chronelis-auth-sign-up-form {
   opacity: 1;
   z-index: 2;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
 }
 
 .chronelis-auth-page.sign-up-mode .chronelis-auth-left-panel {
@@ -603,16 +721,107 @@
 @media (max-width: 640px) {
   .chronelis-auth-page {
     min-height: 100dvh;
-    padding: 1rem;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at 8% 10%, color-mix(in oklab, var(--primary) 20%, transparent), transparent 55%),
+      radial-gradient(circle at 90% 88%, color-mix(in oklab, var(--accent) 25%, transparent), transparent 48%),
+      linear-gradient(158deg,
+        color-mix(in oklab, var(--background) 84%, var(--primary) 16%) 0%,
+        color-mix(in oklab, var(--background) 90%, var(--accent) 10%) 100%);
+  }
+
+  .chronelis-auth-page::before {
+    display: none;
+  }
+
+  .chronelis-auth-page::after {
+    opacity: 1;
+  }
+
+  .chronelis-auth-panels-container {
+    display: none;
+  }
+
+  .chronelis-auth-forms-container {
+    position: relative;
+    inset: auto;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0.85rem 1.35rem;
+    z-index: 6;
+  }
+
+  .chronelis-auth-signin-signup {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    max-width: 30rem;
+    min-height: 37.5rem;
+    height: min(43rem, calc(100dvh - 2.35rem));
+    transform: none !important;
   }
 
   .chronelis-auth-form {
-    padding: 0 0.25rem;
+    padding: 1rem 0.95rem 1.2rem;
+    border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
+    border-radius: 1.1rem;
+    background:
+      linear-gradient(180deg,
+        color-mix(in oklab, var(--card) 94%, transparent),
+        color-mix(in oklab, var(--card) 88%, var(--muted) 12%));
+    backdrop-filter: blur(10px);
+    box-shadow:
+      0 14px 34px color-mix(in oklab, var(--foreground) 10%, transparent),
+      0 1px 0 color-mix(in oklab, #fff 28%, transparent) inset;
+  }
+
+  .chronelis-auth-title {
+    font-size: clamp(1.55rem, 6.2vw, 1.9rem);
+  }
+
+  .chronelis-auth-subtitle {
+    margin-bottom: 1rem;
+    font-size: 0.82rem;
   }
 
   .chronelis-auth-grid-2 {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+
+  .chronelis-auth-input-field {
+    min-height: 3.15rem;
+    margin-top: 0.65rem;
+  }
+
+  .chronelis-auth-input-field input {
+    padding-right: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .chronelis-auth-btn {
+    width: 100%;
+    max-width: none;
+    height: 2.95rem;
+  }
+
+  .chronelis-auth-mobile-switch {
+    display: flex;
+  }
+
+  .chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
+    top: auto;
+    left: auto;
+    transform: none !important;
+  }
+
+  .chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
+    transform: translate3d(-20px, 0, 0) scale(0.985) !important;
   }
 
   .chronelis-auth-panel-content p {
@@ -632,15 +841,33 @@
     display: inline-flex;
     align-self: flex-start;
   }
+}
 
-  .chronelis-auth-page::before {
-    width: 1380px;
-    height: 1380px;
-    bottom: 71%;
-    left: 50%;
+@media (max-width: 430px) {
+  .chronelis-auth-forms-container {
+    padding: 0.75rem 0.55rem 1rem;
   }
 
-  .chronelis-auth-page.sign-up-mode::before {
-    bottom: 28%;
+  .chronelis-auth-form {
+    padding: 0.92rem 0.78rem 1.05rem;
+    border-radius: 1rem;
+  }
+
+  .chronelis-auth-input-field {
+    grid-template-columns: 2.3rem 1fr;
+    min-height: 3rem;
+  }
+
+  .chronelis-auth-input-field--password {
+    grid-template-columns: 2.3rem 1fr 2.2rem;
+  }
+
+  .chronelis-auth-mobile-switch {
+    margin-top: 0.7rem;
+    font-size: 0.73rem;
+  }
+
+  .chronelis-auth-mobile-switch-trigger {
+    font-size: 0.73rem;
   }
 }

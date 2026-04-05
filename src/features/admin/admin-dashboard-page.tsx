@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
+  Pencil,
+  Power,
   Plus,
   RefreshCcw,
   Search,
   Settings,
+  ShieldCheck,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -48,10 +55,13 @@ import { adminRoleApi, type CreateRolePayload, type UpdateRolePayload } from '@/
 import { adminUserApi, type UpdateUserForAdminPayload } from '@/lib/api/modules/admin-user-api'
 import type { AdminPermission, AdminRole, AdminUser, HttpMethodName } from '@/lib/api/modules/admin-types'
 import { isAdminUser } from '@/lib/auth/role-utils'
+import { cn } from '@/lib/utils/cn'
 
 const PAGE_SIZE = 200
+const TABLE_PAGE_SIZE = 7
 const NO_MODULE = '__NO_MODULE__'
 const HTTP_METHODS: HttpMethodName[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+const ICON_ACTION_BUTTON_BASE = 'size-8 rounded-full p-0 transition-all duration-200 hover:scale-110 focus-visible:scale-110'
 
 type AdminSection = 'users' | 'roles' | 'permissions'
 
@@ -84,6 +94,28 @@ function resolveAdminSection(value: string | undefined): AdminSection | null {
   }
 
   return null
+}
+
+function resolveRoleBadgeClass(roleName: string): string {
+  const normalized = roleName.trim().toUpperCase()
+
+  if (normalized.includes('ADMIN')) {
+    return 'border-red-300 bg-red-100 text-red-800 dark:border-red-500/45 dark:bg-red-500/15 dark:text-red-200'
+  }
+
+  if (normalized.includes('MANAGER')) {
+    return 'border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-500/45 dark:bg-violet-500/15 dark:text-violet-200'
+  }
+
+  if (normalized.includes('MOD') || normalized.includes('SUPPORT')) {
+    return 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/45 dark:bg-amber-500/15 dark:text-amber-200'
+  }
+
+  if (normalized.includes('USER') || normalized.includes('MEMBER')) {
+    return 'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/45 dark:bg-sky-500/15 dark:text-sky-200'
+  }
+
+  return 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200'
 }
 
 export function AdminDashboardPage() {
@@ -205,6 +237,55 @@ export function AdminDashboardPage() {
   )
 }
 
+interface AdminTablePaginationProps {
+  page: number
+  pageSize: number
+  totalItems: number
+  onPageChange: (nextPage: number) => void
+}
+
+function AdminTablePagination({ page, pageSize, totalItems, onPageChange }: AdminTablePaginationProps) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const startItem = totalItems === 0 ? 0 : ((safePage - 1) * pageSize) + 1
+  const endItem = Math.min(safePage * pageSize, totalItems)
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2">
+      <p className="text-xs text-muted-foreground">
+        Hiển thị {startItem}-{endItem} / {totalItems}
+      </p>
+      <div className="inline-flex items-center gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage <= 1}
+        >
+          <ChevronLeft className="size-3.5" />
+          Trước
+        </Button>
+        <span className="min-w-14 text-center text-xs font-medium">
+          {safePage}/{totalPages}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage >= totalPages}
+        >
+          Sau
+          <ChevronRight className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 interface UsersAdminTabProps {
   users: AdminUser[]
   roles: AdminRole[]
@@ -238,6 +319,7 @@ const EMPTY_USER_FORM: UserEditFormState = {
 
 function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdminTabProps) {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [editOpen, setEditOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [form, setForm] = useState<UserEditFormState>(EMPTY_USER_FORM)
@@ -262,6 +344,23 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
       )
     })
   }, [search, users])
+
+  const usersTotalPages = Math.max(1, Math.ceil(filteredUsers.length / TABLE_PAGE_SIZE))
+  const safeUsersPage = Math.min(page, usersTotalPages)
+  const paginatedUsers = useMemo(() => {
+    const start = (safeUsersPage - 1) * TABLE_PAGE_SIZE
+    return filteredUsers.slice(start, start + TABLE_PAGE_SIZE)
+  }, [filteredUsers, safeUsersPage])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
+
+  useEffect(() => {
+    if (page !== safeUsersPage) {
+      setPage(safeUsersPage)
+    }
+  }, [page, safeUsersPage])
 
   const updateUserMutation = useMutation({
     mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserForAdminPayload }) => adminUserApi.update(userId, payload),
@@ -432,75 +531,95 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Người dùng</TableHead>
-              <TableHead>Email / SĐT</TableHead>
-              <TableHead>Roles</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.userId}>
-                <TableCell>
-                  <p className="font-medium">{user.firstName} {user.lastName}</p>
-                  <p className="text-xs text-muted-foreground">ID: {user.userId}</p>
-                </TableCell>
-                <TableCell>
-                  <p>{user.email}</p>
-                  <p className="text-xs text-muted-foreground">{user.phoneNumber || 'Chưa cập nhật'}</p>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {(user.roles ?? []).length === 0 ? (
-                      <Badge variant="outline">No role</Badge>
-                    ) : (
-                      (user.roles ?? []).map((role) => (
-                        <Badge key={role.roleId} variant="secondary">{role.name}</Badge>
-                      ))
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={user.isVerified ? 'default' : 'outline'}>
-                    {user.isVerified ? 'Đã xác thực' : 'Chưa xác thực'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="inline-flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deleteUserMutation.isPending || user.userId === currentUserId}
-                      onClick={() => {
-                        if (!window.confirm(`Xóa người dùng ${user.email}?`)) {
-                          return
-                        }
-                        deleteUserMutation.mutate(user.userId)
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredUsers.length === 0 && (
+        <div className="w-full overflow-x-auto rounded-md border">
+          <Table className="min-w-195">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Không có người dùng phù hợp.
-                </TableCell>
+                <TableHead>Người dùng</TableHead>
+                <TableHead>Email / SĐT</TableHead>
+                <TableHead>Roles</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="w-45 text-right">Hành động</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedUsers.map((user) => (
+                <TableRow key={user.userId}>
+                  <TableCell>
+                    <p className="font-medium">{user.firstName} {user.lastName}</p>
+                    <p className="text-xs text-muted-foreground">ID: {user.userId}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p>{user.email}</p>
+                    <p className="text-xs text-muted-foreground">{user.phoneNumber || 'Chưa cập nhật'}</p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(user.roles ?? []).length === 0 ? (
+                        <Badge variant="outline">No role</Badge>
+                      ) : (
+                        (user.roles ?? []).map((role) => (
+                          <Badge key={role.roleId} variant="outline" className={resolveRoleBadgeClass(role.name)}>
+                            {role.name}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'inline-flex items-center gap-1.5',
+                        user.isVerified
+                          ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200'
+                          : 'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/45 dark:bg-rose-500/15 dark:text-rose-200',
+                      )}
+                    >
+                      {user.isVerified ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+                      {user.isVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(user)}>
+                        Sửa
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deleteUserMutation.isPending || user.userId === currentUserId}
+                        onClick={() => {
+                          if (!window.confirm(`Xóa người dùng ${user.email}?`)) {
+                            return
+                          }
+                          deleteUserMutation.mutate(user.userId)
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredUsers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                    Không có người dùng phù hợp.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <AdminTablePagination
+          page={safeUsersPage}
+          pageSize={TABLE_PAGE_SIZE}
+          totalItems={filteredUsers.length}
+          onPageChange={setPage}
+        />
       </CardContent>
 
       <Dialog open={editOpen} onOpenChange={(open) => { if (!open) closeEditDialog() }}>
@@ -696,6 +815,7 @@ const EMPTY_ROLE_FORM: RoleFormState = {
 
 function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps) {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
   const [roleDialogMode, setRoleDialogMode] = useState<'create' | 'edit'>('create')
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null)
@@ -720,6 +840,23 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
       )
     })
   }, [search, roles])
+
+  const rolesTotalPages = Math.max(1, Math.ceil(filteredRoles.length / TABLE_PAGE_SIZE))
+  const safeRolesPage = Math.min(page, rolesTotalPages)
+  const paginatedRoles = useMemo(() => {
+    const start = (safeRolesPage - 1) * TABLE_PAGE_SIZE
+    return filteredRoles.slice(start, start + TABLE_PAGE_SIZE)
+  }, [filteredRoles, safeRolesPage])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
+
+  useEffect(() => {
+    if (page !== safeRolesPage) {
+      setPage(safeRolesPage)
+    }
+  }, [page, safeRolesPage])
 
   const createRoleMutation = useMutation({
     mutationFn: (payload: CreateRolePayload) => adminRoleApi.create(payload),
@@ -753,6 +890,18 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
     },
     onError: (error: Error) => {
       toast.error('Xóa role thất bại', { description: error.message })
+    },
+  })
+
+  const toggleRoleActiveMutation = useMutation({
+    mutationFn: ({ roleId, active }: { roleId: string; active: boolean }) =>
+      adminRoleApi.update(roleId, { active }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật trạng thái role')
+      onDataChanged()
+    },
+    onError: (error: Error) => {
+      toast.error('Cập nhật trạng thái role thất bại', { description: error.message })
     },
   })
 
@@ -898,84 +1047,111 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Role</TableHead>
-              <TableHead>Mô tả</TableHead>
-              <TableHead>Permissions</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredRoles.map((role) => (
-              <TableRow key={role.roleId}>
-                <TableCell>
-                  <p className="font-medium">{role.name}</p>
-                  <p className="text-xs text-muted-foreground">ID: {role.roleId}</p>
-                </TableCell>
-                <TableCell className="max-w-72 whitespace-normal text-sm text-muted-foreground">
-                  {role.description || 'Không có mô tả'}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {(role.permissions ?? []).slice(0, 4).map((permission) => (
-                      <Badge key={permission.permissionId} variant="secondary">{permission.name}</Badge>
-                    ))}
-                    {(role.permissions ?? []).length > 4 && (
-                      <Badge variant="outline">+{(role.permissions ?? []).length - 4}</Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={role.active ? 'default' : 'outline'}>
-                    {role.active ? 'Bật' : 'Tắt'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="inline-flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(role)}>
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPermissionDialogRoleId(role.roleId)
-                        setSelectedPermissionIds([])
-                        setPermissionDialogOpen(true)
-                      }}
-                    >
-                      Permissions
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deleteRoleMutation.isPending}
-                      onClick={() => {
-                        if (!window.confirm(`Xóa role ${role.name}?`)) {
-                          return
-                        }
-                        deleteRoleMutation.mutate(role.roleId)
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredRoles.length === 0 && (
+        <div className="w-full overflow-x-auto rounded-md border">
+          <Table className="min-w-215">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Không có role phù hợp.
-                </TableCell>
+                <TableHead className="w-55">Role</TableHead>
+                <TableHead>Mô tả</TableHead>
+                <TableHead className="w-97.5 text-right">Hành động</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedRoles.map((role) => (
+                <TableRow key={role.roleId}>
+                  <TableCell className="align-top">
+                    <p className="font-semibold tracking-tight">{role.name}</p>
+                  </TableCell>
+                  <TableCell className="max-w-136 whitespace-normal text-sm leading-relaxed text-muted-foreground align-top">
+                    {role.description || 'Không có mô tả'}
+                  </TableCell>
+                  <TableCell className="text-right align-top">
+                    <div className="ml-auto flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          ICON_ACTION_BUTTON_BASE,
+                          role.active
+                            ? 'text-emerald-600 hover:bg-emerald-500/15 hover:text-emerald-700'
+                            : 'text-slate-500 hover:bg-slate-500/15 hover:text-slate-700',
+                        )}
+                        disabled={toggleRoleActiveMutation.isPending}
+                        title={role.active ? 'Tắt role' : 'Bật role'}
+                        onClick={() => {
+                          toggleRoleActiveMutation.mutate({
+                            roleId: role.roleId,
+                            active: !Boolean(role.active),
+                          })
+                        }}
+                      >
+                        <Power className="size-4" />
+                        <span className="sr-only">{role.active ? 'Tắt role' : 'Bật role'}</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
+                        title="Sửa role"
+                        onClick={() => openEditDialog(role)}
+                      >
+                        <Pencil className="size-4" />
+                        <span className="sr-only">Sửa role</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-sky-600 hover:bg-sky-500/15 hover:text-sky-700')}
+                        title="Quản lý permissions"
+                        onClick={() => {
+                          setPermissionDialogRoleId(role.roleId)
+                          setSelectedPermissionIds([])
+                          setPermissionDialogOpen(true)
+                        }}
+                      >
+                        <ShieldCheck className="size-4" />
+                        <span className="sr-only">Quản lý permissions</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
+                        disabled={deleteRoleMutation.isPending}
+                        title="Xóa role"
+                        onClick={() => {
+                          if (!window.confirm(`Xóa role ${role.name}?`)) {
+                            return
+                          }
+                          deleteRoleMutation.mutate(role.roleId)
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        <span className="sr-only">Xóa role</span>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredRoles.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
+                    Không có role phù hợp.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <AdminTablePagination
+          page={safeRolesPage}
+          pageSize={TABLE_PAGE_SIZE}
+          totalItems={filteredRoles.length}
+          onPageChange={setPage}
+        />
       </CardContent>
 
       <Dialog open={roleDialogOpen} onOpenChange={(open) => { if (!open) closeRoleDialog() }}>
@@ -1179,6 +1355,7 @@ const EMPTY_PERMISSION_FORM: PermissionFormState = {
 
 function PermissionsAdminTab({ permissions, modules, onDataChanged }: PermissionsAdminTabProps) {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [permissionDialogOpen, setPermissionDialogOpen] = useState(false)
   const [permissionDialogMode, setPermissionDialogMode] = useState<'create' | 'edit'>('create')
   const [editingPermission, setEditingPermission] = useState<AdminPermission | null>(null)
@@ -1201,6 +1378,23 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
       || (permission.module ?? '').toLowerCase().includes(q)
     ))
   }, [permissions, search])
+
+  const permissionsTotalPages = Math.max(1, Math.ceil(filteredPermissions.length / TABLE_PAGE_SIZE))
+  const safePermissionsPage = Math.min(page, permissionsTotalPages)
+  const paginatedPermissions = useMemo(() => {
+    const start = (safePermissionsPage - 1) * TABLE_PAGE_SIZE
+    return filteredPermissions.slice(start, start + TABLE_PAGE_SIZE)
+  }, [filteredPermissions, safePermissionsPage])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
+
+  useEffect(() => {
+    if (page !== safePermissionsPage) {
+      setPage(safePermissionsPage)
+    }
+  }, [page, safePermissionsPage])
 
   const createPermissionMutation = useMutation({
     mutationFn: (payload: CreatePermissionPayload) => adminPermissionApi.create(payload),
@@ -1418,63 +1612,83 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
         </div>
       </CardHeader>
 
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tên permission</TableHead>
-              <TableHead>API Path</TableHead>
-              <TableHead>Method</TableHead>
-              <TableHead>Module</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPermissions.map((permission) => (
-              <TableRow key={permission.permissionId}>
-                <TableCell>
-                  <p className="font-medium">{permission.name}</p>
-                  <p className="text-xs text-muted-foreground">ID: {permission.permissionId}</p>
-                </TableCell>
-                <TableCell className="font-mono text-xs">{permission.apiPath}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{permission.httpMethod}</Badge>
-                </TableCell>
-                <TableCell>
-                  {permission.module ? <Badge>{permission.module}</Badge> : <Badge variant="secondary">No module</Badge>}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="inline-flex items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => openEditPermissionDialog(permission)}>
-                      Sửa
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      disabled={deletePermissionMutation.isPending}
-                      onClick={() => {
-                        if (!window.confirm(`Xóa permission ${permission.name}?`)) {
-                          return
-                        }
-                        deletePermissionMutation.mutate(permission.permissionId)
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredPermissions.length === 0 && (
+      <CardContent className="space-y-4">
+        <div className="w-full overflow-x-auto rounded-md border">
+          <Table className="min-w-225">
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Không có permission phù hợp.
-                </TableCell>
+                <TableHead className="w-60">Tên permission</TableHead>
+                <TableHead className="w-90">API Path</TableHead>
+                <TableHead className="w-30">Method</TableHead>
+                <TableHead className="w-35">Module</TableHead>
+                <TableHead className="w-40 text-right">Hành động</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedPermissions.map((permission) => (
+                <TableRow key={permission.permissionId}>
+                  <TableCell>
+                    <p className="font-medium">{permission.name}</p>
+                    <p className="text-xs text-muted-foreground">ID: {permission.permissionId}</p>
+                  </TableCell>
+                  <TableCell className="max-w-88 truncate font-mono text-xs" title={permission.apiPath}>
+                    {permission.apiPath}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{permission.httpMethod}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {permission.module ? <Badge>{permission.module}</Badge> : <Badge variant="secondary">No module</Badge>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
+                        title="Sửa permission"
+                        onClick={() => openEditPermissionDialog(permission)}
+                      >
+                        <Pencil className="size-4" />
+                        <span className="sr-only">Sửa permission</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
+                        disabled={deletePermissionMutation.isPending}
+                        title="Xóa permission"
+                        onClick={() => {
+                          if (!window.confirm(`Xóa permission ${permission.name}?`)) {
+                            return
+                          }
+                          deletePermissionMutation.mutate(permission.permissionId)
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        <span className="sr-only">Xóa permission</span>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredPermissions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                    Không có permission phù hợp.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <AdminTablePagination
+          page={safePermissionsPage}
+          pageSize={TABLE_PAGE_SIZE}
+          totalItems={filteredPermissions.length}
+          onPageChange={setPage}
+        />
       </CardContent>
 
       <Dialog open={permissionDialogOpen} onOpenChange={(open) => { if (!open) closePermissionDialog() }}>

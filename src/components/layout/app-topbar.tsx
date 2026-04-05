@@ -32,6 +32,7 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
 import { isAdminUser } from '@/lib/auth/role-utils'
+import { cn } from '@/lib/utils/cn'
 
 export function AppTopbar() {
   const navigate = useNavigate()
@@ -202,7 +203,14 @@ export function AppTopbar() {
           <TooltipTrigger asChild>
             <Link to="/notifications" className="relative">
               <Button variant="ghost" size="icon" className="group size-8">
-                <Bell className="size-4 icon-hover-bounce" />
+                <Bell
+                  className={cn(
+                    'size-4',
+                    unreadCount > 0
+                      ? 'motion-safe:animate-[icon-subtle-bounce_1.6s_ease-in-out_infinite]'
+                      : 'icon-hover-bounce',
+                  )}
+                />
               </Button>
               {unreadCount > 0 && (
                 <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">
@@ -244,13 +252,11 @@ export function AppTopbar() {
               <User className="mr-2 size-4" />
               Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/notifications')}>
-              <Bell className="mr-2 size-4" />
-              Thông báo
-              {unreadCount > 0 && <Badge className="ml-auto" variant="secondary">{unreadCount}</Badge>}
-            </DropdownMenuItem>
             {canAccessAdmin && (
-              <DropdownMenuItem onClick={() => navigate('/admin/users')}>
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/users')}
+                className="bg-yellow-300 font-semibold text-yellow-950 hover:bg-yellow-300/90 focus:bg-yellow-300 focus:text-yellow-950 dark:bg-yellow-300 dark:text-yellow-950"
+              >
                 <ShieldCheck className="mr-2 size-4" />
                 Admin dashboard
               </DropdownMenuItem>
