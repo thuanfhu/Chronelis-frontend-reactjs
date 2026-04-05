@@ -28,7 +28,7 @@ function resolveProgressClass(progressPercent: number): string {
   if (progressPercent >= 80) return 'text-emerald-600 dark:text-emerald-400'
   if (progressPercent >= 45) return 'text-sky-600 dark:text-sky-400'
   if (progressPercent >= 20) return 'text-amber-600 dark:text-amber-400'
-  return 'text-muted-foreground/75'
+  return 'text-muted-foreground/85'
 }
 
 interface AppSidebarProps {
@@ -206,7 +206,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             <div className="px-2 py-2">
               <button
                 onClick={() => setProjectsExpanded(!projectsExpanded)}
-                className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+                className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 transition-colors hover:text-muted-foreground"
               >
                 <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
                 Projects
@@ -251,7 +251,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                           'flex size-9 items-center justify-center rounded-lg transition-all duration-150',
                           isActive
                             ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+                            : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
                         )
                       }
                     >
@@ -272,7 +272,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleLogout}
-                  className="group flex w-full items-center justify-center rounded-lg p-2.5 text-sidebar-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="group flex w-full items-center justify-center rounded-lg p-2.5 text-sidebar-foreground/90 transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
                   <LogOut className="size-4 icon-hover" />
                 </button>
@@ -282,7 +282,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           ) : (
             <button
               onClick={handleLogout}
-              className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
+              className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-sidebar-foreground/90 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut className="size-4 icon-hover" />
               Đăng xuất
@@ -330,7 +330,7 @@ function ProjectItem({
       <div className="flex w-full min-w-0 items-center overflow-hidden">
         <button
           onClick={onToggleExpand}
-          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/75 transition-colors hover:text-muted-foreground"
         >
           <ChevronRight className={cn('size-3 transition-transform duration-200', isExpanded && 'rotate-90')} />
         </button>
@@ -340,7 +340,7 @@ function ProjectItem({
             'grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150',
             isActive
               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+              : 'text-sidebar-foreground/88 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
           )}
         >
           <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
@@ -366,10 +366,10 @@ function ProjectItem({
           >
             <div className="ml-6 space-y-0.5 border-l border-sidebar-border py-1 pl-2">
               {goalsQuery.isLoading && (
-                <p className="px-2 py-1 text-[11px] text-muted-foreground/50">Đang tải...</p>
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Đang tải...</p>
               )}
               {goals.length === 0 && !goalsQuery.isLoading && (
-                <p className="px-2 py-1 text-[11px] text-muted-foreground/50">Chưa có goal nào</p>
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Chưa có goal nào</p>
               )}
               {goals.map((goal) => {
                 const normalizedProgress = normalizeProgress(goal.progressPercent)
@@ -378,9 +378,9 @@ function ProjectItem({
                   <NavLink
                     key={goal.id}
                     to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
-                    className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
                   >
-                    <Target className="size-3 shrink-0 text-muted-foreground/60" />
+                    <Target className="size-3 shrink-0 text-muted-foreground/80" />
                     <span className="min-w-0 flex-1 truncate" title={goal.title}>{goal.title}</span>
                     <span
                       className={cn(

@@ -38,7 +38,7 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { useAuthStore } from '@/app/store/auth-store'
-import type { PageResult, Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType } from '@/types/domain'
+import type { PageResult, Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
 
 const roleIcon = {
   OWNER: Crown,
@@ -83,6 +83,7 @@ export function WorkspaceDetailPage() {
   const [teamDialogOpen, setTeamDialogOpen] = useState(false)
   const [teamName, setTeamName] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
+  const [teamMemberDraftByTeamId, setTeamMemberDraftByTeamId] = useState<Record<number, string>>({})
 
   const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
@@ -119,22 +120,22 @@ export function WorkspaceDetailPage() {
   })
 
   const teamMembershipQuery = useQuery({
-    queryKey: ['workspace-teams', 'membership-map', workspaceId, (teamsQuery.data ?? []).map((team) => team.id).join(',')],
+    queryKey: ['workspace-teams', 'members-map', workspaceId, (teamsQuery.data ?? []).map((team) => team.id).join(',')],
     queryFn: async () => {
       const entries = await Promise.all(
         (teamsQuery.data ?? []).map(async (team) => {
           try {
             const teamMembers = await workspaceTeamApi.listMembers(team.id)
-            return [team.id, new Set(teamMembers.map((member) => member.user.userId))] as const
+            return [team.id, teamMembers] as const
           } catch {
-            return [team.id, new Set<string>()] as const
+            return [team.id, [] as WorkspaceTeamMember[]] as const
           }
         }),
       )
 
-      return new Map<number, Set<string>>(entries)
+      return new Map<number, WorkspaceTeamMember[]>(entries)
     },
-    enabled: Number.isFinite(workspaceId) && Boolean(currentUserId) && (teamsQuery.data?.length ?? 0) > 0,
+    enabled: Number.isFinite(workspaceId) && (teamsQuery.data?.length ?? 0) > 0,
   })
 
   const createProjectMutation = useMutation({
@@ -379,6 +380,7 @@ export function WorkspaceDetailPage() {
       setTeamName('')
       setTeamDescription('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
       toast.success('Tạo team thành công')
     },
     onError: (error: Error) => toast.error('Tạo team thất bại', { description: error.message }),
@@ -388,9 +390,39 @@ export function WorkspaceDetailPage() {
     mutationFn: (teamId: number) => workspaceTeamApi.remove(teamId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Xóa team thành công')
     },
     onError: (error: Error) => toast.error('Xóa team thất bại', { description: error.message }),
+  })
+
+  const addTeamMemberMutation = useMutation({
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: string }) =>
+      workspaceTeamApi.addMember(teamId, { userId }),
+    onSuccess: (_, variables) => {
+      setTeamMemberDraftByTeamId((prev) => ({
+        ...prev,
+        [variables.teamId]: '',
+      }))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success('Thêm thành viên vào team thành công')
+    },
+    onError: (error: Error) => toast.error('Thêm thành viên vào team thất bại', { description: error.message }),
+  })
+
+  const removeTeamMemberMutation = useMutation({
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: string }) =>
+      workspaceTeamApi.removeMember(teamId, userId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success('Xóa thành viên khỏi team thành công')
+    },
+    onError: (error: Error) => toast.error('Xóa thành viên khỏi team thất bại', { description: error.message }),
   })
 
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
@@ -421,7 +453,11 @@ export function WorkspaceDetailPage() {
   const isWorkspaceManager = isOwner || currentRole === 'ADMIN'
   const canManageWorkspace = isOwner
   const canCreateProject = isWorkspaceManager
-  const teamMembershipMap = teamMembershipQuery.data ?? new Map<number, Set<string>>()
+  const teamMembersByTeamId = teamMembershipQuery.data ?? new Map<number, WorkspaceTeamMember[]>()
+  const teamMembershipMap = new Map<number, Set<string>>()
+  teamMembersByTeamId.forEach((teamMembers, teamId) => {
+    teamMembershipMap.set(teamId, new Set(teamMembers.map((member) => member.user.userId)))
+  })
   const canManageProject = (project: Project) => {
     const isProjectManagerByUser = project.managerUser?.userId === currentUserId
     const isProjectManagerByTeam = Boolean(
@@ -863,16 +899,16 @@ export function WorkspaceDetailPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Thêm thành viên</DialogTitle>
-                    <DialogDescription>Nhập User ID và chọn vai trò cho thành viên mới.</DialogDescription>
+                    <DialogDescription>Nhập User ID hoặc email và chọn vai trò cho thành viên mới.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="member-id">User ID</Label>
+                      <Label htmlFor="member-id">User ID hoặc email</Label>
                       <Input
                         id="member-id"
                         value={memberUserId}
                         onChange={(e) => setMemberUserId(e.target.value)}
-                        placeholder="UUID của user"
+                        placeholder="Ví dụ: 4f8... hoặc user@example.com"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1127,32 +1163,122 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {teams.map((team) => (
-                <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
+              {teams.map((team) => {
+                const teamMembers = teamMembersByTeamId.get(team.id) ?? []
+                const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
+                const availableWorkspaceMembers = members.filter(
+                  (member) => !teamMemberIds.has(member.user.userId),
+                )
+                const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
+
+                return (
+                  <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
+                        {canManageWorkspace && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                            onClick={() => deleteTeamMutation.mutate(team.id)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-0">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Users className="size-3" />
+                        <span>{team.memberCount} thành viên</span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {teamMembers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Chưa có thành viên trong team này.</p>
+                        ) : (
+                          teamMembers.map((teamMember) => (
+                            <div
+                              key={teamMember.id}
+                              className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/25 px-2 py-1.5"
+                            >
+                              <Avatar className="size-7 shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                  {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-medium">
+                                  {teamMember.user.firstName} {teamMember.user.lastName}
+                                </p>
+                                <p className="truncate text-[11px] text-muted-foreground">{teamMember.user.email}</p>
+                              </div>
+                              {canManageWorkspace && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
+                                  disabled={removeTeamMemberMutation.isPending}
+                                >
+                                  <Trash2 className="size-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+
                       {canManageWorkspace && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                          onClick={() => deleteTeamMutation.mutate(team.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                        <div className="rounded-md border border-border/70 bg-muted/35 p-2.5">
+                          <p className="mb-2 text-[11px] font-medium text-muted-foreground">Thêm thành viên vào team</p>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Select
+                              value={selectedUserId || 'none'}
+                              onValueChange={(value) => {
+                                setTeamMemberDraftByTeamId((prev) => ({
+                                  ...prev,
+                                  [team.id]: value === 'none' ? '' : value,
+                                }))
+                              }}
+                            >
+                              <SelectTrigger className="sm:flex-1">
+                                <SelectValue placeholder="Chọn thành viên workspace" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Chọn thành viên</SelectItem>
+                                {availableWorkspaceMembers.map((member) => (
+                                  <SelectItem key={member.user.userId} value={member.user.userId}>
+                                    {member.user.firstName} {member.user.lastName} ({member.role})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (!selectedUserId) {
+                                  return
+                                }
+                                addTeamMemberMutation.mutate({ teamId: team.id, userId: selectedUserId })
+                              }}
+                              disabled={addTeamMemberMutation.isPending || !selectedUserId}
+                            >
+                              {addTeamMemberMutation.isPending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
+                              Thêm
+                            </Button>
+                          </div>
+                          {availableWorkspaceMembers.length === 0 && (
+                            <p className="mt-2 text-[11px] text-muted-foreground">Tất cả thành viên workspace đã thuộc team này.</p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                    {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Users className="size-3" />
-                      <span>{team.memberCount} thành viên</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>

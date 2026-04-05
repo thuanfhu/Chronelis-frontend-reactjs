@@ -34,14 +34,7 @@ interface PomodoroLocationState {
 interface PomodoroAlarmPreset {
   label: string
   description: string
-  masterGain: number
-  notes: Array<{
-    frequency: number
-    duration: number
-    delay: number
-    type: OscillatorType
-    gain: number
-  }>
+  source: string
 }
 
 const MODE_DURATION_SECONDS: Record<PomodoroMode, number> = {
@@ -86,52 +79,27 @@ const POMODORO_ALARM_PRESETS: Record<PomodoroAlarmId, PomodoroAlarmPreset> = {
   'crystal-bell': {
     label: 'Crystal Bell',
     description: 'Âm ngân sáng, rõ ràng cho chuyển phiên focus/break.',
-    masterGain: 0.22,
-    notes: [
-      { frequency: 783.99, duration: 0.26, delay: 0, type: 'sine', gain: 0.32 },
-      { frequency: 987.77, duration: 0.26, delay: 0.08, type: 'sine', gain: 0.28 },
-      { frequency: 1318.51, duration: 0.3, delay: 0.16, type: 'triangle', gain: 0.24 },
-    ],
+    source: '/audio/pomodoro/crystal-bell.wav',
   },
   'digital-chime': {
     label: 'Digital Chime',
     description: 'Âm điện tử gọn, nổi bật khi bạn đang đeo tai nghe.',
-    masterGain: 0.18,
-    notes: [
-      { frequency: 1046.5, duration: 0.15, delay: 0, type: 'square', gain: 0.24 },
-      { frequency: 1318.51, duration: 0.15, delay: 0.16, type: 'square', gain: 0.22 },
-      { frequency: 1567.98, duration: 0.2, delay: 0.32, type: 'square', gain: 0.2 },
-    ],
+    source: '/audio/pomodoro/digital-chime.wav',
   },
   'soft-bloom': {
     label: 'Soft Bloom',
     description: 'Âm dịu, phù hợp khi muốn ít giật mình hơn.',
-    masterGain: 0.2,
-    notes: [
-      { frequency: 523.25, duration: 0.3, delay: 0, type: 'triangle', gain: 0.24 },
-      { frequency: 659.25, duration: 0.32, delay: 0.1, type: 'triangle', gain: 0.22 },
-      { frequency: 783.99, duration: 0.36, delay: 0.22, type: 'triangle', gain: 0.2 },
-    ],
+    source: '/audio/pomodoro/soft-bloom.wav',
   },
   'deep-gong': {
     label: 'Deep Gong',
     description: 'Âm trầm và dày, tạo cảm giác chuyển nhịp rõ rệt.',
-    masterGain: 0.2,
-    notes: [
-      { frequency: 196, duration: 0.55, delay: 0, type: 'sine', gain: 0.26 },
-      { frequency: 261.63, duration: 0.45, delay: 0.12, type: 'sine', gain: 0.2 },
-      { frequency: 329.63, duration: 0.4, delay: 0.24, type: 'sine', gain: 0.16 },
-    ],
+    source: '/audio/pomodoro/deep-gong.wav',
   },
   'wood-block': {
     label: 'Wood Block',
     description: 'Nhịp gỗ ngắn, gọn, hợp khi cần tín hiệu nhanh.',
-    masterGain: 0.18,
-    notes: [
-      { frequency: 523.25, duration: 0.08, delay: 0, type: 'sawtooth', gain: 0.32 },
-      { frequency: 523.25, duration: 0.08, delay: 0.12, type: 'sawtooth', gain: 0.28 },
-      { frequency: 659.25, duration: 0.09, delay: 0.24, type: 'sawtooth', gain: 0.24 },
-    ],
+    source: '/audio/pomodoro/wood-block.wav',
   },
 }
 
@@ -168,51 +136,57 @@ function parseStoredPomodoroAlarm(value: string | null): PomodoroAlarmId {
 }
 
 function usePomodoroAlarm(soundId: PomodoroAlarmId) {
+  const audioMapRef = useRef<Partial<Record<PomodoroAlarmId, HTMLAudioElement>>>({})
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const alarmEntries = Object.entries(POMODORO_ALARM_PRESETS) as [PomodoroAlarmId, PomodoroAlarmPreset][]
+
+    alarmEntries.forEach(([alarmId, preset]) => {
+      const audio = new Audio(preset.source)
+      audio.preload = 'auto'
+      audio.volume = 0.9
+      audioMapRef.current[alarmId] = audio
+    })
+
+    return () => {
+      Object.values(audioMapRef.current).forEach((audio) => {
+        if (!audio) {
+          return
+        }
+
+        audio.pause()
+        audio.src = ''
+      })
+
+      audioMapRef.current = {}
+    }
+  }, [])
+
   return useCallback(() => {
     if (typeof window === 'undefined') return
 
-    const AudioContextCtor =
-      window.AudioContext ??
-      (window as Window & { webkitAudioContext?: new () => AudioContext }).webkitAudioContext
-
-    if (!AudioContextCtor) return
-
     const preset = POMODORO_ALARM_PRESETS[soundId]
+    const cachedAudio = audioMapRef.current[soundId]
 
-    const audioContext = new AudioContextCtor()
-    const now = audioContext.currentTime
+    if (!cachedAudio) {
+      const fallbackAudio = new Audio(preset.source)
+      fallbackAudio.volume = 0.9
+      void fallbackAudio.play().catch(() => undefined)
+      return
+    }
 
-    const master = audioContext.createGain()
-    master.connect(audioContext.destination)
-    master.gain.setValueAtTime(0.0001, now)
-    master.gain.exponentialRampToValueAtTime(preset.masterGain, now + 0.04)
+    cachedAudio.pause()
+    cachedAudio.currentTime = 0
 
-    let endAt = now
-
-    preset.notes.forEach((note) => {
-      const startAt = now + note.delay
-      endAt = Math.max(endAt, startAt + note.duration)
-      const oscillator = audioContext.createOscillator()
-      const gainNode = audioContext.createGain()
-
-      oscillator.type = note.type
-      oscillator.frequency.setValueAtTime(note.frequency, startAt)
-
-      gainNode.gain.setValueAtTime(0.0001, startAt)
-      gainNode.gain.exponentialRampToValueAtTime(note.gain, startAt + 0.02)
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + note.duration)
-
-      oscillator.connect(gainNode)
-      gainNode.connect(master)
-      oscillator.start(startAt)
-      oscillator.stop(startAt + note.duration)
+    void cachedAudio.play().catch(() => {
+      const retryAudio = new Audio(preset.source)
+      retryAudio.volume = 0.9
+      void retryAudio.play().catch(() => undefined)
     })
-
-    master.gain.exponentialRampToValueAtTime(0.0001, endAt + 0.12)
-
-    window.setTimeout(() => {
-      void audioContext.close()
-    }, Math.ceil((endAt - now + 0.55) * 1000))
   }, [soundId])
 }
 
@@ -551,6 +525,7 @@ export function TaskPomodoroPage() {
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Âm báo chuyển phiên</p>
                 <p className="text-xs text-muted-foreground">{selectedAlarmPreset.description}</p>
+                <p className="text-[11px] text-muted-foreground/85">Sử dụng file âm thanh nội bộ royalty-free.</p>
               </div>
               <Button variant="outline" size="sm" onClick={playBellTone}>
                 <Volume2 className="size-4" />
