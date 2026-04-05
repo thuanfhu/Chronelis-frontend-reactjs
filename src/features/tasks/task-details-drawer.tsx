@@ -483,7 +483,7 @@ export function TaskDetailsDrawer() {
 
                   {!isEditingTask && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">Mức ưu tiên</p>
                           <TaskPriorityBadge priority={task.priority} />
@@ -535,7 +535,7 @@ export function TaskDetailsDrawer() {
                       </div>
 
                       {task.taskType && (
-                        <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
                           <div className="space-y-1">
                             <p className="text-xs text-muted-foreground">Loại task</p>
                             <Badge variant="secondary" className="gap-1 text-[10px]" style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}>

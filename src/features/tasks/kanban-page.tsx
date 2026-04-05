@@ -131,7 +131,7 @@ function SortableTaskCard({
 
 function TaskDragOverlay({ task }: { task: Task }) {
   return (
-    <div className="w-72 rounded-lg border border-primary/30 bg-card p-3 shadow-xl ring-2 ring-primary/10">
+    <div className="w-[min(18rem,calc(100vw-3.5rem))] rounded-lg border border-primary/30 bg-card p-3 shadow-xl ring-2 ring-primary/10 sm:w-72">
       <div className="mb-2">
         <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
       </div>
@@ -165,7 +165,7 @@ function KanbanColumn({
     <div
       ref={setDropRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border bg-muted/20 transition-colors duration-200',
+        'flex w-[min(18rem,calc(100vw-3.5rem))] shrink-0 snap-start flex-col rounded-xl border bg-muted/20 transition-colors duration-200 sm:w-72',
         isOver && 'border-primary/40 bg-primary/5',
       )}
     >
@@ -459,7 +459,7 @@ export function KanbanPage() {
         title="Kanban Board"
         description="Kéo thả task giữa các cột theo workflow"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {/* Status dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
               <DialogTrigger asChild>
@@ -579,7 +579,7 @@ export function KanbanPage() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
             {statuses.map((status) => {
               const columnTasks = grouped.get(status.id) ?? []
               return (

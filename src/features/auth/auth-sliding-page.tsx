@@ -348,6 +348,24 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.password?.message} />
+
+                {signUpPassword ? (
+                  <div className={`chronelis-auth-strength chronelis-auth-strength--${passwordStrength.level}`}>
+                    <div className="chronelis-auth-strength-header">
+                      <span className="chronelis-auth-strength-label">Độ mạnh mật khẩu</span>
+                      <strong className="chronelis-auth-strength-value">{passwordStrength.label}</strong>
+                    </div>
+
+                    <div className="chronelis-auth-strength-track" aria-hidden>
+                      <span
+                        className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
+                        style={{ width: `${strengthPercent}%` }}
+                      />
+                    </div>
+
+                    <p className="chronelis-auth-strength-helper">{passwordStrength.helper}</p>
+                  </div>
+                ) : null}
               </div>
               <div>
                 <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
@@ -370,21 +388,6 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 <FieldError message={registerForm.formState.errors.confirmPassword?.message} />
               </div>
             </div>
-
-            {signUpPassword ? (
-              <div className="chronelis-auth-strength">
-                <div className="chronelis-auth-strength-track" aria-hidden>
-                  <span
-                    className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
-                    style={{ width: `${strengthPercent}%` }}
-                  />
-                </div>
-                <div className="chronelis-auth-strength-meta">
-                  <span>Mức độ mật khẩu: <strong>{passwordStrength.label}</strong></span>
-                  <span>{passwordStrength.helper}</span>
-                </div>
-              </div>
-            ) : null}
 
             <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
               {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}

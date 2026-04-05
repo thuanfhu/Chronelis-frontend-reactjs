@@ -478,9 +478,9 @@ export function TodoPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
           <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
-            <SelectTrigger className="h-7 w-39.5 text-xs">
+            <SelectTrigger className="h-7 w-full min-w-[9.5rem] text-xs sm:w-40">
               <SelectValue placeholder="Goal" />
             </SelectTrigger>
             <SelectContent>
@@ -495,7 +495,7 @@ export function TodoPage() {
           </Select>
 
           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
-            <SelectTrigger className="h-7 w-33 text-xs">
+            <SelectTrigger className="h-7 w-full min-w-[7.5rem] text-xs sm:w-32">
               <SelectValue placeholder="Ưu tiên" />
             </SelectTrigger>
             <SelectContent>
@@ -513,7 +513,7 @@ export function TodoPage() {
                 type="button"
                 variant={isDateFiltered ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 max-w-46 gap-1.5 px-2 text-xs"
+                className="h-7 w-full min-w-[10rem] gap-1.5 px-2 text-xs sm:w-auto sm:max-w-[11.5rem]"
               >
                 <CalendarIcon className="size-3.5" />
                 <span className="truncate">{selectedDateLabel}</span>
@@ -942,7 +942,7 @@ function TodoRowMetaActions({
   onNotebook: () => void
 }) {
   return (
-    <div className="grid shrink-0 grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] items-center gap-2">
+    <div className="flex shrink-0 items-center gap-1.5 sm:grid sm:grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] sm:items-center sm:gap-2">
       <span className={cn(
         'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
         TODO_PRIORITY_CHIP_CLASSNAMES[priority],
@@ -951,7 +951,7 @@ function TodoRowMetaActions({
       </span>
       <span
         className={cn(
-          'truncate text-right text-[10px]',
+          'hidden truncate text-right text-[10px] sm:block',
           assigneeName ? 'text-muted-foreground' : 'text-muted-foreground/70',
         )}
         title={assigneeName ?? 'Chưa gán'}

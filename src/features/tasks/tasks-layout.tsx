@@ -34,38 +34,40 @@ export function TasksLayout() {
   return (
     <div className={`flex h-full min-h-0 flex-col ${isCalendarView ? 'gap-2' : 'gap-4'}`}>
       {/* ─── View tabs ─── */}
-      <div className={`flex flex-wrap items-center gap-2 border-b border-border/60 sm:gap-3 ${isCalendarView ? 'pb-2' : 'pb-3'}`}>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
-          <TabsList className="h-9 bg-muted/60">
-            {TASK_TABS.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="gap-1.5 px-3 text-xs data-[state=active]:shadow-sm"
-              >
-                <tab.icon className="size-3.5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      <div className={`border-b border-border/60 ${isCalendarView ? 'pb-2' : 'pb-3'}`}>
+        <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
+            <TabsList className="h-9 w-max bg-muted/60">
+              {TASK_TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="shrink-0 gap-1.5 px-3 text-xs data-[state=active]:shadow-sm"
+                >
+                  <tab.icon className="size-3.5" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-        <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
+          <div className="mx-1 hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
-          <TabsList className="h-9 bg-muted/60">
-            {PROJECT_TABS.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="gap-1.5 px-3 text-xs data-[state=active]:shadow-sm"
-              >
-                <tab.icon className="size-3.5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
+            <TabsList className="h-9 w-max bg-muted/60">
+              {PROJECT_TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="shrink-0 gap-1.5 px-3 text-xs data-[state=active]:shadow-sm"
+                >
+                  <tab.icon className="size-3.5" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       {/* ─── Active view ─── */}

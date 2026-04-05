@@ -19,6 +19,7 @@ import { NotificationsPage } from '@/features/notifications/notifications-page'
 import { JoinByInvitePage } from '@/features/workspaces/join-by-invite-page'
 import { ProfilePage } from '@/features/profile/profile-page'
 import { AdminDashboardPage } from '@/features/admin/admin-dashboard-page'
+import { AdminShell } from '@/features/admin/layout/admin-shell'
 
 export function AppRouter() {
   return (
@@ -116,15 +117,18 @@ export function AppRouter() {
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route
-            path="/admin"
-            element={
-              <AdminGuard>
-                <AdminDashboardPage />
-              </AdminGuard>
-            }
-          />
           <Route path="/join" element={<JoinByInvitePage />} />
+        </Route>
+
+        <Route
+          element={
+            <AdminGuard>
+              <AdminShell />
+            </AdminGuard>
+          }
+        >
+          <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+          <Route path="/admin/:section" element={<AdminDashboardPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

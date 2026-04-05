@@ -250,7 +250,7 @@ export function AppTopbar() {
               {unreadCount > 0 && <Badge className="ml-auto" variant="secondary">{unreadCount}</Badge>}
             </DropdownMenuItem>
             {canAccessAdmin && (
-              <DropdownMenuItem onClick={() => navigate('/admin')}>
+              <DropdownMenuItem onClick={() => navigate('/admin/users')}>
                 <ShieldCheck className="mr-2 size-4" />
                 Admin dashboard
               </DropdownMenuItem>

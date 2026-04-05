@@ -337,16 +337,16 @@ export function ProfilePage() {
       </motion.div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'profile' | 'email' | 'password')}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="profile" className="gap-1.5">
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
+          <TabsTrigger value="profile" className="justify-start gap-1.5 sm:justify-center">
             <User className="size-4" />
             Cá nhân
           </TabsTrigger>
-          <TabsTrigger value="email" className="gap-1.5">
+          <TabsTrigger value="email" className="justify-start gap-1.5 sm:justify-center">
             <Mail className="size-4" />
             Email
           </TabsTrigger>
-          <TabsTrigger value="password" className="gap-1.5">
+          <TabsTrigger value="password" className="justify-start gap-1.5 sm:justify-center">
             <Lock className="size-4" />
             Mật khẩu
           </TabsTrigger>

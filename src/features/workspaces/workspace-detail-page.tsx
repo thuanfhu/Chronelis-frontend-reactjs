@@ -476,7 +476,7 @@ export function WorkspaceDetailPage() {
         description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project · Vai trò của bạn: ${currentRole}`}
         actions={
           canManageWorkspace ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
                 <Trash2 className="mr-1.5 size-3.5" />
                 Xóa workspace
@@ -528,20 +528,20 @@ export function WorkspaceDetailPage() {
       />
 
       <Tabs defaultValue="projects">
-        <TabsList>
-          <TabsTrigger value="projects" className="gap-1.5">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto whitespace-nowrap">
+          <TabsTrigger value="projects" className="shrink-0 gap-1.5">
             <FolderKanban className="size-3.5" />
             Projects ({projects.length})
           </TabsTrigger>
-          <TabsTrigger value="members" className="gap-1.5">
+          <TabsTrigger value="members" className="shrink-0 gap-1.5">
             <Users className="size-3.5" />
             Thành viên ({members.length})
           </TabsTrigger>
-          <TabsTrigger value="invites" className="gap-1.5">
+          <TabsTrigger value="invites" className="shrink-0 gap-1.5">
             <Link2 className="size-3.5" />
             Invites ({invites.length})
           </TabsTrigger>
-          <TabsTrigger value="teams" className="gap-1.5">
+          <TabsTrigger value="teams" className="shrink-0 gap-1.5">
             <UsersRound className="size-3.5" />
             Teams ({teams.length})
           </TabsTrigger>
@@ -549,7 +549,7 @@ export function WorkspaceDetailPage() {
 
         {/* Projects tab */}
         <TabsContent value="projects" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Danh sách project trong workspace</p>
               {!canCreateProject && (
@@ -881,7 +881,7 @@ export function WorkspaceDetailPage() {
 
         {/* Members tab */}
         <TabsContent value="members" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Quản lý thành viên và phân quyền</p>
               {!canManageWorkspace && (
@@ -944,7 +944,7 @@ export function WorkspaceDetailPage() {
             {members.map((member) => {
               const RoleIcon = roleIcon[member.role]
               return (
-                <div key={member.id} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
                   <Avatar className="size-9 shrink-0">
                     <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                       {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
@@ -1001,7 +1001,7 @@ export function WorkspaceDetailPage() {
 
         {/* Invites tab */}
         <TabsContent value="invites" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Quản lý invite link cho workspace</p>
               {!canManageWorkspace && (
@@ -1068,7 +1068,7 @@ export function WorkspaceDetailPage() {
               {invites.map((invite) => {
                 const inviteUrl = `${window.location.origin}/join?code=${invite.inviteCode}`
                 return (
-                  <div key={invite.id} className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30">
+                  <div key={invite.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
                     <QrCode className="size-8 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -1111,7 +1111,7 @@ export function WorkspaceDetailPage() {
 
         {/* Teams tab */}
         <TabsContent value="teams" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Quản lý team trong workspace</p>
               {!canManageWorkspace && (

@@ -571,7 +571,7 @@ export function CalendarPage() {
   }
 
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
-    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+    if (arg.event.extendedProps.isDueDateOnly) {
       arg.revert?.()
       return
     }
@@ -604,7 +604,7 @@ export function CalendarPage() {
   }
 
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
-    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+    if (arg.event.extendedProps.isDueDateOnly) {
       arg.revert?.()
       return
     }
@@ -740,8 +740,9 @@ export function CalendarPage() {
           custom={navigationDirection}
           className="flex h-full min-h-0 flex-col"
         >
-          <div className="chronelis-calendar-frame flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <FullCalendar
+          <div className="flex min-h-0 flex-1 overflow-x-auto">
+            <div className="chronelis-calendar-frame flex h-full min-h-0 min-w-190 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:min-w-0">
+              <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
               initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
@@ -832,7 +833,8 @@ export function CalendarPage() {
                   ) : null}
                 </div>
               )}
-            />
+              />
+            </div>
           </div>
         </motion.div>
       </div>

@@ -24,7 +24,7 @@ export const adminUserApi = {
   async list(params: PagedQueryParams = {}) {
     const response = await http.get<ApiResponse<unknown>>('/users', {
       params: {
-        page: params.page ?? 0,
+        page: params.page ?? 1,
         size: params.size ?? 200,
       },
     })

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2,
@@ -6,14 +6,11 @@ import {
   RefreshCcw,
   Search,
   Settings,
-  ShieldCheck,
   Trash2,
-  UserCog,
-  KeyRound,
 } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/app/store/auth-store'
-import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,7 +41,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { queryKeys } from '@/lib/api/query-keys'
 import { adminPermissionApi, type CreatePermissionPayload, type UpdatePermissionPayload } from '@/lib/api/modules/admin-permission-api'
@@ -57,31 +53,86 @@ const PAGE_SIZE = 200
 const NO_MODULE = '__NO_MODULE__'
 const HTTP_METHODS: HttpMethodName[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
+type AdminSection = 'users' | 'roles' | 'permissions'
+
+const ADMIN_SECTION_ORDER: AdminSection[] = ['users', 'roles', 'permissions']
+const ADMIN_SECTION_META = {
+  users: {
+    label: 'Users',
+    description: 'Quản lý tài khoản và role',
+  },
+  roles: {
+    label: 'Roles',
+    description: 'Vai trò hệ thống',
+  },
+  permissions: {
+    label: 'Permissions',
+    description: 'Quyền truy cập API',
+  },
+} satisfies Record<AdminSection, {
+  label: string
+  description: string
+}>
+
+function resolveAdminSection(value: string | undefined): AdminSection | null {
+  if (!value) {
+    return null
+  }
+
+  if ((ADMIN_SECTION_ORDER as string[]).includes(value)) {
+    return value as AdminSection
+  }
+
+  return null
+}
+
 export function AdminDashboardPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const params = useParams<{ section?: string }>()
   const currentUser = useAuthStore((state) => state.currentUser)
+  const parsedSection = resolveAdminSection(params.section)
+  const activeSection: AdminSection = parsedSection ?? 'users'
+
+  useEffect(() => {
+    if (!parsedSection) {
+      navigate('/admin/users', { replace: true })
+    }
+  }, [navigate, parsedSection])
+
+  const shouldLoadUsers = activeSection === 'users'
+  const shouldLoadRoles = activeSection === 'users' || activeSection === 'roles'
+  const shouldLoadPermissions = activeSection === 'roles' || activeSection === 'permissions'
+  const shouldLoadModules = activeSection === 'permissions'
 
   const rolesQuery = useQuery({
-    queryKey: queryKeys.admin.roles(0, PAGE_SIZE),
-    queryFn: () => adminRoleApi.list({ page: 0, size: PAGE_SIZE }),
+    queryKey: queryKeys.admin.roles(1, PAGE_SIZE),
+    queryFn: () => adminRoleApi.list({ page: 1, size: PAGE_SIZE }),
+    enabled: shouldLoadRoles,
   })
 
   const permissionsQuery = useQuery({
-    queryKey: queryKeys.admin.permissions(0, PAGE_SIZE),
-    queryFn: () => adminPermissionApi.list({ page: 0, size: PAGE_SIZE }),
+    queryKey: queryKeys.admin.permissions(1, PAGE_SIZE),
+    queryFn: () => adminPermissionApi.list({ page: 1, size: PAGE_SIZE }),
+    enabled: shouldLoadPermissions,
   })
 
   const usersQuery = useQuery({
-    queryKey: queryKeys.admin.users(0, PAGE_SIZE),
-    queryFn: () => adminUserApi.list({ page: 0, size: PAGE_SIZE }),
+    queryKey: queryKeys.admin.users(1, PAGE_SIZE),
+    queryFn: () => adminUserApi.list({ page: 1, size: PAGE_SIZE }),
+    enabled: shouldLoadUsers,
   })
 
   const modulesQuery = useQuery({
     queryKey: queryKeys.admin.modules,
     queryFn: adminPermissionApi.listModules,
+    enabled: shouldLoadModules,
   })
 
-  const isLoading = rolesQuery.isLoading || permissionsQuery.isLoading || usersQuery.isLoading || modulesQuery.isLoading
+  const isLoading = (shouldLoadRoles && rolesQuery.isLoading)
+    || (shouldLoadPermissions && permissionsQuery.isLoading)
+    || (shouldLoadUsers && usersQuery.isLoading)
+    || (shouldLoadModules && modulesQuery.isLoading)
 
   const roles = rolesQuery.data?.content ?? []
   const permissions = permissionsQuery.data?.content ?? []
@@ -109,60 +160,47 @@ export function AdminDashboardPage() {
     )
   }
 
+  const sectionMeta = ADMIN_SECTION_META[activeSection]
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Admin Dashboard"
-        description="Quản trị người dùng, vai trò và quyền hệ thống Chronelis"
-        actions={(
-          <Button variant="outline" onClick={() => void refreshAll()}>
-            <RefreshCcw className="size-4" />
-            Làm mới
-          </Button>
-        )}
-      />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin Console</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
+          <p className="text-sm text-muted-foreground">{sectionMeta.description}</p>
+        </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users" className="gap-1.5">
-            <UserCog className="size-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="roles" className="gap-1.5">
-            <ShieldCheck className="size-4" />
-            Roles
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="gap-1.5">
-            <KeyRound className="size-4" />
-            Permissions
-          </TabsTrigger>
-        </TabsList>
+        <Button variant="outline" onClick={() => void refreshAll()}>
+          <RefreshCcw className="size-4" />
+          Làm mới
+        </Button>
+      </div>
 
-        <TabsContent value="users">
-          <UsersAdminTab
-            users={users}
-            roles={roles}
-            currentUserId={currentUser?.userId}
-            onDataChanged={() => void refreshAll()}
-          />
-        </TabsContent>
+      {activeSection === 'users' && (
+        <UsersAdminTab
+          users={users}
+          roles={roles}
+          currentUserId={currentUser?.userId}
+          onDataChanged={() => void refreshAll()}
+        />
+      )}
 
-        <TabsContent value="roles">
-          <RolesAdminTab
-            roles={roles}
-            permissions={permissions}
-            onDataChanged={() => void refreshAll()}
-          />
-        </TabsContent>
+      {activeSection === 'roles' && (
+        <RolesAdminTab
+          roles={roles}
+          permissions={permissions}
+          onDataChanged={() => void refreshAll()}
+        />
+      )}
 
-        <TabsContent value="permissions">
-          <PermissionsAdminTab
-            permissions={permissions}
-            modules={modules}
-            onDataChanged={() => void refreshAll()}
-          />
-        </TabsContent>
-      </Tabs>
+      {activeSection === 'permissions' && (
+        <PermissionsAdminTab
+          permissions={permissions}
+          modules={modules}
+          onDataChanged={() => void refreshAll()}
+        />
+      )}
     </div>
   )
 }
