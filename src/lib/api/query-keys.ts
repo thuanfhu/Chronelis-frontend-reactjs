@@ -55,4 +55,10 @@ export const queryKeys = {
     byWorkspace: (workspaceId: number) => ['workspace-invites', 'workspace', workspaceId] as const,
     validate: (code: string) => ['workspace-invites', 'validate', code] as const,
   },
+  admin: {
+    roles: (page: number, size: number) => ['admin', 'roles', page, size] as const,
+    permissions: (page: number, size: number) => ['admin', 'permissions', page, size] as const,
+    modules: ['admin', 'permission-modules'] as const,
+    users: (page: number, size: number) => ['admin', 'users', page, size] as const,
+  },
 }

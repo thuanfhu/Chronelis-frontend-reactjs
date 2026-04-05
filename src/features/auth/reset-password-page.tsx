@@ -2,9 +2,10 @@ import { useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { authApi, type ResetPasswordPayload } from '@/lib/api/modules/auth-api'
 import { resetPasswordSchema } from '@/features/auth/auth-schemas'
 import { AuthLayout } from '@/features/auth/auth-layout'
@@ -24,6 +25,8 @@ export function ResetPasswordPage() {
       confirmPassword: '',
     },
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     form.setValue('token', tokenFromQuery)
@@ -61,13 +64,31 @@ export function ResetPasswordPage() {
 
             <div className="space-y-2">
               <Label htmlFor="newPassword">Mật khẩu mới</Label>
-              <Input id="newPassword" type="password" autoComplete="new-password" {...form.register('newPassword')} />
+              <div className="relative">
+                <Input id="newPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('newPassword')} />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
               {form.formState.errors.newPassword && <p className="text-xs text-destructive">{form.formState.errors.newPassword.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-              <Input id="confirmPassword" type="password" autoComplete="new-password" {...form.register('confirmPassword')} />
+              <div className="relative">
+                <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('confirmPassword')} />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                >
+                  {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
               {form.formState.errors.confirmPassword && <p className="text-xs text-destructive">{form.formState.errors.confirmPassword.message}</p>}
             </div>
 

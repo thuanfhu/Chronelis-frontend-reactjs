@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2 } from 'lucide-react'
+import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2, ShieldCheck } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -31,6 +31,7 @@ import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
+import { isAdminUser } from '@/lib/auth/role-utils'
 
 export function AppTopbar() {
   const navigate = useNavigate()
@@ -104,6 +105,7 @@ export function AppTopbar() {
 
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
   const initials = `${currentUser?.firstName?.charAt(0) ?? ''}${currentUser?.lastName?.charAt(0) ?? ''}`
+  const canAccessAdmin = isAdminUser(currentUser)
 
   const handleLogout = () => {
     clearSession()
@@ -247,6 +249,12 @@ export function AppTopbar() {
               Thông báo
               {unreadCount > 0 && <Badge className="ml-auto" variant="secondary">{unreadCount}</Badge>}
             </DropdownMenuItem>
+            {canAccessAdmin && (
+              <DropdownMenuItem onClick={() => navigate('/admin')}>
+                <ShieldCheck className="mr-2 size-4" />
+                Admin dashboard
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-4" />

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { Eye, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,6 +21,71 @@ interface AuthSlidingPageProps {
 }
 
 const ROUTE_SWITCH_DELAY_MS = 680
+const FORGOT_TRANSITION_DELAY_MS = 420
+
+type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong' | 'very-strong'
+
+interface PasswordStrengthResult {
+  level: PasswordStrengthLevel
+  score: number
+  label: string
+  helper: string
+}
+
+function resolvePasswordStrength(password: string): PasswordStrengthResult {
+  const checks = [
+    password.length >= 8,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[@$!%*?&]/.test(password),
+  ]
+
+  const score = checks.filter(Boolean).length
+
+  if (score <= 1) {
+    return {
+      level: 'weak',
+      score,
+      label: 'Yếu',
+      helper: 'Cần thêm độ dài và đa dạng ký tự',
+    }
+  }
+
+  if (score === 2) {
+    return {
+      level: 'fair',
+      score,
+      label: 'Tạm ổn',
+      helper: 'Nên thêm chữ hoa, số và ký tự đặc biệt',
+    }
+  }
+
+  if (score === 3) {
+    return {
+      level: 'good',
+      score,
+      label: 'Khá',
+      helper: 'Thêm 1-2 tiêu chí nữa để mạnh hơn',
+    }
+  }
+
+  if (score === 4) {
+    return {
+      level: 'strong',
+      score,
+      label: 'Mạnh',
+      helper: 'Đã gần đạt chuẩn bảo mật cao',
+    }
+  }
+
+  return {
+    level: 'very-strong',
+    score,
+    label: 'Rất mạnh',
+    helper: 'Mật khẩu đáp ứng đầy đủ tiêu chí',
+  }
+}
 
 interface FieldErrorProps {
   message?: string
@@ -35,7 +100,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const navigate = useNavigate()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
+  const [isForgotTransitioning, setIsForgotTransitioning] = useState(false)
+  const [showSignInPassword, setShowSignInPassword] = useState(false)
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false)
+  const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false)
   const routeSwitchTimeoutRef = useRef<number | null>(null)
+  const forgotTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     setMode(initialMode)
@@ -46,6 +116,11 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       window.clearTimeout(routeSwitchTimeoutRef.current)
       routeSwitchTimeoutRef.current = null
     }
+
+    if (forgotTimeoutRef.current !== null) {
+      window.clearTimeout(forgotTimeoutRef.current)
+      forgotTimeoutRef.current = null
+    }
   }, [])
 
   const switchMode = (nextMode: AuthMode) => {
@@ -53,6 +128,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       return
     }
 
+    setIsForgotTransitioning(false)
     setMode(nextMode)
 
     if (routeSwitchTimeoutRef.current !== null) {
@@ -63,6 +139,27 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       navigate(nextMode === 'sign-in' ? '/login' : '/register', { replace: true })
       routeSwitchTimeoutRef.current = null
     }, ROUTE_SWITCH_DELAY_MS)
+  }
+
+  const handleForgotTransition = () => {
+    if (isForgotTransitioning) {
+      return
+    }
+
+    if (routeSwitchTimeoutRef.current !== null) {
+      window.clearTimeout(routeSwitchTimeoutRef.current)
+      routeSwitchTimeoutRef.current = null
+    }
+
+    if (forgotTimeoutRef.current !== null) {
+      window.clearTimeout(forgotTimeoutRef.current)
+    }
+
+    setIsForgotTransitioning(true)
+    forgotTimeoutRef.current = window.setTimeout(() => {
+      navigate('/forgot-password')
+      forgotTimeoutRef.current = null
+    }, FORGOT_TRANSITION_DELAY_MS)
   }
 
   const loginForm = useForm<LoginFormValues>({
@@ -121,8 +218,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     },
   })
 
+  const signUpPassword = registerForm.watch('password')
+  const passwordStrength = resolvePasswordStrength(signUpPassword)
+  const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
+
   return (
-    <div className={`chronelis-auth-page ${mode === 'sign-up' ? 'sign-up-mode' : ''}`}>
+    <div className={`chronelis-auth-page ${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''}`}>
       <div className="chronelis-auth-forms-container">
         <div className="chronelis-auth-signin-signup">
           <form className="chronelis-auth-form chronelis-auth-sign-in-form" onSubmit={loginForm.handleSubmit((values) => loginMutation.mutate(values))}>
@@ -145,19 +246,27 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             </div>
             <FieldError message={loginForm.formState.errors.identifier?.message} />
 
-            <div className="chronelis-auth-input-field">
+            <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
               <KeyRound className="chronelis-auth-input-icon" />
               <input
-                type="password"
+                type={showSignInPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Mật khẩu"
                 {...loginForm.register('password')}
               />
+              <button
+                type="button"
+                className="chronelis-auth-input-toggle"
+                onClick={() => setShowSignInPassword((prev) => !prev)}
+                aria-label={showSignInPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              >
+                {showSignInPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+              </button>
             </div>
             <FieldError message={loginForm.formState.errors.password?.message} />
 
             <div className="chronelis-auth-form-meta">
-              <Link to="/forgot-password" className="chronelis-auth-link">Quên mật khẩu?</Link>
+              <button type="button" className="chronelis-auth-link" onClick={handleForgotTransition}>Quên mật khẩu?</button>
             </div>
 
             <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={loginMutation.isPending}>
@@ -221,30 +330,61 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
             <div className="chronelis-auth-grid-2">
               <div>
-                <div className="chronelis-auth-input-field">
+                <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
                   <KeyRound className="chronelis-auth-input-icon" />
                   <input
-                    type="password"
+                    type={showSignUpPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     placeholder="Mật khẩu"
                     {...registerForm.register('password')}
                   />
+                  <button
+                    type="button"
+                    className="chronelis-auth-input-toggle"
+                    onClick={() => setShowSignUpPassword((prev) => !prev)}
+                    aria-label={showSignUpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    {showSignUpPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                  </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.password?.message} />
               </div>
               <div>
-                <div className="chronelis-auth-input-field">
-                  <Eye className="chronelis-auth-input-icon" />
+                <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
+                  <KeyRound className="chronelis-auth-input-icon" />
                   <input
-                    type="password"
+                    type={showSignUpConfirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     placeholder="Xác nhận"
                     {...registerForm.register('confirmPassword')}
                   />
+                  <button
+                    type="button"
+                    className="chronelis-auth-input-toggle"
+                    onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
+                    aria-label={showSignUpConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
+                  >
+                    {showSignUpConfirmPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                  </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.confirmPassword?.message} />
               </div>
             </div>
+
+            {signUpPassword ? (
+              <div className="chronelis-auth-strength">
+                <div className="chronelis-auth-strength-track" aria-hidden>
+                  <span
+                    className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
+                    style={{ width: `${strengthPercent}%` }}
+                  />
+                </div>
+                <div className="chronelis-auth-strength-meta">
+                  <span>Mức độ mật khẩu: <strong>{passwordStrength.label}</strong></span>
+                  <span>{passwordStrength.helper}</span>
+                </div>
+              </div>
+            ) : null}
 
             <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
               {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}

@@ -111,6 +111,10 @@
   overflow: hidden;
 }
 
+.chronelis-auth-input-field--password {
+  grid-template-columns: 2.5rem 1fr 2.4rem;
+}
+
 .chronelis-auth-input-icon {
   width: 1rem;
   height: 1rem;
@@ -132,6 +136,17 @@
   color: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
 }
 
+.chronelis-auth-input-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
 .chronelis-auth-form-meta {
   display: flex;
   justify-content: flex-end;
@@ -139,6 +154,12 @@
 }
 
 .chronelis-auth-link {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
   font-size: 0.75rem;
   font-weight: 500;
   color: color-mix(in oklab, var(--primary) 80%, var(--foreground) 20%);
@@ -147,6 +168,75 @@
 
 .chronelis-auth-link:hover {
   text-decoration: underline;
+}
+
+.chronelis-auth-strength {
+  margin-top: 0.45rem;
+}
+
+.chronelis-auth-strength-track {
+  width: 100%;
+  height: 0.38rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--muted) 86%, transparent);
+  overflow: hidden;
+}
+
+.chronelis-auth-strength-fill {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.24s var(--auth-ease-soft), background-color 0.24s var(--auth-ease-soft);
+}
+
+.chronelis-auth-strength-fill--weak {
+  background: #ef4444;
+}
+
+.chronelis-auth-strength-fill--fair {
+  background: #f97316;
+}
+
+.chronelis-auth-strength-fill--good {
+  background: #eab308;
+}
+
+.chronelis-auth-strength-fill--strong {
+  background: #22c55e;
+}
+
+.chronelis-auth-strength-fill--very-strong {
+  background: #16a34a;
+}
+
+.chronelis-auth-strength-meta {
+  margin-top: 0.3rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.67rem;
+  color: color-mix(in oklab, var(--muted-foreground) 86%, transparent);
+}
+
+/* Login -> forgot password transition */
+.chronelis-auth-page.forgot-mode::before {
+  transform: translate3d(60%, -44%, 0) scale(1.03);
+}
+
+.chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
+  opacity: 0;
+  filter: blur(2px);
+  transform: translate3d(-50%, calc(-50% - 14px), 0) scale(0.98);
+  transition:
+    opacity 0.32s var(--auth-ease-soft),
+    filter 0.32s var(--auth-ease-soft),
+    transform 0.32s var(--auth-ease-soft);
+}
+
+.chronelis-auth-page.forgot-mode .chronelis-auth-panel-content {
+  opacity: 0;
+  transform: translate3d(0, -10px, 0);
+  transition: opacity 0.28s var(--auth-ease-soft), transform 0.28s var(--auth-ease-soft);
 }
 
 .chronelis-auth-error {
@@ -354,6 +444,10 @@
   color: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
 }
 
+.dark .chronelis-auth-strength-track {
+  background: color-mix(in oklab, var(--muted) 78%, black 22%);
+}
+
 /* Responsive */
 @media (max-width: 980px) {
   .chronelis-auth-page {
@@ -431,6 +525,10 @@
   .chronelis-auth-page.sign-up-mode .chronelis-auth-signin-signup {
     top: 5%;
     transform: translate3d(-50%, 0, 0);
+  }
+
+  .chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
+    transform: translate3d(-50%, calc(-100% - 10px), 0) scale(0.98);
   }
 }
 
