@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   FolderKanban, ChevronRight, Search, LogOut, Menu,
   ChevronsLeft, ChevronDown, Target,
@@ -312,14 +312,22 @@ function ProjectItem({
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(project.id, 1, 50),
     queryFn: () => goalApi.listByProject(project.id, { page: 1, size: 50 }),
-    enabled: isExpanded,
+    enabled: project.id > 0,
   })
 
   const goals = goalsQuery.data?.content ?? []
+  const projectProgress = useMemo(() => {
+    if (goals.length === 0) {
+      return 0
+    }
+
+    const total = goals.reduce((sum, goal) => sum + normalizeProgress(goal.progressPercent), 0)
+    return normalizeProgress(total / goals.length)
+  }, [goals])
 
   return (
     <div>
-      <div className="flex items-center">
+      <div className="flex w-full min-w-0 items-center overflow-hidden">
         <button
           onClick={onToggleExpand}
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:text-muted-foreground"
@@ -329,14 +337,22 @@ function ProjectItem({
         <NavLink
           to={`/workspaces/${workspaceId}/projects/${project.id}`}
           className={cn(
-            'flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150',
+            'grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150',
             isActive
               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
               : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
           )}
         >
           <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate">{project.name}</span>
+          <span className="min-w-0 flex-1 truncate" title={project.name}>{project.name}</span>
+          <span
+            className={cn(
+              'shrink-0 text-right text-[10px] font-semibold tabular-nums',
+              resolveProgressClass(projectProgress),
+            )}
+          >
+            {projectProgress}%
+          </span>
         </NavLink>
       </div>
       <AnimatePresence initial={false}>
@@ -362,13 +378,13 @@ function ProjectItem({
                   <NavLink
                     key={goal.id}
                     to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
-                    className="group flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                   >
                     <Target className="size-3 shrink-0 text-muted-foreground/60" />
-                    <span className="min-w-0 flex-1 truncate">{goal.title}</span>
+                    <span className="min-w-0 flex-1 truncate" title={goal.title}>{goal.title}</span>
                     <span
                       className={cn(
-                        'w-10 shrink-0 text-right text-[10px] font-semibold tabular-nums',
+                        'shrink-0 text-right text-[10px] font-semibold tabular-nums',
                         resolveProgressClass(normalizedProgress),
                       )}
                     >

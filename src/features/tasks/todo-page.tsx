@@ -851,36 +851,12 @@ function SortableTodoItem({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={cn(
-          'rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-          TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
-        )}>
-          {TODO_PRIORITY_LABELS[task.priority]}
-        </span>
-        <button
-          type="button"
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation()
-            onNotebook()
-          }}
-          aria-label="Mở ghi chú task"
-        >
-          <NotebookText className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation()
-            onPomodoro()
-          }}
-          aria-label="Mở Pomodoro"
-        >
-          <Timer className="size-3.5" />
-        </button>
-      </div>
+      <TodoRowMetaActions
+        priority={task.priority}
+        assigneeName={task.assignee?.firstName}
+        onPomodoro={onPomodoro}
+        onNotebook={onNotebook}
+      />
     </div>
   )
 }
@@ -944,41 +920,66 @@ function TodoItem({
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <span className={cn(
-          'rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-          TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
-        )}>
-          {TODO_PRIORITY_LABELS[task.priority]}
-        </span>
-        {task.assignee && (
-          <span className="max-w-16 truncate text-[10px] text-muted-foreground">
-            {task.assignee.firstName}
-          </span>
+      <TodoRowMetaActions
+        priority={task.priority}
+        assigneeName={task.assignee?.firstName}
+        onPomodoro={onPomodoro}
+        onNotebook={onNotebook}
+      />
+    </div>
+  )
+}
+
+function TodoRowMetaActions({
+  priority,
+  assigneeName,
+  onPomodoro,
+  onNotebook,
+}: {
+  priority: TaskPriorityType
+  assigneeName?: string
+  onPomodoro: () => void
+  onNotebook: () => void
+}) {
+  return (
+    <div className="grid shrink-0 grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] items-center gap-2">
+      <span className={cn(
+        'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
+        TODO_PRIORITY_CHIP_CLASSNAMES[priority],
+      )}>
+        {TODO_PRIORITY_LABELS[priority]}
+      </span>
+      <span
+        className={cn(
+          'truncate text-right text-[10px]',
+          assigneeName ? 'text-muted-foreground' : 'text-muted-foreground/70',
         )}
-        <button
-          type="button"
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation()
-            onNotebook()
-          }}
-          aria-label="Mở ghi chú task"
-        >
-          <NotebookText className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation()
-            onPomodoro()
-          }}
-          aria-label="Mở Pomodoro"
-        >
-          <Timer className="size-3.5" />
-        </button>
-      </div>
+        title={assigneeName ?? 'Chưa gán'}
+      >
+        {assigneeName ?? 'Chưa gán'}
+      </span>
+      <button
+        type="button"
+        className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+        onClick={(event) => {
+          event.stopPropagation()
+          onNotebook()
+        }}
+        aria-label="Mở ghi chú task"
+      >
+        <NotebookText className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+        onClick={(event) => {
+          event.stopPropagation()
+          onPomodoro()
+        }}
+        aria-label="Mở Pomodoro"
+      >
+        <Timer className="size-3.5" />
+      </button>
     </div>
   )
 }

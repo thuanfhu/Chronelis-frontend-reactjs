@@ -120,8 +120,8 @@ const PRIORITY_EVENT_CLASSNAMES: Record<TaskPriorityType, string[]> = {
 
 // ─── Types ───
 
-interface ScheduleWithTask extends TaskSchedule {
-  task?: Task
+interface ScheduleWithResolvedTask extends TaskSchedule {
+  task: Task
 }
 
 type CalendarView = 'week' | 'month'
@@ -229,6 +229,15 @@ function resolveEventRange(start: Date | null, end: Date | null): { start: Date;
     start,
     end: resolvedEnd,
   }
+}
+
+function parseValidDate(dateValue: string | undefined): Date | null {
+  if (!dateValue) {
+    return null
+  }
+
+  const parsed = new Date(dateValue)
+  return Number.isFinite(parsed.getTime()) ? parsed : null
 }
 
 function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start: Date; end: Date } {
@@ -422,34 +431,75 @@ export function CalendarPage() {
   })
 
   // Join schedules with task data
-  const enrichedSchedules = useMemo<ScheduleWithTask[]>(() => {
+  const enrichedSchedules = useMemo<ScheduleWithResolvedTask[]>(() => {
     const schedules = schedulesQuery.data?.content ?? []
     const tasks = tasksQuery.data?.content ?? []
     const taskMap = new Map(tasks.map((t) => [t.id, t]))
-    return schedules.map((s) => ({ ...s, task: taskMap.get(s.taskId) }))
+
+    return schedules.flatMap((schedule) => {
+      const task = taskMap.get(schedule.taskId)
+      return task ? [{ ...schedule, task }] : []
+    })
   }, [schedulesQuery.data, tasksQuery.data])
+
+  const dueDateOnlyTasks = useMemo(() => {
+    const tasks = tasksQuery.data?.content ?? []
+    const scheduledTaskIds = new Set(enrichedSchedules.map((schedule) => schedule.taskId))
+
+    return tasks.filter((task) => Boolean(task.dueDate) && !scheduledTaskIds.has(task.id))
+  }, [enrichedSchedules, tasksQuery.data])
 
   const isLoading = schedulesQuery.isLoading || tasksQuery.isLoading
 
   const calendarEvents = useMemo<EventInput[]>(() => {
-    return enrichedSchedules.map((schedule) => {
-      const priority = schedule.task?.priority ?? 'MEDIUM'
+    const scheduledEvents = enrichedSchedules.map((schedule) => {
+      const priority = schedule.task.priority
 
       return {
         id: String(schedule.id),
-        title: schedule.task?.title ?? `Task #${schedule.taskId}`,
+        title: schedule.task.title,
         start: schedule.scheduledStart,
         end: schedule.scheduledEnd,
         extendedProps: {
           scheduleId: schedule.id,
           taskId: schedule.taskId,
           priority,
-          canDelete: schedule.task ? canManageTask(schedule.task.goalId) : false,
+          canDelete: canManageTask(schedule.task.goalId),
           task: schedule.task,
+          isDueDateOnly: false,
         },
-      }
+      } satisfies EventInput
     })
-  }, [canManageTask, enrichedSchedules])
+
+    const dueDateEvents = dueDateOnlyTasks.reduce<EventInput[]>((events, task) => {
+      const dueDate = parseValidDate(task.dueDate)
+      if (!dueDate) {
+        return events
+      }
+
+      const dueEnd = addMinutes(dueDate, 60)
+      events.push({
+        id: `due-${task.id}`,
+        title: task.title,
+        start: dueDate,
+        end: dueEnd,
+        editable: false,
+        durationEditable: false,
+        extendedProps: {
+          scheduleId: null,
+          taskId: task.id,
+          priority: task.priority,
+          canDelete: canManageTask(task.goalId),
+          task,
+          isDueDateOnly: true,
+        },
+      })
+
+      return events
+    }, [])
+
+    return [...scheduledEvents, ...dueDateEvents]
+  }, [canManageTask, dueDateOnlyTasks, enrichedSchedules])
 
   const runCalendarTransition = async (direction: 1 | -1, action: () => void) => {
     setNavigationDirection(direction)
@@ -521,6 +571,11 @@ export function CalendarPage() {
   }
 
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
+    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+      arg.revert?.()
+      return
+    }
+
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
     const task = arg.event.extendedProps.task as Task | undefined
@@ -549,6 +604,11 @@ export function CalendarPage() {
   }
 
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
+    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+      arg.revert?.()
+      return
+    }
+
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
     const task = arg.event.extendedProps.task as Task | undefined
