@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -22,8 +22,6 @@ interface AuthSlidingPageProps {
 }
 
 const ROUTE_SWITCH_DELAY_MS = 680
-const FORGOT_TRANSITION_DELAY_MS = 340
-const FORGOT_RETURN_ENTER_MS = 420
 
 type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong' | 'very-strong'
 
@@ -100,46 +98,21 @@ function FieldError({ message }: FieldErrorProps) {
 
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const navigate = useNavigate()
-  const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
-  const [isForgotTransitioning, setIsForgotTransitioning] = useState(false)
-  const [fromForgotEnter, setFromForgotEnter] = useState(false)
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false)
   const routeSwitchTimeoutRef = useRef<number | null>(null)
-  const forgotTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     setMode(initialMode)
   }, [initialMode])
 
-  useEffect(() => {
-    const state = location.state as { fromForgot?: boolean } | null
-    if (!state?.fromForgot) {
-      return
-    }
-
-    setFromForgotEnter(true)
-    const enterTimeout = window.setTimeout(() => {
-      setFromForgotEnter(false)
-    }, FORGOT_RETURN_ENTER_MS)
-
-    return () => {
-      window.clearTimeout(enterTimeout)
-    }
-  }, [location.state])
-
   useEffect(() => () => {
     if (routeSwitchTimeoutRef.current !== null) {
       window.clearTimeout(routeSwitchTimeoutRef.current)
       routeSwitchTimeoutRef.current = null
-    }
-
-    if (forgotTimeoutRef.current !== null) {
-      window.clearTimeout(forgotTimeoutRef.current)
-      forgotTimeoutRef.current = null
     }
   }, [])
 
@@ -148,7 +121,6 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       return
     }
 
-    setIsForgotTransitioning(false)
     setMode(nextMode)
 
     if (routeSwitchTimeoutRef.current !== null) {
@@ -162,24 +134,17 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   }
 
   const handleForgotTransition = () => {
-    if (isForgotTransitioning) {
-      return
-    }
-
     if (routeSwitchTimeoutRef.current !== null) {
       window.clearTimeout(routeSwitchTimeoutRef.current)
       routeSwitchTimeoutRef.current = null
     }
 
-    if (forgotTimeoutRef.current !== null) {
-      window.clearTimeout(forgotTimeoutRef.current)
-    }
+    setMode('sign-up')
 
-    setIsForgotTransitioning(true)
-    forgotTimeoutRef.current = window.setTimeout(() => {
-      navigate('/forgot-password', { state: { fromAuthSlide: true } })
-      forgotTimeoutRef.current = null
-    }, FORGOT_TRANSITION_DELAY_MS)
+    routeSwitchTimeoutRef.current = window.setTimeout(() => {
+      navigate('/forgot-password')
+      routeSwitchTimeoutRef.current = null
+    }, ROUTE_SWITCH_DELAY_MS)
   }
 
   const loginForm = useForm<LoginFormValues>({
@@ -244,7 +209,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
   return (
     <AuthSharedShell
-      pageClassName={`${mode === 'sign-up' ? 'sign-up-mode' : ''} ${isForgotTransitioning ? 'forgot-mode' : ''} ${fromForgotEnter ? 'from-forgot-enter' : ''}`}
+      pageClassName={mode === 'sign-up' ? 'sign-up-mode' : ''}
       leftPanel={(
         <>
           <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">

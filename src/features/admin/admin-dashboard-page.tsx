@@ -577,9 +577,13 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               <TableRow>
                 <TableHead>Người dùng</TableHead>
                 <TableHead>Email / SĐT</TableHead>
-                <TableHead>Roles</TableHead>
+                <TableHead className="w-44 px-2">
+                  <div className="flex items-center justify-center text-center">Role</div>
+                </TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead className="w-45 text-center">Hành động</TableHead>
+                <TableHead className="w-32 px-2">
+                  <div className="flex items-center justify-center text-center">Hành động</div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -593,8 +597,8 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                     <p>{user.email}</p>
                     <p className="text-xs text-muted-foreground">{user.phoneNumber || 'Chưa cập nhật'}</p>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
+                  <TableCell className="px-2">
+                    <div className="flex flex-wrap items-center justify-center gap-1">
                       {(user.roles ?? []).length === 0 ? (
                         <Badge variant="outline">No role</Badge>
                       ) : (
@@ -620,8 +624,8 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                       {user.isVerified ? 'Đã xác thực' : 'Chưa xác thực'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <div className="inline-flex items-center justify-center gap-1.5">
+                  <TableCell className="px-2">
+                    <div className="flex items-center justify-center gap-1.5">
                       <Button
                         variant="ghost"
                         size="icon"

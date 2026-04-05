@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useUiStore } from '@/app/store/ui-store'
 import type { UserSecure } from '@/types/domain'
 
 interface AuthState {
@@ -21,6 +22,7 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken, currentUser })
       },
       clearSession: () => {
+        useUiStore.getState().clearWorkspaceContext()
         set({ accessToken: null, currentUser: null })
       },
       setHydrated: (value) => {

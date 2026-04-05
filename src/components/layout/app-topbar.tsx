@@ -38,9 +38,13 @@ import { cn } from '@/lib/utils/cn'
 export function AppTopbar() {
   const navigate = useNavigate()
   const params = useParams()
-  const currentWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
+  const parsedWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
+  const workspaceIdFromRoute = Number.isFinite(parsedWorkspaceId) ? parsedWorkspaceId : undefined
   const toggleTheme = useUiStore((state) => state.toggleTheme)
   const theme = useUiStore((state) => state.theme)
+  const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
+  const setSelectedWorkspaceId = useUiStore((state) => state.setSelectedWorkspaceId)
+  const setSelectedProjectId = useUiStore((state) => state.setSelectedProjectId)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
   const sidebarOpen = useUiStore((state) => state.sidebarOpen)
   const setCommandPaletteOpen = useUiStore((state) => state.setCommandPaletteOpen)
@@ -74,6 +78,8 @@ export function AppTopbar() {
       setCreateOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Tạo workspace thành công')
+      setSelectedWorkspaceId(created.id)
+      setSelectedProjectId(null)
       navigate(`/workspaces/${created.id}`)
     },
     onError: (error: Error) => {
@@ -103,8 +109,15 @@ export function AppTopbar() {
     setEditOpen(true)
   }
 
+  const handleWorkspaceSelect = (workspaceId: number) => {
+    setSelectedWorkspaceId(workspaceId)
+    setSelectedProjectId(null)
+    navigate(`/workspaces/${workspaceId}`)
+  }
+
   const workspaces = workspacesQuery.data?.content ?? []
-  const currentWorkspace = workspaces.find((ws) => ws.id === currentWorkspaceId)
+  const activeWorkspaceId = workspaceIdFromRoute ?? selectedWorkspaceId ?? undefined
+  const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId)
 
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
   const initials = `${currentUser?.firstName?.charAt(0) ?? ''}${currentUser?.lastName?.charAt(0) ?? ''}`
@@ -146,7 +159,7 @@ export function AppTopbar() {
                 {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
               </div>
               <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
-                {currentWorkspace?.name ?? 'Chọn workspace'}
+                {currentWorkspace?.name ?? (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : 'Chọn workspace')}
               </span>
               <ChevronsUpDown className="size-3 text-muted-foreground" />
             </button>
@@ -157,14 +170,14 @@ export function AppTopbar() {
             {workspaces.map((ws) => (
               <DropdownMenuItem
                 key={ws.id}
-                onClick={() => navigate(`/workspaces/${ws.id}`)}
+                onClick={() => handleWorkspaceSelect(ws.id)}
                 className="group flex items-center gap-2 pr-1"
               >
                 <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
                   {ws.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="flex-1 truncate text-sm">{ws.name}</span>
-                {ws.id === currentWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
+                {ws.id === activeWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
                 <button
                   className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                   onClick={(e) => {

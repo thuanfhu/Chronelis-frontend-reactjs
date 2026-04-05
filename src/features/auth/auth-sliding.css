@@ -326,37 +326,16 @@
   }
 }
 
-/* Login -> forgot password transition */
-.chronelis-auth-page.forgot-mode::before {
-  transform: translate3d(62%, -42%, 0) scale(1.02);
-}
-
-.chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
-  opacity: 0;
-  filter: none;
-  transform: translate3d(-50%, calc(-50% - 12px), 0) scale(0.985);
-  transition:
-    opacity 0.28s var(--auth-ease-soft),
-    filter 0.28s var(--auth-ease-soft),
-    transform 0.28s var(--auth-ease-soft);
-}
-
-.chronelis-auth-page.forgot-mode .chronelis-auth-panel-content {
-  opacity: 0;
-  transform: translate3d(0, -8px, 0);
-  transition: opacity 0.24s var(--auth-ease-soft), transform 0.24s var(--auth-ease-soft);
-}
-
-.chronelis-auth-page.from-forgot-enter .chronelis-auth-signin-signup {
-  animation: auth-slide-from-forgot 0.38s var(--auth-ease-soft);
-}
-
-.chronelis-auth-page.forgot-standalone-mode .chronelis-auth-right-panel {
+.chronelis-auth-page.forgot-standalone-mode.sign-up-mode .chronelis-auth-right-panel {
   pointer-events: all;
 }
 
-.chronelis-auth-page.forgot-standalone-mode .chronelis-auth-right-panel .chronelis-auth-panel-content {
-  transform: translate3d(0, 0, 0);
+.chronelis-auth-page.forgot-standalone-mode:not(.sign-up-mode) .chronelis-auth-right-panel {
+  pointer-events: none;
+}
+
+.chronelis-auth-page.forgot-standalone-mode:not(.sign-up-mode) .chronelis-auth-left-panel {
+  pointer-events: all;
 }
 
 .chronelis-auth-page.forgot-standalone-mode .chronelis-auth-forgot-form {
@@ -364,87 +343,6 @@
   z-index: 2;
   pointer-events: auto;
   transform: translate3d(0, 0, 0);
-}
-
-.chronelis-auth-page.forgot-standalone-mode.forgot-from-auth-enter .chronelis-auth-signin-signup {
-  animation: auth-forgot-shared-enter 0.42s var(--auth-ease-soft);
-}
-
-.chronelis-auth-page.forgot-standalone-mode.forgot-to-login-leave .chronelis-auth-signin-signup {
-  animation: auth-forgot-shared-leave 0.28s var(--auth-ease-soft) forwards;
-}
-
-@keyframes auth-slide-from-forgot {
-  0% {
-    opacity: 0;
-    transform: translate3d(-50%, calc(-50% + 14px), 0) scale(0.985);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(-50%, -50%, 0) scale(1);
-  }
-}
-
-@keyframes auth-forgot-shared-enter {
-  0% {
-    opacity: 0;
-    transform: translate3d(-50%, calc(-50% + 22px), 0) scale(0.972);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(-50%, -50%, 0) scale(1);
-  }
-}
-
-@keyframes auth-forgot-shared-leave {
-  0% {
-    opacity: 1;
-    transform: translate3d(-50%, -50%, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-50%, calc(-50% - 14px), 0) scale(0.985);
-  }
-}
-
-.chronelis-forgot-shell {
-  width: 100%;
-  transform: translate3d(0, 0, 0);
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  will-change: transform, opacity;
-  contain: layout paint;
-}
-
-.chronelis-forgot-shell--enter {
-  animation: forgot-enter 0.32s var(--auth-ease-soft);
-}
-
-.chronelis-forgot-shell--leaving {
-  pointer-events: none;
-  animation: forgot-leave 0.3s var(--auth-ease-soft) forwards;
-}
-
-@keyframes forgot-enter {
-  0% {
-    opacity: 0;
-    transform: translate3d(20px, 0, 0);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes forgot-leave {
-  0% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(22px, 0, 0);
-  }
 }
 
 .chronelis-auth-error {
@@ -783,9 +681,6 @@
     transform: translate3d(-50%, 0, 0);
   }
 
-  .chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
-    transform: translate3d(-50%, calc(-100% - 10px), 0) scale(0.98);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -920,10 +815,6 @@
     top: auto;
     left: auto;
     transform: none !important;
-  }
-
-  .chronelis-auth-page.forgot-mode .chronelis-auth-signin-signup {
-    transform: translate3d(-20px, 0, 0) scale(0.985) !important;
   }
 
   .chronelis-auth-panel-content p {

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronRight, LayoutDashboard, LogOut, Package, ShieldAlert, Users, X } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
+import { useUiStore } from '@/app/store/ui-store'
 import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -54,9 +55,23 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const navigate = useNavigate()
   const currentUser = useAuthStore((state) => state.currentUser)
   const clearSession = useAuthStore((state) => state.clearSession)
+  const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
+  const selectedProjectId = useUiStore((state) => state.selectedProjectId)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const fullName = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim()
+
+  const resolveWorkspaceReturnPath = () => {
+    if (!selectedWorkspaceId) {
+      return '/dashboard'
+    }
+
+    if (selectedProjectId) {
+      return `/workspaces/${selectedWorkspaceId}/projects/${selectedProjectId}`
+    }
+
+    return `/workspaces/${selectedWorkspaceId}`
+  }
 
   const handleLogout = () => {
     clearSession()
@@ -108,7 +123,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
           className="mt-3 h-9 w-full justify-start border-sidebar-border bg-sidebar-primary/10 text-sidebar-primary hover:bg-sidebar-primary/15"
           onClick={() => {
             onCloseMobile()
-            navigate('/dashboard')
+            navigate(resolveWorkspaceReturnPath())
           }}
         >
           <LayoutDashboard className="size-4" />

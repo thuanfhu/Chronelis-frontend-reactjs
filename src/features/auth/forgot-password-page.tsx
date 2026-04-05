@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2, Mail } from 'lucide-react'
 import { authApi } from '@/lib/api/modules/auth-api'
@@ -11,7 +11,7 @@ import { AuthSharedShell } from '@/features/auth/auth-shared-shell'
 import { cn } from '@/lib/utils/cn'
 import '@/features/auth/auth-sliding.css'
 
-const FORGOT_TO_LOGIN_DELAY_MS = 320
+const FORGOT_TO_LOGIN_DELAY_MS = 680
 
 interface ForgotPayload {
   email: string
@@ -19,7 +19,6 @@ interface ForgotPayload {
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const form = useForm<ForgotPayload>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: {
@@ -39,11 +38,9 @@ export function ForgotPasswordPage() {
 
   const leaveTimeoutRef = useRef<number | null>(null)
   const [isLeavingToLogin, setIsLeavingToLogin] = useState(false)
-  const fromAuthSlide = Boolean((location.state as { fromAuthSlide?: boolean } | null)?.fromAuthSlide)
   const shellClassName = cn(
     'forgot-standalone-mode',
-    fromAuthSlide && 'forgot-from-auth-enter',
-    isLeavingToLogin && 'forgot-to-login-leave',
+    !isLeavingToLogin && 'sign-up-mode',
   )
 
   useEffect(() => () => {
@@ -60,7 +57,7 @@ export function ForgotPasswordPage() {
 
     setIsLeavingToLogin(true)
     leaveTimeoutRef.current = window.setTimeout(() => {
-      navigate('/login', { replace: true, state: { fromForgot: true } })
+      navigate('/login', { replace: true })
       leaveTimeoutRef.current = null
     }, FORGOT_TO_LOGIN_DELAY_MS)
   }
