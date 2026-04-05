@@ -481,6 +481,22 @@
     line-height: 1;
   }
 
+  .chronelis-day-header--clickable {
+    cursor: pointer;
+    border-radius: 0.55rem;
+    padding: 0.15rem 0.35rem;
+    transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .chronelis-day-header--clickable:hover {
+    background-color: color-mix(in oklab, var(--accent) 26%, transparent);
+  }
+
+  .chronelis-day-header--clickable:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 24%, transparent);
+  }
+
   .chronelis-day-header__weekday {
     font-size: 0.66rem;
     font-weight: 600;

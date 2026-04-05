@@ -44,8 +44,8 @@ import { taskApi } from '@/lib/api/modules/task-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import {
   applyTaskMove,
@@ -208,9 +208,13 @@ export function KanbanPage() {
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
-  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
+  const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
+    workspaceId,
+    projectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
+  })
 
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [statusName, setStatusName] = useState('')
@@ -247,7 +251,13 @@ export function KanbanPage() {
   })
 
   const createStatusMutation = useMutation({
-    mutationFn: () => taskStatusApi.create({ projectId, name: statusName.trim(), code: statusCode.trim() }),
+    mutationFn: () => {
+      if (!canManageProject) {
+        throw new Error('Bạn không có quyền tạo cột trạng thái trong project này')
+      }
+
+      return taskStatusApi.create({ projectId, name: statusName.trim(), code: statusCode.trim() })
+    },
     onSuccess: () => {
       setStatusName('')
       setStatusCode('')
@@ -261,8 +271,12 @@ export function KanbanPage() {
   })
 
   const createTaskMutation = useMutation({
-    mutationFn: () =>
-      taskApi.create({
+    mutationFn: () => {
+      if (!canManageProject) {
+        throw new Error('Bạn không có quyền tạo task trong project này')
+      }
+
+      return taskApi.create({
         projectId,
         title: taskTitle.trim(),
         description: taskDescription.trim() || undefined,
@@ -270,7 +284,8 @@ export function KanbanPage() {
         priority: taskPriority,
         goalId: taskGoalId ?? undefined,
         sourceView: 'KANBAN',
-      }),
+      })
+    },
     onSuccess: () => {
       setTaskTitle('')
       setTaskDescription('')
@@ -376,6 +391,11 @@ export function KanbanPage() {
     setActiveTask(null)
     setOverColumnId(null)
 
+    if (!canManageProject) {
+      toast.error('Bạn không có quyền sắp xếp task trên Kanban board này')
+      return
+    }
+
     if (!over) return
 
     const activeData = active.data.current
@@ -419,7 +439,7 @@ export function KanbanPage() {
     }
   }
 
-  if (statusesQuery.isLoading || tasksQuery.isLoading) {
+  if (statusesQuery.isLoading || tasksQuery.isLoading || !permissionsReady) {
     return <LoadingPanel />
   }
 
@@ -443,7 +463,7 @@ export function KanbanPage() {
             {/* Status dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={!canManageProject}>
                   <Plus className="mr-1.5 size-3.5" />
                   Thêm cột
                 </Button>
@@ -465,7 +485,7 @@ export function KanbanPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createStatusMutation.mutate()} disabled={createStatusMutation.isPending || !statusName.trim() || !statusCode.trim()}>
+                  <Button onClick={() => createStatusMutation.mutate()} disabled={createStatusMutation.isPending || !statusName.trim() || !statusCode.trim() || !canManageProject}>
                     {createStatusMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                     Tạo
                   </Button>
@@ -476,7 +496,7 @@ export function KanbanPage() {
             {/* Task dialog */}
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm">
+                <Button size="sm" disabled={!canManageProject}>
                   <Plus className="mr-1.5 size-3.5" />
                   Tạo task
                 </Button>
@@ -532,7 +552,7 @@ export function KanbanPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createTaskMutation.mutate()} disabled={createTaskMutation.isPending || !taskTitle.trim() || !taskStatusId}>
+                  <Button onClick={() => createTaskMutation.mutate()} disabled={createTaskMutation.isPending || !taskTitle.trim() || !taskStatusId || !canManageProject}>
                     {createTaskMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                     Tạo
                   </Button>
@@ -569,7 +589,7 @@ export function KanbanPage() {
                   tasks={columnTasks}
                   onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
                   onTaskContextMenu={(task) => {
-                    if (task.createdBy.userId === currentUserId) {
+                    if (canManageTask(task.goalId)) {
                       openTaskDeleteConfirm(task.id)
                     }
                   }}

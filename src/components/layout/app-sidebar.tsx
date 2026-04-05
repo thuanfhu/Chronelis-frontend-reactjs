@@ -16,6 +16,21 @@ import { projectApi } from '@/lib/api/modules/project-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 
+function normalizeProgress(progressPercent: number | null | undefined): number {
+  if (progressPercent == null || Number.isNaN(progressPercent)) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(100, Math.round(progressPercent)))
+}
+
+function resolveProgressClass(progressPercent: number): string {
+  if (progressPercent >= 80) return 'text-emerald-600 dark:text-emerald-400'
+  if (progressPercent >= 45) return 'text-sky-600 dark:text-sky-400'
+  if (progressPercent >= 20) return 'text-amber-600 dark:text-amber-400'
+  return 'text-muted-foreground/75'
+}
+
 interface AppSidebarProps {
   workspaceId?: number
   projectId?: number
@@ -321,7 +336,7 @@ function ProjectItem({
           )}
         >
           <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{project.name}</span>
+          <span className="min-w-0 flex-1 truncate">{project.name}</span>
         </NavLink>
       </div>
       <AnimatePresence initial={false}>
@@ -340,19 +355,28 @@ function ProjectItem({
               {goals.length === 0 && !goalsQuery.isLoading && (
                 <p className="px-2 py-1 text-[11px] text-muted-foreground/50">Chưa có goal nào</p>
               )}
-              {goals.map((goal) => (
-                <NavLink
-                  key={goal.id}
-                  to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
-                  className="group flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                >
-                  <Target className="size-3 shrink-0 text-muted-foreground/60" />
-                  <span className="flex-1 truncate">{goal.title}</span>
-                  {goal.progressPercent != null && goal.progressPercent > 0 && (
-                    <span className="text-[10px] text-muted-foreground/50">{goal.progressPercent}%</span>
-                  )}
-                </NavLink>
-              ))}
+              {goals.map((goal) => {
+                const normalizedProgress = normalizeProgress(goal.progressPercent)
+
+                return (
+                  <NavLink
+                    key={goal.id}
+                    to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
+                    className="group flex items-center gap-2 rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  >
+                    <Target className="size-3 shrink-0 text-muted-foreground/60" />
+                    <span className="min-w-0 flex-1 truncate">{goal.title}</span>
+                    <span
+                      className={cn(
+                        'w-10 shrink-0 text-right text-[10px] font-semibold tabular-nums',
+                        resolveProgressClass(normalizedProgress),
+                      )}
+                    >
+                      {normalizedProgress}%
+                    </span>
+                  </NavLink>
+                )
+              })}
             </div>
           </motion.div>
         )}

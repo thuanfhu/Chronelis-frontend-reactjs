@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryKey } from '@tanstack/react-query'
+import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
@@ -33,6 +33,7 @@ import {
   snapshotProjectTaskQueries,
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import type { Task, TaskComment } from '@/types/domain'
 
 const TASK_DELETE_UNDO_WINDOW_MS = 5000
@@ -58,12 +59,14 @@ interface PendingTaskDelete {
 
 export function TaskDeleteConfirmDialog() {
   const queryClient = useQueryClient()
+  const params = useParams()
+  const workspaceId = Number(params.workspaceId)
+  const routeProjectId = Number(params.projectId)
 
   const taskDeleteConfirmTaskId = useUiStore((state) => state.taskDeleteConfirmTaskId)
   const closeTaskDeleteConfirm = useUiStore((state) => state.closeTaskDeleteConfirm)
   const taskDrawerTaskId = useUiStore((state) => state.taskDrawerTaskId)
   const closeTaskDrawer = useUiStore((state) => state.closeTaskDrawer)
-  const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
   const [pendingDeletes, setPendingDeletes] = useState<PendingTaskDelete[]>([])
   const [clockMs, setClockMs] = useState(() => Date.now())
@@ -83,16 +86,29 @@ export function TaskDeleteConfirmDialog() {
     enabled: hasTargetTask,
   })
 
+  const permissionProjectId = Number.isFinite(routeProjectId)
+    ? routeProjectId
+    : (taskQuery.data?.projectId ?? Number.NaN)
+
+  const {
+    canManageTask: canManageTaskByGoal,
+    permissionsReady,
+  } = useProjectPermissions({
+    workspaceId,
+    projectId: permissionProjectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(permissionProjectId),
+  })
+
   const canDeleteTask = Boolean(
     taskQuery.data
-    && currentUserId
-    && taskQuery.data.createdBy.userId === currentUserId,
+    && permissionsReady
+    && canManageTaskByGoal(taskQuery.data.goalId),
   )
 
   const description = !taskQuery.data
     ? 'Bạn có chắc muốn xóa task này không? Bạn có thể hoàn tác trong 5 giây.'
     : !canDeleteTask
-      ? 'Bạn không có quyền xóa task này. Chỉ người tạo task mới có thể xóa.'
+      ? 'Bạn không có quyền xóa task này theo vai trò quản lý hiện tại.'
       : `Bạn có chắc muốn xóa task "${taskQuery.data.title}" không? Bạn có thể hoàn tác trong 5 giây.`
 
   const restoreCommentSnapshots = useCallback((snapshots: CommentSnapshot) => {

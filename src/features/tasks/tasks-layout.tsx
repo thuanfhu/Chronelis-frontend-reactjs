@@ -26,7 +26,9 @@ export function TasksLayout() {
   const isCalendarView = activeTab === 'calendar'
 
   const setActiveTab = (tab: TaskViewTab) => {
-    setSearchParams({ view: tab }, { replace: true })
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('view', tab)
+    setSearchParams(nextParams, { replace: true })
   }
 
   return (

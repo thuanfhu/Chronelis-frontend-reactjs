@@ -16,6 +16,7 @@ import { TaskPomodoroPage } from '@/features/tasks/task-pomodoro-page'
 import { TaskNotesPage } from '@/features/tasks/task-notes-page'
 import { NotificationsPage } from '@/features/notifications/notifications-page'
 import { JoinByInvitePage } from '@/features/workspaces/join-by-invite-page'
+import { ProfilePage } from '@/features/profile/profile-page'
 
 export function AppRouter() {
   return (
@@ -79,6 +80,7 @@ export function AppRouter() {
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/join" element={<JoinByInvitePage />} />
         </Route>
 

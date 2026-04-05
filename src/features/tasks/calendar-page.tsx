@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -28,6 +28,7 @@ import { taskApi } from '@/lib/api/modules/task-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import {
   applyScheduleUpdate,
   patchProjectCalendarQueries,
@@ -38,7 +39,6 @@ import {
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
@@ -251,17 +251,23 @@ function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start:
 // ─── Main Component ───
 
 export function CalendarPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const params = useParams()
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
-  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
   const calendarRef = useRef<FullCalendar | null>(null)
   const calendarMotionControls = useAnimationControls()
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
+  const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
+    workspaceId,
+    projectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
+  })
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
@@ -300,6 +306,10 @@ export function CalendarPage() {
 
   const createCalendarTaskMutation = useMutation({
     mutationFn: async () => {
+      if (!canManageProject) {
+        throw new Error('Bạn không có quyền tạo task trong project này')
+      }
+
       const defaultStatus = statusesQuery.data?.[0]
       if (!defaultStatus) throw new Error('Chưa có cột trạng thái')
       if (!createDialog) throw new Error('Thiếu thông tin ngày')
@@ -434,12 +444,12 @@ export function CalendarPage() {
           scheduleId: schedule.id,
           taskId: schedule.taskId,
           priority,
-          canDelete: schedule.task?.createdBy.userId === currentUserId,
+          canDelete: schedule.task ? canManageTask(schedule.task.goalId) : false,
           task: schedule.task,
         },
       }
     })
-  }, [currentUserId, enrichedSchedules])
+  }, [canManageTask, enrichedSchedules])
 
   const runCalendarTransition = async (direction: 1 | -1, action: () => void) => {
     setNavigationDirection(direction)
@@ -467,6 +477,11 @@ export function CalendarPage() {
   }
 
   const openCreateDialog = (start: Date, end: Date, allDay: boolean) => {
+    if (!canManageProject) {
+      toast.error('Bạn không có quyền tạo task trong project này')
+      return
+    }
+
     const normalizedRange = normalizeCreateRange(start, end, allDay)
 
     setCreateDialog({
@@ -479,6 +494,13 @@ export function CalendarPage() {
     setNewTaskPriority('MEDIUM')
     setNewStartDateTime(toInputDateTimeValue(normalizedRange.start))
     setNewEndDateTime(toInputDateTimeValue(normalizedRange.end))
+  }
+
+  const navigateToTodoDate = (date: Date) => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('view', 'todo')
+    nextParams.set('todoDate', toDateKey(date))
+    navigate({ search: `?${nextParams.toString()}` })
   }
 
   const handleDateClick = (arg: CalendarDateClickArg) => {
@@ -501,8 +523,15 @@ export function CalendarPage() {
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
+    const task = arg.event.extendedProps.task as Task | undefined
     const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range) {
+    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range || !task) {
+      arg.revert?.()
+      return
+    }
+
+    if (!canManageTask(task.goalId)) {
+      toast.error('Bạn không có quyền cập nhật lịch cho task này')
       arg.revert?.()
       return
     }
@@ -522,8 +551,15 @@ export function CalendarPage() {
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
     const scheduleId = Number(arg.event.id)
     const taskId = Number(arg.event.extendedProps.taskId)
+    const task = arg.event.extendedProps.task as Task | undefined
     const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range) {
+    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range || !task) {
+      arg.revert?.()
+      return
+    }
+
+    if (!canManageTask(task.goalId)) {
+      toast.error('Bạn không có quyền cập nhật lịch cho task này')
       arg.revert?.()
       return
     }
@@ -597,7 +633,7 @@ export function CalendarPage() {
     })
   }
 
-  if (isLoading) return <LoadingPanel />
+  if (isLoading || !permissionsReady) return <LoadingPanel />
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
@@ -673,17 +709,35 @@ export function CalendarPage() {
               dayHeaderContent={(arg) => {
                 if (arg.view.type === 'timeGridWeek') {
                   return (
-                    <div className={`chronelis-day-header ${arg.isToday ? 'is-today' : ''}`}>
+                    <button
+                      type="button"
+                      className={`chronelis-day-header chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        navigateToTodoDate(arg.date)
+                      }}
+                      title="Xem To Do theo ngày này"
+                    >
                       <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
                       <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
-                    </div>
+                    </button>
                   )
                 }
 
                 return (
-                  <div className={`chronelis-day-header chronelis-day-header--month ${arg.isToday ? 'is-today' : ''}`}>
+                  <button
+                    type="button"
+                    className={`chronelis-day-header chronelis-day-header--month chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      navigateToTodoDate(arg.date)
+                    }}
+                    title="Xem To Do theo ngày này"
+                  >
                     <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
-                  </div>
+                  </button>
                 )
               }}
               dateClick={handleDateClick}
@@ -806,7 +860,7 @@ export function CalendarPage() {
             <Button
               size="sm"
               onClick={() => createCalendarTaskMutation.mutate()}
-              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim() || !newStartDateTime || !newEndDateTime}
+              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim() || !newStartDateTime || !newEndDateTime || !canManageProject}
             >
               {createCalendarTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               Tạo task

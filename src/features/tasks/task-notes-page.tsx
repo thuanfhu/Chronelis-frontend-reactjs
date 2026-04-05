@@ -31,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { queryKeys } from '@/lib/api/query-keys'
 import { storageApi } from '@/lib/api/modules/storage-api'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import '@/styles/task-notes-editor.css'
 
 interface NotesLocationState {
@@ -46,6 +47,12 @@ export function TaskNotesPage() {
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
   const taskId = Number(params.taskId)
+
+  useTaskRealtime(
+    Number.isFinite(workspaceId) ? workspaceId : null,
+    Number.isFinite(projectId) ? projectId : null,
+    Number.isFinite(taskId) && taskId > 0 ? taskId : null,
+  )
 
   const [isDirty, setIsDirty] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
@@ -112,7 +119,7 @@ export function TaskNotesPage() {
       setLastSavedAt(new Date().toISOString())
 
       queryClient.setQueryData(queryKeys.tasks.detail(taskId), updatedTask)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(updatedTask.projectId, 1, 200) })
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', updatedTask.projectId] })
       toast.success('Đã lưu ghi chú task')
     },
     onError: (error: Error) => {

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar, Target, GripVertical, Timer,
+  Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar as CalendarIcon,
+  Target, GripVertical, Timer, NotebookText, Clock3, X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -24,16 +25,19 @@ import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as DatePickerCalendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils/cn'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import {
   applyTaskCompletion,
   applyTaskReorder,
@@ -46,6 +50,37 @@ import type { Task, TaskPriorityType } from '@/types/domain'
 type GroupMode = 'none' | 'day' | 'goal'
 type GoalFilterValue = 'all' | '__nogoal' | `${number}`
 type PriorityFilterValue = 'all' | TaskPriorityType
+
+interface ScheduledTodoEntry {
+  scheduleId: number
+  task: Task
+  scheduledStart: string
+  scheduledEnd: string
+}
+
+function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function parseDateKey(value: string | null): Date | null {
+  if (!value) {
+    return null
+  }
+
+  const parts = value.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+    return null
+  }
+
+  const [year, month, day] = parts
+  return new Date(year, month - 1, day)
+}
+
+function formatScheduleTimeRange(startIso: string, endIso: string): string {
+  const start = new Date(startIso)
+  const end = new Date(endIso)
+  return `${start.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+}
 
 function isToday(date: Date): boolean {
   const now = new Date()
@@ -124,14 +159,19 @@ function buildGoalGroups(tasks: Task[], goalTitleById: Map<number, string>): Map
 export function TodoPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
-  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
   useProjectRealtime(workspaceId, projectId)
+  const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
+    workspaceId,
+    projectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
+  })
 
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
@@ -139,6 +179,12 @@ export function TodoPage() {
   const [goalFilter, setGoalFilter] = useState<GoalFilterValue>('all')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilterValue>('all')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
+
+  const selectedDateParam = searchParams.get('todoDate')
+  const selectedDate = useMemo(() => parseDateKey(selectedDateParam), [selectedDateParam])
+  const selectedDateKey = useMemo(() => (selectedDate ? toDateKey(selectedDate) : null), [selectedDate])
+  const isDateFiltered = Boolean(selectedDateKey)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -160,6 +206,14 @@ export function TodoPage() {
     queryKey: queryKeys.goals.byProject(projectId, 1, 50),
     queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
     enabled: Number.isFinite(projectId),
+  })
+
+  const daySchedulesQuery = useQuery({
+    queryKey: selectedDateKey
+      ? queryKeys.schedules.projectCalendar(projectId, selectedDateKey, selectedDateKey, 1, 500)
+      : ['task-schedules', 'calendar', 'project', projectId, 'todoDate:none'],
+    queryFn: () => taskScheduleApi.projectCalendar(projectId, selectedDateKey!, selectedDateKey!, { page: 1, size: 500 }),
+    enabled: Number.isFinite(projectId) && Boolean(selectedDateKey),
   })
 
   const createTaskMutation = useMutation({
@@ -266,7 +320,7 @@ export function TodoPage() {
     }
   }
 
-  if (tasksQuery.isLoading) return <LoadingPanel />
+  if (tasksQuery.isLoading || !permissionsReady) return <LoadingPanel />
 
   const goalTitleById = new Map(
     (goalsQuery.data?.content ?? []).map((goal) => [goal.id, goal.title] as const),
@@ -287,10 +341,83 @@ export function TodoPage() {
   const pendingTasks = filteredTasks.filter((t) => !t.isCompleted)
   const completedTasks = filteredTasks.filter((t) => t.isCompleted)
 
+  const daySchedules = daySchedulesQuery.data?.content ?? []
+  const dateFilteredEntries: ScheduledTodoEntry[] = []
+  if (selectedDateKey) {
+    const taskById = new Map(filteredTasks.map((task) => [task.id, task] as const))
+    const seenTaskIds = new Set<number>()
+
+    for (const schedule of daySchedules) {
+      const task = taskById.get(schedule.taskId)
+      if (!task) {
+        continue
+      }
+
+      seenTaskIds.add(task.id)
+      dateFilteredEntries.push({
+        scheduleId: schedule.id,
+        task,
+        scheduledStart: schedule.scheduledStart,
+        scheduledEnd: schedule.scheduledEnd,
+      })
+    }
+
+    for (const task of filteredTasks) {
+      if (seenTaskIds.has(task.id) || !task.dueDate) {
+        continue
+      }
+
+      const dueDate = new Date(task.dueDate)
+      if (toDateKey(dueDate) !== selectedDateKey) {
+        continue
+      }
+
+      dateFilteredEntries.push({
+        scheduleId: -task.id,
+        task,
+        scheduledStart: dueDate.toISOString(),
+        scheduledEnd: dueDate.toISOString(),
+      })
+    }
+
+    dateFilteredEntries.sort((a, b) =>
+      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime(),
+    )
+  }
+
+  const dateFilteredPendingEntries = dateFilteredEntries.filter((entry) => !entry.task.isCompleted)
+  const dateFilteredCompletedEntries = dateFilteredEntries.filter((entry) => entry.task.isCompleted)
+
   const pendingTaskIds = pendingTasks.map((t) => `todo-${t.id}`)
 
   const dayGroups = groupMode === 'day' ? buildDayGroups(pendingTasks) : null
   const goalGroups = groupMode === 'goal' ? buildGoalGroups(pendingTasks, goalTitleById) : null
+
+  const selectedDateLabel = selectedDate
+    ? selectedDate.toLocaleDateString('vi-VN', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    : 'Chọn ngày'
+
+  const setTodoDateFilter = (date: Date | undefined) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (date) {
+      nextParams.set('todoDate', toDateKey(date))
+    } else {
+      nextParams.delete('todoDate')
+    }
+    setSearchParams(nextParams, { replace: false })
+    setDatePickerOpen(false)
+  }
+
+  const clearTodoDateFilter = () => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('todoDate')
+    setSearchParams(nextParams, { replace: false })
+  }
 
   const openTaskPomodoro = (taskId: number) => {
     if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
@@ -302,8 +429,27 @@ export function TodoPage() {
     })
   }
 
-  const openDeleteConfirmIfCreator = (task: Task) => {
-    if (task.createdBy.userId === currentUserId) {
+  const openTaskNotebook = (taskId: number) => {
+    if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
+
+    navigate(`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/notes`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
+  }
+
+  const handleToggleCompletion = (task: Task, isCompleted: boolean) => {
+    if (!canManageTask(task.goalId)) {
+      toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+      return
+    }
+
+    toggleCompletionMutation.mutate({ taskId: task.id, isCompleted })
+  }
+
+  const openDeleteConfirmIfPermitted = (task: Task) => {
+    if (canManageTask(task.goalId)) {
       openTaskDeleteConfirm(task.id)
     }
   }
@@ -326,7 +472,7 @@ export function TodoPage() {
               onClick={() => setGroupMode(mode)}
             >
               {mode === 'none' && 'Tất cả'}
-              {mode === 'day' && <><Calendar className="mr-1 size-3" />Theo ngày</>}
+              {mode === 'day' && <><CalendarIcon className="mr-1 size-3" />Theo ngày</>}
               {mode === 'goal' && <><Target className="mr-1 size-3" />Theo goal</>}
             </Button>
           ))}
@@ -341,7 +487,9 @@ export function TodoPage() {
               <SelectItem value="all">Tất cả goal</SelectItem>
               <SelectItem value="__nogoal">Không có goal</SelectItem>
               {(goalsQuery.data?.content ?? []).map((goal) => (
-                <SelectItem key={goal.id} value={String(goal.id)}>{goal.title}</SelectItem>
+                <SelectItem key={goal.id} value={String(goal.id)}>
+                  <span className="block max-w-60 truncate" title={goal.title}>{goal.title}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -358,6 +506,35 @@ export function TodoPage() {
               <SelectItem value="URGENT">Urgent</SelectItem>
             </SelectContent>
           </Select>
+
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant={isDateFiltered ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 max-w-46 gap-1.5 px-2 text-xs"
+              >
+                <CalendarIcon className="size-3.5" />
+                <span className="truncate">{selectedDateLabel}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-0">
+              <DatePickerCalendar
+                mode="single"
+                selected={selectedDate ?? undefined}
+                onSelect={setTodoDateFilter}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {isDateFiltered ? (
+            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={clearTodoDateFilter}>
+              <X className="size-3" />
+              Bỏ ngày
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -370,15 +547,16 @@ export function TodoPage() {
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTaskTitle.trim()) createTaskMutation.mutate()
+                if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) createTaskMutation.mutate()
               }}
-              placeholder="Thêm task mới..."
+              placeholder={canManageProject ? 'Thêm task mới...' : 'Bạn không có quyền tạo task'}
+              disabled={!canManageProject}
               className="pl-9"
             />
           </div>
           <Button
             onClick={() => createTaskMutation.mutate()}
-            disabled={createTaskMutation.isPending || !newTaskTitle.trim()}
+            disabled={createTaskMutation.isPending || !newTaskTitle.trim() || !canManageProject}
             size="sm"
           >
             {createTaskMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Thêm'}
@@ -387,7 +565,41 @@ export function TodoPage() {
       </div>
 
       {/* Pending tasks */}
-      {pendingTasks.length === 0 && completedTasks.length === 0 ? (
+      {isDateFiltered ? (
+        daySchedulesQuery.isLoading ? (
+          <Card className="border-dashed">
+            <CardContent className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Đang tải task theo ngày...
+            </CardContent>
+          </Card>
+        ) : dateFilteredPendingEntries.length === 0 && dateFilteredCompletedEntries.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <CalendarIcon className="mb-3 size-10 text-muted-foreground/30" />
+              <p className="text-sm font-medium">Không có task cho {selectedDateLabel}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Thử chọn ngày khác hoặc bỏ bộ lọc ngày.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-1">
+            {dateFilteredPendingEntries.map((entry) => (
+              <TodoItem
+                key={`todo-date-${entry.scheduleId}-${entry.task.id}`}
+                task={entry.task}
+                onToggle={() => handleToggleCompletion(entry.task, true)}
+                onClick={() => openTaskDrawer(entry.task.id, 'view')}
+                onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                onPomodoro={() => openTaskPomodoro(entry.task.id)}
+                onNotebook={() => openTaskNotebook(entry.task.id)}
+                scheduleLabel={entry.scheduleId > 0
+                  ? formatScheduleTimeRange(entry.scheduledStart, entry.scheduledEnd)
+                  : undefined}
+              />
+            ))}
+          </div>
+        )
+      ) : pendingTasks.length === 0 && completedTasks.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ListTodo className="mb-3 size-10 text-muted-foreground/30" />
@@ -412,10 +624,11 @@ export function TodoPage() {
                     <TodoItem
                       key={task.id}
                       task={task}
-                      onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
+                      onToggle={() => handleToggleCompletion(task, true)}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfCreator(task)}
+                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
+                      onNotebook={() => openTaskNotebook(task.id)}
                     />
                   ))}
                 </div>
@@ -436,10 +649,11 @@ export function TodoPage() {
                   <TodoItem
                     key={task.id}
                     task={task}
-                    onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
+                    onToggle={() => handleToggleCompletion(task, true)}
                     onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openDeleteConfirmIfCreator(task)}
+                    onContextAction={() => openDeleteConfirmIfPermitted(task)}
                     onPomodoro={() => openTaskPomodoro(task.id)}
+                    onNotebook={() => openTaskNotebook(task.id)}
                   />
                 ))}
               </div>
@@ -452,10 +666,25 @@ export function TodoPage() {
             <TodoItem
               key={task.id}
               task={task}
-              onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
+              onToggle={() => handleToggleCompletion(task, true)}
               onClick={() => openTaskDrawer(task.id, 'view')}
-              onContextAction={() => openDeleteConfirmIfCreator(task)}
+              onContextAction={() => openDeleteConfirmIfPermitted(task)}
               onPomodoro={() => openTaskPomodoro(task.id)}
+              onNotebook={() => openTaskNotebook(task.id)}
+            />
+          ))}
+        </div>
+      ) : !canManageProject ? (
+        <div className="space-y-1">
+          {pendingTasks.map((task) => (
+            <TodoItem
+              key={task.id}
+              task={task}
+              onToggle={() => handleToggleCompletion(task, true)}
+              onClick={() => openTaskDrawer(task.id, 'view')}
+              onContextAction={() => openDeleteConfirmIfPermitted(task)}
+              onPomodoro={() => openTaskPomodoro(task.id)}
+              onNotebook={() => openTaskNotebook(task.id)}
             />
           ))}
         </div>
@@ -472,10 +701,11 @@ export function TodoPage() {
                 <SortableTodoItem
                   key={task.id}
                   task={task}
-                  onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: true })}
+                  onToggle={() => handleToggleCompletion(task, true)}
                   onClick={() => openTaskDrawer(task.id, 'view')}
-                  onContextAction={() => openDeleteConfirmIfCreator(task)}
+                  onContextAction={() => openDeleteConfirmIfPermitted(task)}
                   onPomodoro={() => openTaskPomodoro(task.id)}
+                  onNotebook={() => openTaskNotebook(task.id)}
                 />
               ))}
             </div>
@@ -491,14 +721,14 @@ export function TodoPage() {
       )}
 
       {/* Completed tasks */}
-      {completedTasks.length > 0 && (
+      {(isDateFiltered ? dateFilteredCompletedEntries.length > 0 : completedTasks.length > 0) && (
         <div>
           <button
             onClick={() => setShowCompleted(!showCompleted)}
             className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronDown className={cn('size-4 transition-transform', !showCompleted && '-rotate-90')} />
-            Đã hoàn thành ({completedTasks.length})
+            Đã hoàn thành ({isDateFiltered ? dateFilteredCompletedEntries.length : completedTasks.length})
           </button>
           <AnimatePresence initial={false}>
             {showCompleted && (
@@ -509,16 +739,32 @@ export function TodoPage() {
                 transition={{ duration: 0.2 }}
                 className="space-y-1 overflow-hidden"
               >
-                {completedTasks.map((task) => (
-                  <TodoItem
-                    key={task.id}
-                    task={task}
-                    onToggle={() => toggleCompletionMutation.mutate({ taskId: task.id, isCompleted: false })}
-                    onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openDeleteConfirmIfCreator(task)}
-                    onPomodoro={() => openTaskPomodoro(task.id)}
-                  />
-                ))}
+                {isDateFiltered
+                  ? dateFilteredCompletedEntries.map((entry) => (
+                    <TodoItem
+                      key={`todo-date-completed-${entry.scheduleId}-${entry.task.id}`}
+                      task={entry.task}
+                      onToggle={() => handleToggleCompletion(entry.task, false)}
+                      onClick={() => openTaskDrawer(entry.task.id, 'view')}
+                      onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                      onPomodoro={() => openTaskPomodoro(entry.task.id)}
+                      onNotebook={() => openTaskNotebook(entry.task.id)}
+                      scheduleLabel={entry.scheduleId > 0
+                        ? formatScheduleTimeRange(entry.scheduledStart, entry.scheduledEnd)
+                        : undefined}
+                    />
+                  ))
+                  : completedTasks.map((task) => (
+                    <TodoItem
+                      key={task.id}
+                      task={task}
+                      onToggle={() => handleToggleCompletion(task, false)}
+                      onClick={() => openTaskDrawer(task.id, 'view')}
+                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                      onPomodoro={() => openTaskPomodoro(task.id)}
+                      onNotebook={() => openTaskNotebook(task.id)}
+                    />
+                  ))}
               </motion.div>
             )}
           </AnimatePresence>
@@ -534,12 +780,16 @@ function SortableTodoItem({
   onClick,
   onContextAction,
   onPomodoro,
+  onNotebook,
+  scheduleLabel,
 }: {
   task: Task
   onToggle: () => void
   onClick: () => void
   onContextAction: () => void
   onPomodoro: () => void
+  onNotebook: () => void
+  scheduleLabel?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `todo-${task.id}`,
@@ -586,9 +836,15 @@ function SortableTodoItem({
         )}
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
-        <p className={cn('text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
+        <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
+        {scheduleLabel && (
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Clock3 className="size-3" />
+            {scheduleLabel}
+          </p>
+        )}
         {task.dueDate && (
           <p className="mt-0.5 text-xs text-muted-foreground">
             {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -602,6 +858,17 @@ function SortableTodoItem({
         )}>
           {TODO_PRIORITY_LABELS[task.priority]}
         </span>
+        <button
+          type="button"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation()
+            onNotebook()
+          }}
+          aria-label="Mở ghi chú task"
+        >
+          <NotebookText className="size-3.5" />
+        </button>
         <button
           type="button"
           className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
@@ -624,12 +891,16 @@ function TodoItem({
   onClick,
   onContextAction,
   onPomodoro,
+  onNotebook,
+  scheduleLabel,
 }: {
   task: Task
   onToggle: () => void
   onClick: () => void
   onContextAction: () => void
   onPomodoro: () => void
+  onNotebook: () => void
+  scheduleLabel?: string
 }) {
   return (
     <div
@@ -655,9 +926,15 @@ function TodoItem({
         )}
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
-        <p className={cn('text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
+        <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
+        {scheduleLabel && (
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Clock3 className="size-3" />
+            {scheduleLabel}
+          </p>
+        )}
         {task.dueDate && (
           <p className="mt-0.5 text-xs text-muted-foreground">
             {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -679,6 +956,17 @@ function TodoItem({
             {task.assignee.firstName}
           </span>
         )}
+        <button
+          type="button"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation()
+            onNotebook()
+          }}
+          aria-label="Mở ghi chú task"
+        >
+          <NotebookText className="size-3.5" />
+        </button>
         <button
           type="button"
           className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"

@@ -6,7 +6,6 @@ import {
   CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X, CornerDownRight, NotebookText,
 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -31,6 +30,8 @@ import {
   restoreProjectTaskQueries,
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
+import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import { formatDateTime } from '@/lib/utils/datetime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
@@ -48,7 +49,6 @@ export function TaskDetailsDrawer() {
   const closeTaskDrawer = useUiStore((state) => state.closeTaskDrawer)
   const setTaskDrawerMode = useUiStore((state) => state.setTaskDrawerMode)
   const openTaskDeleteConfirm = useUiStore((state) => state.openTaskDeleteConfirm)
-  const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
   const queryClient = useQueryClient()
 
@@ -68,6 +68,28 @@ export function TaskDetailsDrawer() {
     queryFn: () => taskApi.detail(taskId),
     enabled: hasTask,
   })
+
+  const permissionProjectId = Number.isFinite(routeProjectId)
+    ? routeProjectId
+    : (taskQuery.data?.projectId ?? Number.NaN)
+
+  const {
+    currentUserId,
+    isWorkspaceManager,
+    canManageTask: canManageTaskByGoal,
+    permissionsReady,
+  } = useProjectPermissions({
+    workspaceId,
+    projectId: permissionProjectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(permissionProjectId),
+  })
+
+  const realtimeWorkspaceId = Number.isFinite(workspaceId) ? workspaceId : null
+  const realtimeProjectId = Number.isFinite(routeProjectId)
+    ? routeProjectId
+    : (taskQuery.data?.projectId ?? null)
+
+  useTaskRealtime(realtimeWorkspaceId, realtimeProjectId, hasTask ? taskId : null)
 
   const commentsQuery = useQuery({
     queryKey: queryKeys.comments.byTask(taskId),
@@ -315,11 +337,18 @@ export function TaskDetailsDrawer() {
   }, new Map<number, TaskComment[]>())
 
   const task = taskQuery.data
-  const canManageTask = Boolean(task && currentUserId)
-  const isEditingTask = taskDrawerMode === 'edit' && canManageTask
+  const canManageCurrentTask = Boolean(task && permissionsReady && canManageTaskByGoal(task.goalId))
+  const isEditingTask = taskDrawerMode === 'edit' && canManageCurrentTask
+  const canModifyComment = (comment: TaskComment) => Boolean(
+    canManageCurrentTask
+    && (
+      comment.user.userId === currentUserId
+      || isWorkspaceManager
+    ),
+  )
 
   const enterEditMode = () => {
-    if (!task || !canManageTask) return
+    if (!task || !canManageCurrentTask) return
     setEditTitle(task.title)
     setEditDescription(task.description ?? '')
     setEditPriority(task.priority)
@@ -370,7 +399,7 @@ export function TaskDetailsDrawer() {
             <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
 
             <div className="ml-auto flex items-center gap-1">
-              {task && canManageTask && !isEditingTask && (
+              {task && canManageCurrentTask && !isEditingTask && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -380,7 +409,7 @@ export function TaskDetailsDrawer() {
                   <Pencil className="size-3.5" />
                 </Button>
               )}
-              {task && canManageTask && (
+              {task && canManageCurrentTask && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -477,8 +506,14 @@ export function TaskDetailsDrawer() {
                         <Button
                           className="gap-2"
                           variant={task.isCompleted ? 'secondary' : 'default'}
-                          onClick={() => toggleCompletionMutation.mutate()}
-                          disabled={toggleCompletionMutation.isPending}
+                          onClick={() => {
+                            if (!canManageCurrentTask) {
+                              toast.error('Bạn không có quyền cập nhật task này')
+                              return
+                            }
+                            toggleCompletionMutation.mutate()
+                          }}
+                          disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
                         >
                           {toggleCompletionMutation.isPending ? (
                             <Loader2 className="size-4 animate-spin" />
@@ -547,15 +582,18 @@ export function TaskDetailsDrawer() {
                         <Textarea
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
-                          placeholder={replyParentCommentId != null ? 'Nhập nội dung trả lời...' : 'Nhập nội dung comment...'}
+                          placeholder={canManageCurrentTask
+                            ? (replyParentCommentId != null ? 'Nhập nội dung trả lời...' : 'Nhập nội dung comment...')
+                            : 'Bạn không có quyền bình luận task này'}
                           rows={2}
                           className="flex-1"
+                          disabled={!canManageCurrentTask}
                         />
                         <Button
                           size="icon"
                           className="shrink-0 self-end"
                           onClick={() => addCommentMutation.mutate()}
-                          disabled={addCommentMutation.isPending || !newComment.trim()}
+                          disabled={addCommentMutation.isPending || !newComment.trim() || !canManageCurrentTask}
                         >
                           {addCommentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
                         </Button>
@@ -579,41 +617,47 @@ export function TaskDetailsDrawer() {
                                   <div className="flex items-baseline gap-2">
                                     <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
                                     <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
-                                          <MoreHorizontal className="size-3" />
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            setReplyParentCommentId(comment.id)
-                                            setEditingCommentId(null)
-                                            setEditingCommentContent('')
-                                          }}
-                                        >
-                                          <CornerDownRight className="mr-2 size-3" />
-                                          Trả lời
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            setEditingCommentId(comment.id)
-                                            setEditingCommentContent(comment.content)
-                                          }}
-                                        >
-                                          <Pencil className="mr-2 size-3" />
-                                          Chỉnh sửa
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          className="text-destructive focus:text-destructive"
-                                          onClick={() => deleteCommentMutation.mutate(comment.id)}
-                                        >
-                                          <Trash2 className="mr-2 size-3" />
-                                          Xóa
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {canManageCurrentTask && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
+                                            <MoreHorizontal className="size-3" />
+                                          </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setReplyParentCommentId(comment.id)
+                                              setEditingCommentId(null)
+                                              setEditingCommentContent('')
+                                            }}
+                                          >
+                                            <CornerDownRight className="mr-2 size-3" />
+                                            Trả lời
+                                          </DropdownMenuItem>
+                                          {canModifyComment(comment) && (
+                                            <>
+                                              <DropdownMenuItem
+                                                onClick={() => {
+                                                  setEditingCommentId(comment.id)
+                                                  setEditingCommentContent(comment.content)
+                                                }}
+                                              >
+                                                <Pencil className="mr-2 size-3" />
+                                                Chỉnh sửa
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem
+                                                className="text-destructive focus:text-destructive"
+                                                onClick={() => deleteCommentMutation.mutate(comment.id)}
+                                              >
+                                                <Trash2 className="mr-2 size-3" />
+                                                Xóa
+                                              </DropdownMenuItem>
+                                            </>
+                                          )}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
                                   </div>
                                   {editingCommentId === comment.id ? (
                                     <div className="mt-1 space-y-1.5">
@@ -648,31 +692,33 @@ export function TaskDetailsDrawer() {
                                             <div className="flex items-baseline gap-2">
                                               <p className="text-[11px] font-medium">{reply.user.firstName} {reply.user.lastName}</p>
                                               <span className="text-[10px] text-muted-foreground">{formatDateTime(reply.createdAt)}</span>
-                                              <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                  <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/reply:opacity-100">
-                                                    <MoreHorizontal className="size-3" />
-                                                  </button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                  <DropdownMenuItem
-                                                    onClick={() => {
-                                                      setEditingCommentId(reply.id)
-                                                      setEditingCommentContent(reply.content)
-                                                    }}
-                                                  >
-                                                    <Pencil className="mr-2 size-3" />
-                                                    Chỉnh sửa
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem
-                                                    className="text-destructive focus:text-destructive"
-                                                    onClick={() => deleteCommentMutation.mutate(reply.id)}
-                                                  >
-                                                    <Trash2 className="mr-2 size-3" />
-                                                    Xóa
-                                                  </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                              </DropdownMenu>
+                                              {canModifyComment(reply) && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/reply:opacity-100">
+                                                      <MoreHorizontal className="size-3" />
+                                                    </button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                      onClick={() => {
+                                                        setEditingCommentId(reply.id)
+                                                        setEditingCommentContent(reply.content)
+                                                      }}
+                                                    >
+                                                      <Pencil className="mr-2 size-3" />
+                                                      Chỉnh sửa
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      className="text-destructive focus:text-destructive"
+                                                      onClick={() => deleteCommentMutation.mutate(reply.id)}
+                                                    >
+                                                      <Trash2 className="mr-2 size-3" />
+                                                      Xóa
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                              )}
                                             </div>
 
                                             {editingCommentId === reply.id ? (

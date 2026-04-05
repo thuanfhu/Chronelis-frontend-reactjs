@@ -234,6 +234,10 @@ export function AppTopbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <User className="mr-2 size-4" />
+              Hồ sơ cá nhân
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/dashboard')}>
               <User className="mr-2 size-4" />
               Dashboard
