@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight } from 'lucide-react'
+import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight, ArrowLeft } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { projectApi } from '@/lib/api/modules/project-api'
@@ -232,14 +233,23 @@ function ProjectNavTabs({ workspaceId, projectId }: { workspaceId: number; proje
   const current = tabs.find((t) => t.to === location.pathname)?.value ?? 'overview'
 
   return (
-    <Tabs value={current}>
-      <TabsList>
-        {tabs.map((tab) => (
-          <Link key={tab.value} to={tab.to}>
-            <TabsTrigger value={tab.value} className="pointer-events-none">{tab.label}</TabsTrigger>
-          </Link>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <Button asChild variant="outline" size="sm">
+        <Link to={`/workspaces/${workspaceId}`}>
+          <ArrowLeft className="mr-1.5 size-3.5" />
+          Quay lại workspace
+        </Link>
+      </Button>
+
+      <Tabs value={current}>
+        <TabsList>
+          {tabs.map((tab) => (
+            <Link key={tab.value} to={tab.to}>
+              <TabsTrigger value={tab.value} className="pointer-events-none">{tab.label}</TabsTrigger>
+            </Link>
+          ))}
+        </TabsList>
+      </Tabs>
+    </div>
   )
 }

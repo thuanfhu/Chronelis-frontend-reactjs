@@ -4,6 +4,37 @@ import { parseApiError } from '@/lib/errors/parse-api-error'
 import { useAuthStore } from '@/app/store/auth-store'
 import type { ApiResponse, PaginationResponse } from '@/types/api'
 
+const PUBLIC_AUTH_API_PATHS = [
+  '/auth/register',
+  '/auth/login',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/verify-active-account',
+  '/auth/resend-verify',
+]
+
+const PUBLIC_AUTH_PAGES = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/auth/reset-password',
+  '/verify-account',
+  '/auth/verify-active-account',
+]
+
+function isPublicAuthApiRequest(url?: string): boolean {
+  if (!url) {
+    return false
+  }
+
+  return PUBLIC_AUTH_API_PATHS.some((path) => url.includes(path))
+}
+
+function isPublicAuthPage(pathname: string): boolean {
+  return PUBLIC_AUTH_PAGES.some((path) => pathname === path)
+}
+
 export const http = axios.create({
   baseURL: env.apiBaseUrl,
   withCredentials: true,
@@ -14,7 +45,7 @@ export const http = axios.create({
 
 http.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken
-  if (token) {
+  if (token && !isPublicAuthApiRequest(config.url)) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -24,15 +55,22 @@ http.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     const appError = parseApiError(error)
+    const pathname = window.location.pathname
+    const requestUrl = axios.isAxiosError(error) ? error.config?.url : undefined
+    const isPublicAuthRequest = isPublicAuthApiRequest(requestUrl)
+    const isAuthAccountRequest = typeof requestUrl === 'string' && requestUrl.includes('/auth/account')
+    const onPublicAuthPage = isPublicAuthPage(pathname)
 
-    if (appError.status === 401) {
+    if (appError.status === 401 || (appError.status === 403 && isAuthAccountRequest)) {
       useAuthStore.getState().clearSession()
-      if (!window.location.pathname.startsWith('/login')) {
+      if (!onPublicAuthPage && !pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
+
+      return Promise.reject(appError)
     }
 
-    if (appError.status === 403 && !window.location.pathname.startsWith('/forbidden')) {
+    if (appError.status === 403 && !isPublicAuthRequest && !onPublicAuthPage && !pathname.startsWith('/forbidden')) {
       window.location.href = '/forbidden'
     }
 

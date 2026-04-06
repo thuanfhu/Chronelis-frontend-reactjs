@@ -148,6 +148,16 @@ export function applyTaskDelete(tasks: Task[], taskId: number): Task[] {
   return tasks.filter((task) => task.id !== taskId)
 }
 
+export function applyTaskReplace(tasks: Task[], updatedTask: Task): Task[] {
+  return tasks.map((task) => {
+    if (task.id !== updatedTask.id) {
+      return task
+    }
+
+    return cloneTask(updatedTask)
+  })
+}
+
 export function snapshotProjectTaskQueries(queryClient: QueryClient, projectId: number): TaskProjectSnapshot {
   return queryClient.getQueriesData<TaskPage>({ queryKey: ['tasks', 'project', projectId] })
 }

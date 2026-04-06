@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type MouseEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Loader2, GripVertical, Columns3 } from 'lucide-react'
+import { Plus, Loader2, GripVertical, Columns3, ArrowLeft } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -47,6 +47,7 @@ import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
+import { buildDuplicateTaskTitle, TaskContextMenu, type TaskContextMenuState } from '@/features/tasks/task-context-menu'
 import {
   applyTaskMove,
   applyTaskReorder,
@@ -72,7 +73,7 @@ function SortableTaskCard({
 }: {
   task: Task
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLDivElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `task-${task.id}`,
@@ -97,7 +98,7 @@ function SortableTaskCard({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -155,7 +156,7 @@ function KanbanColumn({
   status: TaskStatus
   tasks: Task[]
   onTaskClick: (taskId: number) => void
-  onTaskContextMenu: (task: Task) => void
+  onTaskContextMenu: (task: Task, event: MouseEvent<HTMLDivElement>) => void
   isOver?: boolean
 }) {
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
@@ -189,7 +190,7 @@ function KanbanColumn({
                 key={task.id}
                 task={task}
                 onClick={() => onTaskClick(task.id)}
-                onContextAction={() => onTaskContextMenu(task)}
+                onContextAction={(event) => onTaskContextMenu(task, event)}
               />
             ))}
           </div>
@@ -220,11 +221,13 @@ export function KanbanPage() {
   const [statusName, setStatusName] = useState('')
   const [statusCode, setStatusCode] = useState('')
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
+  const [taskDialogMode, setTaskDialogMode] = useState<'create' | 'duplicate'>('create')
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDescription, setTaskDescription] = useState('')
   const [taskStatusId, setTaskStatusId] = useState<number | null>(null)
   const [taskPriority, setTaskPriority] = useState<TaskPriorityType>('MEDIUM')
   const [taskGoalId, setTaskGoalId] = useState<number | null>(null)
+  const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
 
@@ -290,6 +293,7 @@ export function KanbanPage() {
       setTaskTitle('')
       setTaskDescription('')
       setTaskGoalId(null)
+      setTaskDialogMode('create')
       setTaskDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
       toast.success('Tạo task thành công')
@@ -445,6 +449,27 @@ export function KanbanPage() {
 
   const statuses = statusesQuery.data ?? []
   const tasks = tasksQuery.data?.content ?? []
+
+  const openCreateTaskDialog = () => {
+    setTaskDialogMode('create')
+    setTaskTitle('')
+    setTaskDescription('')
+    setTaskStatusId(statuses[0]?.id ?? null)
+    setTaskPriority('MEDIUM')
+    setTaskGoalId(null)
+    setTaskDialogOpen(true)
+  }
+
+  const openDuplicateTaskDialog = (task: Task) => {
+    setTaskDialogMode('duplicate')
+    setTaskTitle(buildDuplicateTaskTitle(task.title))
+    setTaskDescription(task.description ?? '')
+    setTaskStatusId(task.status.id)
+    setTaskPriority(task.priority)
+    setTaskGoalId(task.goalId ?? null)
+    setTaskDialogOpen(true)
+  }
+
   const grouped = new Map<number, Task[]>()
   for (const status of statuses) grouped.set(status.id, [])
   for (const task of tasks) {
@@ -460,6 +485,13 @@ export function KanbanPage() {
         description="Kéo thả task giữa các cột theo workflow"
         actions={
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/workspaces/${workspaceId}`}>
+                <ArrowLeft className="mr-1.5 size-3.5" />
+                Quay lại workspace
+              </Link>
+            </Button>
+
             {/* Status dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
               <DialogTrigger asChild>
@@ -495,16 +527,18 @@ export function KanbanPage() {
 
             {/* Task dialog */}
             <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" disabled={!canManageProject}>
-                  <Plus className="mr-1.5 size-3.5" />
-                  Tạo task
-                </Button>
-              </DialogTrigger>
+              <Button size="sm" disabled={!canManageProject} onClick={openCreateTaskDialog}>
+                <Plus className="mr-1.5 size-3.5" />
+                Tạo task
+              </Button>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Tạo task mới</DialogTitle>
-                  <DialogDescription>Thêm task vào một cột trên board.</DialogDescription>
+                  <DialogTitle>{taskDialogMode === 'duplicate' ? 'Nhân bản task' : 'Tạo task mới'}</DialogTitle>
+                  <DialogDescription>
+                    {taskDialogMode === 'duplicate'
+                      ? 'Bản sao được mở ở dạng nháp. Bạn có thể chỉnh sửa trước khi lưu.'
+                      : 'Thêm task vào một cột trên board.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
@@ -554,7 +588,7 @@ export function KanbanPage() {
                   <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>Hủy</Button>
                   <Button onClick={() => createTaskMutation.mutate()} disabled={createTaskMutation.isPending || !taskTitle.trim() || !taskStatusId || !canManageProject}>
                     {createTaskMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
+                    {taskDialogMode === 'duplicate' ? 'Tạo bản sao' : 'Tạo'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -588,10 +622,12 @@ export function KanbanPage() {
                   status={status}
                   tasks={columnTasks}
                   onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
-                  onTaskContextMenu={(task) => {
-                    if (canManageTask(task.goalId)) {
-                      openTaskDeleteConfirm(task.id)
-                    }
+                  onTaskContextMenu={(task, event) => {
+                    setTaskContextMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      task,
+                    })
                   }}
                   isOver={overColumnId === status.id}
                 />
@@ -601,6 +637,16 @@ export function KanbanPage() {
           <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
             {activeTask ? <TaskDragOverlay task={activeTask} /> : null}
           </DragOverlay>
+
+          <TaskContextMenu
+            state={taskContextMenu}
+            canManageTask={(task) => canManageTask(task.goalId)}
+            onOpenChange={setTaskContextMenu}
+            onViewTask={(task) => openTaskDrawer(task.id, 'view')}
+            onEditTask={(task) => openTaskDrawer(task.id, 'edit')}
+            onDuplicateTask={openDuplicateTaskDialog}
+            onDeleteTask={(task) => openTaskDeleteConfirm(task.id)}
+          />
         </DndContext>
       )}
     </div>

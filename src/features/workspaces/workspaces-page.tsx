@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -25,10 +25,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { DeleteUndoStack } from '@/components/shared/delete-undo-stack'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
-import type { PageResult, Workspace } from '@/types/domain'
+import type { Workspace } from '@/types/domain'
+
+const WORKSPACE_DELETE_UNDO_WINDOW_MS = 5000
+
+interface PendingWorkspaceDelete {
+  workspaceId: number
+  workspaceName: string
+  expiresAt: number
+  status: 'pending' | 'finalizing'
+}
 
 export function WorkspacesPage() {
   const [name, setName] = useState('')
@@ -38,7 +48,25 @@ export function WorkspacesPage() {
   const [editName, setEditName] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteWorkspace, setDeleteWorkspace] = useState<Workspace | null>(null)
+  const [pendingWorkspaceDeletes, setPendingWorkspaceDeletes] = useState<PendingWorkspaceDelete[]>([])
+  const [clockMs, setClockMs] = useState(() => Date.now())
+  const pendingWorkspaceDeletesRef = useRef<PendingWorkspaceDelete[]>([])
+  const finalizingWorkspaceIdsRef = useRef(new Set<number>())
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    pendingWorkspaceDeletesRef.current = pendingWorkspaceDeletes
+  }, [pendingWorkspaceDeletes])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setClockMs(Date.now())
+    }, 250)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   const listQuery = useQuery({
     queryKey: queryKeys.workspaces.list(1, 30),
@@ -75,54 +103,119 @@ export function WorkspacesPage() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: (workspaceId: number) => workspaceApi.remove(workspaceId),
-    onMutate: async (workspaceId: number) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all })
+  const removePendingWorkspaceDelete = useCallback((workspaceId: number) => {
+    finalizingWorkspaceIdsRef.current.delete(workspaceId)
+    setPendingWorkspaceDeletes((previous) => previous.filter((item) => item.workspaceId !== workspaceId))
+  }, [])
 
-      const workspaceSnapshots = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
-      queryClient.setQueriesData<PageResult<Workspace>>(
-        { queryKey: ['workspaces', 'list'] },
-        (oldData) => {
-          if (!oldData) return oldData
-          return {
-            ...oldData,
-            content: oldData.content.filter((workspace) => workspace.id !== workspaceId),
-          }
-        },
-      )
+  const undoPendingWorkspaceDelete = (workspaceId: number) => {
+    const pendingDelete = pendingWorkspaceDeletesRef.current.find((item) => item.workspaceId === workspaceId)
+    if (!pendingDelete || pendingDelete.status !== 'pending') {
+      return
+    }
 
-      return {
-        workspaceSnapshots,
+    removePendingWorkspaceDelete(workspaceId)
+    toast.success(`Đã hoàn tác xóa workspace "${pendingDelete.workspaceName}"`)
+  }
+
+  const finalizePendingWorkspaceDelete = useCallback(async (workspaceId: number) => {
+    const pendingDelete = pendingWorkspaceDeletesRef.current.find((item) => item.workspaceId === workspaceId)
+    if (!pendingDelete || pendingDelete.status !== 'pending') {
+      return
+    }
+
+    if (finalizingWorkspaceIdsRef.current.has(workspaceId)) {
+      return
+    }
+
+    finalizingWorkspaceIdsRef.current.add(workspaceId)
+    setPendingWorkspaceDeletes((previous) => previous.map((item) =>
+      item.workspaceId === workspaceId ? { ...item, status: 'finalizing' } : item,
+    ))
+
+    try {
+      await workspaceApi.remove(workspaceId)
+      toast.success(`Đã xóa workspace "${pendingDelete.workspaceName}"`)
+    } catch (error) {
+      if (error instanceof Error && isNotFoundError(error)) {
+        toast.success(`Workspace "${pendingDelete.workspaceName}" đã được xóa trước đó`)
+      } else {
+        const description = error instanceof Error
+          ? error.message
+          : 'Đã xảy ra lỗi không xác định'
+        toast.error('Xóa workspace thất bại', { description })
       }
-    },
-    onSuccess: () => {
-      setDeleteDialogOpen(false)
-      setDeleteWorkspace(null)
-      toast.success('Xóa workspace thành công')
-    },
-    onError: (error: Error, _workspaceId, context) => {
-      if (context?.workspaceSnapshots) {
-        for (const [queryKey, snapshotData] of context.workspaceSnapshots) {
-          queryClient.setQueryData(queryKey, snapshotData)
-        }
-      }
+    }
 
-      if (isNotFoundError(error)) {
-        setDeleteDialogOpen(false)
-        setDeleteWorkspace(null)
-        toast.success('Workspace đã được xóa trước đó')
-        return
-      }
+    removePendingWorkspaceDelete(workspaceId)
+    await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
+  }, [queryClient, removePendingWorkspaceDelete])
 
-      toast.error('Xóa workspace thất bại', { description: error.message })
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-    },
-  })
+  useEffect(() => {
+    if (pendingWorkspaceDeletes.length === 0) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      const now = Date.now()
+      setClockMs(now)
+
+      const expiredWorkspaceIds = pendingWorkspaceDeletesRef.current
+        .filter((item) => item.status === 'pending' && item.expiresAt <= now)
+        .map((item) => item.workspaceId)
+
+      for (const workspaceId of expiredWorkspaceIds) {
+        void finalizePendingWorkspaceDelete(workspaceId)
+      }
+    }, 100)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [finalizePendingWorkspaceDelete, pendingWorkspaceDeletes.length])
+
+  const scheduleWorkspaceDelete = () => {
+    if (!deleteWorkspace) {
+      return
+    }
+
+    const existingPendingDelete = pendingWorkspaceDeletesRef.current.find(
+      (item) => item.workspaceId === deleteWorkspace.id,
+    )
+    if (existingPendingDelete) {
+      toast.error('Workspace này đang chờ xóa. Bạn có thể hoàn tác hoặc đợi hoàn tất.')
+      return
+    }
+
+    const createdAt = clockMs
+    setPendingWorkspaceDeletes((previous) => [
+      ...previous,
+      {
+        workspaceId: deleteWorkspace.id,
+        workspaceName: deleteWorkspace.name,
+        expiresAt: createdAt + WORKSPACE_DELETE_UNDO_WINDOW_MS,
+        status: 'pending',
+      },
+    ])
+
+    setDeleteDialogOpen(false)
+    setDeleteWorkspace(null)
+    toast.success('Workspace đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.')
+  }
 
   const workspaces = listQuery.data?.content ?? []
+  const pendingWorkspaceIdSet = new Set(pendingWorkspaceDeletes.map((item) => item.workspaceId))
+  const visibleWorkspaces = workspaces.filter((workspace) => !pendingWorkspaceIdSet.has(workspace.id))
+  const selectedWorkspacePendingDelete = deleteWorkspace !== null
+    && pendingWorkspaceDeletes.some((item) => item.workspaceId === deleteWorkspace.id)
+  const editingWorkspace = editWsId !== null
+    ? workspaces.find((workspace) => workspace.id === editWsId) ?? null
+    : null
+  const canSubmitWorkspaceEdit = Boolean(
+    editingWorkspace
+    && editName.trim().length > 0
+    && editName.trim() !== editingWorkspace.name.trim(),
+  )
 
   return (
     <div className="space-y-6">
@@ -177,7 +270,7 @@ export function WorkspacesPage() {
             <Skeleton key={i} className="h-36 rounded-xl" />
           ))}
         </div>
-      ) : workspaces.length === 0 ? (
+      ) : visibleWorkspaces.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <PanelsTopLeft className="mb-4 size-12 text-muted-foreground/30" />
@@ -193,7 +286,7 @@ export function WorkspacesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {workspaces.map((ws) => (
+          {visibleWorkspaces.map((ws) => (
             <Card key={ws.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
@@ -261,13 +354,13 @@ export function WorkspacesPage() {
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && editName.trim()) editMutation.mutate()
+                if (e.key === 'Enter' && canSubmitWorkspaceEdit) editMutation.mutate()
               }}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
-            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}>
+            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !canSubmitWorkspaceEdit}>
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Lưu
             </Button>
@@ -289,27 +382,35 @@ export function WorkspacesPage() {
             <DialogTitle>Xóa workspace</DialogTitle>
             <DialogDescription>
               Bạn có chắc muốn xóa workspace {deleteWorkspace ? `"${deleteWorkspace.name}"` : 'này'} không?
-              Hành động này không thể hoàn tác.
+              Sau khi xác nhận, bạn có 5 giây để hoàn tác.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                if (!deleteWorkspace) {
-                  return
-                }
-                deleteMutation.mutate(deleteWorkspace.id)
-              }}
-              disabled={deleteMutation.isPending || !deleteWorkspace}
+              onClick={scheduleWorkspaceDelete}
+              disabled={selectedWorkspacePendingDelete || !deleteWorkspace}
             >
-              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Xóa workspace
+              {selectedWorkspacePendingDelete && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Xác nhận xóa
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteUndoStack
+        items={pendingWorkspaceDeletes.map((pendingDelete) => ({
+          id: pendingDelete.workspaceId,
+          entityLabel: 'workspace',
+          title: pendingDelete.workspaceName,
+          expiresAt: pendingDelete.expiresAt,
+          windowMs: WORKSPACE_DELETE_UNDO_WINDOW_MS,
+          status: pendingDelete.status,
+        }))}
+        clockMs={clockMs}
+        onUndo={(itemId) => undoPendingWorkspaceDelete(Number(itemId))}
+      />
     </div>
   )
 }

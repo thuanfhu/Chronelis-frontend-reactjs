@@ -319,6 +319,52 @@
   color: var(--destructive);
 }
 
+.chronelis-auth-awaiting-panel {
+  margin-top: 0.8rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.68rem;
+  text-align: center;
+}
+
+.chronelis-auth-awaiting-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, #22c55e 12%, transparent);
+  color: color-mix(in oklab, #16a34a 86%, var(--foreground) 14%);
+}
+
+.chronelis-auth-awaiting-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+}
+
+.chronelis-auth-awaiting-description {
+  max-width: 27rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: color-mix(in oklab, var(--muted-foreground) 86%, transparent);
+}
+
+.chronelis-auth-awaiting-panel .chronelis-auth-btn {
+  width: 100%;
+  max-width: 20rem;
+  margin-top: 0.2rem;
+}
+
+.chronelis-auth-awaiting-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.1rem;
+}
+
 .chronelis-auth-forgot-success {
   margin-top: 0.8rem;
   display: grid;

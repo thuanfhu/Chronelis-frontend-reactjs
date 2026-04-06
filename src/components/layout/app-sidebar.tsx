@@ -1,20 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   FolderKanban, ChevronRight, Search, LogOut, Menu,
-  ChevronsLeft, ChevronDown, Target,
+  ChevronsLeft, ChevronDown, Target, MoreHorizontal, Plus, ListTodo,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils/cn'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
 import { projectApi } from '@/lib/api/modules/project-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
+import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import type { WorkspaceMemberRoleType } from '@/types/domain'
 
 function normalizeProgress(progressPercent: number | null | undefined): number {
   if (progressPercent == null || Number.isNaN(progressPercent)) {
@@ -31,6 +51,32 @@ function resolveProgressClass(progressPercent: number): string {
   return 'text-muted-foreground/85'
 }
 
+function highlightMatch(text: string, rawQuery: string): ReactNode {
+  const query = rawQuery.trim().toLowerCase()
+  if (!query) {
+    return text
+  }
+
+  const lowerText = text.toLowerCase()
+  const start = lowerText.indexOf(query)
+  if (start === -1) {
+    return text
+  }
+
+  const end = start + query.length
+  const before = text.slice(0, start)
+  const match = text.slice(start, end)
+  const after = text.slice(end)
+
+  return (
+    <>
+      {before}
+      <span className="rounded-sm bg-primary/20 px-0.5 text-foreground">{match}</span>
+      {after}
+    </>
+  )
+}
+
 interface AppSidebarProps {
   workspaceId?: number
   projectId?: number
@@ -38,17 +84,23 @@ interface AppSidebarProps {
 
 export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
+  const currentUserId = useAuthStore((s) => s.currentUser?.userId ?? null)
   const clearSession = useAuthStore((s) => s.clearSession)
 
   const [projectsExpanded, setProjectsExpanded] = useState(true)
   const [expandedProjects, setExpandedProjects] = useState<Set<number>>(
     () => new Set(projectId ? [projectId] : []),
   )
+  const [sidebarSearch, setSidebarSearch] = useState('')
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [newProjectDescription, setNewProjectDescription] = useState('')
 
   const projectsQuery = useQuery({
     queryKey: queryKeys.projects.byWorkspace(workspaceId ?? 0, 1, 50),
@@ -56,7 +108,57 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     enabled: !!workspaceId,
   })
 
-  const projects = projectsQuery.data?.content ?? []
+  const workspaceQuery = useQuery({
+    queryKey: queryKeys.workspaces.detail(workspaceId ?? 0),
+    queryFn: () => workspaceApi.detail(workspaceId!),
+    enabled: !!workspaceId,
+  })
+
+  const membersQuery = useQuery({
+    queryKey: queryKeys.workspaces.members(workspaceId ?? 0),
+    queryFn: () => workspaceApi.members(workspaceId!),
+    enabled: !!workspaceId,
+  })
+
+  const createProjectMutation = useMutation({
+    mutationFn: () => {
+      if (!workspaceId) {
+        throw new Error('Workspace không hợp lệ')
+      }
+
+      return projectApi.create({
+        workspaceId,
+        name: newProjectName.trim(),
+        description: newProjectDescription.trim() || undefined,
+      })
+    },
+    onSuccess: () => {
+      setCreateProjectDialogOpen(false)
+      setNewProjectName('')
+      setNewProjectDescription('')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId ?? 0, 1, 50) })
+      toast.success('Đã tạo project mới')
+    },
+    onError: (error: Error) => {
+      toast.error('Không thể tạo project', { description: error.message })
+    },
+  })
+
+  const projects = useMemo(() => projectsQuery.data?.content ?? [], [projectsQuery.data])
+  const members = membersQuery.data ?? []
+  const ownerId = workspaceQuery.data?.owner.userId
+  const currentRole: WorkspaceMemberRoleType = ownerId === currentUserId
+    ? 'OWNER'
+    : (members.find((member) => member.user.userId === currentUserId)?.role ?? 'MEMBER')
+  const canCreateProject = currentRole === 'OWNER' || currentRole === 'ADMIN'
+  const normalizedSidebarSearch = sidebarSearch.trim().toLowerCase()
+  const filteredProjects = useMemo(() => {
+    if (!normalizedSidebarSearch) {
+      return projects
+    }
+
+    return projects.filter((project) => project.name.toLowerCase().includes(normalizedSidebarSearch))
+  }, [projects, normalizedSidebarSearch])
 
   const handleLogout = () => {
     clearSession()
@@ -74,6 +176,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
   // Desktop collapsed = sidebarCollapsed (independent of mobile sidebarOpen)
   const collapsed = sidebarCollapsed
+  const projectsOpen = projectsExpanded || Boolean(normalizedSidebarSearch)
 
   return (
     <>
@@ -173,15 +276,27 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
         {/* ─── Quick search ─── */}
         {!collapsed ? (
-          <div className="px-3 py-2">
+          <div className="space-y-2 px-3 py-2">
             <button
               onClick={() => setCommandPaletteOpen(true)}
               className="flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:bg-sidebar-accent hover:shadow-sm"
             >
               <Search className="size-3.5" />
-              <span className="flex-1 text-left">Tìm kiếm...</span>
+              <span className="flex-1 text-left">Tìm kiếm toàn cục...</span>
               <kbd className="rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
             </button>
+
+            {workspaceId ? (
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
+                <Input
+                  value={sidebarSearch}
+                  onChange={(event) => setSidebarSearch(event.target.value)}
+                  placeholder="Lọc project và goal trong sidebar"
+                  className="h-8 border-sidebar-border bg-sidebar-accent/30 pl-8 text-xs"
+                />
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="flex justify-center py-2">
@@ -204,15 +319,28 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           {/* ─── Projects section ─── */}
           {workspaceId && !collapsed && (
             <div className="px-2 py-2">
-              <button
-                onClick={() => setProjectsExpanded(!projectsExpanded)}
-                className="mb-1 flex w-full items-center gap-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 transition-colors hover:text-muted-foreground"
-              >
-                <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
-                Projects
-              </button>
+              <div className="mb-1 flex items-center justify-between gap-1 px-1">
+                <button
+                  onClick={() => setProjectsExpanded(!projectsExpanded)}
+                  className="flex min-w-0 flex-1 items-center gap-1 px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 transition-colors hover:text-muted-foreground"
+                >
+                  <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsOpen && '-rotate-90')} />
+                  Projects
+                </button>
+
+                {canCreateProject ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => setCreateProjectDialogOpen(true)}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                ) : null}
+              </div>
               <AnimatePresence initial={false}>
-                {projectsExpanded && (
+                {projectsOpen && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -221,7 +349,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                     className="overflow-hidden"
                   >
                     <div className="space-y-0.5">
-                      {projects.map((proj) => (
+                      {filteredProjects.map((proj) => (
                         <ProjectItem
                           key={proj.id}
                           project={proj}
@@ -229,8 +357,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                           isActive={projectId === proj.id}
                           isExpanded={expandedProjects.has(proj.id)}
                           onToggleExpand={() => toggleProjectExpand(proj.id)}
+                          searchQuery={sidebarSearch}
                         />
                       ))}
+
+                      {filteredProjects.length === 0 ? (
+                        <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Không có project khớp bộ lọc.</p>
+                      ) : null}
                     </div>
                   </motion.div>
                 )}
@@ -241,7 +374,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           {/* Collapsed: project icons only */}
           {workspaceId && collapsed && (
             <div className="flex flex-col items-center gap-0.5 px-2 py-2">
-              {projects.map((proj) => (
+              {filteredProjects.map((proj) => (
                 <Tooltip key={proj.id}>
                   <TooltipTrigger asChild>
                     <NavLink
@@ -264,6 +397,47 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             </div>
           )}
         </ScrollArea>
+
+        <Dialog open={createProjectDialogOpen} onOpenChange={setCreateProjectDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Tạo project nhanh</DialogTitle>
+              <DialogDescription>Tạo project mới ngay từ sidebar của workspace hiện tại.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sidebar-project-name">Tên project</Label>
+                <Input
+                  id="sidebar-project-name"
+                  value={newProjectName}
+                  onChange={(event) => setNewProjectName(event.target.value)}
+                  placeholder="Ví dụ: Sprint 3"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sidebar-project-description">Mô tả (tùy chọn)</Label>
+                <Textarea
+                  id="sidebar-project-description"
+                  value={newProjectDescription}
+                  onChange={(event) => setNewProjectDescription(event.target.value)}
+                  rows={3}
+                  placeholder="Mô tả ngắn về project..."
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateProjectDialogOpen(false)}>Hủy</Button>
+              <Button
+                onClick={() => createProjectMutation.mutate()}
+                disabled={createProjectMutation.isPending || !newProjectName.trim()}
+              >
+                {createProjectMutation.isPending ? 'Đang tạo...' : 'Tạo project'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* ─── Footer ─── */}
         <div className="shrink-0 border-t border-sidebar-border p-2">
@@ -302,12 +476,14 @@ function ProjectItem({
   isActive,
   isExpanded,
   onToggleExpand,
+  searchQuery,
 }: {
   project: { id: number; name: string }
   workspaceId: number
   isActive: boolean
   isExpanded: boolean
   onToggleExpand: () => void
+  searchQuery: string
 }) {
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(project.id, 1, 50),
@@ -315,7 +491,15 @@ function ProjectItem({
     enabled: project.id > 0,
   })
 
-  const goals = goalsQuery.data?.content ?? []
+  const goals = useMemo(() => goalsQuery.data?.content ?? [], [goalsQuery.data])
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredGoals = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return goals
+    }
+
+    return goals.filter((goal) => goal.title.toLowerCase().includes(normalizedSearchQuery))
+  }, [goals, normalizedSearchQuery])
   const projectProgress = useMemo(() => {
     if (goals.length === 0) {
       return 0
@@ -344,7 +528,7 @@ function ProjectItem({
           )}
         >
           <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate" title={project.name}>{project.name}</span>
+          <span className="min-w-0 flex-1 truncate" title={project.name}>{highlightMatch(project.name, searchQuery)}</span>
           <span
             className={cn(
               'shrink-0 text-right text-[10px] font-semibold tabular-nums',
@@ -354,6 +538,34 @@ function ProjectItem({
             {projectProgress}%
           </span>
         </NavLink>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground/75 hover:text-foreground">
+              <MoreHorizontal className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-36">
+            <DropdownMenuItem asChild>
+              <Link to={`/workspaces/${workspaceId}/projects/${project.id}`}>Mở project</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/workspaces/${workspaceId}/projects/${project.id}/todo`}>
+                <ListTodo className="mr-2 size-3.5" />
+                To Do
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/workspaces/${workspaceId}/projects/${project.id}/goals`}>
+                <Target className="mr-2 size-3.5" />
+                Goals
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/workspaces/${workspaceId}`}>Chỉnh sửa / xóa project...</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <AnimatePresence initial={false}>
         {isExpanded && (
@@ -371,7 +583,10 @@ function ProjectItem({
               {goals.length === 0 && !goalsQuery.isLoading && (
                 <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Chưa có goal nào</p>
               )}
-              {goals.map((goal) => {
+              {goals.length > 0 && filteredGoals.length === 0 && !goalsQuery.isLoading ? (
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Không có goal khớp bộ lọc.</p>
+              ) : null}
+              {filteredGoals.map((goal) => {
                 const normalizedProgress = normalizeProgress(goal.progressPercent)
 
                 return (
@@ -381,7 +596,7 @@ function ProjectItem({
                     className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
                   >
                     <Target className="size-3 shrink-0 text-muted-foreground/80" />
-                    <span className="min-w-0 flex-1 truncate" title={goal.title}>{goal.title}</span>
+                    <span className="min-w-0 flex-1 truncate" title={goal.title}>{highlightMatch(goal.title, searchQuery)}</span>
                     <span
                       className={cn(
                         'shrink-0 text-right text-[10px] font-semibold tabular-nums',

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -33,6 +33,7 @@ interface PanelCopy {
 }
 
 const ROUTE_SWITCH_DELAY_MS = 780
+const RESEND_COOLDOWN_SECONDS = 30
 const FORM_TRANSITION = {
   duration: 0.32,
   ease: [0.22, 1, 0.36, 1] as const,
@@ -166,6 +167,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [forgotRequestedEmail, setForgotRequestedEmail] = useState<string | null>(null)
+  const [registerResendCooldown, setRegisterResendCooldown] = useState(0)
+  const [forgotResendCooldown, setForgotResendCooldown] = useState(0)
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false)
@@ -181,6 +186,38 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       routeSwitchTimeoutRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (registerResendCooldown <= 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setRegisterResendCooldown((previous) => Math.max(0, previous - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [registerResendCooldown])
+
+  useEffect(() => {
+    if (forgotResendCooldown <= 0) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setForgotResendCooldown((previous) => Math.max(0, previous - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [forgotResendCooldown])
+
+  const startRegisterResendCooldown = () => {
+    setRegisterResendCooldown(RESEND_COOLDOWN_SECONDS)
+  }
+
+  const startForgotResendCooldown = () => {
+    setForgotResendCooldown(RESEND_COOLDOWN_SECONDS)
+  }
 
   const switchMode = (nextMode: AuthMode) => {
     if (nextMode === mode) {
@@ -234,11 +271,36 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
   const forgotMutation = useMutation({
     mutationFn: (payload: ForgotFormValues) => authApi.forgotPassword(payload.email),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const requestedEmail = variables.email.trim()
+      setForgotRequestedEmail(requestedEmail)
+      startForgotResendCooldown()
       toast.success('Đã gửi email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
     },
     onError: (error: Error) => {
       toast.error('Gửi email thất bại', { description: error.message })
+    },
+  })
+
+  const resendVerifyMutation = useMutation({
+    mutationFn: (email: string) => authApi.resendVerify(email),
+    onSuccess: () => {
+      startRegisterResendCooldown()
+      toast.success('Đã gửi lại email xác thực')
+    },
+    onError: (error: Error) => {
+      toast.error('Gửi lại email thất bại', { description: error.message })
+    },
+  })
+
+  const resendForgotMutation = useMutation({
+    mutationFn: (email: string) => authApi.forgotPassword(email),
+    onSuccess: () => {
+      startForgotResendCooldown()
+      toast.success('Đã gửi lại email đặt lại mật khẩu')
+    },
+    onError: (error: Error) => {
+      toast.error('Gửi lại email thất bại', { description: error.message })
     },
   })
 
@@ -268,10 +330,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
   const registerMutation = useMutation({
     mutationFn: (values: RegisterPayload) => authApi.register(values),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const nextRegisteredEmail = variables.email.trim()
+      setRegisteredEmail(nextRegisteredEmail)
+      startRegisterResendCooldown()
       toast.success('Đăng ký thành công', { description: 'Vui lòng kiểm tra email để xác thực tài khoản.' })
       registerForm.reset()
-      switchMode('sign-in')
     },
     onError: (error: Error) => {
       toast.error('Đăng ký thất bại', { description: error.message })
@@ -407,120 +471,167 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             <h2 className="chronelis-auth-title">Đăng ký</h2>
             <p className="chronelis-auth-subtitle">Tạo tài khoản để cộng tác cùng đội nhóm</p>
 
-            <div className="chronelis-auth-grid-2">
-              <div>
-                <div className="chronelis-auth-input-field">
-                  <UserRound className="chronelis-auth-input-icon" />
-                  <input
-                    type="text"
-                    autoComplete="family-name"
-                    placeholder="Họ"
-                    {...registerForm.register('lastName')}
-                  />
+            {registeredEmail ? (
+              <div className="chronelis-auth-awaiting-panel">
+                <div className="chronelis-auth-awaiting-icon">
+                  <CheckCircle2 className="size-5" />
                 </div>
-                <FieldError message={registerForm.formState.errors.lastName?.message} />
-              </div>
-              <div>
-                <div className="chronelis-auth-input-field">
-                  <UserRound className="chronelis-auth-input-icon" />
-                  <input
-                    type="text"
-                    autoComplete="given-name"
-                    placeholder="Tên"
-                    {...registerForm.register('firstName')}
-                  />
-                </div>
-                <FieldError message={registerForm.formState.errors.firstName?.message} />
-              </div>
-            </div>
+                <p className="chronelis-auth-awaiting-title">Kiểm tra email xác thực</p>
+                <p className="chronelis-auth-awaiting-description">
+                  Liên kết kích hoạt đã được gửi đến
+                  {' '}
+                  <strong>{registeredEmail}</strong>
+                </p>
 
-            <div className="chronelis-auth-input-field">
-              <Mail className="chronelis-auth-input-icon" />
-              <input
-                type="email"
-                autoComplete="email"
-                placeholder="Email"
-                {...registerForm.register('email')}
-              />
-            </div>
-            <FieldError message={registerForm.formState.errors.email?.message} />
+                <button
+                  type="button"
+                  className="chronelis-auth-btn chronelis-auth-btn--solid"
+                  onClick={() => {
+                    if (!registeredEmail) {
+                      return
+                    }
+                    resendVerifyMutation.mutate(registeredEmail)
+                  }}
+                  disabled={resendVerifyMutation.isPending || registerResendCooldown > 0}
+                >
+                  {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+                  {registerResendCooldown > 0 ? `Gửi lại sau ${registerResendCooldown}s` : 'Gửi lại email xác thực'}
+                </button>
 
-            <div className="chronelis-auth-input-field">
-              <Phone className="chronelis-auth-input-icon" />
-              <input
-                type="tel"
-                autoComplete="tel"
-                placeholder="Số điện thoại"
-                {...registerForm.register('phoneNumber')}
-              />
-            </div>
-            <FieldError message={registerForm.formState.errors.phoneNumber?.message} />
-
-            <div className="chronelis-auth-grid-2">
-              <div>
-                <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
-                  <KeyRound className="chronelis-auth-input-icon" />
-                  <input
-                    type={showSignUpPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    placeholder="Mật khẩu"
-                    {...registerForm.register('password')}
-                  />
+                <div className="chronelis-auth-awaiting-actions">
                   <button
                     type="button"
-                    className="chronelis-auth-input-toggle"
-                    onClick={() => setShowSignUpPassword((prev) => !prev)}
-                    aria-label={showSignUpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    className="chronelis-auth-link"
+                    onClick={() => {
+                      setRegisteredEmail(null)
+                      registerForm.setFocus('email')
+                    }}
                   >
-                    {showSignUpPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                    Dùng email khác
+                  </button>
+                  <button type="button" className="chronelis-auth-link" onClick={() => switchMode('sign-in')}>
+                    Đi tới đăng nhập
                   </button>
                 </div>
-                <FieldError message={registerForm.formState.errors.password?.message} />
-
-                {signUpPassword ? (
-                  <div className={`chronelis-auth-strength chronelis-auth-strength--${passwordStrength.level}`}>
-                    <div className="chronelis-auth-strength-header">
-                      <span className="chronelis-auth-strength-label">Độ mạnh mật khẩu</span>
-                      <strong className="chronelis-auth-strength-value">{passwordStrength.label}</strong>
-                    </div>
-
-                    <div className="chronelis-auth-strength-track" aria-hidden>
-                      <span
-                        className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
-                        style={{ width: `${strengthPercent}%` }}
+              </div>
+            ) : (
+              <>
+                <div className="chronelis-auth-grid-2">
+                  <div>
+                    <div className="chronelis-auth-input-field">
+                      <UserRound className="chronelis-auth-input-icon" />
+                      <input
+                        type="text"
+                        autoComplete="family-name"
+                        placeholder="Họ"
+                        {...registerForm.register('lastName')}
                       />
                     </div>
-
-                    <p className="chronelis-auth-strength-helper">{passwordStrength.helper}</p>
+                    <FieldError message={registerForm.formState.errors.lastName?.message} />
                   </div>
-                ) : null}
-              </div>
-              <div>
-                <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
-                  <KeyRound className="chronelis-auth-input-icon" />
-                  <input
-                    type={showSignUpConfirmPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    placeholder="Xác nhận"
-                    {...registerForm.register('confirmPassword')}
-                  />
-                  <button
-                    type="button"
-                    className="chronelis-auth-input-toggle"
-                    onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
-                    aria-label={showSignUpConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
-                  >
-                    {showSignUpConfirmPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
-                  </button>
+                  <div>
+                    <div className="chronelis-auth-input-field">
+                      <UserRound className="chronelis-auth-input-icon" />
+                      <input
+                        type="text"
+                        autoComplete="given-name"
+                        placeholder="Tên"
+                        {...registerForm.register('firstName')}
+                      />
+                    </div>
+                    <FieldError message={registerForm.formState.errors.firstName?.message} />
+                  </div>
                 </div>
-                <FieldError message={registerForm.formState.errors.confirmPassword?.message} />
-              </div>
-            </div>
 
-            <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
-              {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
-              Tạo tài khoản
-            </button>
+                <div className="chronelis-auth-input-field">
+                  <Mail className="chronelis-auth-input-icon" />
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Email"
+                    {...registerForm.register('email')}
+                  />
+                </div>
+                <FieldError message={registerForm.formState.errors.email?.message} />
+
+                <div className="chronelis-auth-input-field">
+                  <Phone className="chronelis-auth-input-icon" />
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="Số điện thoại"
+                    {...registerForm.register('phoneNumber')}
+                  />
+                </div>
+                <FieldError message={registerForm.formState.errors.phoneNumber?.message} />
+
+                <div className="chronelis-auth-grid-2">
+                  <div>
+                    <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
+                      <KeyRound className="chronelis-auth-input-icon" />
+                      <input
+                        type={showSignUpPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Mật khẩu"
+                        {...registerForm.register('password')}
+                      />
+                      <button
+                        type="button"
+                        className="chronelis-auth-input-toggle"
+                        onClick={() => setShowSignUpPassword((prev) => !prev)}
+                        aria-label={showSignUpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      >
+                        {showSignUpPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                      </button>
+                    </div>
+                    <FieldError message={registerForm.formState.errors.password?.message} />
+
+                    {signUpPassword ? (
+                      <div className={`chronelis-auth-strength chronelis-auth-strength--${passwordStrength.level}`}>
+                        <div className="chronelis-auth-strength-header">
+                          <span className="chronelis-auth-strength-label">Độ mạnh mật khẩu</span>
+                          <strong className="chronelis-auth-strength-value">{passwordStrength.label}</strong>
+                        </div>
+
+                        <div className="chronelis-auth-strength-track" aria-hidden>
+                          <span
+                            className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
+                            style={{ width: `${strengthPercent}%` }}
+                          />
+                        </div>
+
+                        <p className="chronelis-auth-strength-helper">{passwordStrength.helper}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
+                      <KeyRound className="chronelis-auth-input-icon" />
+                      <input
+                        type={showSignUpConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Xác nhận"
+                        {...registerForm.register('confirmPassword')}
+                      />
+                      <button
+                        type="button"
+                        className="chronelis-auth-input-toggle"
+                        onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
+                        aria-label={showSignUpConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
+                      >
+                        {showSignUpConfirmPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                      </button>
+                    </div>
+                    <FieldError message={registerForm.formState.errors.confirmPassword?.message} />
+                  </div>
+                </div>
+
+                <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
+                  {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+                  Tạo tài khoản
+                </button>
+              </>
+            )}
 
             <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng ký">
               <span>Đã có tài khoản?</span>
@@ -553,15 +664,40 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             <h2 className="chronelis-auth-title">Quên mật khẩu</h2>
             <p className="chronelis-auth-subtitle">Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
 
-            {forgotMutation.isSuccess ? (
-              <div className="chronelis-auth-forgot-success">
+            {forgotRequestedEmail ? (
+              <div className="chronelis-auth-awaiting-panel chronelis-auth-forgot-success">
                 <div className="chronelis-auth-forgot-success-icon">
                   <Mail className="size-5" />
                 </div>
                 <p className="chronelis-auth-forgot-success-title">Kiểm tra email của bạn</p>
                 <p className="chronelis-auth-forgot-success-description">
-                  Chúng tôi đã gửi liên kết đặt lại mật khẩu đến hộp thư của bạn.
+                  Liên kết đặt lại mật khẩu đã được gửi đến
+                  {' '}
+                  <strong>{forgotRequestedEmail}</strong>
                 </p>
+
+                <button
+                  type="button"
+                  className="chronelis-auth-btn chronelis-auth-btn--solid"
+                  onClick={() => resendForgotMutation.mutate(forgotRequestedEmail)}
+                  disabled={resendForgotMutation.isPending || forgotResendCooldown > 0}
+                >
+                  {resendForgotMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+                  {forgotResendCooldown > 0 ? `Gửi lại sau ${forgotResendCooldown}s` : 'Gửi lại email đặt lại'}
+                </button>
+
+                <div className="chronelis-auth-awaiting-actions">
+                  <button
+                    type="button"
+                    className="chronelis-auth-link"
+                    onClick={() => {
+                      setForgotRequestedEmail(null)
+                      forgotForm.setFocus('email')
+                    }}
+                  >
+                    Dùng email khác
+                  </button>
+                </div>
               </div>
             ) : (
               <>

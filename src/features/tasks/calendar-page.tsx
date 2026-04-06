@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -10,7 +10,7 @@ import viLocale from '@fullcalendar/core/locales/vi'
 import type { EventInput } from '@fullcalendar/core'
 import { motion, useAnimationControls } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Loader2,
+  ChevronLeft, ChevronRight, Loader2, ArrowLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,6 +40,7 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { buildDuplicateTaskTitle, TaskContextMenu, type TaskContextMenuState } from '@/features/tasks/task-context-menu'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
@@ -159,6 +160,8 @@ interface CalendarEventInteractionArg {
 interface CalendarEventMountArg {
   el: HTMLElement
   event: {
+    start: Date | null
+    end: Date | null
     extendedProps: Record<string, unknown>
   }
 }
@@ -291,6 +294,7 @@ export function CalendarPage() {
   const [newStartDateTime, setNewStartDateTime] = useState('')
   const [newEndDateTime, setNewEndDateTime] = useState('')
   const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
+  const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | null>(null)
 
   const statusesQuery = useQuery({
     queryKey: queryKeys.statuses.byProject(projectId),
@@ -546,6 +550,30 @@ export function CalendarPage() {
     setNewEndDateTime(toInputDateTimeValue(normalizedRange.end))
   }
 
+  const openDuplicateTaskDialog = (task: Task, scheduledStart?: string, scheduledEnd?: string) => {
+    if (!canManageTask(task.goalId)) {
+      toast.error('Bạn không có quyền tạo bản sao cho task này')
+      return
+    }
+
+    const sourceStart = parseValidDate(scheduledStart ?? task.dueDate)
+      ?? roundToQuarter(new Date())
+    const sourceEnd = parseValidDate(scheduledEnd)
+      ?? addMinutes(sourceStart, 60)
+    const normalizedRange = normalizeCreateRange(sourceStart, sourceEnd, false)
+
+    setCreateDialog({
+      open: true,
+      start: normalizedRange.start,
+      end: normalizedRange.end,
+    })
+    setNewTaskTitle(buildDuplicateTaskTitle(task.title))
+    setNewTaskPriority(task.priority)
+    setNewTaskGoalId(task.goalId ?? null)
+    setNewStartDateTime(toInputDateTimeValue(normalizedRange.start))
+    setNewEndDateTime(toInputDateTimeValue(normalizedRange.end))
+  }
+
   const navigateToTodoDate = (date: Date) => {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('view', 'todo')
@@ -702,6 +730,13 @@ export function CalendarPage() {
           <h1 className="text-xl font-bold tracking-tight text-foreground">Lịch</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">Lịch biểu task theo tuần hoặc tháng</p>
         </div>
+
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/workspaces/${workspaceId}`}>
+            <ArrowLeft className="mr-1.5 size-3.5" />
+            Quay lại workspace
+          </Link>
+        </Button>
       </div>
 
       {/* Calendar toolbar */}
@@ -809,11 +844,18 @@ export function CalendarPage() {
               eventDidMount={(arg: CalendarEventMountArg) => {
                 arg.el.oncontextmenu = (event) => {
                   event.preventDefault()
-                  const taskId = Number(arg.event.extendedProps.taskId)
-                  const canDelete = Boolean(arg.event.extendedProps.canDelete)
-                  if (canDelete && Number.isFinite(taskId)) {
-                    openTaskDeleteConfirm(taskId)
+                  const task = arg.event.extendedProps.task as Task | undefined
+                  if (!task) {
+                    return
                   }
+
+                  setTaskContextMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    task,
+                    scheduledStart: arg.event.start?.toISOString(),
+                    scheduledEnd: arg.event.end?.toISOString(),
+                  })
                 }
               }}
               viewDidMount={() => {
@@ -838,6 +880,16 @@ export function CalendarPage() {
           </div>
         </motion.div>
       </div>
+
+      <TaskContextMenu
+        state={taskContextMenu}
+        canManageTask={(task) => canManageTask(task.goalId)}
+        onOpenChange={setTaskContextMenu}
+        onViewTask={(task) => openTaskDrawer(task.id, 'view')}
+        onEditTask={(task) => openTaskDrawer(task.id, 'edit')}
+        onDuplicateTask={(task) => openDuplicateTaskDialog(task, taskContextMenu?.scheduledStart, taskContextMenu?.scheduledEnd)}
+        onDeleteTask={(task) => openTaskDeleteConfirm(task.id)}
+      />
 
       {/* Create task dialog */}
       <Dialog open={!!createDialog?.open} onOpenChange={(o) => !o && setCreateDialog(null)}>

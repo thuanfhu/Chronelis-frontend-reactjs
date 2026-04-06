@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { DeleteUndoStack } from '@/components/shared/delete-undo-stack'
 import {
   Dialog,
   DialogContent,
@@ -313,47 +313,18 @@ export function TaskDeleteConfirmDialog() {
         </DialogContent>
       </Dialog>
 
-      {pendingDeletes.length > 0 && (
-        <div className="pointer-events-none fixed right-4 bottom-4 z-70 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
-          {pendingDeletes.map((pendingDelete) => {
-            const remainingMs = Math.max(0, pendingDelete.expiresAt - clockMs)
-            const progress = Math.max(
-              0,
-              Math.min(100, (remainingMs / TASK_DELETE_UNDO_WINDOW_MS) * 100),
-            )
-            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
-
-            return (
-              <div
-                key={pendingDelete.taskId}
-                className="pointer-events-auto rounded-lg border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Đang xóa task</p>
-                    <p className="truncate text-xs text-muted-foreground">{pendingDelete.taskTitle}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => undoPendingDelete(pendingDelete.taskId)}
-                    disabled={pendingDelete.status !== 'pending'}
-                  >
-                    Hoàn tác
-                  </Button>
-                </div>
-
-                <Progress value={progress} className="mt-2 h-1.5 bg-muted/40" />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {pendingDelete.status === 'finalizing'
-                    ? 'Đang xóa vĩnh viễn...'
-                    : `Tự động xóa sau ${remainingSeconds}s`}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <DeleteUndoStack
+        items={pendingDeletes.map((pendingDelete) => ({
+          id: pendingDelete.taskId,
+          entityLabel: 'task',
+          title: pendingDelete.taskTitle,
+          expiresAt: pendingDelete.expiresAt,
+          windowMs: TASK_DELETE_UNDO_WINDOW_MS,
+          status: pendingDelete.status,
+        }))}
+        clockMs={clockMs}
+        onUndo={(itemId) => undoPendingDelete(Number(itemId))}
+      />
     </>
   )
 }

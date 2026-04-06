@@ -269,6 +269,17 @@ export function ProfilePage() {
     )
   }
 
+  const baselineProfile = mapUserToForm(loadedUser)
+  const isProfileDirty = (
+    profileForm.firstName.trim() !== baselineProfile.firstName.trim()
+    || profileForm.lastName.trim() !== baselineProfile.lastName.trim()
+    || profileForm.nickname.trim() !== baselineProfile.nickname.trim()
+    || profileForm.biography.trim() !== baselineProfile.biography.trim()
+    || profileForm.city.trim() !== baselineProfile.city.trim()
+    || profileForm.nationality.trim() !== baselineProfile.nationality.trim()
+    || profileForm.avatarUrl.trim() !== baselineProfile.avatarUrl.trim()
+  )
+
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-2xl border bg-linear-to-br from-primary/10 via-background to-sky-500/10 p-6">
@@ -464,7 +475,7 @@ export function ProfilePage() {
               <div className="flex justify-end">
                 <Button
                   onClick={() => updateProfileMutation.mutate()}
-                  disabled={updateProfileMutation.isPending || avatarUploading || Boolean(profileValidationError)}
+                  disabled={updateProfileMutation.isPending || avatarUploading || Boolean(profileValidationError) || !isProfileDirty}
                 >
                   {updateProfileMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                   Lưu hồ sơ

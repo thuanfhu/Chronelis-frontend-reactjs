@@ -51,35 +51,19 @@ export function AppRouter() {
         />
         <Route
           path="/reset-password"
-          element={
-            <PublicOnlyGuard>
-              <ResetPasswordPage />
-            </PublicOnlyGuard>
-          }
+          element={<ResetPasswordPage />}
         />
         <Route
           path="/auth/reset-password"
-          element={
-            <PublicOnlyGuard>
-              <ResetPasswordPage />
-            </PublicOnlyGuard>
-          }
+          element={<ResetPasswordPage />}
         />
         <Route
           path="/verify-account"
-          element={
-            <PublicOnlyGuard>
-              <VerifyAccountPage />
-            </PublicOnlyGuard>
-          }
+          element={<VerifyAccountPage />}
         />
         <Route
           path="/auth/verify-active-account"
-          element={
-            <PublicOnlyGuard>
-              <VerifyAccountPage />
-            </PublicOnlyGuard>
-          }
+          element={<VerifyAccountPage />}
         />
 
         <Route

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
-import { Activity } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
+import { Activity, ArrowLeft } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { activityLogApi } from '@/lib/api/modules/activity-log-api'
@@ -51,7 +52,18 @@ export function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Hoạt động" description="Lịch sử hành động trong project" />
+      <PageHeader
+        title="Hoạt động"
+        description="Lịch sử hành động trong project"
+        actions={(
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/workspaces/${workspaceId}`}>
+              <ArrowLeft className="mr-1.5 size-3.5" />
+              Quay lại workspace
+            </Link>
+          </Button>
+        )}
+      />
 
       {logs.length === 0 ? (
         <Card className="border-dashed">
@@ -66,7 +78,7 @@ export function ActivityLogPage() {
           {logs.map((log) => (
             <div key={log.id} className="relative pb-6 pl-6 last:pb-0">
               {/* Timeline dot */}
-              <div className="absolute -left-[9px] top-0.5 size-4 rounded-full border-2 border-background bg-primary/60" />
+              <div className="absolute -left-2.25 top-0.5 size-4 rounded-full border-2 border-background bg-primary/60" />
 
               <div className="flex gap-3">
                 <Avatar className="mt-0.5 size-8 shrink-0">
