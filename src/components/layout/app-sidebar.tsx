@@ -4,7 +4,7 @@ import {
   ChevronsLeft, ChevronDown, Target, MoreHorizontal, Plus, ListTodo,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils/cn'
@@ -16,6 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -27,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -34,7 +36,20 @@ import { projectApi } from '@/lib/api/modules/project-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
-import type { WorkspaceMemberRoleType } from '@/types/domain'
+import type { GoalStatusType, GoalType, Project, WorkspaceMemberRoleType } from '@/types/domain'
+
+const GOAL_TYPE_OPTIONS: Array<{ value: GoalType; label: string }> = [
+  { value: 'SHORT_TERM', label: 'Ngắn hạn' },
+  { value: 'MEDIUM_TERM', label: 'Trung hạn' },
+  { value: 'LONG_TERM', label: 'Dài hạn' },
+]
+
+const GOAL_STATUS_OPTIONS: Array<{ value: GoalStatusType; label: string }> = [
+  { value: 'NOT_STARTED', label: 'Chưa bắt đầu' },
+  { value: 'IN_PROGRESS', label: 'Đang thực hiện' },
+  { value: 'ON_HOLD', label: 'Tạm dừng' },
+  { value: 'COMPLETED', label: 'Hoàn thành' },
+]
 
 function normalizeProgress(progressPercent: number | null | undefined): number {
   if (progressPercent == null || Number.isNaN(progressPercent)) {
@@ -152,13 +167,46 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     : (members.find((member) => member.user.userId === currentUserId)?.role ?? 'MEMBER')
   const canCreateProject = currentRole === 'OWNER' || currentRole === 'ADMIN'
   const normalizedSidebarSearch = sidebarSearch.trim().toLowerCase()
+
+  const goalSearchQueries = useQueries({
+    queries: normalizedSidebarSearch
+      ? projects.map((project) => ({
+          queryKey: queryKeys.goals.byProject(project.id, 1, 50),
+          queryFn: () => goalApi.listByProject(project.id, { page: 1, size: 50 }),
+          enabled: Boolean(workspaceId),
+          staleTime: 60_000,
+        }))
+      : [],
+  })
+
+  const goalMatchesByProjectId = useMemo(() => {
+    const matches = new Map<number, boolean>()
+
+    if (!normalizedSidebarSearch) {
+      return matches
+    }
+
+    projects.forEach((project, index) => {
+      const goals = goalSearchQueries[index]?.data?.content ?? []
+      const hasMatchingGoal = goals.some((goal) =>
+        goal.title.toLowerCase().includes(normalizedSidebarSearch),
+      )
+      matches.set(project.id, hasMatchingGoal)
+    })
+
+    return matches
+  }, [goalSearchQueries, normalizedSidebarSearch, projects])
+
   const filteredProjects = useMemo(() => {
     if (!normalizedSidebarSearch) {
       return projects
     }
 
-    return projects.filter((project) => project.name.toLowerCase().includes(normalizedSidebarSearch))
-  }, [projects, normalizedSidebarSearch])
+    return projects.filter((project) => (
+      project.name.toLowerCase().includes(normalizedSidebarSearch)
+      || Boolean(goalMatchesByProjectId.get(project.id))
+    ))
+  }, [goalMatchesByProjectId, projects, normalizedSidebarSearch])
 
   const handleLogout = () => {
     clearSession()
@@ -354,6 +402,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                           key={proj.id}
                           project={proj}
                           workspaceId={workspaceId}
+                          canManageProject={canCreateProject || proj.managerUser?.userId === currentUserId}
                           isActive={projectId === proj.id}
                           isExpanded={expandedProjects.has(proj.id)}
                           onToggleExpand={() => toggleProjectExpand(proj.id)}
@@ -473,22 +522,109 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 function ProjectItem({
   project,
   workspaceId,
+  canManageProject,
   isActive,
   isExpanded,
   onToggleExpand,
   searchQuery,
 }: {
-  project: { id: number; name: string }
+  project: Project
   workspaceId: number
+  canManageProject: boolean
   isActive: boolean
   isExpanded: boolean
   onToggleExpand: () => void
   searchQuery: string
 }) {
+  const queryClient = useQueryClient()
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false)
+  const [openGoalMenuId, setOpenGoalMenuId] = useState<number | null>(null)
+
+  const [createGoalDialogOpen, setCreateGoalDialogOpen] = useState(false)
+  const [createGoalTitle, setCreateGoalTitle] = useState('')
+  const [createGoalType, setCreateGoalType] = useState<GoalType>('SHORT_TERM')
+  const [createGoalStatus, setCreateGoalStatus] = useState<GoalStatusType>('NOT_STARTED')
+
+  const [editGoalDialogOpen, setEditGoalDialogOpen] = useState(false)
+  const [editingGoalId, setEditingGoalId] = useState<number | null>(null)
+  const [editGoalTitle, setEditGoalTitle] = useState('')
+  const [editGoalType, setEditGoalType] = useState<GoalType>('SHORT_TERM')
+  const [editGoalStatus, setEditGoalStatus] = useState<GoalStatusType>('NOT_STARTED')
+
+  const [deleteGoalDialogOpen, setDeleteGoalDialogOpen] = useState(false)
+  const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null)
+  const [deleteGoalTitle, setDeleteGoalTitle] = useState('')
+
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(project.id, 1, 50),
     queryFn: () => goalApi.listByProject(project.id, { page: 1, size: 50 }),
     enabled: project.id > 0,
+  })
+
+  const createGoalMutation = useMutation({
+    mutationFn: () => goalApi.create({
+      projectId: project.id,
+      title: createGoalTitle.trim(),
+      goalType: createGoalType,
+      status: createGoalStatus,
+      progressPercent: 0,
+    }),
+    onSuccess: () => {
+      setCreateGoalTitle('')
+      setCreateGoalType('SHORT_TERM')
+      setCreateGoalStatus('NOT_STARTED')
+      setCreateGoalDialogOpen(false)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(project.id, 1, 50) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success('Đã tạo goal mới')
+    },
+    onError: (error: Error) => {
+      toast.error('Không thể tạo goal', { description: error.message })
+    },
+  })
+
+  const updateGoalMutation = useMutation({
+    mutationFn: () => {
+      if (!editingGoalId) {
+        throw new Error('Goal không hợp lệ')
+      }
+
+      return goalApi.update(editingGoalId, {
+        title: editGoalTitle.trim(),
+        goalType: editGoalType,
+        status: editGoalStatus,
+      })
+    },
+    onSuccess: () => {
+      setEditGoalDialogOpen(false)
+      setEditingGoalId(null)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(project.id, 1, 50) })
+      toast.success('Đã cập nhật goal')
+    },
+    onError: (error: Error) => {
+      toast.error('Không thể cập nhật goal', { description: error.message })
+    },
+  })
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: () => {
+      if (!deleteGoalId) {
+        throw new Error('Goal không hợp lệ')
+      }
+
+      return goalApi.remove(deleteGoalId)
+    },
+    onSuccess: () => {
+      setDeleteGoalDialogOpen(false)
+      setDeleteGoalId(null)
+      setDeleteGoalTitle('')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(project.id, 1, 50) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(project.id, 1, 50) })
+      toast.success('Đã xóa goal')
+    },
+    onError: (error: Error) => {
+      toast.error('Không thể xóa goal', { description: error.message })
+    },
   })
 
   const goals = useMemo(() => goalsQuery.data?.content ?? [], [goalsQuery.data])
@@ -500,6 +636,8 @@ function ProjectItem({
 
     return goals.filter((goal) => goal.title.toLowerCase().includes(normalizedSearchQuery))
   }, [goals, normalizedSearchQuery])
+
+  const projectExpanded = isExpanded || (Boolean(normalizedSearchQuery) && filteredGoals.length > 0)
   const projectProgress = useMemo(() => {
     if (goals.length === 0) {
       return 0
@@ -509,14 +647,33 @@ function ProjectItem({
     return normalizeProgress(total / goals.length)
   }, [goals])
 
+  const editingGoal = editingGoalId !== null
+    ? goals.find((goal) => goal.id === editingGoalId) ?? null
+    : null
+  const canSubmitGoalEdit = Boolean(
+    editingGoal
+    && editGoalTitle.trim().length > 0
+    && (
+      editGoalTitle.trim() !== editingGoal.title.trim()
+      || editGoalType !== editingGoal.goalType
+      || editGoalStatus !== editingGoal.status
+    )
+  )
+
   return (
-    <div>
-      <div className="flex w-full min-w-0 items-center overflow-hidden">
+    <div className="space-y-1">
+      <div
+        className="flex w-full min-w-0 items-center overflow-hidden"
+        onContextMenu={(event) => {
+          event.preventDefault()
+          setProjectMenuOpen(true)
+        }}
+      >
         <button
           onClick={onToggleExpand}
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/75 transition-colors hover:text-muted-foreground"
         >
-          <ChevronRight className={cn('size-3 transition-transform duration-200', isExpanded && 'rotate-90')} />
+          <ChevronRight className={cn('size-3 transition-transform duration-200', projectExpanded && 'rotate-90')} />
         </button>
         <NavLink
           to={`/workspaces/${workspaceId}/projects/${project.id}`}
@@ -539,7 +696,7 @@ function ProjectItem({
           </span>
         </NavLink>
 
-        <DropdownMenu>
+        <DropdownMenu open={projectMenuOpen} onOpenChange={setProjectMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground/75 hover:text-foreground">
               <MoreHorizontal className="size-3.5" />
@@ -561,6 +718,15 @@ function ProjectItem({
                 Goals
               </Link>
             </DropdownMenuItem>
+            {canManageProject ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setCreateGoalDialogOpen(true)}>
+                  <Plus className="mr-2 size-3.5" />
+                  Tạo goal nhanh
+                </DropdownMenuItem>
+              </>
+            ) : null}
             <DropdownMenuItem asChild>
               <Link to={`/workspaces/${workspaceId}`}>Chỉnh sửa / xóa project...</Link>
             </DropdownMenuItem>
@@ -568,7 +734,7 @@ function ProjectItem({
         </DropdownMenu>
       </div>
       <AnimatePresence initial={false}>
-        {isExpanded && (
+        {projectExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -590,28 +756,244 @@ function ProjectItem({
                 const normalizedProgress = normalizeProgress(goal.progressPercent)
 
                 return (
-                  <NavLink
+                  <div
                     key={goal.id}
-                    to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
-                    className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
+                    className="group flex w-full min-w-0 items-center gap-1"
+                    onContextMenu={(event) => {
+                      if (!canManageProject) {
+                        return
+                      }
+
+                      event.preventDefault()
+                      setOpenGoalMenuId(goal.id)
+                    }}
                   >
-                    <Target className="size-3 shrink-0 text-muted-foreground/80" />
-                    <span className="min-w-0 flex-1 truncate" title={goal.title}>{highlightMatch(goal.title, searchQuery)}</span>
-                    <span
-                      className={cn(
-                        'shrink-0 text-right text-[10px] font-semibold tabular-nums',
-                        resolveProgressClass(normalizedProgress),
-                      )}
+                    <NavLink
+                      to={`/workspaces/${workspaceId}/projects/${project.id}/goals`}
+                      className="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
                     >
-                      {normalizedProgress}%
-                    </span>
-                  </NavLink>
+                      <Target className="size-3 shrink-0 text-muted-foreground/80" />
+                      <span className="min-w-0 flex-1 truncate" title={goal.title}>{highlightMatch(goal.title, searchQuery)}</span>
+                      <span
+                        className={cn(
+                          'shrink-0 text-right text-[10px] font-semibold tabular-nums',
+                          resolveProgressClass(normalizedProgress),
+                        )}
+                      >
+                        {normalizedProgress}%
+                      </span>
+                    </NavLink>
+
+                    {canManageProject ? (
+                      <DropdownMenu
+                        open={openGoalMenuId === goal.id}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setOpenGoalMenuId(goal.id)
+                          } else {
+                            setOpenGoalMenuId((current) => (current === goal.id ? null : current))
+                          }
+                        }}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-6 shrink-0 text-muted-foreground/75 opacity-0 hover:text-foreground group-hover:opacity-100">
+                            <MoreHorizontal className="size-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-38">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/workspaces/${workspaceId}/projects/${project.id}/goals`}>Mở goals page</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingGoalId(goal.id)
+                              setEditGoalTitle(goal.title)
+                              setEditGoalType(goal.goalType)
+                              setEditGoalStatus(goal.status)
+                              setEditGoalDialogOpen(true)
+                            }}
+                          >
+                            <Target className="mr-2 size-3.5" />
+                            Chỉnh sửa goal
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              setDeleteGoalId(goal.id)
+                              setDeleteGoalTitle(goal.title)
+                              setDeleteGoalDialogOpen(true)
+                            }}
+                          >
+                            <Target className="mr-2 size-3.5" />
+                            Xóa goal
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : null}
+                  </div>
                 )
               })}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={createGoalDialogOpen} onOpenChange={setCreateGoalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tạo goal nhanh</DialogTitle>
+            <DialogDescription>Tạo goal mới cho project {project.name} ngay từ sidebar.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`sidebar-goal-title-${project.id}`}>Tiêu đề goal</Label>
+              <Input
+                id={`sidebar-goal-title-${project.id}`}
+                value={createGoalTitle}
+                onChange={(event) => setCreateGoalTitle(event.target.value)}
+                placeholder="Ví dụ: Hoàn thành onboarding flow"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Loại mục tiêu</Label>
+              <Select value={createGoalType} onValueChange={(value) => setCreateGoalType(value as GoalType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GOAL_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Trạng thái</Label>
+              <Select value={createGoalStatus} onValueChange={(value) => setCreateGoalStatus(value as GoalStatusType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GOAL_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateGoalDialogOpen(false)}>Hủy</Button>
+            <Button
+              onClick={() => createGoalMutation.mutate()}
+              disabled={createGoalMutation.isPending || !createGoalTitle.trim()}
+            >
+              {createGoalMutation.isPending ? 'Đang tạo...' : 'Tạo goal'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editGoalDialogOpen}
+        onOpenChange={(open) => {
+          setEditGoalDialogOpen(open)
+          if (!open) {
+            setEditingGoalId(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa goal</DialogTitle>
+            <DialogDescription>Cập nhật thông tin goal ngay trong sidebar.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`sidebar-goal-edit-title-${project.id}`}>Tiêu đề goal</Label>
+              <Input
+                id={`sidebar-goal-edit-title-${project.id}`}
+                value={editGoalTitle}
+                onChange={(event) => setEditGoalTitle(event.target.value)}
+                placeholder="Tiêu đề goal"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Loại mục tiêu</Label>
+              <Select value={editGoalType} onValueChange={(value) => setEditGoalType(value as GoalType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GOAL_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Trạng thái</Label>
+              <Select value={editGoalStatus} onValueChange={(value) => setEditGoalStatus(value as GoalStatusType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GOAL_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditGoalDialogOpen(false)}>Hủy</Button>
+            <Button
+              onClick={() => updateGoalMutation.mutate()}
+              disabled={updateGoalMutation.isPending || !canSubmitGoalEdit}
+            >
+              {updateGoalMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteGoalDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteGoalDialogOpen(open)
+          if (!open) {
+            setDeleteGoalId(null)
+            setDeleteGoalTitle('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa goal</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc muốn xóa goal "{deleteGoalTitle || 'này'}" không?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteGoalDialogOpen(false)}>Hủy</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteGoalMutation.mutate()}
+              disabled={deleteGoalMutation.isPending || !deleteGoalId}
+            >
+              {deleteGoalMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

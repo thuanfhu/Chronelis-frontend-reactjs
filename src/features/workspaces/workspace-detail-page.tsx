@@ -39,7 +39,12 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { useAuthStore } from '@/app/store/auth-store'
-import type { Project, ProjectStatusType, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
+import type {
+  Project,
+  ProjectStatusType,
+  WorkspaceMemberRoleType,
+  WorkspaceTeamMember,
+} from '@/types/domain'
 
 const roleIcon = {
   OWNER: Crown,
@@ -55,15 +60,44 @@ const roleBadgeVariant = {
 
 const DELETE_UNDO_WINDOW_MS = 5000
 
-type PendingDeleteEntityType = 'project' | 'workspace'
+type PendingDeleteEntityType = 'project' | 'workspace' | 'member' | 'invite' | 'team' | 'team-member'
+
+interface QuickDeleteIntent {
+  key: string
+  entityType: Exclude<PendingDeleteEntityType, 'project' | 'workspace'>
+  entityId: number
+  title: string
+  userId?: string
+  teamId?: number
+}
 
 interface PendingDeleteItem {
   key: string
   entityType: PendingDeleteEntityType
   entityId: number
   title: string
+  userId?: string
+  teamId?: number
   expiresAt: number
   status: 'pending' | 'finalizing'
+}
+
+const PENDING_ENTITY_LABEL: Record<PendingDeleteEntityType, string> = {
+  project: 'project',
+  workspace: 'workspace',
+  member: 'thành viên',
+  invite: 'invite',
+  team: 'team',
+  'team-member': 'thành viên team',
+}
+
+const PENDING_ENTITY_ACTION: Record<PendingDeleteEntityType, string> = {
+  project: 'xóa',
+  workspace: 'xóa',
+  member: 'xóa',
+  invite: 'thu hồi',
+  team: 'xóa',
+  'team-member': 'xóa',
 }
 
 export function WorkspaceDetailPage() {
@@ -102,6 +136,8 @@ export function WorkspaceDetailPage() {
   const [teamName, setTeamName] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
   const [teamMemberDraftByTeamId, setTeamMemberDraftByTeamId] = useState<Record<number, string>>({})
+  const [quickDeleteDialogOpen, setQuickDeleteDialogOpen] = useState(false)
+  const [quickDeleteIntent, setQuickDeleteIntent] = useState<QuickDeleteIntent | null>(null)
 
   const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
@@ -289,7 +325,7 @@ export function WorkspaceDetailPage() {
     }
 
     removePendingDelete(itemKey)
-    toast.success(`Đã hoàn tác xóa ${pendingDelete.entityType === 'project' ? 'project' : 'workspace'} "${pendingDelete.title}"`)
+    toast.success(`Đã hoàn tác ${PENDING_ENTITY_ACTION[pendingDelete.entityType]} ${PENDING_ENTITY_LABEL[pendingDelete.entityType]} "${pendingDelete.title}"`)
   }
 
   const finalizePendingDelete = useCallback(async (itemKey: string) => {
@@ -310,17 +346,44 @@ export function WorkspaceDetailPage() {
     let shouldNavigateToDashboard = false
 
     try {
-      if (pendingDelete.entityType === 'project') {
-        await projectApi.remove(pendingDelete.entityId)
-        toast.success(`Đã xóa project "${pendingDelete.title}"`)
-      } else {
-        await workspaceApi.remove(pendingDelete.entityId)
-        toast.success(`Đã xóa workspace "${pendingDelete.title}"`)
-        shouldNavigateToDashboard = true
+      switch (pendingDelete.entityType) {
+        case 'project':
+          await projectApi.remove(pendingDelete.entityId)
+          toast.success(`Đã xóa project "${pendingDelete.title}"`)
+          break
+        case 'workspace':
+          await workspaceApi.remove(pendingDelete.entityId)
+          toast.success(`Đã xóa workspace "${pendingDelete.title}"`)
+          shouldNavigateToDashboard = true
+          break
+        case 'member':
+          if (!pendingDelete.userId) {
+            throw new Error('Không tìm thấy user của thành viên cần xóa')
+          }
+          await workspaceApi.removeMember(workspaceId, pendingDelete.userId)
+          toast.success(`Đã xóa thành viên "${pendingDelete.title}"`)
+          break
+        case 'invite':
+          await workspaceInviteApi.revoke(pendingDelete.entityId)
+          toast.success(`Đã thu hồi invite "${pendingDelete.title}"`)
+          break
+        case 'team':
+          await workspaceTeamApi.remove(pendingDelete.entityId)
+          toast.success(`Đã xóa team "${pendingDelete.title}"`)
+          break
+        case 'team-member':
+          if (!pendingDelete.teamId || !pendingDelete.userId) {
+            throw new Error('Không tìm thấy thông tin thành viên team cần xóa')
+          }
+          await workspaceTeamApi.removeMember(pendingDelete.teamId, pendingDelete.userId)
+          toast.success(`Đã xóa thành viên team "${pendingDelete.title}"`)
+          break
+        default:
+          break
       }
     } catch (error) {
       if (error instanceof Error && isNotFoundError(error)) {
-        toast.success(`${pendingDelete.entityType === 'project' ? 'Project' : 'Workspace'} "${pendingDelete.title}" đã được xóa trước đó`)
+        toast.success(`${PENDING_ENTITY_LABEL[pendingDelete.entityType]} "${pendingDelete.title}" đã được xử lý trước đó`)
         if (pendingDelete.entityType === 'workspace') {
           shouldNavigateToDashboard = true
         }
@@ -328,8 +391,11 @@ export function WorkspaceDetailPage() {
         const description = error instanceof Error
           ? error.message
           : 'Đã xảy ra lỗi không xác định'
+        const failureTitle = pendingDelete.entityType === 'invite'
+          ? 'Thu hồi invite thất bại'
+          : `Xóa ${PENDING_ENTITY_LABEL[pendingDelete.entityType]} thất bại`
         toast.error(
-          pendingDelete.entityType === 'project' ? 'Xóa project thất bại' : 'Xóa workspace thất bại',
+          failureTitle,
           { description },
         )
       }
@@ -337,20 +403,45 @@ export function WorkspaceDetailPage() {
 
     removePendingDelete(itemKey)
 
-    if (pendingDelete.entityType === 'project') {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(pendingDelete.entityId) }),
-      ])
-    } else {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all }),
-        queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', pendingDelete.entityId] }),
-      ])
-      if (shouldNavigateToDashboard) {
-        navigate('/dashboard', { replace: true })
-      }
+    switch (pendingDelete.entityType) {
+      case 'project':
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(pendingDelete.entityId) }),
+        ])
+        break
+      case 'workspace':
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all }),
+          queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', pendingDelete.entityId] }),
+        ])
+        if (shouldNavigateToDashboard) {
+          navigate('/dashboard', { replace: true })
+        }
+        break
+      case 'member':
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) }),
+          queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) }),
+        ])
+        break
+      case 'invite':
+        await queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
+        break
+      case 'team':
+      case 'team-member':
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) }),
+          queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
+        ])
+        break
+      default:
+        break
     }
   }, [navigate, queryClient, removePendingDelete, workspaceId])
 
@@ -435,6 +526,48 @@ export function WorkspaceDetailPage() {
     toast.success('Workspace đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.')
   }
 
+  const openQuickDeleteConfirm = (intent: QuickDeleteIntent) => {
+    if (pendingDeletesRef.current.some((item) => item.key === intent.key)) {
+      toast.error('Mục này đang chờ xử lý. Bạn có thể hoàn tác hoặc đợi hoàn tất.')
+      return
+    }
+
+    setQuickDeleteIntent(intent)
+    setQuickDeleteDialogOpen(true)
+  }
+
+  const scheduleQuickDeleteFromIntent = () => {
+    if (!quickDeleteIntent) {
+      return
+    }
+
+    if (pendingDeletesRef.current.some((item) => item.key === quickDeleteIntent.key)) {
+      toast.error('Mục này đang chờ xử lý. Bạn có thể hoàn tác hoặc đợi hoàn tất.')
+      return
+    }
+
+    const createdAt = clockMs
+    setPendingDeletes((previous) => [
+      ...previous,
+      {
+        key: quickDeleteIntent.key,
+        entityType: quickDeleteIntent.entityType,
+        entityId: quickDeleteIntent.entityId,
+        title: quickDeleteIntent.title,
+        userId: quickDeleteIntent.userId,
+        teamId: quickDeleteIntent.teamId,
+        expiresAt: createdAt + DELETE_UNDO_WINDOW_MS,
+        status: 'pending',
+      },
+    ])
+
+    setQuickDeleteDialogOpen(false)
+    setQuickDeleteIntent(null)
+    toast.success(
+      `${PENDING_ENTITY_LABEL[quickDeleteIntent.entityType]} đã được lên lịch ${PENDING_ENTITY_ACTION[quickDeleteIntent.entityType]}. Bạn có 5 giây để hoàn tác.`,
+    )
+  }
+
   const createInviteMutation = useMutation({
     mutationFn: () => workspaceInviteApi.create({
       workspaceId,
@@ -448,15 +581,6 @@ export function WorkspaceDetailPage() {
       toast.success('Tạo invite link thành công')
     },
     onError: (error: Error) => toast.error('Tạo invite thất bại', { description: error.message }),
-  })
-
-  const revokeInviteMutation = useMutation({
-    mutationFn: (inviteId: number) => workspaceInviteApi.revoke(inviteId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
-      toast.success('Thu hồi invite thành công')
-    },
-    onError: (error: Error) => toast.error('Thu hồi thất bại', { description: error.message }),
   })
 
   const createTeamMutation = useMutation({
@@ -476,17 +600,6 @@ export function WorkspaceDetailPage() {
     onError: (error: Error) => toast.error('Tạo team thất bại', { description: error.message }),
   })
 
-  const deleteTeamMutation = useMutation({
-    mutationFn: (teamId: number) => workspaceTeamApi.remove(teamId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
-      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Xóa team thành công')
-    },
-    onError: (error: Error) => toast.error('Xóa team thất bại', { description: error.message }),
-  })
-
   const addTeamMemberMutation = useMutation({
     mutationFn: ({ teamId, userId }: { teamId: number; userId: string }) =>
       workspaceTeamApi.addMember(teamId, { userId }),
@@ -501,18 +614,6 @@ export function WorkspaceDetailPage() {
       toast.success('Thêm thành viên vào team thành công')
     },
     onError: (error: Error) => toast.error('Thêm thành viên vào team thất bại', { description: error.message }),
-  })
-
-  const removeTeamMemberMutation = useMutation({
-    mutationFn: ({ teamId, userId }: { teamId: number; userId: string }) =>
-      workspaceTeamApi.removeMember(teamId, userId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
-      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Xóa thành viên khỏi team thành công')
-    },
-    onError: (error: Error) => toast.error('Xóa thành viên khỏi team thất bại', { description: error.message }),
   })
 
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
@@ -534,17 +635,45 @@ export function WorkspaceDetailPage() {
   const projects = projectsQuery.data?.content ?? []
   const invites = invitesQuery.data ?? []
   const teams = teamsQuery.data ?? []
+
+  const pendingDeleteByKey = new Map(pendingDeletes.map((item) => [item.key, item]))
   const pendingProjectIdSet = new Set(
     pendingDeletes
       .filter((item) => item.entityType === 'project')
       .map((item) => item.entityId),
   )
+  const pendingMemberUserIdSet = new Set(
+    pendingDeletes
+      .filter((item) => item.entityType === 'member' && Boolean(item.userId))
+      .map((item) => item.userId as string),
+  )
+  const pendingInviteIdSet = new Set(
+    pendingDeletes
+      .filter((item) => item.entityType === 'invite')
+      .map((item) => item.entityId),
+  )
+  const pendingTeamIdSet = new Set(
+    pendingDeletes
+      .filter((item) => item.entityType === 'team')
+      .map((item) => item.entityId),
+  )
+  const pendingTeamMemberKeySet = new Set(
+    pendingDeletes
+      .filter((item) => item.entityType === 'team-member' && Boolean(item.teamId) && Boolean(item.userId))
+      .map((item) => `${item.teamId}-${item.userId}`),
+  )
+
+  const visibleMembers = members.filter((member) => !pendingMemberUserIdSet.has(member.user.userId))
+  const visibleInvites = invites.filter((invite) => !pendingInviteIdSet.has(invite.id))
+  const visibleTeams = teams.filter((team) => !pendingTeamIdSet.has(team.id))
   const visibleProjects = projects.filter((project) => !pendingProjectIdSet.has(project.id))
   const workspacePendingDelete = pendingDeletes.some(
     (item) => item.entityType === 'workspace' && item.entityId === workspaceQuery.data.id,
   )
   const selectedProjectPendingDelete = deleteProject !== null
     && pendingDeletes.some((item) => item.entityType === 'project' && item.entityId === deleteProject.id)
+  const selectedQuickDeletePending = quickDeleteIntent !== null
+    && pendingDeletes.some((item) => item.key === quickDeleteIntent.key)
   const canSubmitEditWorkspace = editWsName.trim().length > 0
     && editWsName.trim() !== workspaceQuery.data.name.trim()
 
@@ -599,7 +728,7 @@ export function WorkspaceDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={workspaceQuery.data.name}
-        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${currentRole}`}
+        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${visibleMembers.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${currentRole}`}
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -661,15 +790,15 @@ export function WorkspaceDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="members" className="shrink-0 gap-1.5">
             <Users className="size-3.5" />
-            Thành viên ({members.length})
+            Thành viên ({visibleMembers.length})
           </TabsTrigger>
           <TabsTrigger value="invites" className="shrink-0 gap-1.5">
             <Link2 className="size-3.5" />
-            Invites ({invites.length})
+            Invites ({visibleInvites.length})
           </TabsTrigger>
           <TabsTrigger value="teams" className="shrink-0 gap-1.5">
             <UsersRound className="size-3.5" />
-            Teams ({teams.length})
+            Teams ({visibleTeams.length})
           </TabsTrigger>
         </TabsList>
 
@@ -1063,8 +1192,10 @@ export function WorkspaceDetailPage() {
           </div>
 
           <div className="space-y-2">
-            {members.map((member) => {
+            {visibleMembers.map((member) => {
               const RoleIcon = roleIcon[member.role]
+              const memberDeleteKey = `member-${member.user.userId}`
+              const memberPendingDelete = pendingDeleteByKey.get(memberDeleteKey)
               return (
                 <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
                   <Avatar className="size-9 shrink-0">
@@ -1102,15 +1233,19 @@ export function WorkspaceDetailPage() {
                         ))}
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
+                          disabled={Boolean(memberPendingDelete)}
                           onClick={() => {
-                            workspaceApi
-                              .removeMember(workspaceId, member.user.userId)
-                              .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                              .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
+                            openQuickDeleteConfirm({
+                              key: memberDeleteKey,
+                              entityType: 'member',
+                              entityId: member.id,
+                              title: `${member.user.firstName} ${member.user.lastName}`,
+                              userId: member.user.userId,
+                            })
                           }}
                         >
                           <Trash2 className="mr-2 size-3.5" />
-                          Xóa khỏi workspace
+                          {memberPendingDelete ? 'Đang chờ xóa...' : 'Xóa khỏi workspace'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1177,7 +1312,7 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          {invites.length === 0 ? (
+          {visibleInvites.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Link2 className="mb-3 size-10 text-muted-foreground/30" />
@@ -1187,8 +1322,10 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {invites.map((invite) => {
+              {visibleInvites.map((invite) => {
                 const inviteUrl = `${window.location.origin}/join?code=${invite.inviteCode}`
+                const inviteDeleteKey = `invite-${invite.id}`
+                const invitePendingDelete = pendingDeleteByKey.get(inviteDeleteKey)
                 return (
                   <div key={invite.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
                     <QrCode className="size-8 shrink-0 text-muted-foreground" />
@@ -1218,10 +1355,19 @@ export function WorkspaceDetailPage() {
                         variant="ghost"
                         size="icon"
                         className="size-8 shrink-0 text-destructive hover:text-destructive"
-                        onClick={() => revokeInviteMutation.mutate(invite.id)}
-                        disabled={revokeInviteMutation.isPending}
+                        onClick={() => {
+                          openQuickDeleteConfirm({
+                            key: inviteDeleteKey,
+                            entityType: 'invite',
+                            entityId: invite.id,
+                            title: invite.inviteCode,
+                          })
+                        }}
+                        disabled={Boolean(invitePendingDelete)}
                       >
-                        <Trash2 className="size-3.5" />
+                        {invitePendingDelete?.status === 'finalizing'
+                          ? <Loader2 className="size-3.5 animate-spin" />
+                          : <Trash2 className="size-3.5" />}
                       </Button>
                     )}
                   </div>
@@ -1275,7 +1421,7 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          {teams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
@@ -1285,13 +1431,18 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {teams.map((team) => {
+              {visibleTeams.map((team) => {
                 const teamMembers = teamMembersByTeamId.get(team.id) ?? []
                 const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
-                const availableWorkspaceMembers = members.filter(
+                const visibleTeamMembers = teamMembers.filter(
+                  (teamMember) => !pendingTeamMemberKeySet.has(`${team.id}-${teamMember.user.userId}`),
+                )
+                const availableWorkspaceMembers = visibleMembers.filter(
                   (member) => !teamMemberIds.has(member.user.userId),
                 )
                 const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
+                const teamDeleteKey = `team-${team.id}`
+                const teamPendingDelete = pendingDeleteByKey.get(teamDeleteKey)
 
                 return (
                   <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
@@ -1303,9 +1454,19 @@ export function WorkspaceDetailPage() {
                             variant="ghost"
                             size="icon"
                             className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                            onClick={() => deleteTeamMutation.mutate(team.id)}
+                            onClick={() => {
+                              openQuickDeleteConfirm({
+                                key: teamDeleteKey,
+                                entityType: 'team',
+                                entityId: team.id,
+                                title: team.name,
+                              })
+                            }}
+                            disabled={Boolean(teamPendingDelete)}
                           >
-                            <Trash2 className="size-3.5" />
+                            {teamPendingDelete?.status === 'finalizing'
+                              ? <Loader2 className="size-3.5 animate-spin" />
+                              : <Trash2 className="size-3.5" />}
                           </Button>
                         )}
                       </div>
@@ -1314,14 +1475,14 @@ export function WorkspaceDetailPage() {
                     <CardContent className="space-y-3 pt-0">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Users className="size-3" />
-                        <span>{team.memberCount} thành viên</span>
+                        <span>{visibleTeamMembers.length} thành viên</span>
                       </div>
 
                       <div className="space-y-1.5">
-                        {teamMembers.length === 0 ? (
+                        {visibleTeamMembers.length === 0 ? (
                           <p className="text-xs text-muted-foreground">Chưa có thành viên trong team này.</p>
                         ) : (
-                          teamMembers.map((teamMember) => (
+                          visibleTeamMembers.map((teamMember) => (
                             <div
                               key={teamMember.id}
                               className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/25 px-2 py-1.5"
@@ -1338,15 +1499,33 @@ export function WorkspaceDetailPage() {
                                 <p className="truncate text-[11px] text-muted-foreground">{teamMember.user.email}</p>
                               </div>
                               {canManageWorkspace && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-xs"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
-                                  disabled={removeTeamMemberMutation.isPending}
-                                >
-                                  <Trash2 className="size-3" />
-                                </Button>
+                                (() => {
+                                  const teamMemberDeleteKey = `team-member-${team.id}-${teamMember.user.userId}`
+                                  const teamMemberPendingDelete = pendingDeleteByKey.get(teamMemberDeleteKey)
+
+                                  return (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon-xs"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => {
+                                        openQuickDeleteConfirm({
+                                          key: teamMemberDeleteKey,
+                                          entityType: 'team-member',
+                                          entityId: teamMember.id,
+                                          title: `${teamMember.user.firstName} ${teamMember.user.lastName}`,
+                                          userId: teamMember.user.userId,
+                                          teamId: team.id,
+                                        })
+                                      }}
+                                      disabled={Boolean(teamMemberPendingDelete)}
+                                    >
+                                      {teamMemberPendingDelete?.status === 'finalizing'
+                                        ? <Loader2 className="size-3 animate-spin" />
+                                        : <Trash2 className="size-3" />}
+                                    </Button>
+                                  )
+                                })()
                               )}
                             </div>
                           ))
@@ -1432,10 +1611,44 @@ export function WorkspaceDetailPage() {
         </Dialog>
       )}
 
+      {canManageWorkspace && (
+        <Dialog
+          open={quickDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setQuickDeleteDialogOpen(open)
+            if (!open) {
+              setQuickDeleteIntent(null)
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{quickDeleteIntent?.entityType === 'invite' ? 'Thu hồi invite' : 'Xác nhận xóa'}</DialogTitle>
+              <DialogDescription>
+                {quickDeleteIntent
+                  ? `Bạn có chắc muốn ${PENDING_ENTITY_ACTION[quickDeleteIntent.entityType]} ${PENDING_ENTITY_LABEL[quickDeleteIntent.entityType]} "${quickDeleteIntent.title}" không? Sau khi xác nhận, bạn có 5 giây để hoàn tác.`
+                  : 'Xác nhận thao tác xóa.'}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setQuickDeleteDialogOpen(false)}>Hủy</Button>
+              <Button
+                variant="destructive"
+                onClick={scheduleQuickDeleteFromIntent}
+                disabled={!quickDeleteIntent || selectedQuickDeletePending}
+              >
+                {selectedQuickDeletePending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                Xác nhận
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <DeleteUndoStack
         items={pendingDeletes.map((pendingDelete) => ({
           id: pendingDelete.key,
-          entityLabel: pendingDelete.entityType,
+          entityLabel: PENDING_ENTITY_LABEL[pendingDelete.entityType],
           title: pendingDelete.title,
           expiresAt: pendingDelete.expiresAt,
           windowMs: DELETE_UNDO_WINDOW_MS,

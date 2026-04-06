@@ -578,7 +578,9 @@ export function KanbanPage() {
                       <SelectContent>
                         <SelectItem value="__none">Không chọn goal</SelectItem>
                         {(goalsQuery.data?.content ?? []).map((g) => (
-                          <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                          <SelectItem key={g.id} value={String(g.id)}>
+                            <span className="block max-w-60 truncate" title={g.title}>{g.title}</span>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
