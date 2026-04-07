@@ -222,13 +222,8 @@
 
 .chronelis-auth-strength {
   margin-top: 0.5rem;
-  padding: 0.55rem 0.75rem 0.62rem;
-  border-radius: 0.92rem;
-  border: 1px solid color-mix(in oklab, var(--border) 84%, transparent);
-  background:
-    linear-gradient(180deg,
-      color-mix(in oklab, var(--card) 92%, transparent),
-      color-mix(in oklab, var(--muted) 58%, transparent));
+  display: grid;
+  gap: 0.28rem;
   animation: auth-strength-enter 0.22s var(--auth-ease-soft);
 }
 
@@ -240,21 +235,23 @@
 }
 
 .chronelis-auth-strength-label {
-  font-size: 0.67rem;
-  letter-spacing: 0.02em;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: color-mix(in oklab, var(--muted-foreground) 90%, transparent);
 }
 
 .chronelis-auth-strength-value {
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: color-mix(in oklab, var(--foreground) 86%, transparent);
 }
 
 .chronelis-auth-strength-track {
-  margin-top: 0.34rem;
+  margin-top: 0.08rem;
   width: 100%;
-  height: 0.42rem;
+  height: 0.36rem;
   border-radius: 9999px;
   background: color-mix(in oklab, var(--muted) 84%, transparent);
   overflow: hidden;
@@ -296,10 +293,32 @@
 }
 
 .chronelis-auth-strength-helper {
-  margin-top: 0.3rem;
-  font-size: 0.66rem;
-  line-height: 1.35;
+  font-size: 0.69rem;
+  font-weight: 500;
+  line-height: 1.45;
   color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+}
+
+.chronelis-auth-strength--weak .chronelis-auth-strength-value,
+.chronelis-auth-strength--weak .chronelis-auth-strength-helper {
+  color: color-mix(in oklab, #dc2626 74%, var(--foreground) 26%);
+}
+
+.chronelis-auth-strength--fair .chronelis-auth-strength-value,
+.chronelis-auth-strength--fair .chronelis-auth-strength-helper {
+  color: color-mix(in oklab, #ea580c 76%, var(--foreground) 24%);
+}
+
+.chronelis-auth-strength--good .chronelis-auth-strength-value,
+.chronelis-auth-strength--good .chronelis-auth-strength-helper {
+  color: color-mix(in oklab, #ca8a04 72%, var(--foreground) 28%);
+}
+
+.chronelis-auth-strength--strong .chronelis-auth-strength-value,
+.chronelis-auth-strength--strong .chronelis-auth-strength-helper,
+.chronelis-auth-strength--very-strong .chronelis-auth-strength-value,
+.chronelis-auth-strength--very-strong .chronelis-auth-strength-helper {
+  color: color-mix(in oklab, #15803d 74%, var(--foreground) 26%);
 }
 
 @keyframes auth-strength-enter {
@@ -626,18 +645,6 @@
 
 .dark .chronelis-auth-strength-track {
   background: color-mix(in oklab, var(--muted) 78%, black 22%);
-}
-
-.dark .chronelis-auth-strength {
-  border-color: color-mix(in oklab, var(--border) 90%, transparent);
-  background:
-    linear-gradient(180deg,
-      color-mix(in oklab, var(--card) 84%, black 16%),
-      color-mix(in oklab, var(--muted) 72%, black 28%));
-}
-
-.dark .chronelis-auth-strength-value {
-  color: color-mix(in oklab, var(--foreground) 92%, transparent);
 }
 
 /* Responsive */

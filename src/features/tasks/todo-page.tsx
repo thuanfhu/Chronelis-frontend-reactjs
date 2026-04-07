@@ -306,6 +306,7 @@ export function TodoPage() {
         applyTaskCompletion(tasks, {
           taskId,
           isCompleted,
+          statuses: statusesQuery.data,
         }),
       )
 

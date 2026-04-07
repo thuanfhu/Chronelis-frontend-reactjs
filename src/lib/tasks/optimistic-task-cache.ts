@@ -25,6 +25,7 @@ interface ReorderTaskParams {
 interface CompletionParams {
   taskId: number
   isCompleted: boolean
+  statuses?: TaskStatus[]
 }
 
 interface ScheduleUpdateParams {
@@ -133,15 +134,74 @@ export function applyTaskReorder(tasks: Task[], params: ReorderTaskParams): Task
 
 export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Task[] {
   const nowIso = new Date().toISOString()
-  return tasks.map((task) => {
-    if (task.id !== params.taskId) return task
+  const currentTask = tasks.find((task) => task.id === params.taskId)
+  if (!currentTask) {
+    return tasks
+  }
 
-    return {
-      ...task,
-      isCompleted: params.isCompleted,
-      completedAt: params.isCompleted ? nowIso : undefined,
+  const statusById = new Map<number, TaskStatus>()
+  for (const task of tasks) {
+    statusById.set(task.status.id, { ...task.status })
+  }
+  for (const status of params.statuses ?? []) {
+    statusById.set(status.id, { ...status })
+  }
+
+  const orderedStatuses = [...statusById.values()].sort((left, right) => {
+    if (left.position !== right.position) {
+      return left.position - right.position
     }
+    return left.id - right.id
   })
+
+  const firstClosedStatus = orderedStatuses.find((status) => status.isClosed)
+  const firstOpenStatus = orderedStatuses.find((status) => !status.isClosed)
+
+  let targetStatus = currentTask.status
+  if (params.isCompleted && !currentTask.status.isClosed && firstClosedStatus) {
+    targetStatus = firstClosedStatus
+  }
+  if (!params.isCompleted && currentTask.status.isClosed && firstOpenStatus) {
+    targetStatus = firstOpenStatus
+  }
+
+  if (targetStatus.id === currentTask.status.id) {
+    return tasks.map((task) => {
+      if (task.id !== params.taskId) return task
+
+      return {
+        ...task,
+        status: { ...targetStatus },
+        isCompleted: params.isCompleted,
+        completedAt: params.isCompleted ? nowIso : undefined,
+      }
+    })
+  }
+
+  const statusMap = mapByStatus(tasks)
+  const sourceTasks = statusMap.get(currentTask.status.id)
+  if (!sourceTasks) {
+    return tasks
+  }
+
+  const sourceIndex = sourceTasks.findIndex((task) => task.id === params.taskId)
+  if (sourceIndex < 0) {
+    return tasks
+  }
+
+  const [movingTask] = sourceTasks.splice(sourceIndex, 1)
+  statusMap.set(currentTask.status.id, reindexBoardPositions(sourceTasks))
+
+  const targetTasks = statusMap.get(targetStatus.id) ?? []
+  targetTasks.push({
+    ...movingTask,
+    status: { ...targetStatus },
+    isCompleted: params.isCompleted,
+    completedAt: params.isCompleted ? nowIso : undefined,
+  })
+  statusMap.set(targetStatus.id, reindexBoardPositions(targetTasks))
+
+  return flattenStatusMap(statusMap)
 }
 
 export function applyTaskDelete(tasks: Task[], taskId: number): Task[] {

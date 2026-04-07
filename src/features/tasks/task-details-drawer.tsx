@@ -31,6 +31,7 @@ import {
 import { taskApi } from '@/lib/api/modules/task-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
+import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import {
@@ -151,6 +152,14 @@ export function TaskDetailsDrawer() {
     enabled: hasTask && Boolean(taskQuery.data?.projectId),
   })
 
+  const statusesQuery = useQuery({
+    queryKey: taskQuery.data?.projectId
+      ? queryKeys.statuses.byProject(taskQuery.data.projectId)
+      : ['task-statuses', 'task-drawer', taskId],
+    queryFn: () => taskStatusApi.listByProject(taskQuery.data!.projectId),
+    enabled: hasTask && Boolean(taskQuery.data?.projectId),
+  })
+
   const resetTransientState = () => {
     setNewComment('')
     setEditTitle(null)
@@ -198,6 +207,17 @@ export function TaskDetailsDrawer() {
 
       const currentTask = taskQuery.data
       const nextCompleted = !currentTask.isCompleted
+      const orderedStatuses = [...(statusesQuery.data ?? [currentTask.status])].sort((left, right) => {
+        if (left.position !== right.position) {
+          return left.position - right.position
+        }
+        return left.id - right.id
+      })
+      const firstClosedStatus = orderedStatuses.find((status) => status.isClosed)
+      const firstOpenStatus = orderedStatuses.find((status) => !status.isClosed)
+      const nextStatus = nextCompleted
+        ? (currentTask.status.isClosed ? currentTask.status : (firstClosedStatus ?? currentTask.status))
+        : (currentTask.status.isClosed ? (firstOpenStatus ?? currentTask.status) : currentTask.status)
 
       await Promise.all([
         queryClient.cancelQueries({ queryKey: queryKeys.tasks.detail(currentTask.id) }),
@@ -211,6 +231,7 @@ export function TaskDetailsDrawer() {
         if (!oldTask) return oldTask
         return {
           ...oldTask,
+          status: nextStatus,
           isCompleted: nextCompleted,
           completedAt: nextCompleted ? new Date().toISOString() : undefined,
         }
@@ -220,6 +241,7 @@ export function TaskDetailsDrawer() {
         applyTaskCompletion(tasks, {
           taskId: currentTask.id,
           isCompleted: nextCompleted,
+          statuses: statusesQuery.data,
         }),
       )
 
@@ -288,10 +310,6 @@ export function TaskDetailsDrawer() {
       const priorityChanged = nextPriority !== currentTask.priority
       const goalChanged = nextGoalId !== currentGoalId
 
-      if (goalChanged && nextGoalId == null) {
-        throw new Error('Vui lòng chọn goal khác. Task hiện tại chưa hỗ trợ bỏ liên kết goal trực tiếp.')
-      }
-
       const startValue = editStartDateTime.trim()
       const endValue = editEndDateTime.trim()
       const hasStartValue = startValue.length > 0
@@ -331,7 +349,8 @@ export function TaskDetailsDrawer() {
           title: nextTitle,
           description: nextDescription || undefined,
           priority: nextPriority,
-          goalId: goalChanged ? (nextGoalId ?? undefined) : undefined,
+          goalId: goalChanged && nextGoalId != null ? nextGoalId : undefined,
+          clearGoal: goalChanged && nextGoalId == null ? true : undefined,
         })
       }
 
@@ -660,7 +679,7 @@ export function TaskDetailsDrawer() {
                             <SelectValue placeholder="Không có goal" />
                           </SelectTrigger>
                           <SelectContent>
-                            {!task.goalId && <SelectItem value="__none">Không có goal</SelectItem>}
+                            <SelectItem value="__none">Không có goal</SelectItem>
                             {projectGoals.map((goal) => (
                               <SelectItem key={goal.id} value={String(goal.id)}>
                                 <span className="block max-w-65 truncate" title={goal.title}>{goal.title}</span>
