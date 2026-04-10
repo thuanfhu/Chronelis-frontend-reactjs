@@ -18,6 +18,7 @@ import { TaskNotesPage } from '@/features/tasks/task-notes-page'
 import { NotificationsPage } from '@/features/notifications/notifications-page'
 import { JoinByInvitePage } from '@/features/workspaces/join-by-invite-page'
 import { ProfilePage } from '@/features/profile/profile-page'
+import { GoalTasksPage } from '@/features/goals/goal-tasks-page'
 import { AdminDashboardPage } from '@/features/admin/admin-dashboard-page'
 import { AdminShell } from '@/features/admin/layout/admin-shell'
 
@@ -113,6 +114,7 @@ export function AppRouter() {
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
+          <Route path="/workspaces/:workspaceId/projects/:projectId/goals/:goalId/tasks" element={<GoalTasksPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />

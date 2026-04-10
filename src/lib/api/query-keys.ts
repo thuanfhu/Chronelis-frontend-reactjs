@@ -15,6 +15,7 @@ export const queryKeys = {
   },
   goals: {
     byProject: (projectId: number, page: number, size: number) => ['goals', projectId, page, size] as const,
+    detail: (goalId: number) => ['goals', 'detail', goalId] as const,
   },
   statuses: {
     byProject: (projectId: number) => ['task-statuses', projectId] as const,

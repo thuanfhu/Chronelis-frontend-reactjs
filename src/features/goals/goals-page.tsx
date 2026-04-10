@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   Plus,
@@ -16,6 +16,8 @@ import {
   PlayCircle,
   PauseCircle,
   CheckCircle2,
+  ListTodo,
+  ArrowRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -570,32 +572,23 @@ export function GoalsPage() {
                     </div>
                   )}
 
-                  <div className="mt-3 rounded-lg border border-border/70 bg-muted/25 p-2.5">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tasks theo thứ tự</p>
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                        {orderedGoalTasks.length}
-                      </Badge>
+                  <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <ListTodo className="size-3.5" />
+                      <span>
+                        {orderedGoalTasks.length === 0
+                          ? 'Chưa có task'
+                          : `${orderedGoalTasks.length} task${orderedGoalTasks.length > 1 ? 's' : ''}`}
+                      </span>
                     </div>
-
-                    {orderedGoalTasks.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground">Goal này chưa có task nào.</p>
-                    ) : (
-                      <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
-                        {orderedGoalTasks.map((task, index) => (
-                          <div
-                            key={task.id}
-                            className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1 text-[11px]"
-                          >
-                            <p className="min-w-0 truncate">
-                              <span className="mr-1 text-muted-foreground">{index + 1}.</span>
-                              {task.title}
-                            </p>
-                            <span className="shrink-0 text-[10px] text-muted-foreground">{task.status.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <Link
+                      to={`/workspaces/${workspaceId}/projects/${projectId}/goals/${goal.id}/tasks`}
+                      className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Xem tasks
+                      <ArrowRight className="size-3" />
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

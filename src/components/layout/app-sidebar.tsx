@@ -705,29 +705,20 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           onClick={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
         >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
-            onClick={() => {
-              openProjectCreateDialog()
-              setSidebarContextMenu(null)
-            }}
-          >
-            <Plus className="size-3.5" />
-            Create Project
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
-            onClick={() => {
-              const contextProject = sidebarContextMenu.target.project
-              openGoalCreateDialog(contextProject)
-              setSidebarContextMenu(null)
-            }}
-          >
-            <Target className="size-3.5" />
-            Create Goal
-          </button>
+          {sidebarContextMenu.target.kind === 'project' && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
+              onClick={() => {
+                const contextProject = sidebarContextMenu.target.project
+                openGoalCreateDialog(contextProject)
+                setSidebarContextMenu(null)
+              }}
+            >
+              <Target className="size-3.5" />
+              Create Goal
+            </button>
+          )}
           <button
             type="button"
             className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
@@ -1054,7 +1045,7 @@ function ProjectItem({
                 return (
                   <NavLink
                     key={goal.id}
-                    to={`/workspaces/${workspaceId}/projects/${project.id}?view=goals`}
+                    to={`/workspaces/${workspaceId}/projects/${project.id}/goals/${goal.id}/tasks`}
                     className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
                     onContextMenu={(event) => onOpenContextMenu(event, { kind: 'goal', goal, project })}
                   >

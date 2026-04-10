@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound } from 'lucide-react'
+import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -41,17 +42,54 @@ import { useAuthStore } from '@/app/store/auth-store'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { Project, ProjectStatusType, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
 
-const roleIcon = {
+/** Human-friendly display name for workspace member roles */
+const roleDisplayName: Record<WorkspaceMemberRoleType, string> = {
+  OWNER: 'Chủ sở hữu',
+  ADMIN: 'Quản lý',
+  MEMBER: 'Thành viên',
+}
+
+/** Short description shown in tooltip for each role */
+const roleDescription: Record<WorkspaceMemberRoleType, string> = {
+  OWNER: 'Tạo workspace, có toàn quyền: xóa workspace, quản lý thành viên, phân quyền mọi người.',
+  ADMIN: 'Quản lý workspace ủy quyền: tạo project, tào team, thêm/xóa thành viên. Không thể xóa workspace.',
+  MEMBER: 'Thành viên thường: xem project, làm việc với task được giao. Không tạo hoặc xóa project.',
+}
+
+const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
   OWNER: Crown,
   ADMIN: Shield,
   MEMBER: User,
 }
 
-const roleBadgeVariant = {
-  OWNER: 'default' as const,
-  ADMIN: 'secondary' as const,
-  MEMBER: 'outline' as const,
+const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
+  OWNER: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
+  ADMIN: 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-200',
+  MEMBER: 'border-border bg-muted text-muted-foreground',
 }
+
+function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
+  const Icon = roleIcon[role]
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={`inline-flex h-6 cursor-default items-center gap-1 rounded-md border px-2 text-[11px] font-semibold ${roleBadgeClassName[role]}`}
+        >
+          <Icon className="size-3 shrink-0" />
+          {roleDisplayName[role]}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-60 text-xs">
+        <p className="font-semibold">{roleDisplayName[role]}</p>
+        <p className="mt-0.5 text-muted-foreground">{roleDescription[role]}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+const MEMBER_PAGE_SIZE = 10
+const TEAM_PAGE_SIZE = 6
 
 type WorkspaceDetailDeletePayload = {
   kind: 'project' | 'workspace' | 'team'
@@ -73,6 +111,12 @@ export function WorkspaceDetailPage() {
   const [memberDialogOpen, setMemberDialogOpen] = useState(false)
   const [memberUserId, setMemberUserId] = useState('')
   const [memberRole, setMemberRole] = useState<WorkspaceMemberRoleType>('MEMBER')
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberRoleFilter, setMemberRoleFilter] = useState<WorkspaceMemberRoleType | 'ALL'>('ALL')
+  const [memberSortKey, setMemberSortKey] = useState<'name' | 'role' | 'joined'>('role')
+  const [memberPage, setMemberPage] = useState(1)
+  const [teamPage, setTeamPage] = useState(1)
+  const [teamSearch, setTeamSearch] = useState('')
   const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
   const [editWsName, setEditWsName] = useState('')
   const [editWsInitialName, setEditWsInitialName] = useState('')
@@ -469,11 +513,47 @@ export function WorkspaceDetailPage() {
     || editProjectManagerTeamId !== editProjectInitialManagerTeamId
   )
 
+  const ROLE_SORT_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, ADMIN: 1, MEMBER: 2 }
+
+  const filteredMembers = useMemo(() => {
+    let list = members.slice()
+    const q = memberSearch.trim().toLowerCase()
+    if (q) {
+      list = list.filter((m) => {
+        const fullName = `${m.user.firstName} ${m.user.lastName}`.toLowerCase()
+        return fullName.includes(q) || m.user.email.toLowerCase().includes(q)
+      })
+    }
+    if (memberRoleFilter !== 'ALL') {
+      list = list.filter((m) => m.role === memberRoleFilter)
+    }
+    list.sort((a, b) => {
+      if (memberSortKey === 'role') return ROLE_SORT_ORDER[a.role] - ROLE_SORT_ORDER[b.role]
+      if (memberSortKey === 'name') return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, 'vi')
+      return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+    })
+    return list
+  }, [members, memberSearch, memberRoleFilter, memberSortKey])
+
+  const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBER_PAGE_SIZE))
+  const memberCurrentPage = Math.min(memberPage, memberTotalPages)
+  const paginatedMembers = filteredMembers.slice((memberCurrentPage - 1) * MEMBER_PAGE_SIZE, memberCurrentPage * MEMBER_PAGE_SIZE)
+
+  const filteredTeams = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase()
+    if (!q) return visibleTeams
+    return visibleTeams.filter((t) => t.name.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q)))
+  }, [visibleTeams, teamSearch])
+
+  const teamTotalPages = Math.max(1, Math.ceil(filteredTeams.length / TEAM_PAGE_SIZE))
+  const teamCurrentPage = Math.min(teamPage, teamTotalPages)
+  const paginatedTeams = filteredTeams.slice((teamCurrentPage - 1) * TEAM_PAGE_SIZE, teamCurrentPage * TEAM_PAGE_SIZE)
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={workspaceQuery.data.name}
-        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${currentRole}`}
+        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${roleDisplayName[currentRole]}`}
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -615,7 +695,7 @@ export function WorkspaceDetailPage() {
                               <SelectItem value="none">Không gán</SelectItem>
                               {members.map((member) => (
                                 <SelectItem key={member.user.userId} value={member.user.userId}>
-                                  {member.user.firstName} {member.user.lastName} ({member.role})
+                                  {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -823,7 +903,7 @@ export function WorkspaceDetailPage() {
                           <SelectItem value="none">Không gán</SelectItem>
                           {members.map((member) => (
                             <SelectItem key={member.user.userId} value={member.user.userId}>
-                              {member.user.firstName} {member.user.lastName} ({member.role})
+                              {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -913,14 +993,63 @@ export function WorkspaceDetailPage() {
         </TabsContent>
 
         {/* Members tab */}
-        <TabsContent value="members" className="mt-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Quản lý thành viên và phân quyền</p>
-              {!canManageWorkspace && (
-                <p className="text-xs text-muted-foreground">Chỉ owner có quyền thêm/xóa thành viên và đổi role.</p>
-              )}
+        <TabsContent value="members" className="mt-4 space-y-4">
+          {/* Role legend */}
+          <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Info className="size-3.5" />
+              Phân cấp vai trò trong workspace
             </div>
+            <div className="flex flex-wrap gap-3">
+              {(['OWNER', 'ADMIN', 'MEMBER'] as const).map((r) => {
+                const Icon = roleIcon[r]
+                return (
+                  <div key={r} className="flex min-w-44 flex-col gap-0.5">
+                    <span className={`inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClassName[r]}`}>
+                      <Icon className="size-3" />
+                      {roleDisplayName[r]}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{roleDescription[r]}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-48 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={memberSearch}
+                onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1) }}
+                placeholder="Tìm tên hoặc email..."
+                className="h-8 pl-8 text-xs"
+              />
+            </div>
+            <Select value={memberRoleFilter} onValueChange={(v) => { setMemberRoleFilter(v as WorkspaceMemberRoleType | 'ALL'); setMemberPage(1) }}>
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue placeholder="Tất cả vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả vai trò</SelectItem>
+                <SelectItem value="OWNER">Chủ sở hữu</SelectItem>
+                <SelectItem value="ADMIN">Quản lý</SelectItem>
+                <SelectItem value="MEMBER">Thành viên</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={memberSortKey} onValueChange={(v) => setMemberSortKey(v as 'name' | 'role' | 'joined')}>
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <ArrowUpDown className="mr-1.5 size-3" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="role">Sắp xếp theo vai trò</SelectItem>
+                <SelectItem value="name">Sắp xếp theo tên</SelectItem>
+                <SelectItem value="joined">Sắp xếp theo ngày tham gia</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="ml-auto text-xs text-muted-foreground">{filteredMembers.length}/{members.length} thành viên</span>
             {canManageWorkspace && (
               <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
                 <DialogTrigger asChild>
@@ -955,10 +1084,11 @@ export function WorkspaceDetailPage() {
                             size="sm"
                             onClick={() => setMemberRole(r)}
                           >
-                            {r}
+                            {roleDisplayName[r]}
                           </Button>
                         ))}
                       </div>
+                      <p className="text-xs text-muted-foreground">{roleDescription[memberRole]}</p>
                     </div>
                   </div>
                   <DialogFooter>
@@ -973,63 +1103,105 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          <div className="space-y-2">
-            {members.map((member) => {
-              const RoleIcon = roleIcon[member.role]
-              return (
-                <div key={member.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
-                  <Avatar className="size-9 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                      {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{member.user.firstName} {member.user.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{member.user.email}</p>
-                  </div>
-                  <Badge variant={roleBadgeVariant[member.role]} className="gap-1">
-                    <RoleIcon className="size-3" />
-                    {member.role}
-                  </Badge>
-                  {canManageWorkspace && member.role !== 'OWNER' && member.user.userId !== currentUserId && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="size-8 p-0">···</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
-                          <DropdownMenuItem
-                            key={r}
-                            disabled={member.role === r}
-                            onClick={() => {
-                              workspaceApi
-                                .updateMemberRole(workspaceId, member.user.userId, r)
-                                .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                                .catch((err: Error) => toast.error('Cập nhật role thất bại', { description: err.message }))
-                            }}
-                          >
-                            Đổi thành {r}
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            workspaceApi
-                              .removeMember(workspaceId, member.user.userId)
-                              .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                              .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
-                          }}
-                        >
-                          <Trash2 className="mr-2 size-3.5" />
-                          Xóa khỏi workspace
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          {/* Member list */}
+          {paginatedMembers.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-10">
+                <Users className="mb-3 size-8 text-muted-foreground/30" />
+                <p className="text-sm font-medium">Không tìm thấy thành viên</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <div className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span />
+                <span>Thành viên</span>
+                <span>Vai trò</span>
+                {canManageWorkspace && <span />}
+              </div>
+              <div className="divide-y divide-border/40">
+                {paginatedMembers.map((member) => {
+                  const isOwnerMember = member.role === 'OWNER'
+                  const isSelf = member.user.userId === currentUserId
+                  const joinedDate = new Date(member.joinedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  return (
+                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
+                      <Avatar className="size-9 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                          {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-sm font-medium">{member.user.firstName} {member.user.lastName}</p>
+                          {isSelf && <Badge variant="outline" className="h-4 px-1 text-[9px]">Bạn</Badge>}
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">{member.user.email}</p>
+                        <p className="text-[10px] text-muted-foreground/60">Tham gia: {joinedDate}</p>
+                      </div>
+                      <RoleBadge role={member.role} />
+                      {canManageWorkspace && !isOwnerMember && !isSelf ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                              <DropdownMenuItem
+                                key={r}
+                                disabled={member.role === r}
+                                onClick={() => {
+                                  workspaceApi
+                                    .updateMemberRole(workspaceId, member.user.userId, r)
+                                    .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
+                                    .catch((err: Error) => toast.error('Cập nhật vai trò thất bại', { description: err.message }))
+                                }}
+                              >
+                                Đổi thành {roleDisplayName[r]}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                workspaceApi
+                                  .removeMember(workspaceId, member.user.userId)
+                                  .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
+                                  .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
+                              }}
+                            >
+                              <Trash2 className="mr-2 size-3.5" />
+                              Xóa khỏi workspace
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : <span />}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Member pagination */}
+          {memberTotalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Trang {memberCurrentPage}/{memberTotalPages}</p>
+              <div className="flex items-center gap-1.5">
+                <Button variant="outline" size="icon" className="size-8" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
+                  <ChevronLeft className="size-3.5" />
+                </Button>
+                {Array.from({ length: memberTotalPages }, (_, i) => i + 1).map((p) => (
+                  <Button key={p} variant={memberCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-8 text-xs" onClick={() => setMemberPage(p)}>{p}</Button>
+                ))}
+                <Button variant="outline" size="icon" className="size-8" disabled={memberCurrentPage === memberTotalPages} onClick={() => setMemberPage((p) => p + 1)}>
+                  <ChevronRight className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Invites tab */}
@@ -1060,7 +1232,7 @@ export function WorkspaceDetailPage() {
                       <div className="flex gap-2">
                         {(['ADMIN', 'MEMBER'] as const).map((r) => (
                           <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
-                            {r}
+                            {roleDisplayName[r]}
                           </Button>
                         ))}
                       </div>
@@ -1143,14 +1315,18 @@ export function WorkspaceDetailPage() {
         </TabsContent>
 
         {/* Teams tab */}
-        <TabsContent value="teams" className="mt-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Quản lý team trong workspace</p>
-              {!canManageWorkspace && (
-                <p className="text-xs text-muted-foreground">Chỉ owner có quyền tạo hoặc xóa team.</p>
-              )}
+        <TabsContent value="teams" className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-48 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={teamSearch}
+                onChange={(e) => { setTeamSearch(e.target.value); setTeamPage(1) }}
+                placeholder="Tìm team theo tên..."
+                className="h-8 pl-8 text-xs"
+              />
             </div>
+            <span className="text-xs text-muted-foreground">{filteredTeams.length}/{visibleTeams.length} teams</span>
             {canManageWorkspace && (
               <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
                 <DialogTrigger asChild>
@@ -1186,144 +1362,168 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          {visibleTeams.length === 0 ? (
+          {filteredTeams.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium">Chưa có team nào</p>
-                <p className="mt-1 text-xs text-muted-foreground">Tạo team để nhóm thành viên</p>
+                <p className="text-sm font-medium">{visibleTeams.length === 0 ? 'Chưa có team nào' : 'Không tìm thấy team'}</p>
+                {visibleTeams.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Tạo team để nhóm thành viên</p>}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {visibleTeams.map((team) => {
-                const teamMembers = teamMembersByTeamId.get(team.id) ?? []
-                const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
-                const availableWorkspaceMembers = members.filter(
-                  (member) => !teamMemberIds.has(member.user.userId),
-                )
-                const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                {paginatedTeams.map((team) => {
+                  const teamMembers = teamMembersByTeamId.get(team.id) ?? []
+                  const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
+                  const availableWorkspaceMembers = members.filter(
+                    (member) => !teamMemberIds.has(member.user.userId),
+                  )
+                  const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
 
-                return (
-                  <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
-                        {canManageWorkspace && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                            onClick={() => {
-                              void scheduleWorkspaceDelete({
-                                key: `team-${team.id}`,
-                                label: team.name,
-                                payload: {
-                                  kind: 'team',
-                                  id: team.id,
-                                  name: team.name,
-                                },
-                              })
-                            }}
-                            disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                      {team.description && <p className="text-xs text-muted-foreground">{team.description}</p>}
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Users className="size-3" />
-                        <span>{team.memberCount} thành viên</span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        {teamMembers.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Chưa có thành viên trong team này.</p>
-                        ) : (
-                          teamMembers.map((teamMember) => (
-                            <div
-                              key={teamMember.id}
-                              className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/25 px-2 py-1.5"
-                            >
-                              <Avatar className="size-7 shrink-0">
-                                <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                  {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium">
-                                  {teamMember.user.firstName} {teamMember.user.lastName}
-                                </p>
-                                <p className="truncate text-[11px] text-muted-foreground">{teamMember.user.email}</p>
-                              </div>
-                              {canManageWorkspace && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon-xs"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
-                                  disabled={removeTeamMemberMutation.isPending}
-                                >
-                                  <Trash2 className="size-3" />
-                                </Button>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {canManageWorkspace && (
-                        <div className="rounded-md border border-border/70 bg-muted/35 p-2.5">
-                          <p className="mb-2 text-[11px] font-medium text-muted-foreground">Thêm thành viên vào team</p>
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <Select
-                              value={selectedUserId || 'none'}
-                              onValueChange={(value) => {
-                                setTeamMemberDraftByTeamId((prev) => ({
-                                  ...prev,
-                                  [team.id]: value === 'none' ? '' : value,
-                                }))
-                              }}
-                            >
-                              <SelectTrigger className="sm:flex-1">
-                                <SelectValue placeholder="Chọn thành viên workspace" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Chọn thành viên</SelectItem>
-                                {availableWorkspaceMembers.map((member) => (
-                                  <SelectItem key={member.user.userId} value={member.user.userId}>
-                                    {member.user.firstName} {member.user.lastName} ({member.role})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                if (!selectedUserId) {
-                                  return
-                                }
-                                addTeamMemberMutation.mutate({ teamId: team.id, userId: selectedUserId })
-                              }}
-                              disabled={addTeamMemberMutation.isPending || !selectedUserId}
-                            >
-                              {addTeamMemberMutation.isPending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
-                              Thêm
-                            </Button>
+                  return (
+                    <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
+                            {team.description && <p className="mt-0.5 text-xs text-muted-foreground">{team.description}</p>}
                           </div>
-                          {availableWorkspaceMembers.length === 0 && (
-                            <p className="mt-2 text-[11px] text-muted-foreground">Tất cả thành viên workspace đã thuộc team này.</p>
+                          {canManageWorkspace && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                              onClick={() => {
+                                void scheduleWorkspaceDelete({
+                                  key: `team-${team.id}`,
+                                  label: team.name,
+                                  payload: { kind: 'team', id: team.id, name: team.name },
+                                })
+                              }}
+                              disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
                           )}
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pt-0">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Users className="size-3" />
+                          <span>{team.memberCount} thành viên</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {teamMembers.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Chưa có thành viên trong team này.</p>
+                          ) : (
+                            teamMembers.map((teamMember) => {
+                              const workspaceMember = members.find((m) => m.user.userId === teamMember.user.userId)
+                              return (
+                                <div
+                                  key={teamMember.id}
+                                  className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/25 px-2 py-1.5"
+                                >
+                                  <Avatar className="size-7 shrink-0">
+                                    <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                      {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs font-medium">
+                                      {teamMember.user.firstName} {teamMember.user.lastName}
+                                    </p>
+                                    <p className="truncate text-[11px] text-muted-foreground">{teamMember.user.email}</p>
+                                  </div>
+                                  {workspaceMember && (
+                                    <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold ${roleBadgeClassName[workspaceMember.role]}`}>
+                                      {roleDisplayName[workspaceMember.role]}
+                                    </span>
+                                  )}
+                                  {canManageWorkspace && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-6 shrink-0 text-destructive hover:text-destructive"
+                                      onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
+                                      disabled={removeTeamMemberMutation.isPending}
+                                    >
+                                      <Trash2 className="size-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+
+                        {canManageWorkspace && (
+                          <div className="rounded-md border border-border/70 bg-muted/35 p-2.5">
+                            <p className="mb-2 text-[11px] font-medium text-muted-foreground">Thêm thành viên vào team</p>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <Select
+                                value={selectedUserId || 'none'}
+                                onValueChange={(value) => {
+                                  setTeamMemberDraftByTeamId((prev) => ({
+                                    ...prev,
+                                    [team.id]: value === 'none' ? '' : value,
+                                  }))
+                                }}
+                              >
+                                <SelectTrigger className="sm:flex-1">
+                                  <SelectValue placeholder="Chọn thành viên workspace" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Chọn thành viên</SelectItem>
+                                  {availableWorkspaceMembers.map((member) => (
+                                    <SelectItem key={member.user.userId} value={member.user.userId}>
+                                      {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (!selectedUserId) return
+                                  addTeamMemberMutation.mutate({ teamId: team.id, userId: selectedUserId })
+                                }}
+                                disabled={addTeamMemberMutation.isPending || !selectedUserId}
+                              >
+                                {addTeamMemberMutation.isPending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
+                                Thêm
+                              </Button>
+                            </div>
+                            {availableWorkspaceMembers.length === 0 && (
+                              <p className="mt-2 text-[11px] text-muted-foreground">Tất cả thành viên workspace đã thuộc team này.</p>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {/* Team pagination */}
+              {teamTotalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Trang {teamCurrentPage}/{teamTotalPages} · {filteredTeams.length} teams</p>
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="icon" className="size-8" disabled={teamCurrentPage === 1} onClick={() => setTeamPage((p) => p - 1)}>
+                      <ChevronLeft className="size-3.5" />
+                    </Button>
+                    {Array.from({ length: teamTotalPages }, (_, i) => i + 1).map((p) => (
+                      <Button key={p} variant={teamCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-8 text-xs" onClick={() => setTeamPage(p)}>{p}</Button>
+                    ))}
+                    <Button variant="outline" size="icon" className="size-8" disabled={teamCurrentPage === teamTotalPages} onClick={() => setTeamPage((p) => p + 1)}>
+                      <ChevronRight className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
