@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
+import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -36,9 +37,9 @@ import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
 import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
-import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { useAuthStore } from '@/app/store/auth-store'
-import type { PageResult, Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
+import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
+import type { Project, ProjectStatusType, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
 
 const roleIcon = {
   OWNER: Crown,
@@ -50,6 +51,12 @@ const roleBadgeVariant = {
   OWNER: 'default' as const,
   ADMIN: 'secondary' as const,
   MEMBER: 'outline' as const,
+}
+
+type WorkspaceDetailDeletePayload = {
+  kind: 'project' | 'workspace' | 'team'
+  id: number
+  name: string
 }
 
 export function WorkspaceDetailPage() {
@@ -68,12 +75,17 @@ export function WorkspaceDetailPage() {
   const [memberRole, setMemberRole] = useState<WorkspaceMemberRoleType>('MEMBER')
   const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
   const [editWsName, setEditWsName] = useState('')
+  const [editWsInitialName, setEditWsInitialName] = useState('')
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false)
   const [editProjectId, setEditProjectId] = useState<number | null>(null)
   const [editProjectName, setEditProjectName] = useState('')
   const [editProjectDescription, setEditProjectDescription] = useState('')
   const [editProjectManagerUserId, setEditProjectManagerUserId] = useState('')
   const [editProjectManagerTeamId, setEditProjectManagerTeamId] = useState('')
+  const [editProjectInitialName, setEditProjectInitialName] = useState('')
+  const [editProjectInitialDescription, setEditProjectInitialDescription] = useState('')
+  const [editProjectInitialManagerUserId, setEditProjectInitialManagerUserId] = useState('')
+  const [editProjectInitialManagerTeamId, setEditProjectInitialManagerTeamId] = useState('')
   const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false)
   const [deleteProject, setDeleteProject] = useState<Project | null>(null)
   const [deleteWorkspaceDialogOpen, setDeleteWorkspaceDialogOpen] = useState(false)
@@ -245,104 +257,78 @@ export function WorkspaceDetailPage() {
     },
   })
 
-  const deleteProjectMutation = useMutation({
-    mutationFn: (projectId: number) => projectApi.remove(projectId),
-    onMutate: async (projectId: number) => {
-      await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
-
-      const projectSnapshots = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
-
-      queryClient.setQueriesData<PageResult<Project>>(
-        { queryKey: ['projects', 'workspace', workspaceId] },
-        (oldData) => {
-          if (!oldData) return oldData
-          return {
-            ...oldData,
-            content: oldData.content.filter((project) => project.id !== projectId),
-          }
-        },
-      )
-
-      queryClient.removeQueries({ queryKey: queryKeys.projects.detail(projectId) })
-
-      return {
-        projectSnapshots,
-      }
-    },
-    onSuccess: () => {
-      setDeleteProjectDialogOpen(false)
-      setDeleteProject(null)
-      toast.success('Xóa project thành công')
-    },
-    onError: (error: Error, _projectId, context) => {
-      if (context?.projectSnapshots) {
-        for (const [queryKey, snapshotData] of context.projectSnapshots) {
-          queryClient.setQueryData(queryKey, snapshotData)
-        }
-      }
-
-      if (isNotFoundError(error)) {
-        setDeleteProjectDialogOpen(false)
-        setDeleteProject(null)
-        toast.success('Project đã được xóa trước đó')
+  const {
+    pendingDeletes: pendingWorkspaceDeletes,
+    clockMs: workspaceDeleteClockMs,
+    undoWindowMs: workspaceDeleteUndoWindowMs,
+    scheduleDelete: scheduleWorkspaceDelete,
+    undoDelete: undoWorkspaceDelete,
+    isQueued: isWorkspaceDeleteQueued,
+  } = useDeferredDelete<WorkspaceDetailDeletePayload>({
+    onFinalize: async (payload) => {
+      if (payload.kind === 'project') {
+        await projectApi.remove(payload.id)
         return
       }
 
-      toast.error('Xóa project thất bại', { description: error.message })
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
-    },
-  })
-
-  const deleteWorkspaceMutation = useMutation({
-    mutationFn: () => workspaceApi.remove(workspaceId),
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all })
-
-      const workspaceListSnapshots = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
-
-      queryClient.setQueriesData<PageResult<Workspace>>(
-        { queryKey: ['workspaces', 'list'] },
-        (oldData) => {
-          if (!oldData) return oldData
-          return {
-            ...oldData,
-            content: oldData.content.filter((workspace) => workspace.id !== workspaceId),
-          }
-        },
-      )
-
-      return {
-        workspaceListSnapshots,
-      }
-    },
-    onSuccess: () => {
-      setDeleteWorkspaceDialogOpen(false)
-      toast.success('Xóa workspace thành công')
-      navigate('/dashboard', { replace: true })
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context?.workspaceListSnapshots) {
-        for (const [queryKey, snapshotData] of context.workspaceListSnapshots) {
-          queryClient.setQueryData(queryKey, snapshotData)
-        }
+      if (payload.kind === 'workspace') {
+        await workspaceApi.remove(payload.id)
+        return
       }
 
-      if (isNotFoundError(error)) {
-        setDeleteWorkspaceDialogOpen(false)
-        toast.success('Workspace đã được xóa trước đó')
+      await workspaceTeamApi.remove(payload.id)
+    },
+    onFinalizeSuccess: async (payload) => {
+      if (payload.kind === 'project') {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) }),
+        ])
+        return
+      }
+
+      if (payload.kind === 'workspace') {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all }),
+          queryClient.invalidateQueries({ queryKey: ['projects', 'workspace'] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) }),
+        ])
+
         navigate('/dashboard', { replace: true })
         return
       }
 
-      toast.error('Xóa workspace thất bại', { description: error.message })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) }),
+        queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) }),
+      ])
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      void queryClient.invalidateQueries({ queryKey: ['projects', 'workspace'] })
+    pendingMessage: (entry) => {
+      const entityName = entry.payload.kind === 'project'
+        ? 'Project'
+        : entry.payload.kind === 'workspace'
+          ? 'Workspace'
+          : 'Team'
+      return `${entityName} "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`
     },
+    successMessage: (entry) => {
+      const entityName = entry.payload.kind === 'project'
+        ? 'project'
+        : entry.payload.kind === 'workspace'
+          ? 'workspace'
+          : 'team'
+      return `Đã xóa ${entityName} "${entry.label}"`
+    },
+    alreadyDeletedMessage: (entry) => {
+      const entityName = entry.payload.kind === 'project'
+        ? 'Project'
+        : entry.payload.kind === 'workspace'
+          ? 'Workspace'
+          : 'Team'
+      return `${entityName} "${entry.label}" đã được xóa trước đó`
+    },
+    errorTitle: 'Xóa dữ liệu thất bại',
   })
 
   const createInviteMutation = useMutation({
@@ -384,17 +370,6 @@ export function WorkspaceDetailPage() {
       toast.success('Tạo team thành công')
     },
     onError: (error: Error) => toast.error('Tạo team thất bại', { description: error.message }),
-  })
-
-  const deleteTeamMutation = useMutation({
-    mutationFn: (teamId: number) => workspaceTeamApi.remove(teamId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
-      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Xóa team thành công')
-    },
-    onError: (error: Error) => toast.error('Xóa team thất bại', { description: error.message }),
   })
 
   const addTeamMemberMutation = useMutation({
@@ -444,6 +419,23 @@ export function WorkspaceDetailPage() {
   const projects = projectsQuery.data?.content ?? []
   const invites = invitesQuery.data ?? []
   const teams = teamsQuery.data ?? []
+  const pendingProjectIds = new Set<number>()
+  const pendingTeamIds = new Set<number>()
+  const workspaceDeleteQueued = isWorkspaceDeleteQueued(`workspace-${workspaceId}`)
+
+  for (const pendingEntry of pendingWorkspaceDeletes) {
+    if (pendingEntry.payload.kind === 'project') {
+      pendingProjectIds.add(pendingEntry.payload.id)
+      continue
+    }
+
+    if (pendingEntry.payload.kind === 'team') {
+      pendingTeamIds.add(pendingEntry.payload.id)
+    }
+  }
+
+  const visibleProjects = projects.filter((project) => !pendingProjectIds.has(project.id))
+  const visibleTeams = teams.filter((team) => !pendingTeamIds.has(team.id))
 
   const currentMember = members.find((member) => member.user.userId === currentUserId)
   const currentRole: WorkspaceMemberRoleType = workspaceQuery.data.owner.userId === currentUserId
@@ -469,11 +461,19 @@ export function WorkspaceDetailPage() {
     return isWorkspaceManager || isProjectManagerByUser || isProjectManagerByTeam
   }
 
+  const isWorkspaceEditDirty = editWsName.trim() !== editWsInitialName
+  const isProjectEditDirty = (
+    editProjectName.trim() !== editProjectInitialName
+    || editProjectDescription.trim() !== editProjectInitialDescription
+    || editProjectManagerUserId !== editProjectInitialManagerUserId
+    || editProjectManagerTeamId !== editProjectInitialManagerTeamId
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={workspaceQuery.data.name}
-        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${projects.length} project · Vai trò của bạn: ${currentRole}`}
+        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${currentRole}`}
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -482,12 +482,23 @@ export function WorkspaceDetailPage() {
                 Xóa workspace
               </Button>
 
-              <Dialog open={editWsDialogOpen} onOpenChange={setEditWsDialogOpen}>
+              <Dialog
+                open={editWsDialogOpen}
+                onOpenChange={(open) => {
+                  setEditWsDialogOpen(open)
+                  if (!open) {
+                    setEditWsInitialName('')
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditWsName(workspaceQuery.data!.name)}
+                    onClick={() => {
+                      setEditWsName(workspaceQuery.data!.name)
+                      setEditWsInitialName(workspaceQuery.data!.name.trim())
+                    }}
                   >
                     <Pencil className="mr-1.5 size-3.5" />
                     Chỉnh sửa
@@ -504,13 +515,13 @@ export function WorkspaceDetailPage() {
                       value={editWsName}
                       onChange={(e) => setEditWsName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editWsName.trim()) updateWorkspaceMutation.mutate()
+                        if (e.key === 'Enter' && editWsName.trim() && isWorkspaceEditDirty) updateWorkspaceMutation.mutate()
                       }}
                     />
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
-                    <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim()}>
+                    <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim() || !isWorkspaceEditDirty}>
                       {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       Lưu
                     </Button>
@@ -531,7 +542,7 @@ export function WorkspaceDetailPage() {
         <TabsList className="h-auto w-full justify-start overflow-x-auto whitespace-nowrap">
           <TabsTrigger value="projects" className="shrink-0 gap-1.5">
             <FolderKanban className="size-3.5" />
-            Projects ({projects.length})
+            Projects ({visibleProjects.length})
           </TabsTrigger>
           <TabsTrigger value="members" className="shrink-0 gap-1.5">
             <Users className="size-3.5" />
@@ -543,7 +554,7 @@ export function WorkspaceDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="teams" className="shrink-0 gap-1.5">
             <UsersRound className="size-3.5" />
-            Teams ({teams.length})
+            Teams ({visibleTeams.length})
           </TabsTrigger>
         </TabsList>
 
@@ -621,7 +632,7 @@ export function WorkspaceDetailPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Không gán</SelectItem>
-                              {teams.map((team) => (
+                              {visibleTeams.map((team) => (
                                 <SelectItem key={team.id} value={String(team.id)}>
                                   {team.name}
                                 </SelectItem>
@@ -644,7 +655,7 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          {projects.length === 0 ? (
+          {visibleProjects.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FolderKanban className="mb-3 size-10 text-muted-foreground/30" />
@@ -654,7 +665,7 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {projects.map((project) => {
+              {visibleProjects.map((project) => {
                 const canManageCurrentProject = canManageProject(project)
 
                 return (
@@ -709,6 +720,10 @@ export function WorkspaceDetailPage() {
                                 setEditProjectDescription(project.description ?? '')
                                 setEditProjectManagerUserId(project.managerUser?.userId ?? '')
                                 setEditProjectManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                setEditProjectInitialName(project.name.trim())
+                                setEditProjectInitialDescription((project.description ?? '').trim())
+                                setEditProjectInitialManagerUserId(project.managerUser?.userId ?? '')
+                                setEditProjectInitialManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
                                 setEditProjectDialogOpen(true)
                               }}
                             >
@@ -768,6 +783,10 @@ export function WorkspaceDetailPage() {
                 setEditProjectId(null)
                 setEditProjectManagerUserId('')
                 setEditProjectManagerTeamId('')
+                setEditProjectInitialName('')
+                setEditProjectInitialDescription('')
+                setEditProjectInitialManagerUserId('')
+                setEditProjectInitialManagerTeamId('')
               }
             }}
           >
@@ -821,7 +840,7 @@ export function WorkspaceDetailPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Không gán</SelectItem>
-                          {teams.map((team) => (
+                          {visibleTeams.map((team) => (
                             <SelectItem key={team.id} value={String(team.id)}>
                               {team.name}
                             </SelectItem>
@@ -834,7 +853,7 @@ export function WorkspaceDetailPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>Hủy</Button>
-                <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim()}>
+                <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim() || !isProjectEditDirty}>
                   {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                   Lưu
                 </Button>
@@ -856,7 +875,8 @@ export function WorkspaceDetailPage() {
                 <DialogTitle>Xóa project</DialogTitle>
                 <DialogDescription>
                   Bạn có chắc muốn xóa project {deleteProject ? `"${deleteProject.name}"` : 'này'} không?
-                  Hành động này sẽ xóa toàn bộ goals, tasks, lịch và comment liên quan.
+                  Project sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
+                  Sau khi hết thời gian, toàn bộ goals, tasks, lịch và comment liên quan sẽ bị xóa.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -867,12 +887,25 @@ export function WorkspaceDetailPage() {
                     if (!deleteProject) {
                       return
                     }
-                    deleteProjectMutation.mutate(deleteProject.id)
+
+                    const queued = scheduleWorkspaceDelete({
+                      key: `project-${deleteProject.id}`,
+                      label: deleteProject.name,
+                      payload: {
+                        kind: 'project',
+                        id: deleteProject.id,
+                        name: deleteProject.name,
+                      },
+                    })
+
+                    if (queued) {
+                      setDeleteProjectDialogOpen(false)
+                      setDeleteProject(null)
+                    }
                   }}
-                  disabled={deleteProjectMutation.isPending || !deleteProject}
+                  disabled={Boolean(deleteProject && isWorkspaceDeleteQueued(`project-${deleteProject.id}`))}
                 >
-                  {deleteProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Xóa project
+                  Xóa project (5s undo)
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1153,7 +1186,7 @@ export function WorkspaceDetailPage() {
             )}
           </div>
 
-          {teams.length === 0 ? (
+          {visibleTeams.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
@@ -1163,7 +1196,7 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {teams.map((team) => {
+              {visibleTeams.map((team) => {
                 const teamMembers = teamMembersByTeamId.get(team.id) ?? []
                 const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
                 const availableWorkspaceMembers = members.filter(
@@ -1181,7 +1214,18 @@ export function WorkspaceDetailPage() {
                             variant="ghost"
                             size="icon"
                             className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                            onClick={() => deleteTeamMutation.mutate(team.id)}
+                            onClick={() => {
+                              void scheduleWorkspaceDelete({
+                                key: `team-${team.id}`,
+                                label: team.name,
+                                payload: {
+                                  kind: 'team',
+                                  id: team.id,
+                                  name: team.name,
+                                },
+                              })
+                            }}
+                            disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -1291,23 +1335,51 @@ export function WorkspaceDetailPage() {
               <DialogTitle>Xóa workspace</DialogTitle>
               <DialogDescription>
                 Bạn có chắc muốn xóa workspace "{workspaceQuery.data.name}" không?
-                Hành động này không thể hoàn tác và sẽ xóa toàn bộ project, goals, tasks, comment, team và invite liên quan.
+                    Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
+                  Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>Hủy</Button>
               <Button
                 variant="destructive"
-                onClick={() => deleteWorkspaceMutation.mutate()}
-                disabled={deleteWorkspaceMutation.isPending}
+                onClick={() => {
+                  const queued = scheduleWorkspaceDelete({
+                    key: `workspace-${workspaceId}`,
+                    label: workspaceQuery.data.name,
+                    payload: {
+                      kind: 'workspace',
+                      id: workspaceId,
+                      name: workspaceQuery.data.name,
+                    },
+                  })
+
+                  if (queued) {
+                    setDeleteWorkspaceDialogOpen(false)
+                  }
+                }}
+                disabled={workspaceDeleteQueued}
               >
-                {deleteWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Xóa workspace
+                Xóa workspace (5s undo)
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
+
+      <DeferredDeleteStack
+        pendingDeletes={pendingWorkspaceDeletes}
+        clockMs={workspaceDeleteClockMs}
+        undoWindowMs={workspaceDeleteUndoWindowMs}
+        onUndo={undoWorkspaceDelete}
+        itemTitle={(entry) => (
+          entry.payload.kind === 'project'
+            ? 'Đang xóa project'
+            : entry.payload.kind === 'workspace'
+              ? 'Đang xóa workspace'
+              : 'Đang xóa team'
+        )}
+      />
     </div>
   )
 }

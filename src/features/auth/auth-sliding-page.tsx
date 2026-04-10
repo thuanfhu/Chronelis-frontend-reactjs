@@ -55,6 +55,8 @@ const AUTH_MODE_CLASS: Record<AuthMode, string> = {
   'forgot-password': 'forgot-password-mode',
 }
 
+const RESEND_COOLDOWN_SECONDS = 30
+
 type PasswordStrengthLevel = 'weak' | 'fair' | 'good' | 'strong' | 'very-strong'
 
 interface PasswordStrengthResult {
@@ -169,6 +171,8 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const [showSignInPassword, setShowSignInPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
   const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false)
+  const [signUpResendCountdown, setSignUpResendCountdown] = useState(0)
+  const [forgotResendCountdown, setForgotResendCountdown] = useState(0)
   const routeSwitchTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -181,6 +185,21 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       routeSwitchTimeoutRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    if (signUpResendCountdown <= 0 && forgotResendCountdown <= 0) {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      setSignUpResendCountdown((previous) => (previous > 0 ? previous - 1 : 0))
+      setForgotResendCountdown((previous) => (previous > 0 ? previous - 1 : 0))
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [forgotResendCountdown, signUpResendCountdown])
 
   const switchMode = (nextMode: AuthMode) => {
     if (nextMode === mode) {
@@ -235,10 +254,33 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const forgotMutation = useMutation({
     mutationFn: (payload: ForgotFormValues) => authApi.forgotPassword(payload.email),
     onSuccess: () => {
+      setForgotResendCountdown(RESEND_COOLDOWN_SECONDS)
       toast.success('Đã gửi email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
     },
     onError: (error: Error) => {
       toast.error('Gửi email thất bại', { description: error.message })
+    },
+  })
+
+  const resendVerifyMutation = useMutation({
+    mutationFn: (email: string) => authApi.resendVerify(email),
+    onSuccess: () => {
+      setSignUpResendCountdown(RESEND_COOLDOWN_SECONDS)
+      toast.success('Đã gửi lại email xác thực', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+    },
+    onError: (error: Error) => {
+      toast.error('Gửi lại email xác thực thất bại', { description: error.message })
+    },
+  })
+
+  const resendForgotMutation = useMutation({
+    mutationFn: (email: string) => authApi.forgotPassword(email),
+    onSuccess: () => {
+      setForgotResendCountdown(RESEND_COOLDOWN_SECONDS)
+      toast.success('Đã gửi lại email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+    },
+    onError: (error: Error) => {
+      toast.error('Gửi lại email thất bại', { description: error.message })
     },
   })
 
@@ -279,6 +321,8 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   })
 
   const signUpPassword = registerForm.watch('password')
+  const signUpEmail = registerForm.watch('email')?.trim() ?? ''
+  const forgotEmail = forgotForm.watch('email')?.trim() ?? ''
   const passwordStrength = resolvePasswordStrength(signUpPassword)
   const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
   const pageClassName = AUTH_MODE_CLASS[mode]
@@ -522,6 +566,19 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               Tạo tài khoản
             </button>
 
+            <div className="chronelis-auth-resend-row">
+              <span className="chronelis-auth-resend-hint">Đã đăng ký nhưng chưa nhận email xác thực?</span>
+              <button
+                type="button"
+                className="chronelis-auth-resend-btn"
+                onClick={() => resendVerifyMutation.mutate(signUpEmail)}
+                disabled={!signUpEmail || signUpResendCountdown > 0 || resendVerifyMutation.isPending}
+              >
+                {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
+                {signUpResendCountdown > 0 ? `Gửi lại sau ${signUpResendCountdown}s` : 'Gửi lại email xác thực'}
+              </button>
+            </div>
+
             <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng ký">
               <span>Đã có tài khoản?</span>
               <button
@@ -562,6 +619,15 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 <p className="chronelis-auth-forgot-success-description">
                   Chúng tôi đã gửi liên kết đặt lại mật khẩu đến hộp thư của bạn.
                 </p>
+                <button
+                  type="button"
+                  className="chronelis-auth-resend-btn"
+                  onClick={() => resendForgotMutation.mutate(forgotEmail)}
+                  disabled={!forgotEmail || forgotResendCountdown > 0 || resendForgotMutation.isPending}
+                >
+                  {resendForgotMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
+                  {forgotResendCountdown > 0 ? `Gửi lại sau ${forgotResendCountdown}s` : 'Gửi lại email'}
+                </button>
               </div>
             ) : (
               <>

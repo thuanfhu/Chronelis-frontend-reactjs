@@ -4,6 +4,9 @@ import { parseApiError } from '@/lib/errors/parse-api-error'
 import { useAuthStore } from '@/app/store/auth-store'
 import type { ApiResponse, PaginationResponse } from '@/types/api'
 
+const AUTH_403_SAFE_ROUTE_MATCHER = /^\/auth\/(verify-active-account|reset-password)$/
+const AUTH_403_SAFE_API_MATCHER = /\/auth\/(verify-active-account|reset-password|forgot-password|resend-verify)$/
+
 export const http = axios.create({
   baseURL: env.apiBaseUrl,
   withCredentials: true,
@@ -23,6 +26,11 @@ http.interceptors.request.use((config) => {
 http.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
+    const requestUrl = axios.isAxiosError(error) ? (error.config?.url ?? '') : ''
+    const onTokenizedAuthRoute = AUTH_403_SAFE_ROUTE_MATCHER.test(window.location.pathname)
+    const isAuthVerificationRequest = AUTH_403_SAFE_API_MATCHER.test(requestUrl)
+    const onAdminRoute = window.location.pathname.startsWith('/admin')
+    const isAdminApiRequest = /\/admin(\/|$)/.test(requestUrl)
     const appError = parseApiError(error)
 
     if (appError.status === 401) {
@@ -32,7 +40,13 @@ http.interceptors.response.use(
       }
     }
 
-    if (appError.status === 403 && !window.location.pathname.startsWith('/forbidden')) {
+    if (
+      appError.status === 403
+      && (onAdminRoute || isAdminApiRequest)
+      && !onTokenizedAuthRoute
+      && !isAuthVerificationRequest
+      && !window.location.pathname.startsWith('/forbidden')
+    ) {
       window.location.href = '/forbidden'
     }
 

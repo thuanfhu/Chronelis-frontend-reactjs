@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -46,6 +46,7 @@ import {
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import type { Task, TaskPriorityType } from '@/types/domain'
+import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 
 type GroupMode = 'none' | 'day' | 'goal'
 type GoalFilterValue = 'all' | '__nogoal' | `${number}`
@@ -180,6 +181,7 @@ export function TodoPage() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilterValue>('all')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
 
   const selectedDateParam = searchParams.get('todoDate')
   const selectedDate = useMemo(() => parseDateKey(selectedDateParam), [selectedDateParam])
@@ -250,6 +252,7 @@ export function TodoPage() {
         applyTaskCompletion(tasks, {
           taskId,
           isCompleted,
+          statuses: statusesQuery.data ?? [],
         }),
       )
 
@@ -295,6 +298,7 @@ export function TodoPage() {
   })
 
   function handleDragStart(event: DragStartEvent) {
+    setTaskContextMenu(null)
     const task = event.active.data.current?.task as Task | undefined
     if (task) setActiveTask(task)
   }
@@ -454,6 +458,12 @@ export function TodoPage() {
     }
   }
 
+  const openTaskContextMenu = (event: MouseEvent<HTMLElement>, task: Task) => {
+    const x = Math.min(event.clientX, window.innerWidth - 196)
+    const y = Math.min(event.clientY, window.innerHeight - 196)
+    setTaskContextMenu({ x, y, task })
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -480,7 +490,7 @@ export function TodoPage() {
 
         <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
           <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-[9.5rem] text-xs sm:w-40">
+            <SelectTrigger className="h-7 w-full min-w-38 text-xs sm:w-40">
               <SelectValue placeholder="Goal" />
             </SelectTrigger>
             <SelectContent>
@@ -495,15 +505,27 @@ export function TodoPage() {
           </Select>
 
           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-[7.5rem] text-xs sm:w-32">
+            <SelectTrigger className="h-7 w-full min-w-31 text-xs sm:w-33">
               <SelectValue placeholder="Ưu tiên" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả ưu tiên</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="URGENT">Urgent</SelectItem>
+              <SelectItem value="all">
+                <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
+                  All Priorities
+                </span>
+              </SelectItem>
+              <SelectItem value="LOW">
+                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">Low</span>
+              </SelectItem>
+              <SelectItem value="MEDIUM">
+                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">Medium</span>
+              </SelectItem>
+              <SelectItem value="HIGH">
+                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">High</span>
+              </SelectItem>
+              <SelectItem value="URGENT">
+                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">Urgent</span>
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -513,7 +535,7 @@ export function TodoPage() {
                 type="button"
                 variant={isDateFiltered ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 w-full min-w-[10rem] gap-1.5 px-2 text-xs sm:w-auto sm:max-w-[11.5rem]"
+                className="h-7 w-full min-w-40 gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
               >
                 <CalendarIcon className="size-3.5" />
                 <span className="truncate">{selectedDateLabel}</span>
@@ -589,7 +611,7 @@ export function TodoPage() {
                 task={entry.task}
                 onToggle={() => handleToggleCompletion(entry.task, true)}
                 onClick={() => openTaskDrawer(entry.task.id, 'view')}
-                onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                onContextAction={(event) => openTaskContextMenu(event, entry.task)}
                 onPomodoro={() => openTaskPomodoro(entry.task.id)}
                 onNotebook={() => openTaskNotebook(entry.task.id)}
                 scheduleLabel={entry.scheduleId > 0
@@ -626,7 +648,7 @@ export function TodoPage() {
                       task={task}
                       onToggle={() => handleToggleCompletion(task, true)}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                      onContextAction={(event) => openTaskContextMenu(event, task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
                       onNotebook={() => openTaskNotebook(task.id)}
                     />
@@ -651,7 +673,7 @@ export function TodoPage() {
                     task={task}
                     onToggle={() => handleToggleCompletion(task, true)}
                     onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                    onContextAction={(event) => openTaskContextMenu(event, task)}
                     onPomodoro={() => openTaskPomodoro(task.id)}
                     onNotebook={() => openTaskNotebook(task.id)}
                   />
@@ -668,7 +690,7 @@ export function TodoPage() {
               task={task}
               onToggle={() => handleToggleCompletion(task, true)}
               onClick={() => openTaskDrawer(task.id, 'view')}
-              onContextAction={() => openDeleteConfirmIfPermitted(task)}
+              onContextAction={(event) => openTaskContextMenu(event, task)}
               onPomodoro={() => openTaskPomodoro(task.id)}
               onNotebook={() => openTaskNotebook(task.id)}
             />
@@ -682,7 +704,7 @@ export function TodoPage() {
               task={task}
               onToggle={() => handleToggleCompletion(task, true)}
               onClick={() => openTaskDrawer(task.id, 'view')}
-              onContextAction={() => openDeleteConfirmIfPermitted(task)}
+              onContextAction={(event) => openTaskContextMenu(event, task)}
               onPomodoro={() => openTaskPomodoro(task.id)}
               onNotebook={() => openTaskNotebook(task.id)}
             />
@@ -703,7 +725,7 @@ export function TodoPage() {
                   task={task}
                   onToggle={() => handleToggleCompletion(task, true)}
                   onClick={() => openTaskDrawer(task.id, 'view')}
-                  onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                  onContextAction={(event) => openTaskContextMenu(event, task)}
                   onPomodoro={() => openTaskPomodoro(task.id)}
                   onNotebook={() => openTaskNotebook(task.id)}
                 />
@@ -746,7 +768,7 @@ export function TodoPage() {
                       task={entry.task}
                       onToggle={() => handleToggleCompletion(entry.task, false)}
                       onClick={() => openTaskDrawer(entry.task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                      onContextAction={(event) => openTaskContextMenu(event, entry.task)}
                       onPomodoro={() => openTaskPomodoro(entry.task.id)}
                       onNotebook={() => openTaskNotebook(entry.task.id)}
                       scheduleLabel={entry.scheduleId > 0
@@ -760,7 +782,7 @@ export function TodoPage() {
                       task={task}
                       onToggle={() => handleToggleCompletion(task, false)}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                      onContextAction={(event) => openTaskContextMenu(event, task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
                       onNotebook={() => openTaskNotebook(task.id)}
                     />
@@ -770,6 +792,45 @@ export function TodoPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <TaskContextMenu
+        open={Boolean(taskContextMenu)}
+        x={taskContextMenu?.x ?? 0}
+        y={taskContextMenu?.y ?? 0}
+        onClose={() => setTaskContextMenu(null)}
+        onDuplicate={() => {
+          const selectedTask = taskContextMenu?.task
+          if (!selectedTask) {
+            return
+          }
+
+          if (!canManageTask(selectedTask.goalId)) {
+            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            return
+          }
+
+          openTaskDrawer(selectedTask.id, 'duplicate')
+        }}
+        onEdit={() => {
+          const selectedTask = taskContextMenu?.task
+          if (!selectedTask) {
+            return
+          }
+
+          if (!canManageTask(selectedTask.goalId)) {
+            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            return
+          }
+
+          openTaskDrawer(selectedTask.id, 'edit')
+        }}
+        onDelete={() => {
+          const selectedTask = taskContextMenu?.task
+          if (selectedTask) {
+            openDeleteConfirmIfPermitted(selectedTask)
+          }
+        }}
+      />
     </div>
   )
 }
@@ -786,7 +847,7 @@ function SortableTodoItem({
   task: Task
   onToggle: () => void
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLElement>) => void
   onPomodoro: () => void
   onNotebook: () => void
   scheduleLabel?: string
@@ -814,7 +875,7 @@ function SortableTodoItem({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <button
@@ -873,7 +934,7 @@ function TodoItem({
   task: Task
   onToggle: () => void
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLElement>) => void
   onPomodoro: () => void
   onNotebook: () => void
   scheduleLabel?: string
@@ -888,7 +949,7 @@ function TodoItem({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <button

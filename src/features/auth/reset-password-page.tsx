@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react'
@@ -12,10 +12,11 @@ import { AuthLayout } from '@/features/auth/auth-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { resolveAuthToken } from '@/features/auth/auth-token'
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
-  const tokenFromQuery = searchParams.get('token') ?? ''
+  const tokenFromQuery = useMemo(() => resolveAuthToken(searchParams), [searchParams])
 
   const form = useForm<ResetPasswordPayload>({
     resolver: zodResolver(resetPasswordSchema),

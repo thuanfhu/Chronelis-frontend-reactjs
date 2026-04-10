@@ -1,0 +1,93 @@
+import { useEffect } from 'react'
+import { Copy, Edit3, Trash2 } from 'lucide-react'
+
+interface TaskContextMenuProps {
+  open: boolean
+  x: number
+  y: number
+  onClose: () => void
+  onDuplicate: () => void
+  onEdit: () => void
+  onDelete: () => void
+}
+
+export function TaskContextMenu({
+  open,
+  x,
+  y,
+  onClose,
+  onDuplicate,
+  onEdit,
+  onDelete,
+}: TaskContextMenuProps) {
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('click', onClose)
+    window.addEventListener('contextmenu', onClose)
+    window.addEventListener('resize', onClose)
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      window.removeEventListener('click', onClose)
+      window.removeEventListener('contextmenu', onClose)
+      window.removeEventListener('resize', onClose)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [onClose, open])
+
+  if (!open) {
+    return null
+  }
+
+  return (
+    <div
+      className="fixed z-80 w-44 rounded-xl border border-white/35 bg-background/85 p-1.5 shadow-2xl backdrop-blur-xl"
+      style={{ top: y, left: x }}
+      onClick={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-primary/10"
+        onClick={() => {
+          onDuplicate()
+          onClose()
+        }}
+      >
+        <Copy className="size-3.5" />
+        Duplicate
+      </button>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-primary/10"
+        onClick={() => {
+          onEdit()
+          onClose()
+        }}
+      >
+        <Edit3 className="size-3.5" />
+        Edit
+      </button>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"
+        onClick={() => {
+          onDelete()
+          onClose()
+        }}
+      >
+        <Trash2 className="size-3.5" />
+        Delete
+      </button>
+    </div>
+  )
+}

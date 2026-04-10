@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,7 +21,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { taskApi } from '@/lib/api/modules/task-api'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { goalApi } from '@/lib/api/modules/goal-api'
+import { taskApi, type UpdateTaskPayload } from '@/lib/api/modules/task-api'
+import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import {
@@ -37,6 +46,34 @@ import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
 
+function toDateTimeLocalValue(isoValue?: string): string {
+  if (!isoValue) {
+    return ''
+  }
+
+  const parsed = new Date(isoValue)
+  if (Number.isNaN(parsed.getTime())) {
+    return ''
+  }
+
+  const offsetMs = parsed.getTimezoneOffset() * 60 * 1000
+  const localTime = new Date(parsed.getTime() - offsetMs)
+  return localTime.toISOString().slice(0, 16)
+}
+
+function toIsoDateTime(value: string): string | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined
+  }
+
+  return parsed.toISOString()
+}
+
 export function TaskDetailsDrawer() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -48,6 +85,7 @@ export function TaskDetailsDrawer() {
   const taskDrawerMode = useUiStore((state) => state.taskDrawerMode)
   const closeTaskDrawer = useUiStore((state) => state.closeTaskDrawer)
   const setTaskDrawerMode = useUiStore((state) => state.setTaskDrawerMode)
+  const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((state) => state.openTaskDeleteConfirm)
 
   const queryClient = useQueryClient()
@@ -56,6 +94,19 @@ export function TaskDetailsDrawer() {
   const [editTitle, setEditTitle] = useState<string | null>(null)
   const [editDescription, setEditDescription] = useState<string | null>(null)
   const [editPriority, setEditPriority] = useState<TaskPriorityType | null>(null)
+  const [editGoalId, setEditGoalId] = useState<number | null>(null)
+  const [editScheduleStart, setEditScheduleStart] = useState('')
+  const [editScheduleEnd, setEditScheduleEnd] = useState('')
+  const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null)
+  const [editorInitKey, setEditorInitKey] = useState<string | null>(null)
+  const [editorSnapshot, setEditorSnapshot] = useState<{
+    title: string
+    description: string
+    priority: TaskPriorityType
+    goalId: number | null
+    scheduleStart: string
+    scheduleEnd: string
+  } | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
   const [replyParentCommentId, setReplyParentCommentId] = useState<number | null>(null)
@@ -91,6 +142,20 @@ export function TaskDetailsDrawer() {
 
   useTaskRealtime(realtimeWorkspaceId, realtimeProjectId, hasTask ? taskId : null)
 
+  const goalsQuery = useQuery({
+    queryKey: Number.isFinite(permissionProjectId)
+      ? queryKeys.goals.byProject(permissionProjectId, 1, 100)
+      : ['goals', 'drawer', taskId],
+    queryFn: () => goalApi.listByProject(permissionProjectId, { page: 1, size: 100 }),
+    enabled: hasTask && Number.isFinite(permissionProjectId),
+  })
+
+  const schedulesQuery = useQuery({
+    queryKey: queryKeys.schedules.byTask(taskId),
+    queryFn: () => taskScheduleApi.listByTask(taskId),
+    enabled: hasTask,
+  })
+
   const commentsQuery = useQuery({
     queryKey: queryKeys.comments.byTask(taskId),
     queryFn: () => taskCommentApi.listByTask(taskId),
@@ -102,6 +167,12 @@ export function TaskDetailsDrawer() {
     setEditTitle(null)
     setEditDescription(null)
     setEditPriority(null)
+    setEditGoalId(null)
+    setEditScheduleStart('')
+    setEditScheduleEnd('')
+    setActiveScheduleId(null)
+    setEditorInitKey(null)
+    setEditorSnapshot(null)
     setEditingCommentId(null)
     setEditingCommentContent('')
     setReplyParentCommentId(null)
@@ -120,9 +191,13 @@ export function TaskDetailsDrawer() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount }),
       projectId
         ? queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+        : Promise.resolve(),
+      projectId
+        ? queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 100) })
         : Promise.resolve(),
       projectId
         ? queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
@@ -162,6 +237,7 @@ export function TaskDetailsDrawer() {
         applyTaskCompletion(tasks, {
           taskId: currentTask.id,
           isCompleted: nextCompleted,
+          statuses: queryClient.getQueryData(queryKeys.statuses.byProject(currentTask.projectId)) ?? [currentTask.status],
         }),
       )
 
@@ -208,23 +284,106 @@ export function TaskDetailsDrawer() {
     },
   })
 
-  const updateTaskMutation = useMutation({
-    mutationFn: () => {
+  const saveTaskMutation = useMutation({
+    mutationFn: async () => {
       if (!taskQuery.data) throw new Error('Task không tồn tại')
 
-      return taskApi.update(taskId, {
-        title: (editTitle ?? taskQuery.data.title).trim(),
-        description: (editDescription ?? taskQuery.data.description ?? '').trim() || undefined,
-        priority: editPriority ?? taskQuery.data.priority,
-      })
+      const currentTask = taskQuery.data
+      const nextTitle = (editTitle ?? currentTask.title).trim()
+      const nextDescription = (editDescription ?? currentTask.description ?? '').trim() || undefined
+      const nextPriority = editPriority ?? currentTask.priority
+      const nextGoalId = editGoalId
+      const startIso = toIsoDateTime(editScheduleStart)
+      const endIso = toIsoDateTime(editScheduleEnd)
+
+      if ((startIso && !endIso) || (!startIso && endIso)) {
+        throw new Error('Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc')
+      }
+
+      if (startIso && endIso && new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+        throw new Error('Thời gian kết thúc phải lớn hơn thời gian bắt đầu')
+      }
+
+      if (taskDrawerMode === 'duplicate') {
+        const createdTask = await taskApi.create({
+          projectId: currentTask.projectId,
+          statusId: currentTask.status.id,
+          title: nextTitle,
+          description: nextDescription,
+          priority: nextPriority,
+          goalId: nextGoalId ?? undefined,
+          dueDate: endIso ?? currentTask.dueDate,
+          estimatedMinutes: currentTask.estimatedMinutes,
+          taskTypeId: currentTask.taskType?.id,
+          sourceView: currentTask.sourceView,
+        })
+
+        if (startIso && endIso) {
+          await taskScheduleApi.create({
+            taskId: createdTask.id,
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+          })
+        }
+
+        return createdTask
+      }
+
+      const payload: UpdateTaskPayload = {
+        title: nextTitle,
+        description: nextDescription,
+        priority: nextPriority,
+        dueDate: endIso ?? currentTask.dueDate,
+      }
+
+      if (nextGoalId != null) {
+        payload.goalId = nextGoalId
+      } else if (currentTask.goalId != null) {
+        payload.clearGoal = true
+      }
+
+      const updatedTask = await taskApi.update(taskId, payload)
+
+      if (startIso && endIso) {
+        if (activeScheduleId) {
+          await taskScheduleApi.update(activeScheduleId, {
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+          })
+        } else {
+          await taskScheduleApi.create({
+            taskId,
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+          })
+        }
+      }
+
+      return updatedTask
     },
-    onSuccess: () => {
-      setTaskDrawerMode('view')
+    onSuccess: (savedTask) => {
       setEditTitle(null)
       setEditDescription(null)
       setEditPriority(null)
+      setEditGoalId(null)
+      setEditScheduleStart('')
+      setEditScheduleEnd('')
+      setActiveScheduleId(null)
+      setEditorSnapshot(null)
+      setEditorInitKey(null)
+
+      if (taskDrawerMode === 'duplicate') {
+        openTaskDrawer(savedTask.id, 'view')
+        toast.success('Nhân bản task thành công')
+      } else {
+        setTaskDrawerMode('view')
+        toast.success('Cập nhật task thành công')
+      }
+
       void invalidateTaskData()
-      toast.success('Cập nhật task thành công')
+      if (savedTask.projectId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(savedTask.id) })
+      }
     },
     onError: (error: Error) => {
       if (isNotFoundError(error)) {
@@ -233,7 +392,9 @@ export function TaskDetailsDrawer() {
         return
       }
 
-      toast.error('Cập nhật task thất bại', { description: error.message })
+      toast.error(taskDrawerMode === 'duplicate' ? 'Nhân bản task thất bại' : 'Cập nhật task thất bại', {
+        description: error.message,
+      })
     },
   })
 
@@ -337,8 +498,25 @@ export function TaskDetailsDrawer() {
   }, new Map<number, TaskComment[]>())
 
   const task = taskQuery.data
+  const goals = goalsQuery.data?.content ?? []
+  const goalTitleById = useMemo(
+    () => new Map(goals.map((goal) => [goal.id, goal.title] as const)),
+    [goals],
+  )
+  const primarySchedule = useMemo(() => {
+    const schedules = schedulesQuery.data ?? []
+    if (schedules.length === 0) {
+      return null
+    }
+
+    return [...schedules].sort(
+      (left, right) => new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime(),
+    )[0]
+  }, [schedulesQuery.data])
+
   const canManageCurrentTask = Boolean(task && permissionsReady && canManageTaskByGoal(task.goalId))
-  const isEditingTask = taskDrawerMode === 'edit' && canManageCurrentTask
+  const isDuplicateMode = taskDrawerMode === 'duplicate' && canManageCurrentTask
+  const isEditingTask = (taskDrawerMode === 'edit' || taskDrawerMode === 'duplicate') && canManageCurrentTask
   const canModifyComment = (comment: TaskComment) => Boolean(
     canManageCurrentTask
     && (
@@ -347,11 +525,53 @@ export function TaskDetailsDrawer() {
     ),
   )
 
+  useEffect(() => {
+    if (!task || !canManageCurrentTask || !isEditingTask) {
+      return
+    }
+
+    const nextKey = `${taskDrawerMode}-${task.id}`
+    if (editorInitKey === nextKey) {
+      return
+    }
+
+    const initialTitle = taskDrawerMode === 'duplicate' ? `${task.title} (Copy)` : task.title
+    const initialDescription = task.description ?? ''
+    const initialPriority = task.priority
+    const initialGoalId = task.goalId ?? null
+    const scheduleStart = toDateTimeLocalValue(primarySchedule?.scheduledStart ?? task.dueDate)
+    const scheduleEnd = toDateTimeLocalValue(primarySchedule?.scheduledEnd ?? task.dueDate)
+
+    setEditTitle(initialTitle)
+    setEditDescription(initialDescription)
+    setEditPriority(initialPriority)
+    setEditGoalId(initialGoalId)
+    setEditScheduleStart(scheduleStart)
+    setEditScheduleEnd(scheduleEnd)
+    setActiveScheduleId(primarySchedule?.id ?? null)
+    setEditorSnapshot({
+      title: initialTitle,
+      description: initialDescription,
+      priority: initialPriority,
+      goalId: initialGoalId,
+      scheduleStart,
+      scheduleEnd,
+    })
+    setEditorInitKey(nextKey)
+  }, [
+    canManageCurrentTask,
+    editorInitKey,
+    isEditingTask,
+    primarySchedule?.id,
+    primarySchedule?.scheduledEnd,
+    primarySchedule?.scheduledStart,
+    task,
+    taskDrawerMode,
+  ])
+
   const enterEditMode = () => {
     if (!task || !canManageCurrentTask) return
-    setEditTitle(task.title)
-    setEditDescription(task.description ?? '')
-    setEditPriority(task.priority)
+    setEditorInitKey(null)
     setTaskDrawerMode('edit')
   }
 
@@ -360,6 +580,12 @@ export function TaskDetailsDrawer() {
     setEditTitle(null)
     setEditDescription(null)
     setEditPriority(null)
+    setEditGoalId(null)
+    setEditScheduleStart('')
+    setEditScheduleEnd('')
+    setActiveScheduleId(null)
+    setEditorSnapshot(null)
+    setEditorInitKey(null)
   }
 
   const openPomodoro = () => {
@@ -390,12 +616,39 @@ export function TaskDetailsDrawer() {
     handleCloseDrawer()
   }
 
+  const normalizedEditorState = {
+    title: (editTitle ?? '').trim(),
+    description: (editDescription ?? '').trim(),
+    priority: editPriority,
+    goalId: editGoalId,
+    scheduleStart: editScheduleStart,
+    scheduleEnd: editScheduleEnd,
+  }
+
+  const hasEditorChanges = isDuplicateMode
+    ? Boolean(normalizedEditorState.title)
+    : Boolean(
+      editorSnapshot
+      && normalizedEditorState.title === ''
+        ? false
+        : editorSnapshot
+          ? (
+            normalizedEditorState.title !== editorSnapshot.title
+            || normalizedEditorState.description !== editorSnapshot.description
+            || normalizedEditorState.priority !== editorSnapshot.priority
+            || normalizedEditorState.goalId !== editorSnapshot.goalId
+            || normalizedEditorState.scheduleStart !== editorSnapshot.scheduleStart
+            || normalizedEditorState.scheduleEnd !== editorSnapshot.scheduleEnd
+          )
+          : false,
+    )
+
   return (
     <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
       <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         <SheetHeader className="border-b px-6 py-4">
           <div className="flex items-center gap-2">
-            <SheetTitle className="text-base">Chi tiết task</SheetTitle>
+            <SheetTitle className="text-base">{isDuplicateMode ? 'Nhân bản task' : 'Chi tiết task'}</SheetTitle>
             <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
 
             <div className="ml-auto flex items-center gap-1">
@@ -446,6 +699,10 @@ export function TaskDetailsDrawer() {
                 <div className="space-y-3">
                   {isEditingTask ? (
                     <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                      {isDuplicateMode ? (
+                        <Badge variant="outline" className="w-fit text-[10px]">Draft duplicate - chỉ lưu khi bấm Save</Badge>
+                      ) : null}
+
                       <div className="space-y-1.5">
                         <Label className="text-xs">Tiêu đề</Label>
                         <Input value={editTitle ?? task.title} onChange={(e) => setEditTitle(e.target.value)} />
@@ -469,6 +726,45 @@ export function TaskDetailsDrawer() {
                               {priority}
                             </Button>
                           ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Goal</Label>
+                        <Select
+                          value={editGoalId != null ? String(editGoalId) : '__none'}
+                          onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Không chọn goal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">Không có goal</SelectItem>
+                            {goals.map((goal) => (
+                              <SelectItem key={goal.id} value={String(goal.id)}>
+                                <span className="block max-w-60 truncate" title={goal.title}>{goal.title}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Start time</Label>
+                          <Input
+                            type="datetime-local"
+                            value={editScheduleStart}
+                            onChange={(event) => setEditScheduleStart(event.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">End time</Label>
+                          <Input
+                            type="datetime-local"
+                            value={editScheduleEnd}
+                            onChange={(event) => setEditScheduleEnd(event.target.value)}
+                          />
                         </div>
                       </div>
                     </div>
@@ -499,6 +795,10 @@ export function TaskDetailsDrawer() {
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">Hạn chót</p>
                           <p className="text-sm">{task.dueDate ? formatDateTime(task.dueDate) : 'Chưa đặt'}</p>
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <p className="text-xs text-muted-foreground">Goal</p>
+                          <p className="text-sm">{task.goalId ? (goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`) : 'Chưa gán'}</p>
                         </div>
                       </div>
 
@@ -763,11 +1063,11 @@ export function TaskDetailsDrawer() {
                   <Button variant="outline" size="sm" onClick={leaveEditMode}>Hủy</Button>
                   <Button
                     size="sm"
-                    onClick={() => updateTaskMutation.mutate()}
-                    disabled={updateTaskMutation.isPending || !(editTitle ?? task.title).trim()}
+                    onClick={() => saveTaskMutation.mutate()}
+                    disabled={saveTaskMutation.isPending || !hasEditorChanges}
                   >
-                    {updateTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-                    Lưu thay đổi
+                    {saveTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                    {isDuplicateMode ? 'Save Duplicate' : 'Lưu thay đổi'}
                   </Button>
                 </div>
               </div>

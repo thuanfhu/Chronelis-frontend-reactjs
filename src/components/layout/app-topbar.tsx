@@ -58,6 +58,7 @@ export function AppTopbar() {
   const [editOpen, setEditOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [editInitialName, setEditInitialName] = useState('')
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const unreadQuery = useQuery({
@@ -106,6 +107,7 @@ export function AppTopbar() {
   const openEdit = (wsId: number, wsName: string) => {
     setEditWsId(wsId)
     setEditName(wsName)
+    setEditInitialName(wsName.trim())
     setEditOpen(true)
   }
 
@@ -319,7 +321,13 @@ export function AppTopbar() {
     </Dialog>
 
     {/* Edit workspace dialog */}
-    <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditWsId(null) }}>
+    <Dialog open={editOpen} onOpenChange={(open) => {
+      setEditOpen(open)
+      if (!open) {
+        setEditWsId(null)
+        setEditInitialName('')
+      }
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Đổi tên workspace</DialogTitle>
@@ -331,7 +339,11 @@ export function AppTopbar() {
             id="edit-ws-name"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && editName.trim()) editMutation.mutate(editName.trim()) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) {
+                editMutation.mutate(editName.trim())
+              }
+            }}
             autoFocus
           />
         </div>
@@ -339,7 +351,7 @@ export function AppTopbar() {
           <Button variant="outline" onClick={() => setEditOpen(false)}>Hủy</Button>
           <Button
             onClick={() => editMutation.mutate(editName.trim())}
-            disabled={editMutation.isPending || !editName.trim()}
+            disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
           >
             {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Lưu

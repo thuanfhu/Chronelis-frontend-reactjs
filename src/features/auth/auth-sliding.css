@@ -351,6 +351,52 @@
   color: color-mix(in oklab, var(--muted-foreground) 86%, transparent);
 }
 
+.chronelis-auth-resend-row {
+  margin-top: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.chronelis-auth-resend-hint {
+  font-size: 0.72rem;
+  color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+}
+
+.chronelis-auth-resend-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 7.4rem;
+  height: 1.85rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.chronelis-auth-resend-btn:hover {
+  border-color: color-mix(in oklab, var(--primary) 48%, var(--border) 52%);
+  background: color-mix(in oklab, var(--primary) 10%, var(--card) 90%);
+}
+
+.chronelis-auth-resend-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.chronelis-auth-resend-spinner {
+  width: 0.78rem;
+  height: 0.78rem;
+  animation: spin 1s linear infinite;
+}
+
 .chronelis-auth-btn {
   display: inline-flex;
   align-items: center;
@@ -883,5 +929,11 @@
 
   .chronelis-auth-mobile-switch-trigger {
     font-size: 0.73rem;
+  }
+
+  .chronelis-auth-resend-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
   }
 }

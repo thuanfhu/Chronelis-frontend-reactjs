@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -9,10 +9,13 @@ import { AuthLayout } from '@/features/auth/auth-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { resolveAuthToken } from '@/features/auth/auth-token'
 
 export function VerifyAccountPage() {
   const [searchParams] = useSearchParams()
-  const [token, setToken] = useState(searchParams.get('token') ?? '')
+  const tokenFromQuery = useMemo(() => resolveAuthToken(searchParams), [searchParams])
+  const [token, setToken] = useState(tokenFromQuery)
+  const autoSubmitRef = useRef(false)
   const setSession = useAuthStore((state) => state.setSession)
   const navigate = useNavigate()
 
@@ -31,14 +34,18 @@ export function VerifyAccountPage() {
     },
   })
 
-  // Auto-verify if token is in URL
   useEffect(() => {
-    const urlToken = searchParams.get('token')
-    if (urlToken && !verifyMutation.isPending && !verifyMutation.isSuccess && !verifyMutation.isError) {
-      verifyMutation.mutate(urlToken)
+    setToken(tokenFromQuery)
+  }, [tokenFromQuery])
+
+  useEffect(() => {
+    if (!tokenFromQuery || autoSubmitRef.current) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+
+    autoSubmitRef.current = true
+    verifyMutation.mutate(tokenFromQuery)
+  }, [tokenFromQuery, verifyMutation])
 
   return (
     <AuthLayout title="Xác thực tài khoản" subtitle="Nhập mã xác thực từ email kích hoạt của bạn">

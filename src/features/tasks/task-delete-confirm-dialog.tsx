@@ -3,10 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryKey } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2, X } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -36,7 +35,7 @@ import {
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import type { Task, TaskComment } from '@/types/domain'
 
-const TASK_DELETE_UNDO_WINDOW_MS = 5000
+const TASK_DELETE_UNDO_WINDOW_MS = 5_000
 
 type CommentSnapshot = Array<[QueryKey, TaskComment[] | undefined]>
 
@@ -55,6 +54,61 @@ interface PendingTaskDelete {
     taskSchedules: ReturnType<typeof snapshotTaskScheduleQueries>
     comments: CommentSnapshot
   }
+}
+
+function CircularCountdownUndo({
+  progress,
+  remainingSeconds,
+  onUndo,
+  disabled,
+}: {
+  progress: number
+  remainingSeconds: number
+  onUndo: () => void
+  disabled: boolean
+}) {
+  const radius = 18
+  const strokeWidth = 3
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (progress / 100) * circumference
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative grid size-11 place-items-center">
+        <svg className="size-11 -rotate-90" viewBox="0 0 48 48" aria-hidden>
+          <circle
+            cx="24"
+            cy="24"
+            r={radius}
+            strokeWidth={strokeWidth}
+            className="fill-none stroke-muted/40"
+          />
+          <circle
+            cx="24"
+            cy="24"
+            r={radius}
+            strokeWidth={strokeWidth}
+            className="fill-none stroke-primary"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            style={{ transition: 'stroke-dashoffset 140ms linear' }}
+          />
+        </svg>
+        <span className="absolute text-[10px] font-semibold tabular-nums">{remainingSeconds}</span>
+      </div>
+
+      <Button
+        variant="outline"
+        size="icon"
+        className="size-7 rounded-full"
+        onClick={onUndo}
+        disabled={disabled}
+        aria-label="Hoàn tác xóa"
+      >
+        <X className="size-3.5" />
+      </Button>
+    </div>
+  )
 }
 
 export function TaskDeleteConfirmDialog() {
@@ -328,22 +382,20 @@ export function TaskDeleteConfirmDialog() {
                 key={pendingDelete.taskId}
                 className="pointer-events-auto rounded-lg border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">Đang xóa task</p>
                     <p className="truncate text-xs text-muted-foreground">{pendingDelete.taskTitle}</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => undoPendingDelete(pendingDelete.taskId)}
+
+                  <CircularCountdownUndo
+                    progress={progress}
+                    remainingSeconds={remainingSeconds}
+                    onUndo={() => undoPendingDelete(pendingDelete.taskId)}
                     disabled={pendingDelete.status !== 'pending'}
-                  >
-                    Hoàn tác
-                  </Button>
+                  />
                 </div>
 
-                <Progress value={progress} className="mt-2 h-1.5 bg-muted/40" />
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {pendingDelete.status === 'finalizing'
                     ? 'Đang xóa vĩnh viễn...'

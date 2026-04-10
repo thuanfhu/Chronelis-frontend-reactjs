@@ -2,7 +2,21 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Target, Loader2, Timer, Clock, Milestone, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import {
+  Plus,
+  Target,
+  Loader2,
+  Timer,
+  Clock,
+  Milestone,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  CircleDashed,
+  PlayCircle,
+  PauseCircle,
+  CheckCircle2,
+} from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -28,15 +42,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
+import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { projectApi } from '@/lib/api/modules/project-api'
+import { taskApi } from '@/lib/api/modules/task-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
-import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { useAuthStore } from '@/app/store/auth-store'
-import type { Goal, GoalStatusType, GoalType, PageResult, WorkspaceMemberRoleType } from '@/types/domain'
+import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
+import type { Goal, GoalStatusType, GoalType, Task, WorkspaceMemberRoleType } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
   SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
@@ -44,11 +60,60 @@ const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; colo
   LONG_TERM: { label: 'Dài hạn', icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
 }
 
-const goalStatusConfig: Record<GoalStatusType, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  NOT_STARTED: { label: 'Chưa bắt đầu', variant: 'outline' },
-  IN_PROGRESS: { label: 'Đang thực hiện', variant: 'default' },
-  ON_HOLD: { label: 'Tạm dừng', variant: 'secondary' },
-  COMPLETED: { label: 'Hoàn thành', variant: 'secondary' },
+const goalStatusConfig: Record<GoalStatusType, { label: string; icon: typeof CircleDashed; className: string }> = {
+  NOT_STARTED: {
+    label: 'Chưa bắt đầu',
+    icon: CircleDashed,
+    className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
+  },
+  IN_PROGRESS: {
+    label: 'Đang thực hiện',
+    icon: PlayCircle,
+    className: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
+  },
+  ON_HOLD: {
+    label: 'Tạm dừng',
+    icon: PauseCircle,
+    className: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
+  },
+  COMPLETED: {
+    label: 'Hoàn thành',
+    icon: CheckCircle2,
+    className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
+  },
+}
+
+function GoalStatusBadge({ status }: { status: GoalStatusType }) {
+  const config = goalStatusConfig[status]
+  const Icon = config.icon
+
+  return (
+    <span
+      className={`inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[10px] font-semibold ${config.className}`}
+      title={config.label}
+    >
+      <Icon className="size-3" />
+      {config.label}
+    </span>
+  )
+}
+
+function compareGoalTasks(left: Task, right: Task): number {
+  if (left.status.position !== right.status.position) {
+    return left.status.position - right.status.position
+  }
+
+  if (left.boardPosition !== right.boardPosition) {
+    return left.boardPosition - right.boardPosition
+  }
+
+  const leftCreatedAt = new Date(left.createdAt).getTime()
+  const rightCreatedAt = new Date(right.createdAt).getTime()
+  if (leftCreatedAt !== rightCreatedAt) {
+    return leftCreatedAt - rightCreatedAt
+  }
+
+  return left.id - right.id
 }
 
 export function GoalsPage() {
@@ -74,9 +139,13 @@ export function GoalsPage() {
   const [editStatus, setEditStatus] = useState<GoalStatusType>('NOT_STARTED')
   const [editManagerUserId, setEditManagerUserId] = useState('')
   const [editManagerTeamId, setEditManagerTeamId] = useState('')
+  const [editInitialTitle, setEditInitialTitle] = useState('')
+  const [editInitialGoalType, setEditInitialGoalType] = useState<GoalType>('SHORT_TERM')
+  const [editInitialStatus, setEditInitialStatus] = useState<GoalStatusType>('NOT_STARTED')
+  const [editInitialManagerUserId, setEditInitialManagerUserId] = useState('')
+  const [editInitialManagerTeamId, setEditInitialManagerTeamId] = useState('')
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null)
+  const [deleteGoalTarget, setDeleteGoalTarget] = useState<{ id: number; title: string } | null>(null)
 
   const projectQuery = useQuery({
     queryKey: queryKeys.projects.detail(projectId),
@@ -124,6 +193,12 @@ export function GoalsPage() {
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(projectId, 1, 50),
     queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
+    enabled: Number.isFinite(projectId),
+  })
+
+  const goalTasksQuery = useQuery({
+    queryKey: queryKeys.tasks.byProject(projectId, 1, 500),
+    queryFn: () => taskApi.listByProject(projectId, { page: 1, size: 500 }),
     enabled: Number.isFinite(projectId),
   })
 
@@ -224,66 +299,63 @@ export function GoalsPage() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: () => {
-      if (!deleteGoalId) throw new Error('Goal không tồn tại')
-      return goalApi.remove(deleteGoalId)
+  const {
+    pendingDeletes: pendingGoalDeletes,
+    clockMs: goalDeleteClockMs,
+    undoWindowMs: goalDeleteUndoWindowMs,
+    scheduleDelete: scheduleGoalDelete,
+    undoDelete: undoGoalDelete,
+    isQueued: isGoalDeleteQueued,
+  } = useDeferredDelete<{ id: number; title: string }>({
+    onFinalize: async (payload) => {
+      await goalApi.remove(payload.id)
     },
-    onMutate: async () => {
-      if (!deleteGoalId) {
-        return {}
-      }
-
-      await queryClient.cancelQueries({ queryKey: ['goals', projectId] })
-
-      const goalsSnapshot = queryClient.getQueriesData<PageResult<Goal>>({ queryKey: ['goals', projectId] })
-      queryClient.setQueriesData<PageResult<Goal>>(
-        { queryKey: ['goals', projectId] },
-        (oldData) => {
-          if (!oldData) return oldData
-          return {
-            ...oldData,
-            content: oldData.content.filter((goal) => goal.id !== deleteGoalId),
-          }
-        },
-      )
-
-      return {
-        goalsSnapshot,
-      }
+    onFinalizeSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) }),
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
+      ])
     },
-    onSuccess: () => {
-      setDeleteDialogOpen(false)
-      setDeleteGoalId(null)
-      toast.success('Xóa goal thành công')
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context?.goalsSnapshot) {
-        for (const [queryKey, snapshotData] of context.goalsSnapshot) {
-          queryClient.setQueryData(queryKey, snapshotData)
-        }
-      }
-
-      if (isNotFoundError(error)) {
-        setDeleteDialogOpen(false)
-        setDeleteGoalId(null)
-        toast.success('Goal đã được xóa trước đó')
-        return
-      }
-
-      toast.error('Xóa goal thất bại', { description: error.message })
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['goals', projectId] })
-      void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
-    },
+    pendingMessage: (entry) => `Goal "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`,
+    successMessage: (entry) => `Đã xóa goal "${entry.label}"`,
+    alreadyDeletedMessage: (entry) => `Goal "${entry.label}" đã được xóa trước đó`,
+    errorTitle: 'Xóa goal thất bại',
   })
 
-  if (goalsQuery.isLoading || projectQuery.isLoading || membersQuery.isLoading || teamsQuery.isLoading || workspaceQuery.isLoading || teamMembershipQuery.isLoading) {
+  if (goalsQuery.isLoading || goalTasksQuery.isLoading || projectQuery.isLoading || membersQuery.isLoading || teamsQuery.isLoading || workspaceQuery.isLoading || teamMembershipQuery.isLoading) {
     return <LoadingPanel />
   }
 
   const goals = goalsQuery.data?.content ?? []
+  const tasks = goalTasksQuery.data?.content ?? []
+  const pendingGoalIds = new Set(pendingGoalDeletes.map((entry) => entry.payload.id))
+  const visibleGoals = goals.filter((goal) => !pendingGoalIds.has(goal.id))
+  const tasksByGoal = new Map<number, Task[]>()
+
+  for (const task of tasks) {
+    if (!task.goalId || pendingGoalIds.has(task.goalId)) {
+      continue
+    }
+
+    const currentTasks = tasksByGoal.get(task.goalId) ?? []
+    currentTasks.push(task)
+    tasksByGoal.set(task.goalId, currentTasks)
+  }
+
+  for (const goalTasks of tasksByGoal.values()) {
+    goalTasks.sort(compareGoalTasks)
+  }
+
+  const isGoalUpdateDirty = Boolean(
+    editGoal
+    && (
+      editTitle.trim() !== editInitialTitle
+      || editGoalType !== editInitialGoalType
+      || editStatus !== editInitialStatus
+      || editManagerUserId !== editInitialManagerUserId
+      || editManagerTeamId !== editInitialManagerTeamId
+    ),
+  )
 
   return (
     <div className="space-y-6">
@@ -402,7 +474,7 @@ export function GoalsPage() {
         }
       />
 
-      {goals.length === 0 ? (
+      {visibleGoals.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Target className="mb-3 size-10 text-muted-foreground/30" />
@@ -412,11 +484,11 @@ export function GoalsPage() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {goals.map((goal) => {
+          {visibleGoals.map((goal) => {
             const typeConfig = goalTypeConfig[goal.goalType]
-            const statusConfig = goalStatusConfig[goal.status]
             const TypeIcon = typeConfig.icon
             const canManageCurrentGoal = canManageGoal(goal)
+            const orderedGoalTasks = tasksByGoal.get(goal.id) ?? []
             return (
               <Card key={goal.id} className="transition-all hover:shadow-sm">
                 <CardContent className="p-4">
@@ -425,9 +497,7 @@ export function GoalsPage() {
                       <TypeIcon className="size-4" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={statusConfig.variant} className="text-[10px]">
-                        {statusConfig.label}
-                      </Badge>
+                      <GoalStatusBadge status={goal.status} />
                       {canManageCurrentGoal && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -444,6 +514,11 @@ export function GoalsPage() {
                                 setEditStatus(goal.status)
                                 setEditManagerUserId(goal.managerUser?.userId ?? '')
                                 setEditManagerTeamId(goal.managerTeamId ? String(goal.managerTeamId) : '')
+                                setEditInitialTitle(goal.title.trim())
+                                setEditInitialGoalType(goal.goalType)
+                                setEditInitialStatus(goal.status)
+                                setEditInitialManagerUserId(goal.managerUser?.userId ?? '')
+                                setEditInitialManagerTeamId(goal.managerTeamId ? String(goal.managerTeamId) : '')
                                 setEditDialogOpen(true)
                               }}
                             >
@@ -454,8 +529,7 @@ export function GoalsPage() {
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() => {
-                                setDeleteGoalId(goal.id)
-                                setDeleteDialogOpen(true)
+                                setDeleteGoalTarget({ id: goal.id, title: goal.title })
                               }}
                             >
                               <Trash2 className="mr-2 size-3.5" />
@@ -495,6 +569,34 @@ export function GoalsPage() {
                       )}
                     </div>
                   )}
+
+                  <div className="mt-3 rounded-lg border border-border/70 bg-muted/25 p-2.5">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tasks theo thứ tự</p>
+                      <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                        {orderedGoalTasks.length}
+                      </Badge>
+                    </div>
+
+                    {orderedGoalTasks.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground">Goal này chưa có task nào.</p>
+                    ) : (
+                      <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
+                        {orderedGoalTasks.map((task, index) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between gap-2 rounded-md bg-background/80 px-2 py-1 text-[11px]"
+                          >
+                            <p className="min-w-0 truncate">
+                              <span className="mr-1 text-muted-foreground">{index + 1}.</span>
+                              {task.title}
+                            </p>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">{task.status.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )
@@ -511,6 +613,11 @@ export function GoalsPage() {
             setEditGoal(null)
             setEditManagerUserId('')
             setEditManagerTeamId('')
+            setEditInitialTitle('')
+            setEditInitialGoalType('SHORT_TERM')
+            setEditInitialStatus('NOT_STARTED')
+            setEditInitialManagerUserId('')
+            setEditInitialManagerTeamId('')
           }
         }}
       >
@@ -594,7 +701,7 @@ export function GoalsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
-            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !editTitle.trim()}>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !editTitle.trim() || !isGoalUpdateDirty}>
               {updateMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Lưu
             </Button>
@@ -603,25 +710,56 @@ export function GoalsPage() {
       </Dialog>
 
       {/* ─── Delete confirmation dialog ─── */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog
+        open={Boolean(deleteGoalTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteGoalTarget(null)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa goal</DialogTitle>
-            <DialogDescription>Bạn có chắc muốn xóa goal này không? Hành động này không thể hoàn tác. Goal chỉ xóa được khi không còn task liên kết.</DialogDescription>
+            <DialogDescription>
+              Bạn có chắc muốn xóa goal {deleteGoalTarget ? `"${deleteGoalTarget.title}"` : 'này'} không?
+              Goal sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setDeleteGoalTarget(null)}>Hủy</Button>
             <Button
               variant="destructive"
-              onClick={() => deleteMutation.mutate()}
-              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (!deleteGoalTarget) {
+                  return
+                }
+
+                const queued = scheduleGoalDelete({
+                  key: `goal-${deleteGoalTarget.id}`,
+                  label: deleteGoalTarget.title,
+                  payload: deleteGoalTarget,
+                })
+
+                if (queued) {
+                  setDeleteGoalTarget(null)
+                }
+              }}
+              disabled={Boolean(deleteGoalTarget && isGoalDeleteQueued(`goal-${deleteGoalTarget.id}`))}
             >
-              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Xóa
+              Xóa (5s undo)
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeferredDeleteStack
+        pendingDeletes={pendingGoalDeletes}
+        clockMs={goalDeleteClockMs}
+        undoWindowMs={goalDeleteUndoWindowMs}
+        onUndo={undoGoalDelete}
+        itemTitle={() => 'Đang xóa goal'}
+      />
     </div>
   )
 }

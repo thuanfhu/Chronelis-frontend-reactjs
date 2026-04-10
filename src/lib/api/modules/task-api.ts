@@ -28,6 +28,7 @@ export interface UpdateTaskPayload {
   description?: string
   notesHtml?: string
   goalId?: number
+  clearGoal?: boolean
   priority?: TaskPriorityType
   dueDate?: string
   estimatedMinutes?: number
