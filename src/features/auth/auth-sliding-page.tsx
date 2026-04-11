@@ -311,9 +311,8 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const registerMutation = useMutation({
     mutationFn: (values: RegisterPayload) => authApi.register(values),
     onSuccess: () => {
+      setSignUpResendCountdown(RESEND_COOLDOWN_SECONDS)
       toast.success('Đăng ký thành công', { description: 'Vui lòng kiểm tra email để xác thực tài khoản.' })
-      registerForm.reset()
-      switchMode('sign-in')
     },
     onError: (error: Error) => {
       toast.error('Đăng ký thất bại', { description: error.message })
@@ -324,7 +323,6 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const signUpEmail = registerForm.watch('email')?.trim() ?? ''
   const forgotEmail = forgotForm.watch('email')?.trim() ?? ''
   const passwordStrength = resolvePasswordStrength(signUpPassword)
-  const strengthPercent = Math.max((passwordStrength.score / 5) * 100, 8)
   const pageClassName = AUTH_MODE_CLASS[mode]
 
   const leftPanelCopy: PanelCopy = mode === 'forgot-password'
@@ -520,24 +518,6 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.password?.message} />
-
-                {signUpPassword ? (
-                  <div className={`chronelis-auth-strength chronelis-auth-strength--${passwordStrength.level}`}>
-                    <div className="chronelis-auth-strength-header">
-                      <span className="chronelis-auth-strength-label">Độ mạnh mật khẩu</span>
-                      <strong className="chronelis-auth-strength-value">{passwordStrength.label}</strong>
-                    </div>
-
-                    <div className="chronelis-auth-strength-track" aria-hidden>
-                      <span
-                        className={`chronelis-auth-strength-fill chronelis-auth-strength-fill--${passwordStrength.level}`}
-                        style={{ width: `${strengthPercent}%` }}
-                      />
-                    </div>
-
-                    <p className="chronelis-auth-strength-helper">{passwordStrength.helper}</p>
-                  </div>
-                ) : null}
               </div>
               <div>
                 <div className="chronelis-auth-input-field chronelis-auth-input-field--password">
@@ -561,23 +541,43 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               </div>
             </div>
 
-            <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
-              {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
-              Tạo tài khoản
-            </button>
+            {signUpPassword ? (
+              <div className="chronelis-auth-strength-bar" data-level={passwordStrength.level}>
+                <div className="chronelis-auth-strength-segments">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <span key={i} className={i <= passwordStrength.score ? 'chronelis-auth-strength-seg active' : 'chronelis-auth-strength-seg'} />
+                  ))}
+                </div>
+                <span className="chronelis-auth-strength-lbl">{passwordStrength.label}</span>
+                <span className="chronelis-auth-strength-hint">{passwordStrength.helper}</span>
+              </div>
+            ) : null}
 
-            <div className="chronelis-auth-resend-row">
-              <span className="chronelis-auth-resend-hint">Đã đăng ký nhưng chưa nhận email xác thực?</span>
-              <button
-                type="button"
-                className="chronelis-auth-resend-btn"
-                onClick={() => resendVerifyMutation.mutate(signUpEmail)}
-                disabled={!signUpEmail || signUpResendCountdown > 0 || resendVerifyMutation.isPending}
-              >
-                {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
-                {signUpResendCountdown > 0 ? `Gửi lại sau ${signUpResendCountdown}s` : 'Gửi lại email xác thực'}
+            {registerMutation.isSuccess ? (
+              <div className="chronelis-auth-forgot-success">
+                <div className="chronelis-auth-forgot-success-icon">
+                  <Mail className="size-5" />
+                </div>
+                <p className="chronelis-auth-forgot-success-title">Kiểm tra hộp thư của bạn</p>
+                <p className="chronelis-auth-forgot-success-description">
+                  Email xác thực đã được gửi. Bấm vào liên kết trong email để kích hoạt tài khoản.
+                </p>
+                <button
+                  type="button"
+                  className="chronelis-auth-resend-btn"
+                  onClick={() => resendVerifyMutation.mutate(signUpEmail)}
+                  disabled={!signUpEmail || signUpResendCountdown > 0 || resendVerifyMutation.isPending}
+                >
+                  {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
+                  {signUpResendCountdown > 0 ? `Gửi lại sau ${signUpResendCountdown}s` : 'Gửi lại email xác thực'}
+                </button>
+              </div>
+            ) : (
+              <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
+                {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
+                Tạo tài khoản
               </button>
-            </div>
+            )}
 
             <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng ký">
               <span>Đã có tài khoản?</span>

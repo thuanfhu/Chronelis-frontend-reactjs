@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Loader2, XCircle } from 'lucide-react'
 import { authApi } from '@/lib/api/modules/auth-api'
-import { useAuthStore } from '@/app/store/auth-store'
 import { AuthLayout } from '@/features/auth/auth-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,18 +15,13 @@ export function VerifyAccountPage() {
   const tokenFromQuery = useMemo(() => resolveAuthToken(searchParams), [searchParams])
   const [token, setToken] = useState(tokenFromQuery)
   const autoSubmitRef = useRef(false)
-  const setSession = useAuthStore((state) => state.setSession)
   const navigate = useNavigate()
 
   const verifyMutation = useMutation({
     mutationFn: (value: string) => authApi.verifyActiveAccount({ token: value }),
-    onSuccess: (data) => {
-      setSession({
-        accessToken: data.accessToken,
-        currentUser: data.userSecured,
-      })
-      toast.success('Xác thực tài khoản thành công')
-      navigate('/dashboard', { replace: true })
+    onSuccess: () => {
+      toast.success('Xác thực tài khoản thành công', { description: 'Vui lòng đăng nhập để tiếp tục.' })
+      navigate('/login', { replace: true })
     },
     onError: (error: Error) => {
       toast.error('Xác thực thất bại', { description: error.message })

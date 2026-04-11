@@ -445,20 +445,7 @@ export function WorkspaceDetailPage() {
   })
 
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
-
-  if (isLoading) {
-    return <LoadingPanel />
-  }
-
-  if (!workspaceQuery.data) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Workspace không tồn tại.</p>
-        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">Quay lại danh sách</Link>
-      </div>
-    )
-  }
-
+  const workspace = workspaceQuery.data ?? null
   const members = membersQuery.data ?? []
   const projects = projectsQuery.data?.content ?? []
   const invites = invitesQuery.data ?? []
@@ -482,7 +469,7 @@ export function WorkspaceDetailPage() {
   const visibleTeams = teams.filter((team) => !pendingTeamIds.has(team.id))
 
   const currentMember = members.find((member) => member.user.userId === currentUserId)
-  const currentRole: WorkspaceMemberRoleType = workspaceQuery.data.owner.userId === currentUserId
+  const currentRole: WorkspaceMemberRoleType = workspace?.owner.userId === currentUserId
     ? 'OWNER'
     : currentMember?.role ?? 'MEMBER'
   const isOwner = currentRole === 'OWNER'
@@ -549,11 +536,24 @@ export function WorkspaceDetailPage() {
   const teamCurrentPage = Math.min(teamPage, teamTotalPages)
   const paginatedTeams = filteredTeams.slice((teamCurrentPage - 1) * TEAM_PAGE_SIZE, teamCurrentPage * TEAM_PAGE_SIZE)
 
+  if (isLoading) {
+    return <LoadingPanel />
+  }
+
+  if (!workspace) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-sm text-muted-foreground">Workspace không tồn tại.</p>
+        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">Quay lại danh sách</Link>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={workspaceQuery.data.name}
-        description={`Owner: ${workspaceQuery.data.owner.firstName} ${workspaceQuery.data.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${roleDisplayName[currentRole]}`}
+        title={workspace.name}
+        description={`Owner: ${workspace.owner.firstName} ${workspace.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${roleDisplayName[currentRole]}`}
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -576,8 +576,8 @@ export function WorkspaceDetailPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setEditWsName(workspaceQuery.data!.name)
-                      setEditWsInitialName(workspaceQuery.data!.name.trim())
+                      setEditWsName(workspace.name)
+                      setEditWsInitialName(workspace.name.trim())
                     }}
                   >
                     <Pencil className="mr-1.5 size-3.5" />
@@ -1534,7 +1534,7 @@ export function WorkspaceDetailPage() {
             <DialogHeader>
               <DialogTitle>Xóa workspace</DialogTitle>
               <DialogDescription>
-                Bạn có chắc muốn xóa workspace "{workspaceQuery.data.name}" không?
+                Bạn có chắc muốn xóa workspace "{workspace.name}" không?
                     Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
                   Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.
               </DialogDescription>
@@ -1546,11 +1546,11 @@ export function WorkspaceDetailPage() {
                 onClick={() => {
                   const queued = scheduleWorkspaceDelete({
                     key: `workspace-${workspaceId}`,
-                    label: workspaceQuery.data.name,
+                    label: workspace.name,
                     payload: {
                       kind: 'workspace',
                       id: workspaceId,
-                      name: workspaceQuery.data.name,
+                      name: workspace.name,
                     },
                   })
 
