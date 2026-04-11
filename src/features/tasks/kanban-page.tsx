@@ -584,7 +584,7 @@ export function KanbanPage() {
         </Card>
       ) : (
         <DndContext
-          sensors={sensors}
+          sensors={canManageProject ? sensors : []}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}

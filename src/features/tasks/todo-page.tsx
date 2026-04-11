@@ -307,6 +307,12 @@ export function TodoPage() {
     setActiveTask(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+
+    if (!canManageProject) {
+      toast.error('Bạn không có quyền sắp xếp task trong project này')
+      return
+    }
+
     const overData = over.data.current
     if (overData?.type === 'task') {
       const overTask = overData.task as Task
@@ -712,7 +718,7 @@ export function TodoPage() {
         </div>
       ) : (
         <DndContext
-          sensors={sensors}
+          sensors={canManageProject ? sensors : []}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}

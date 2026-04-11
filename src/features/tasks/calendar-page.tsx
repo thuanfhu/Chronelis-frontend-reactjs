@@ -697,6 +697,11 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      {!canManageProject && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <span className="font-medium">Chế độ xem:</span> Bạn chỉ có quyền xem lịch này. Tạo và chỉnh sửa lịch yêu cầu quyền quản lý project.
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">Lịch</h1>
@@ -757,12 +762,12 @@ export function CalendarPage() {
               slotLabelInterval="01:00:00"
               snapDuration="00:15:00"
               scrollTime="08:00:00"
-              selectable
-              selectMirror
-              editable
-              eventStartEditable
-              eventDurationEditable
-              eventResizableFromStart
+              selectable={canManageProject}
+              selectMirror={canManageProject}
+              editable={canManageProject}
+              eventStartEditable={canManageProject}
+              eventDurationEditable={canManageProject}
+              eventResizableFromStart={canManageProject}
               expandRows
               dayMaxEvents={3}
               events={calendarEvents}

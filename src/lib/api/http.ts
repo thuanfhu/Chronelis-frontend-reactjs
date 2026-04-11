@@ -34,10 +34,29 @@ http.interceptors.response.use(
     const appError = parseApiError(error)
 
     if (appError.status === 401) {
-      useAuthStore.getState().clearSession()
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login'
+      // Only redirect to login if the access token is actually expired or missing.
+      // The backend may return 401 for "insufficient workspace permissions" on some endpoints
+      // (e.g. /workspace-teams/:id/members). In that case, the user IS authenticated but
+      // lacks the required role — we must not log them out.
+      const accessToken = useAuthStore.getState().accessToken
+      let tokenIsExpiredOrMissing = !accessToken
+      if (accessToken) {
+        try {
+          const [, b64Payload] = accessToken.split('.')
+          const payload = JSON.parse(atob(b64Payload)) as { exp?: number }
+          tokenIsExpiredOrMissing = payload.exp != null && payload.exp * 1000 < Date.now()
+        } catch {
+          tokenIsExpiredOrMissing = true
+        }
       }
+
+      if (tokenIsExpiredOrMissing) {
+        useAuthStore.getState().clearSession()
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login'
+        }
+      }
+      // If the token is still valid, let the error propagate normally (caught by mutation onError).
     }
 
     if (

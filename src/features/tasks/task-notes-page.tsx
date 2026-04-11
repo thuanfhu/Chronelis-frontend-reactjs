@@ -31,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { queryKeys } from '@/lib/api/query-keys'
 import { storageApi } from '@/lib/api/modules/storage-api'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import '@/styles/task-notes-editor.css'
 
@@ -53,6 +54,12 @@ export function TaskNotesPage() {
     Number.isFinite(projectId) ? projectId : null,
     Number.isFinite(taskId) && taskId > 0 ? taskId : null,
   )
+
+  const { canManageTask, permissionsReady } = useProjectPermissions({
+    workspaceId,
+    projectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
+  })
 
   const [isDirty, setIsDirty] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
@@ -281,6 +288,8 @@ export function TaskNotesPage() {
     ))
   }, [editor])
 
+  const canEditNotes = permissionsReady && canManageTask(taskQuery.data?.goalId ?? null)
+
   if (!Number.isFinite(taskId) || taskId <= 0) {
     return (
       <div className="space-y-4">
@@ -307,7 +316,7 @@ export function TaskNotesPage() {
             <Button
               size="sm"
               onClick={() => saveMutation.mutate()}
-              disabled={!editor || saveMutation.isPending || !isDirty}
+              disabled={!editor || saveMutation.isPending || !isDirty || !canEditNotes}
             >
               {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Lưu ghi chú
@@ -315,6 +324,12 @@ export function TaskNotesPage() {
           </>
         )}
       />
+
+      {!canEditNotes && permissionsReady && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <span className="font-medium">Chế độ xem:</span> Bạn chỉ có quyền xem ghi chú này. Chỉnh sửa yêu cầu quyền quản lý task.
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
@@ -378,7 +393,7 @@ export function TaskNotesPage() {
                 </div>
               </div>
 
-              <div className="task-notes-editor rounded-md border bg-background px-4 py-3">
+              <div className={`task-notes-editor rounded-md border bg-background px-4 py-3 ${!canEditNotes ? 'pointer-events-none opacity-70' : ''}`}>
                 <EditorContent editor={editor} />
               </div>
             </>

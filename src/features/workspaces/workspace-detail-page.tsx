@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, Info, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
@@ -97,6 +97,21 @@ type WorkspaceDetailDeletePayload = {
   name: string
 }
 
+const TEAM_MEMBER_PREVIEW_COUNT = 5
+
+function buildPageNumbers(current: number, total: number): Array<number | '...'> {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: Array<number | '...'> = []
+  const left = Math.max(2, current - 1)
+  const right = Math.min(total - 1, current + 1)
+  pages.push(1)
+  if (left > 2) pages.push('...')
+  for (let p = left; p <= right; p++) pages.push(p)
+  if (right < total - 1) pages.push('...')
+  pages.push(total)
+  return pages
+}
+
 export function WorkspaceDetailPage() {
   const navigate = useNavigate()
   const params = useParams()
@@ -140,6 +155,7 @@ export function WorkspaceDetailPage() {
   const [teamName, setTeamName] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
   const [teamMemberDraftByTeamId, setTeamMemberDraftByTeamId] = useState<Record<number, string>>({})
+  const [teamMemberExpanded, setTeamMemberExpanded] = useState<Record<number, boolean>>({})
 
   const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
@@ -550,7 +566,7 @@ export function WorkspaceDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <PageHeader
         title={workspace.name}
         description={`Owner: ${workspace.owner.firstName} ${workspace.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${roleDisplayName[currentRole]}`}
@@ -619,7 +635,7 @@ export function WorkspaceDetailPage() {
       />
 
       <Tabs defaultValue="projects">
-        <TabsList className="h-auto w-full justify-start overflow-x-auto whitespace-nowrap">
+        <TabsList className="h-auto w-full justify-start">
           <TabsTrigger value="projects" className="shrink-0 gap-1.5">
             <FolderKanban className="size-3.5" />
             Projects ({visibleProjects.length})
@@ -995,25 +1011,24 @@ export function WorkspaceDetailPage() {
         {/* Members tab */}
         <TabsContent value="members" className="mt-4 space-y-4">
           {/* Role legend */}
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <Info className="size-3.5" />
-              Phân cấp vai trò trong workspace
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {(['OWNER', 'ADMIN', 'MEMBER'] as const).map((r) => {
-                const Icon = roleIcon[r]
-                return (
-                  <div key={r} className="flex min-w-44 flex-col gap-0.5">
-                    <span className={`inline-flex w-fit items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClassName[r]}`}>
-                      <Icon className="size-3" />
-                      {roleDisplayName[r]}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">{roleDescription[r]}</span>
-                  </div>
-                )
-              })}
-            </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {(['OWNER', 'ADMIN', 'MEMBER'] as const).map((r) => {
+              const Icon = roleIcon[r]
+              const accentClass = {
+                OWNER: 'border-l-amber-400',
+                ADMIN: 'border-l-blue-400',
+                MEMBER: 'border-l-slate-300 dark:border-l-slate-600',
+              }[r]
+              return (
+                <div key={r} className={`flex flex-col gap-1.5 rounded-lg border border-l-[3px] border-border/50 bg-card px-3 py-2.5 shadow-sm ${accentClass}`}>
+                  <span className={`inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClassName[r]}`}>
+                    <Icon className="size-3" />
+                    {roleDisplayName[r]}
+                  </span>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">{roleDescription[r]}</p>
+                </div>
+              )
+            })}
           </div>
 
           {/* Toolbar */}
@@ -1033,9 +1048,24 @@ export function WorkspaceDetailPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Tất cả vai trò</SelectItem>
-                <SelectItem value="OWNER">Chủ sở hữu</SelectItem>
-                <SelectItem value="ADMIN">Quản lý</SelectItem>
-                <SelectItem value="MEMBER">Thành viên</SelectItem>
+                <SelectItem value="OWNER">
+                  <span className="flex items-center gap-1.5">
+                    <Crown className="size-3 text-amber-600 dark:text-amber-400" />
+                    Chủ sở hữu
+                  </span>
+                </SelectItem>
+                <SelectItem value="ADMIN">
+                  <span className="flex items-center gap-1.5">
+                    <Shield className="size-3 text-blue-600 dark:text-blue-400" />
+                    Quản lý
+                  </span>
+                </SelectItem>
+                <SelectItem value="MEMBER">
+                  <span className="flex items-center gap-1.5">
+                    <User className="size-3 text-muted-foreground" />
+                    Thành viên
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
             <Select value={memberSortKey} onValueChange={(v) => setMemberSortKey(v as 'name' | 'role' | 'joined')}>
@@ -1044,9 +1074,9 @@ export function WorkspaceDetailPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="role">Sắp xếp theo vai trò</SelectItem>
-                <SelectItem value="name">Sắp xếp theo tên</SelectItem>
-                <SelectItem value="joined">Sắp xếp theo ngày tham gia</SelectItem>
+                <SelectItem value="role">Theo vai trò</SelectItem>
+                <SelectItem value="name">Theo tên</SelectItem>
+                <SelectItem value="joined">Theo ngày tham gia</SelectItem>
               </SelectContent>
             </Select>
             <span className="ml-auto text-xs text-muted-foreground">{filteredMembers.length}/{members.length} thành viên</span>
@@ -1187,16 +1217,22 @@ export function WorkspaceDetailPage() {
 
           {/* Member pagination */}
           {memberTotalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Trang {memberCurrentPage}/{memberTotalPages}</p>
-              <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="icon" className="size-8" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-muted-foreground">
+                Trang {memberCurrentPage}/{memberTotalPages} · {filteredMembers.length} thành viên
+              </p>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
                   <ChevronLeft className="size-3.5" />
                 </Button>
-                {Array.from({ length: memberTotalPages }, (_, i) => i + 1).map((p) => (
-                  <Button key={p} variant={memberCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-8 text-xs" onClick={() => setMemberPage(p)}>{p}</Button>
-                ))}
-                <Button variant="outline" size="icon" className="size-8" disabled={memberCurrentPage === memberTotalPages} onClick={() => setMemberPage((p) => p + 1)}>
+                {buildPageNumbers(memberCurrentPage, memberTotalPages).map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="flex size-7 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                  ) : (
+                    <Button key={p} variant={memberCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-7 text-xs" onClick={() => setMemberPage(p as number)}>{p}</Button>
+                  )
+                )}
+                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === memberTotalPages} onClick={() => setMemberPage((p) => p + 1)}>
                   <ChevronRight className="size-3.5" />
                 </Button>
               </div>
@@ -1372,7 +1408,7 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="columns-1 gap-4 sm:columns-2">
                 {paginatedTeams.map((team) => {
                   const teamMembers = teamMembersByTeamId.get(team.id) ?? []
                   const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
@@ -1380,88 +1416,128 @@ export function WorkspaceDetailPage() {
                     (member) => !teamMemberIds.has(member.user.userId),
                   )
                   const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
+                  const isExpanded = teamMemberExpanded[team.id] ?? false
+
+                  // Sort: OWNER → ADMIN → MEMBER, then a-z within each group
+                  const ROLE_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, ADMIN: 1, MEMBER: 2 }
+                  const sortedTeamMembers = [...teamMembers].sort((a, b) => {
+                    const wsMemberA = members.find((m) => m.user.userId === a.user.userId)
+                    const wsMemberB = members.find((m) => m.user.userId === b.user.userId)
+                    const roleA = wsMemberA?.role ?? 'MEMBER'
+                    const roleB = wsMemberB?.role ?? 'MEMBER'
+                    const cmp = ROLE_ORDER[roleA] - ROLE_ORDER[roleB]
+                    if (cmp !== 0) return cmp
+                    return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, 'vi')
+                  })
+
+                  const displayedMembers = isExpanded ? sortedTeamMembers : sortedTeamMembers.slice(0, TEAM_MEMBER_PREVIEW_COUNT)
+                  const hiddenCount = sortedTeamMembers.length - TEAM_MEMBER_PREVIEW_COUNT
 
                   return (
-                    <Card key={team.id} className="group transition-all hover:border-primary/30 hover:shadow-sm">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div className="min-w-0 flex-1">
-                            <CardTitle className="text-sm font-semibold">{team.name}</CardTitle>
-                            {team.description && <p className="mt-0.5 text-xs text-muted-foreground">{team.description}</p>}
+                    <Card key={team.id} className="group mb-4 flex flex-col break-inside-avoid overflow-hidden transition-all hover:border-primary/30 hover:shadow-md">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                            {team.name.charAt(0).toUpperCase()}
                           </div>
-                          {canManageWorkspace && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-7 shrink-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                              onClick={() => {
-                                void scheduleWorkspaceDelete({
-                                  key: `team-${team.id}`,
-                                  label: team.name,
-                                  payload: { kind: 'team', id: team.id, name: team.name },
-                                })
-                              }}
-                              disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <CardTitle className="text-sm font-semibold leading-tight">{team.name}</CardTitle>
+                                {team.description && (
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{team.description}</p>
+                                )}
+                              </div>
+                              {canManageWorkspace && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 shrink-0 text-muted-foreground/50 opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
+                                  onClick={() => {
+                                    void scheduleWorkspaceDelete({
+                                      key: `team-${team.id}`,
+                                      label: team.name,
+                                      payload: { kind: 'team', id: team.id, name: team.name },
+                                    })
+                                  }}
+                                  disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="mt-1.5">
+                              <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px]">
+                                <Users className="size-2.5" />
+                                {team.memberCount} thành viên
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-3 pt-0">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Users className="size-3" />
-                          <span>{team.memberCount} thành viên</span>
-                        </div>
-
-                        <div className="space-y-1.5">
+                      <CardContent className="flex flex-1 flex-col gap-3 pt-0">
+                        {/* Member list */}
+                        <div className="space-y-0.5">
                           {teamMembers.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">Chưa có thành viên trong team này.</p>
+                            <p className="rounded-lg bg-muted/30 px-3 py-3 text-center text-xs text-muted-foreground">
+                              Chưa có thành viên trong team này.
+                            </p>
                           ) : (
-                            teamMembers.map((teamMember) => {
-                              const workspaceMember = members.find((m) => m.user.userId === teamMember.user.userId)
-                              return (
-                                <div
-                                  key={teamMember.id}
-                                  className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/25 px-2 py-1.5"
-                                >
-                                  <Avatar className="size-7 shrink-0">
-                                    <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                      {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-xs font-medium">
-                                      {teamMember.user.firstName} {teamMember.user.lastName}
-                                    </p>
-                                    <p className="truncate text-[11px] text-muted-foreground">{teamMember.user.email}</p>
+                            <>
+                              {displayedMembers.map((teamMember) => {
+                                const workspaceMember = members.find((m) => m.user.userId === teamMember.user.userId)
+                                return (
+                                  <div
+                                    key={teamMember.id}
+                                    className="flex items-center gap-2 rounded-md p-1.5 transition-colors hover:bg-muted/40"
+                                  >
+                                    <Avatar className="size-7 shrink-0">
+                                      <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                        {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-xs font-medium">
+                                        {teamMember.user.firstName} {teamMember.user.lastName}
+                                      </p>
+                                      <p className="truncate text-[10px] text-muted-foreground">{teamMember.user.email}</p>
+                                    </div>
+                                    {workspaceMember && (
+                                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold ${roleBadgeClassName[workspaceMember.role]}`}>
+                                        {roleDisplayName[workspaceMember.role]}
+                                      </span>
+                                    )}
+                                    {canManageWorkspace && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-6 shrink-0 text-muted-foreground/40 hover:text-destructive"
+                                        onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
+                                        disabled={removeTeamMemberMutation.isPending}
+                                      >
+                                        <Trash2 className="size-3" />
+                                      </Button>
+                                    )}
                                   </div>
-                                  {workspaceMember && (
-                                    <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold ${roleBadgeClassName[workspaceMember.role]}`}>
-                                      {roleDisplayName[workspaceMember.role]}
-                                    </span>
-                                  )}
-                                  {canManageWorkspace && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="size-6 shrink-0 text-destructive hover:text-destructive"
-                                      onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
-                                      disabled={removeTeamMemberMutation.isPending}
-                                    >
-                                      <Trash2 className="size-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              )
-                            })
+                                )
+                              })}
+                              {hiddenCount > 0 && (
+                                <button
+                                  type="button"
+                                  className="w-full rounded-md py-1.5 text-center text-xs font-medium text-primary transition-colors hover:bg-primary/5"
+                                  onClick={() => setTeamMemberExpanded((prev) => ({ ...prev, [team.id]: !isExpanded }))}
+                                >
+                                  {isExpanded ? 'Thu gọn' : `Xem thêm ${hiddenCount} thành viên`}
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
 
+                        {/* Add member */}
                         {canManageWorkspace && (
-                          <div className="rounded-md border border-border/70 bg-muted/35 p-2.5">
-                            <p className="mb-2 text-[11px] font-medium text-muted-foreground">Thêm thành viên vào team</p>
-                            <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="mt-auto rounded-lg border border-border/50 bg-muted/20 p-2.5">
+                            <div className="flex gap-2">
                               <Select
                                 value={selectedUserId || 'none'}
                                 onValueChange={(value) => {
@@ -1471,8 +1547,8 @@ export function WorkspaceDetailPage() {
                                   }))
                                 }}
                               >
-                                <SelectTrigger className="sm:flex-1">
-                                  <SelectValue placeholder="Chọn thành viên workspace" />
+                                <SelectTrigger className="h-8 flex-1 text-xs">
+                                  <SelectValue placeholder="Thêm thành viên vào team..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">Chọn thành viên</SelectItem>
@@ -1485,18 +1561,24 @@ export function WorkspaceDetailPage() {
                               </Select>
                               <Button
                                 size="sm"
+                                className="h-8 shrink-0"
                                 onClick={() => {
                                   if (!selectedUserId) return
                                   addTeamMemberMutation.mutate({ teamId: team.id, userId: selectedUserId })
                                 }}
                                 disabled={addTeamMemberMutation.isPending || !selectedUserId}
                               >
-                                {addTeamMemberMutation.isPending && <Loader2 className="mr-2 size-3.5 animate-spin" />}
-                                Thêm
+                                {addTeamMemberMutation.isPending ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Plus className="size-3.5" />
+                                )}
                               </Button>
                             </div>
                             {availableWorkspaceMembers.length === 0 && (
-                              <p className="mt-2 text-[11px] text-muted-foreground">Tất cả thành viên workspace đã thuộc team này.</p>
+                              <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                                Tất cả thành viên đã thuộc team này.
+                              </p>
                             )}
                           </div>
                         )}
@@ -1508,16 +1590,30 @@ export function WorkspaceDetailPage() {
 
               {/* Team pagination */}
               {teamTotalPages > 1 && (
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">Trang {teamCurrentPage}/{teamTotalPages} · {filteredTeams.length} teams</p>
-                  <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="icon" className="size-8" disabled={teamCurrentPage === 1} onClick={() => setTeamPage((p) => p - 1)}>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Trang {teamCurrentPage}/{teamTotalPages} · {filteredTeams.length} teams
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" className="size-7" disabled={teamCurrentPage === 1} onClick={() => setTeamPage((p) => p - 1)}>
                       <ChevronLeft className="size-3.5" />
                     </Button>
-                    {Array.from({ length: teamTotalPages }, (_, i) => i + 1).map((p) => (
-                      <Button key={p} variant={teamCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-8 text-xs" onClick={() => setTeamPage(p)}>{p}</Button>
-                    ))}
-                    <Button variant="outline" size="icon" className="size-8" disabled={teamCurrentPage === teamTotalPages} onClick={() => setTeamPage((p) => p + 1)}>
+                    {buildPageNumbers(teamCurrentPage, teamTotalPages).map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`dots-${idx}`} className="flex size-7 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                      ) : (
+                        <Button
+                          key={p}
+                          variant={teamCurrentPage === p ? 'default' : 'outline'}
+                          size="icon"
+                          className="size-7 text-xs"
+                          onClick={() => setTeamPage(p as number)}
+                        >
+                          {p}
+                        </Button>
+                      )
+                    )}
+                    <Button variant="outline" size="icon" className="size-7" disabled={teamCurrentPage === teamTotalPages} onClick={() => setTeamPage((p) => p + 1)}>
                       <ChevronRight className="size-3.5" />
                     </Button>
                   </div>
