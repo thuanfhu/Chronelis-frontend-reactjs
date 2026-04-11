@@ -273,20 +273,24 @@ export function GoalTasksPage() {
       {/* ─── Task list ─── */}
       {paginatedTasks.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ListTodo className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-muted/60">
+              <ListTodo className="size-8 text-muted-foreground/40" />
+            </div>
+            <p className="text-sm font-semibold">
               {allTasks.length === 0 ? 'Goal này chưa có task nào' : 'Không tìm thấy task phù hợp'}
             </p>
-            {allTasks.length === 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">Gắn task vào goal từ trang Kanban hoặc To-Do</p>
+            {allTasks.length === 0 ? (
+              <p className="mt-1.5 text-xs text-muted-foreground">Gắn task vào goal từ trang Kanban hoặc To-Do</p>
+            ) : (
+              <p className="mt-1.5 text-xs text-muted-foreground">Thử xóa bộ lọc hoặc tìm kiếm khác</p>
             )}
           </CardContent>
         </Card>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           {/* Table header */}
-          <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid-cols-[2rem_1fr_8rem_5.5rem_auto_6rem]">
+          <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-x-4 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]">
             <span className="text-center">#</span>
             <span>Tên task</span>
             <span className="hidden sm:block">Trạng thái</span>
@@ -295,41 +299,48 @@ export function GoalTasksPage() {
             <span className="hidden text-right sm:block">Hết hạn</span>
           </div>
 
-          <div className="divide-y divide-border/40">
+          <div className="divide-y divide-border/30">
             {paginatedTasks.map((task, index) => {
               const pCfg = priorityConfig[task.priority]
               const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1
               const dueDateStr = task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+                ? new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })
                 : null
               const isPastDue = task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date()
+              const statusChipClass = task.status.isClosed
+                ? 'border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'border-blue-300/60 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-300'
 
               return (
                 <button
                   key={task.id}
                   type="button"
                   onClick={() => openTaskDrawer(task.id)}
-                  className="grid w-full grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40 sm:grid-cols-[2rem_1fr_8rem_5.5rem_auto_6rem]"
+                  className="group grid w-full grid-cols-[2rem_1fr_auto] items-center gap-x-4 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]"
                 >
-                  <span className="text-center text-xs tabular-nums text-muted-foreground/70">{globalIndex}</span>
+                  {/* Index */}
+                  <span className="text-center text-[11px] tabular-nums text-muted-foreground/50 group-hover:text-muted-foreground/80">
+                    {globalIndex}
+                  </span>
 
+                  {/* Title + description */}
                   <div className="min-w-0">
-                    <p className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'line-through text-muted-foreground' : ''}`}>
+                    <p className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}>
                       {task.title}
                     </p>
                     {task.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{task.description}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">{task.description}</p>
                     )}
-                    {/* mobile-only badges inline */}
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:hidden">
-                      <span className="rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {/* Mobile-only inline badges */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
+                      <span className={`inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium ${statusChipClass}`}>
                         {task.status.name}
                       </span>
-                      <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${pCfg.className}`}>
-                        {pCfg.label}
+                      <span className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}>
+                        {pCfg.icon} {pCfg.label}
                       </span>
                       {dueDateStr && (
-                        <span className={`text-[10px] ${isPastDue ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
+                        <span className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}>
                           {dueDateStr}
                         </span>
                       )}
@@ -337,33 +348,38 @@ export function GoalTasksPage() {
                   </div>
 
                   {/* Status */}
-                  <span className="hidden truncate rounded-md border border-border/70 bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground sm:block">
+                  <span className={`hidden truncate sm:inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-medium ${statusChipClass}`}>
                     {task.status.name}
                   </span>
 
                   {/* Priority */}
-                  <span className={`hidden rounded-md px-2 py-1 text-[11px] font-semibold sm:block ${pCfg.className}`}>
-                    {pCfg.label}
+                  <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center ${pCfg.className}`}>
+                    {pCfg.icon} {pCfg.label}
                   </span>
 
                   {/* Assignee */}
                   <span className="hidden items-center gap-1.5 sm:flex">
                     {task.assignee ? (
-                      <Avatar className="size-6 shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
-                          {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <>
+                        <Avatar className="size-5 shrink-0">
+                          <AvatarFallback className="bg-primary/15 text-[9px] font-bold text-primary">
+                            {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                          {task.assignee.firstName} {task.assignee.lastName}
+                        </span>
+                      </>
                     ) : (
-                      <span className="inline-flex size-6 items-center justify-center rounded-full border border-dashed border-border/60 text-muted-foreground/40">
-                        <User className="size-3" />
+                      <span className="inline-flex size-5 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground/30">
+                        <User className="size-2.5" />
                       </span>
                     )}
                   </span>
 
                   {/* Due date */}
-                  <span className={`hidden text-right text-xs tabular-nums sm:block ${isPastDue ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
-                    {dueDateStr ?? <span className="text-muted-foreground/40">—</span>}
+                  <span className={`hidden text-right text-[11px] tabular-nums sm:block ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}>
+                    {dueDateStr ?? <span className="text-muted-foreground/30 select-none">—</span>}
                   </span>
                 </button>
               )
@@ -372,17 +388,29 @@ export function GoalTasksPage() {
         </div>
       )}
 
-      {/* ─── Pagination ─── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Trang {currentPage}/{totalPages} · {filteredTasks.length} tasks
-          </p>
-          <div className="flex items-center gap-1.5">
+      {/* ─── Pagination (always visible) ─── */}
+      <div className="flex items-center justify-between gap-4 pt-0.5">
+        <p className="text-xs text-muted-foreground">
+          {filteredTasks.length > 0 ? (
+            <>
+              Hiển thị{' '}
+              <span className="font-semibold text-foreground">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredTasks.length)}
+              </span>{' '}
+              trong{' '}
+              <span className="font-semibold text-foreground">{filteredTasks.length}</span>{' '}
+              task{filteredTasks.length !== allTasks.length ? ` (lọc từ ${allTasks.length})` : ''}
+            </>
+          ) : (
+            <span>0 task phù hợp / {allTasks.length} tổng</span>
+          )}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
               size="icon"
-              className="size-8"
+              className="size-7"
               disabled={currentPage === 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -399,13 +427,13 @@ export function GoalTasksPage() {
               }, [])
               .map((item, i) =>
                 item === '...' ? (
-                  <span key={`ellipsis-${i}`} className="px-1 text-xs text-muted-foreground">…</span>
+                  <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-muted-foreground">…</span>
                 ) : (
                   <Button
                     key={item}
                     variant={currentPage === item ? 'default' : 'outline'}
                     size="icon"
-                    className="size-8 text-xs"
+                    className="size-7 text-xs"
                     onClick={() => setPage(item as number)}
                   >
                     {item}
@@ -415,15 +443,15 @@ export function GoalTasksPage() {
             <Button
               variant="outline"
               size="icon"
-              className="size-8"
+              className="size-7"
               disabled={currentPage === totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
               <ChevronRight className="size-3.5" />
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

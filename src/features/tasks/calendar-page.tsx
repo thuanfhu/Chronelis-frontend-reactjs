@@ -40,6 +40,7 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
@@ -283,6 +284,20 @@ export function CalendarPage() {
   const [headerTitle, setHeaderTitle] = useState(() => formatWeekRange(startOfWeek(new Date())))
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
   const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
+
+  // Context menu for calendar events
+  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; taskId: number; canManage: boolean } | null>(null)
+
+  const openCalendarTaskContextMenu = (event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>, taskId: number, canManage: boolean) => {
+    event.preventDefault()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const menuW = 176
+    const menuH = 120
+    const x = event.clientX + menuW > vw ? vw - menuW - 8 : event.clientX
+    const y = event.clientY + menuH > vh ? vh - menuH - 8 : event.clientY
+    setTaskContextMenu({ x, y, taskId, canManage })
+  }
 
   // Create task+schedule from calendar slot click/select
   const [createDialog, setCreateDialog] = useState<{ open: boolean; start: Date; end: Date } | null>(null)
@@ -813,11 +828,10 @@ export function CalendarPage() {
               eventResize={handleEventResize}
               eventDidMount={(arg: CalendarEventMountArg) => {
                 arg.el.oncontextmenu = (event) => {
-                  event.preventDefault()
                   const taskId = Number(arg.event.extendedProps.taskId)
-                  const canDelete = Boolean(arg.event.extendedProps.canDelete)
-                  if (canDelete && Number.isFinite(taskId)) {
-                    openTaskDeleteConfirm(taskId)
+                  const canManage = Boolean(arg.event.extendedProps.canDelete)
+                  if (Number.isFinite(taskId)) {
+                    openCalendarTaskContextMenu(event as MouseEvent, taskId, canManage)
                   }
                 }
               }}
@@ -831,7 +845,16 @@ export function CalendarPage() {
               slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
               eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
               eventContent={(arg) => (
-                <div className="flex min-w-0 flex-col px-1 py-0.5">
+                <div
+                  className="flex min-w-0 flex-col px-1 py-0.5"
+                  onContextMenu={(event) => {
+                    const taskId = Number(arg.event.extendedProps.taskId)
+                    const canManage = Boolean(arg.event.extendedProps.canDelete)
+                    if (Number.isFinite(taskId)) {
+                      openCalendarTaskContextMenu(event.nativeEvent, taskId, canManage)
+                    }
+                  }}
+                >
                   <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
                   {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
                     <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
@@ -907,7 +930,9 @@ export function CalendarPage() {
                 <SelectContent>
                   <SelectItem value="__none">Không chọn goal</SelectItem>
                   {(goalsQuery.data?.content ?? []).map((g) => (
-                    <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      <span className="block max-w-65 truncate" title={g.title}>{g.title}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -935,6 +960,35 @@ export function CalendarPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TaskContextMenu
+        open={Boolean(taskContextMenu)}
+        x={taskContextMenu?.x ?? 0}
+        y={taskContextMenu?.y ?? 0}
+        onClose={() => setTaskContextMenu(null)}
+        onDuplicate={() => {
+          const menu = taskContextMenu
+          if (!menu) return
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền chỉnh sửa task này')
+            return
+          }
+          openTaskDrawer(menu.taskId, 'duplicate')
+        }}
+        onEdit={() => {
+          const menu = taskContextMenu
+          if (!menu) return
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền chỉnh sửa task này')
+            return
+          }
+          openTaskDrawer(menu.taskId, 'edit')
+        }}
+        onDelete={() => {
+          const menu = taskContextMenu
+          if (menu) openTaskDeleteConfirm(menu.taskId)
+        }}
+      />
     </div>
   )
 }

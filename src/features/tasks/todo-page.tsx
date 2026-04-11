@@ -35,6 +35,7 @@ import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
@@ -263,6 +264,11 @@ export function TodoPage() {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
       toast.error('Cập nhật thất bại', { description: error.message })
+    },
+    onSuccess: (_updatedTask, variables) => {
+      if (variables.isCompleted) {
+        void playTaskCompleteSound()
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })

@@ -3,24 +3,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Send, Pencil, MoreHorizontal, Timer, X, CornerDownRight, NotebookText,
+  CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Pencil, Timer, X, NotebookText,
+  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock,
 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
+import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -32,7 +27,9 @@ import { goalApi } from '@/lib/api/modules/goal-api'
 import { taskApi, type UpdateTaskPayload } from '@/lib/api/modules/task-api'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
+import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import {
   applyTaskCompletion,
   patchProjectTaskQueries,
@@ -43,6 +40,7 @@ import { useProjectPermissions } from '@/lib/permissions/use-project-permissions
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import { formatDateTime } from '@/lib/utils/datetime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import { TaskCommentsDialog } from '@/features/tasks/task-comments-dialog'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
 
@@ -95,15 +93,21 @@ export function TaskDetailsDrawer() {
   const [editDescription, setEditDescription] = useState<string | null>(null)
   const [editPriority, setEditPriority] = useState<TaskPriorityType | null>(null)
   const [editGoalId, setEditGoalId] = useState<number | null>(null)
+  const [editAssigneeId, setEditAssigneeId] = useState<string | null>(null)
+  const [editDueDate, setEditDueDate] = useState('')
   const [editScheduleStart, setEditScheduleStart] = useState('')
   const [editScheduleEnd, setEditScheduleEnd] = useState('')
   const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null)
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [editorInitKey, setEditorInitKey] = useState<string | null>(null)
   const [editorSnapshot, setEditorSnapshot] = useState<{
     title: string
     description: string
     priority: TaskPriorityType
     goalId: number | null
+    assigneeId: string | null
+    dueDate: string
     scheduleStart: string
     scheduleEnd: string
   } | null>(null)
@@ -150,6 +154,12 @@ export function TaskDetailsDrawer() {
     enabled: hasTask && Number.isFinite(permissionProjectId),
   })
 
+  const membersQuery = useQuery({
+    queryKey: Number.isFinite(workspaceId) ? queryKeys.workspaces.members(workspaceId) : ['workspaces', 'members', 'drawer'],
+    queryFn: () => workspaceApi.members(workspaceId),
+    enabled: hasTask && Number.isFinite(workspaceId),
+  })
+
   const schedulesQuery = useQuery({
     queryKey: queryKeys.schedules.byTask(taskId),
     queryFn: () => taskScheduleApi.listByTask(taskId),
@@ -168,9 +178,13 @@ export function TaskDetailsDrawer() {
     setEditDescription(null)
     setEditPriority(null)
     setEditGoalId(null)
+    setEditAssigneeId(null)
+    setEditDueDate('')
     setEditScheduleStart('')
     setEditScheduleEnd('')
     setActiveScheduleId(null)
+    setCommentsDialogOpen(false)
+    setDescriptionExpanded(false)
     setEditorInitKey(null)
     setEditorSnapshot(null)
     setEditingCommentId(null)
@@ -203,6 +217,19 @@ export function TaskDetailsDrawer() {
         ? queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
         : Promise.resolve(),
     ])
+  }
+
+  const upsertProjectTaskCache = (savedTask: Task) => {
+    queryClient.setQueryData(queryKeys.tasks.detail(savedTask.id), savedTask)
+    patchProjectTaskQueries(queryClient, savedTask.projectId, (tasks) => {
+      const existingTaskIndex = tasks.findIndex((item) => item.id === savedTask.id)
+
+      if (existingTaskIndex >= 0) {
+        return tasks.map((item) => (item.id === savedTask.id ? savedTask : item))
+      }
+
+      return [...tasks, savedTask]
+    })
   }
 
   const toggleCompletionMutation = useMutation({
@@ -263,6 +290,11 @@ export function TaskDetailsDrawer() {
 
       toast.error('Cập nhật thất bại', { description: error.message })
     },
+    onSuccess: (updatedTask) => {
+      if (updatedTask.isCompleted) {
+        void playTaskCompleteSound()
+      }
+    },
     onSettled: () => {
       void invalidateTaskData()
     },
@@ -293,6 +325,8 @@ export function TaskDetailsDrawer() {
       const nextDescription = (editDescription ?? currentTask.description ?? '').trim() || undefined
       const nextPriority = editPriority ?? currentTask.priority
       const nextGoalId = editGoalId
+      const nextAssigneeId = editAssigneeId
+      const dueDateIso = toIsoDateTime(editDueDate)
       const startIso = toIsoDateTime(editScheduleStart)
       const endIso = toIsoDateTime(editScheduleEnd)
 
@@ -312,28 +346,34 @@ export function TaskDetailsDrawer() {
           description: nextDescription,
           priority: nextPriority,
           goalId: nextGoalId ?? undefined,
-          dueDate: endIso ?? currentTask.dueDate,
+          dueDate: dueDateIso,
           estimatedMinutes: currentTask.estimatedMinutes,
           taskTypeId: currentTask.taskType?.id,
           sourceView: currentTask.sourceView,
         })
 
+        let duplicatedTask = createdTask
+
+        if (nextAssigneeId) {
+          duplicatedTask = await taskApi.assign(createdTask.id, nextAssigneeId)
+        }
+
         if (startIso && endIso) {
           await taskScheduleApi.create({
-            taskId: createdTask.id,
+            taskId: duplicatedTask.id,
             scheduledStart: startIso,
             scheduledEnd: endIso,
           })
         }
 
-        return createdTask
+        return duplicatedTask
       }
 
       const payload: UpdateTaskPayload = {
         title: nextTitle,
         description: nextDescription,
         priority: nextPriority,
-        dueDate: endIso ?? currentTask.dueDate,
+        dueDate: dueDateIso,
       }
 
       if (nextGoalId != null) {
@@ -342,7 +382,11 @@ export function TaskDetailsDrawer() {
         payload.clearGoal = true
       }
 
-      const updatedTask = await taskApi.update(taskId, payload)
+      let updatedTask = await taskApi.update(taskId, payload)
+
+      if ((currentTask.assignee?.userId ?? null) !== nextAssigneeId) {
+        updatedTask = await taskApi.assign(taskId, nextAssigneeId ?? undefined)
+      }
 
       if (startIso && endIso) {
         if (activeScheduleId) {
@@ -362,10 +406,13 @@ export function TaskDetailsDrawer() {
       return updatedTask
     },
     onSuccess: (savedTask) => {
+      upsertProjectTaskCache(savedTask)
       setEditTitle(null)
       setEditDescription(null)
       setEditPriority(null)
       setEditGoalId(null)
+      setEditAssigneeId(null)
+      setEditDueDate('')
       setEditScheduleStart('')
       setEditScheduleEnd('')
       setActiveScheduleId(null)
@@ -485,23 +532,36 @@ export function TaskDetailsDrawer() {
   })
 
   const comments = commentsQuery.data ?? []
-  const topLevelComments = comments.filter((comment) => comment.parentCommentId == null)
-  const repliesByParent = comments.reduce<Map<number, TaskComment[]>>((map, comment) => {
-    if (comment.parentCommentId == null) {
-      return map
-    }
-
-    const currentReplies = map.get(comment.parentCommentId) ?? []
-    currentReplies.push(comment)
-    map.set(comment.parentCommentId, currentReplies)
-    return map
-  }, new Map<number, TaskComment[]>())
-
   const task = taskQuery.data
   const goals = goalsQuery.data?.content ?? []
+  const members = membersQuery.data ?? []
   const goalTitleById = useMemo(
     () => new Map(goals.map((goal) => [goal.id, goal.title] as const)),
     [goals],
+  )
+  const assigneeOptions = useMemo(
+    () => [
+      {
+        value: '__unassigned',
+        label: 'Không giao cho ai',
+        description: 'Task này hiện chưa có người nhận',
+        searchText: 'unassigned no assignee',
+      },
+      ...members.map((member) => ({
+        value: member.user.userId,
+        label: `${member.user.firstName} ${member.user.lastName}`,
+        description: `${member.user.email} • ${member.role}`,
+        searchText: `${member.user.email} ${member.role}`,
+        prefix: (
+          <Avatar className="size-6">
+            <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+              {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+        ),
+      })),
+    ],
+    [members],
   )
   const primarySchedule = useMemo(() => {
     const schedules = schedulesQuery.data ?? []
@@ -539,6 +599,8 @@ export function TaskDetailsDrawer() {
     const initialDescription = task.description ?? ''
     const initialPriority = task.priority
     const initialGoalId = task.goalId ?? null
+    const initialAssigneeId = task.assignee?.userId ?? null
+    const initialDueDate = toDateTimeLocalValue(task.dueDate)
     const scheduleStart = toDateTimeLocalValue(primarySchedule?.scheduledStart ?? task.dueDate)
     const scheduleEnd = toDateTimeLocalValue(primarySchedule?.scheduledEnd ?? task.dueDate)
 
@@ -546,6 +608,8 @@ export function TaskDetailsDrawer() {
     setEditDescription(initialDescription)
     setEditPriority(initialPriority)
     setEditGoalId(initialGoalId)
+    setEditAssigneeId(initialAssigneeId)
+    setEditDueDate(initialDueDate)
     setEditScheduleStart(scheduleStart)
     setEditScheduleEnd(scheduleEnd)
     setActiveScheduleId(primarySchedule?.id ?? null)
@@ -554,6 +618,8 @@ export function TaskDetailsDrawer() {
       description: initialDescription,
       priority: initialPriority,
       goalId: initialGoalId,
+      assigneeId: initialAssigneeId,
+      dueDate: initialDueDate,
       scheduleStart,
       scheduleEnd,
     })
@@ -581,12 +647,19 @@ export function TaskDetailsDrawer() {
     setEditDescription(null)
     setEditPriority(null)
     setEditGoalId(null)
+    setEditAssigneeId(null)
+    setEditDueDate('')
     setEditScheduleStart('')
     setEditScheduleEnd('')
     setActiveScheduleId(null)
     setEditorSnapshot(null)
     setEditorInitKey(null)
   }
+
+  useEffect(() => {
+    setCommentsDialogOpen(false)
+    setDescriptionExpanded(false)
+  }, [taskId])
 
   const openPomodoro = () => {
     if (!task) return
@@ -621,6 +694,8 @@ export function TaskDetailsDrawer() {
     description: (editDescription ?? '').trim(),
     priority: editPriority,
     goalId: editGoalId,
+    assigneeId: editAssigneeId,
+    dueDate: editDueDate,
     scheduleStart: editScheduleStart,
     scheduleEnd: editScheduleEnd,
   }
@@ -637,14 +712,21 @@ export function TaskDetailsDrawer() {
             || normalizedEditorState.description !== editorSnapshot.description
             || normalizedEditorState.priority !== editorSnapshot.priority
             || normalizedEditorState.goalId !== editorSnapshot.goalId
+            || normalizedEditorState.assigneeId !== editorSnapshot.assigneeId
+            || normalizedEditorState.dueDate !== editorSnapshot.dueDate
             || normalizedEditorState.scheduleStart !== editorSnapshot.scheduleStart
             || normalizedEditorState.scheduleEnd !== editorSnapshot.scheduleEnd
           )
           : false,
     )
 
+  const hasLongDescription = Boolean(
+    task?.description && (task.description.trim().length > 220 || task.description.includes('\n')),
+  )
+
   return (
-    <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
+    <>
+      <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
       <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         <SheetHeader className="border-b px-6 py-4">
           <div className="flex items-center gap-2">
@@ -694,367 +776,379 @@ export function TaskDetailsDrawer() {
         ) : task ? (
           <>
             <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-5 px-6 py-4">
-                {/* Task info */}
-                <div className="space-y-3">
-                  {isEditingTask ? (
-                    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                      {isDuplicateMode ? (
-                        <Badge variant="outline" className="w-fit text-[10px]">Draft duplicate - chỉ lưu khi bấm Save</Badge>
-                      ) : null}
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Tiêu đề</Label>
-                        <Input value={editTitle ?? task.title} onChange={(e) => setEditTitle(e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Mô tả</Label>
-                        <Textarea value={editDescription ?? task.description ?? ''} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Mức ưu tiên</Label>
-                        <div className="flex gap-1.5">
-                          {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((priority) => (
-                            <Button
-                              key={priority}
-                              type="button"
-                              variant={(editPriority ?? task.priority) === priority ? 'default' : 'outline'}
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => setEditPriority(priority)}
-                            >
-                              {priority}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs">Goal</Label>
-                        <Select
-                          value={editGoalId != null ? String(editGoalId) : '__none'}
-                          onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Không chọn goal" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none">Không có goal</SelectItem>
-                            {goals.map((goal) => (
-                              <SelectItem key={goal.id} value={String(goal.id)}>
-                                <span className="block max-w-60 truncate" title={goal.title}>{goal.title}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Start time</Label>
-                          <Input
-                            type="datetime-local"
-                            value={editScheduleStart}
-                            onChange={(event) => setEditScheduleStart(event.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">End time</Label>
-                          <Input
-                            type="datetime-local"
-                            value={editScheduleEnd}
-                            onChange={(event) => setEditScheduleEnd(event.target.value)}
-                          />
-                        </div>
-                      </div>
+              {isEditingTask ? (
+                /* ─── EDIT / DUPLICATE FORM ─── */
+                <div className="space-y-5 px-6 py-5">
+                  {isDuplicateMode && (
+                    <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
+                      <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">Draft</span>
+                      Nhân bản — chỉnh sửa nội dung rồi bấm <strong className="ml-0.5">Save Duplicate</strong> để tạo.
                     </div>
-                  ) : (
-                    <>
-                      <h3 className="text-lg font-semibold">{task.title}</h3>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
-                      )}
-                    </>
                   )}
 
-                  {!isEditingTask && (
-                    <>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Mức ưu tiên</p>
+                  {/* Tiêu đề */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <AlignLeft className="size-3" /> Tiêu đề <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={editTitle ?? task.title}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Tiêu đề task..."
+                      className="text-sm font-medium"
+                    />
+                  </div>
+
+                  {/* Mô tả */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <AlignLeft className="size-3" /> Mô tả
+                    </Label>
+                    <Textarea
+                      value={editDescription ?? task.description ?? ''}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Mô tả chi tiết task..."
+                      rows={3}
+                      className="resize-none text-sm"
+                    />
+                  </div>
+
+                  {/* Ưu tiên */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Flag className="size-3" /> Mức ưu tiên
+                    </Label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {([
+                        { value: 'LOW', label: 'Thấp', cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
+                        { value: 'MEDIUM', label: 'Vừa', cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
+                        { value: 'HIGH', label: 'Cao', cls: 'border-amber-300 text-amber-600 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500' },
+                        { value: 'URGENT', label: 'Khẩn', cls: 'border-red-300 text-red-600 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500' },
+                      ] as const).map(({ value, label, cls }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          data-active={(editPriority ?? task.priority) === value}
+                          className={`h-8 rounded-md border text-xs font-semibold transition-colors ${cls}`}
+                          onClick={() => setEditPriority(value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Goal */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Target className="size-3" /> Goal (tùy chọn)
+                    </Label>
+                    <Select
+                      value={editGoalId != null ? String(editGoalId) : '__none'}
+                      onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Không gán goal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">
+                          <span className="text-muted-foreground">Không có goal</span>
+                        </SelectItem>
+                        {goals.map((goal) => (
+                          <SelectItem key={goal.id} value={String(goal.id)}>
+                            <span className="block max-w-70 truncate" title={goal.title}>{goal.title}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <User className="size-3" /> Người nhận
+                      </Label>
+                      <SearchableSelectPopover
+                        value={editAssigneeId ?? '__unassigned'}
+                        options={assigneeOptions}
+                        placeholder={membersQuery.isLoading ? 'Đang tải thành viên...' : 'Chọn người nhận'}
+                        searchPlaceholder="Tìm theo tên, email hoặc vai trò..."
+                        emptyLabel="Không tìm thấy thành viên phù hợp"
+                        disabled={membersQuery.isLoading || membersQuery.isError}
+                        triggerClassName="h-9"
+                        onValueChange={(value) => setEditAssigneeId(value === '__unassigned' ? null : value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Calendar className="size-3" /> Deadline
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        step={900}
+                        value={editDueDate}
+                        onChange={(event) => setEditDueDate(event.target.value)}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Lịch hẹn */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <CalendarClock className="size-3" /> Lịch hẹn (tùy chọn)
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-muted-foreground">Bắt đầu</p>
+                        <Input
+                          type="datetime-local"
+                          step={900}
+                          value={editScheduleStart}
+                          onChange={(event) => setEditScheduleStart(event.target.value)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-muted-foreground">Kết thúc</p>
+                        <Input
+                          type="datetime-local"
+                          step={900}
+                          value={editScheduleEnd}
+                          onChange={(event) => setEditScheduleEnd(event.target.value)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                    </div>
+                    {editScheduleStart && editScheduleEnd && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Thời gian kết thúc phải lớn hơn thời gian bắt đầu.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* ─── VIEW MODE ─── */
+                <div className="divide-y divide-border/50">
+                  {/* Title + description + quick actions */}
+                  <div className="px-6 py-5">
+                    <h2
+                      className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
+                      style={{ overflowWrap: 'anywhere' }}
+                    >
+                      {task.title}
+                    </h2>
+                    {task.description && (
+                      <div className="mt-2">
+                        <p
+                          className={`whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${hasLongDescription && !descriptionExpanded ? 'line-clamp-4' : ''}`}
+                          style={{ overflowWrap: 'anywhere' }}
+                        >
+                          {task.description}
+                        </p>
+                        {hasLongDescription && (
+                          <button
+                            type="button"
+                            className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                            onClick={() => setDescriptionExpanded((value) => !value)}
+                          >
+                            {descriptionExpanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={task.isCompleted ? 'secondary' : 'default'}
+                        className="h-8 gap-1.5 text-xs"
+                        onClick={() => {
+                          if (!canManageCurrentTask) {
+                            toast.error('Bạn không có quyền cập nhật task này')
+                            return
+                          }
+                          toggleCompletionMutation.mutate()
+                        }}
+                        disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
+                      >
+                        {toggleCompletionMutation.isPending ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : task.isCompleted ? (
+                          <CheckCircle2 className="size-3.5" />
+                        ) : (
+                          <Circle className="size-3.5" />
+                        )}
+                        {task.isCompleted ? 'Bỏ hoàn thành' : 'Đánh dấu hoàn thành'}
+                      </Button>
+                      <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title="Pomodoro">
+                        <Timer className="size-3.5" />
+                      </Button>
+                      <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title="Ghi chú">
+                        <NotebookText className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 text-xs"
+                        onClick={() => setCommentsDialogOpen(true)}
+                      >
+                        <MessageSquare className="size-3.5" />
+                        Bình luận ({comments.length})
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Properties */}
+                  <div className="px-6 py-4">
+                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Thông tin</p>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-1 text-[11px] text-muted-foreground">Mức ưu tiên</p>
                           <TaskPriorityBadge priority={task.priority} />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Trạng thái</p>
-                          <Badge variant="secondary">{task.status.name}</Badge>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Người giao</p>
-                          <p className="text-sm">{task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Chưa giao'}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Hạn chót</p>
-                          <p className="text-sm">{task.dueDate ? formatDateTime(task.dueDate) : 'Chưa đặt'}</p>
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <p className="text-xs text-muted-foreground">Goal</p>
-                          <p className="text-sm">{task.goalId ? (goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`) : 'Chưa gán'}</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Button
-                          className="gap-2"
-                          variant={task.isCompleted ? 'secondary' : 'default'}
-                          onClick={() => {
-                            if (!canManageCurrentTask) {
-                              toast.error('Bạn không có quyền cập nhật task này')
-                              return
-                            }
-                            toggleCompletionMutation.mutate()
-                          }}
-                          disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
-                        >
-                          {toggleCompletionMutation.isPending ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : task.isCompleted ? (
-                            <CheckCircle2 className="size-4" />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-1 text-[11px] text-muted-foreground">Trạng thái</p>
+                          <Badge
+                            variant={task.status.isClosed ? 'secondary' : 'outline'}
+                            className="text-xs"
+                          >
+                            {task.status.name}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-1 text-[11px] text-muted-foreground">Người nhận</p>
+                          {task.assignee ? (
+                            <div className="flex items-center gap-1.5">
+                              <Avatar className="size-5">
+                                <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
+                                  {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
+                            </div>
                           ) : (
-                            <Circle className="size-4" />
+                            <span className="text-sm text-muted-foreground/50">Chưa giao</span>
                           )}
-                          {task.isCompleted ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
-                        </Button>
-                        <Button variant="outline" className="gap-2" onClick={openPomodoro}>
-                          <Timer className="size-4" />
-                          Pomodoro
-                        </Button>
-                        <Button variant="outline" className="gap-2" onClick={openNotes}>
-                          <NotebookText className="size-4" />
-                          Notes
-                        </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-1 text-[11px] text-muted-foreground">Hạn chót</p>
+                          {task.dueDate ? (
+                            <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
+                              {formatDateTime(task.dueDate)}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground/50">Chưa đặt</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-1 text-[11px] text-muted-foreground">Goal</p>
+                          {task.goalId ? (
+                            <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                              <Target className="size-3 shrink-0" />
+                              <span className="truncate">{goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`}</span>
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground/50">Chưa gán</span>
+                          )}
+                        </div>
                       </div>
 
                       {task.taskType && (
-                        <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">Loại task</p>
-                            <Badge variant="secondary" className="gap-1 text-[10px]" style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}>
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-[11px] text-muted-foreground">Loại task</p>
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 text-[11px]"
+                              style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
+                            >
                               {task.taskType.icon && <span>{task.taskType.icon}</span>}
                               {task.taskType.name}
                             </Badge>
                           </div>
                         </div>
                       )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                  </div>
 
-                {!isEditingTask && (
-                  <>
-                    <Separator />
-
-                    {/* Comments */}
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="size-4 text-muted-foreground" />
-                        <h4 className="text-sm font-semibold">Comments ({comments.length})</h4>
-                      </div>
-
-                      {replyParentCommentId != null && (
-                        <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="line-clamp-1 text-primary">
-                              Đang trả lời comment #{replyParentCommentId}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className="size-6"
-                              onClick={() => setReplyParentCommentId(null)}
-                            >
-                              <X className="size-3" />
-                            </Button>
+                  {/* Schedule */}
+                  {primarySchedule && (
+                    <div className="px-6 py-4">
+                      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Lịch hẹn</p>
+                      <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
+                        <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="size-3 text-muted-foreground" />
+                              <span className="text-[11px] text-muted-foreground">Bắt đầu:</span>
+                              <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="size-3 text-muted-foreground" />
+                              <span className="text-[11px] text-muted-foreground">Kết thúc:</span>
+                              <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
+                            </div>
                           </div>
                         </div>
-                      )}
+                      </div>
+                    </div>
+                  )}
 
-                      <div className="flex gap-2">
-                        <Textarea
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder={canManageCurrentTask
-                            ? (replyParentCommentId != null ? 'Nhập nội dung trả lời...' : 'Nhập nội dung comment...')
-                            : 'Bạn không có quyền bình luận task này'}
-                          rows={2}
-                          className="flex-1"
-                          disabled={!canManageCurrentTask}
-                        />
+                  {/* Comments */}
+                  <div className="px-6 py-4">
+                    <div className="rounded-2xl border bg-muted/20 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="size-4 text-primary" />
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                              Bình luận
+                            </p>
+                          </div>
+                          <p className="mt-2 text-sm font-medium text-foreground">
+                            {comments.length === 0 ? 'Chưa có trao đổi nào cho task này.' : `${comments.length} bình luận đang được thảo luận.`}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            Mở cửa sổ bình luận để trả lời theo cây, chỉnh sửa nội dung dài và thu gọn hoặc mở rộng từng nhánh trao đổi.
+                          </p>
+                        </div>
+
                         <Button
-                          size="icon"
-                          className="shrink-0 self-end"
-                          onClick={() => addCommentMutation.mutate()}
-                          disabled={addCommentMutation.isPending || !newComment.trim() || !canManageCurrentTask}
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0 gap-1.5 text-xs"
+                          onClick={() => setCommentsDialogOpen(true)}
                         >
-                          {addCommentMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                          <MessageSquare className="size-3.5" />
+                          Mở bình luận
                         </Button>
                       </div>
-
-                      {topLevelComments.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Chưa có comment nào</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {topLevelComments.map((comment) => {
-                            const replies = repliesByParent.get(comment.id) ?? []
-
-                            return (
-                              <div key={comment.id} className="group/comment flex gap-2.5">
-                                <Avatar className="mt-0.5 size-7 shrink-0">
-                                  <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                    {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-baseline gap-2">
-                                    <p className="text-xs font-medium">{comment.user.firstName} {comment.user.lastName}</p>
-                                    <span className="text-[10px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
-                                    {canManageCurrentTask && (
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/comment:opacity-100">
-                                            <MoreHorizontal className="size-3" />
-                                          </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem
-                                            onClick={() => {
-                                              setReplyParentCommentId(comment.id)
-                                              setEditingCommentId(null)
-                                              setEditingCommentContent('')
-                                            }}
-                                          >
-                                            <CornerDownRight className="mr-2 size-3" />
-                                            Trả lời
-                                          </DropdownMenuItem>
-                                          {canModifyComment(comment) && (
-                                            <>
-                                              <DropdownMenuItem
-                                                onClick={() => {
-                                                  setEditingCommentId(comment.id)
-                                                  setEditingCommentContent(comment.content)
-                                                }}
-                                              >
-                                                <Pencil className="mr-2 size-3" />
-                                                Chỉnh sửa
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem
-                                                className="text-destructive focus:text-destructive"
-                                                onClick={() => deleteCommentMutation.mutate(comment.id)}
-                                              >
-                                                <Trash2 className="mr-2 size-3" />
-                                                Xóa
-                                              </DropdownMenuItem>
-                                            </>
-                                          )}
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    )}
-                                  </div>
-                                  {editingCommentId === comment.id ? (
-                                    <div className="mt-1 space-y-1.5">
-                                      <Textarea
-                                        value={editingCommentContent}
-                                        onChange={(e) => setEditingCommentContent(e.target.value)}
-                                        rows={2}
-                                        className="text-sm"
-                                      />
-                                      <div className="flex gap-1.5">
-                                        <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
-                                          {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
-                                          Lưu
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="mt-0.5 text-sm text-muted-foreground">{comment.content}</p>
-                                  )}
-
-                                  {replies.length > 0 && (
-                                    <div className="mt-2 space-y-2 border-l border-border/70 pl-3">
-                                      {replies.map((reply) => (
-                                        <div key={reply.id} className="group/reply flex gap-2">
-                                          <Avatar className="mt-0.5 size-6 shrink-0">
-                                            <AvatarFallback className="bg-secondary text-[9px] font-semibold text-secondary-foreground">
-                                              {reply.user.firstName.charAt(0)}{reply.user.lastName.charAt(0)}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div className="min-w-0 flex-1 rounded-md bg-muted/35 px-2.5 py-2">
-                                            <div className="flex items-baseline gap-2">
-                                              <p className="text-[11px] font-medium">{reply.user.firstName} {reply.user.lastName}</p>
-                                              <span className="text-[10px] text-muted-foreground">{formatDateTime(reply.createdAt)}</span>
-                                              {canModifyComment(reply) && (
-                                                <DropdownMenu>
-                                                  <DropdownMenuTrigger asChild>
-                                                    <button className="ml-auto rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover/reply:opacity-100">
-                                                      <MoreHorizontal className="size-3" />
-                                                    </button>
-                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                      onClick={() => {
-                                                        setEditingCommentId(reply.id)
-                                                        setEditingCommentContent(reply.content)
-                                                      }}
-                                                    >
-                                                      <Pencil className="mr-2 size-3" />
-                                                      Chỉnh sửa
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                      className="text-destructive focus:text-destructive"
-                                                      onClick={() => deleteCommentMutation.mutate(reply.id)}
-                                                    >
-                                                      <Trash2 className="mr-2 size-3" />
-                                                      Xóa
-                                                    </DropdownMenuItem>
-                                                  </DropdownMenuContent>
-                                                </DropdownMenu>
-                                              )}
-                                            </div>
-
-                                            {editingCommentId === reply.id ? (
-                                              <div className="mt-1 space-y-1.5">
-                                                <Textarea
-                                                  value={editingCommentContent}
-                                                  onChange={(e) => setEditingCommentContent(e.target.value)}
-                                                  rows={2}
-                                                  className="text-sm"
-                                                />
-                                                <div className="flex gap-1.5">
-                                                  <Button size="sm" className="h-7 text-xs" onClick={() => updateCommentMutation.mutate()} disabled={updateCommentMutation.isPending || !editingCommentContent.trim()}>
-                                                    {updateCommentMutation.isPending && <Loader2 className="mr-1 size-3 animate-spin" />}
-                                                    Lưu
-                                                  </Button>
-                                                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingCommentId(null)}>Hủy</Button>
-                                                </div>
-                                              </div>
-                                            ) : (
-                                              <p className="mt-0.5 text-sm text-muted-foreground">{reply.content}</p>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              )}
             </ScrollArea>
 
             {isEditingTask && (
@@ -1079,6 +1173,38 @@ export function TaskDetailsDrawer() {
           </div>
         )}
       </SheetContent>
-    </Sheet>
+      </Sheet>
+
+      {task ? (
+        <TaskCommentsDialog
+          open={commentsDialogOpen}
+          taskTitle={task.title}
+          comments={comments}
+          canManageCurrentTask={canManageCurrentTask}
+          canModifyComment={canModifyComment}
+          newComment={newComment}
+          replyParentCommentId={replyParentCommentId}
+          editingCommentId={editingCommentId}
+          editingCommentContent={editingCommentContent}
+          addCommentPending={addCommentMutation.isPending}
+          updateCommentPending={updateCommentMutation.isPending}
+          onOpenChange={setCommentsDialogOpen}
+          onNewCommentChange={setNewComment}
+          onReplyParentCommentChange={setReplyParentCommentId}
+          onEditingCommentContentChange={setEditingCommentContent}
+          onStartEditing={(comment) => {
+            setEditingCommentId(comment.id)
+            setEditingCommentContent(comment.content)
+          }}
+          onCancelEditing={() => {
+            setEditingCommentId(null)
+            setEditingCommentContent('')
+          }}
+          onAddComment={() => addCommentMutation.mutate()}
+          onUpdateComment={() => updateCommentMutation.mutate()}
+          onDeleteComment={(commentId) => deleteCommentMutation.mutate(commentId)}
+        />
+      ) : null}
+    </>
   )
 }

@@ -46,6 +46,7 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import {
@@ -288,6 +289,32 @@ export function KanbanPage() {
         sourceView: 'KANBAN',
       })
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const user = useAuthStore.getState().currentUser
+      const status = statusesQuery.data?.find((s) => s.id === taskStatusId)
+      if (status) {
+        const optimistic: Task = {
+          id: -Date.now(),
+          projectId,
+          title: taskTitle.trim(),
+          description: taskDescription.trim() || undefined,
+          status,
+          priority: taskPriority,
+          goalId: taskGoalId ?? undefined,
+          sourceView: 'KANBAN',
+          estimatedMinutes: 0,
+          boardPosition: 9999,
+          isCompleted: false,
+          createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimistic])
+      }
+      return { snapshot }
+    },
     onSuccess: () => {
       setTaskTitle('')
       setTaskDescription('')
@@ -296,7 +323,10 @@ export function KanbanPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
       toast.success('Tạo task thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
       toast.error('Tạo task thất bại', { description: error.message })
     },
   })

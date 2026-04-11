@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,7 +14,7 @@ import { cn } from '@/lib/utils/cn'
 interface ConfirmModalProps {
   open: boolean
   title?: string
-  description: string
+  description: ReactNode
   confirmText?: string
   cancelText?: string
   confirmVariant?: 'default' | 'destructive'
@@ -50,7 +51,9 @@ export function ConfirmModal({
             </span>
             {title}
           </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription className="space-y-2 text-left leading-relaxed [&_mark]:rounded-md [&_mark]:bg-destructive/10 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-foreground [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
+            {description}
+          </DialogDescription>
         </DialogHeader>
 
         <DialogFooter>

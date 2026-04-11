@@ -144,7 +144,6 @@ export function useDeferredDelete<TPayload>(options: UseDeferredDeleteOptions<TP
     }
 
     setPendingDeletes((previous) => [...previous, pendingEntry])
-    toast.success(resolveMessage(options.pendingMessage, pendingEntry, `"${params.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`))
     return true
   }, [options, undoWindowMs])
 

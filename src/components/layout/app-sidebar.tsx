@@ -908,10 +908,18 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         title={`Xóa ${deleteTarget?.kind === 'project' ? 'project' : 'goal'}`}
         description={
           deleteTarget
-            ? `Bạn có chắc muốn xóa "${deleteTarget.label}" không? Mục sẽ bị xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.`
+            ? (
+              <div className="space-y-2">
+                <p>Bạn có chắc muốn xóa mục này không?</p>
+                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                  <strong>{deleteTarget.label}</strong>
+                </div>
+                <p>Mục sẽ bị xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+              </div>
+            )
             : ''
         }
-        confirmText="Xóa (5s undo)"
+        confirmText="Xóa"
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
@@ -991,7 +999,7 @@ function ProjectItem({
           onClick={onToggleExpand}
           className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground/75 transition-colors hover:text-muted-foreground"
         >
-          <ChevronRight className={cn('size-3 transition-transform duration-200', isExpanded && 'rotate-90')} />
+          <ChevronRight className={cn('size-3 transition-transform duration-200', expanded && 'rotate-90')} />
         </button>
         <NavLink
           to={`/workspaces/${workspaceId}/projects/${project.id}`}
@@ -1046,7 +1054,12 @@ function ProjectItem({
                   <NavLink
                     key={goal.id}
                     to={`/workspaces/${workspaceId}/projects/${project.id}/goals/${goal.id}/tasks`}
-                    className="group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground"
+                      className={({ isActive }) => cn(
+                        'group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] transition-colors',
+                        isActive
+                          ? 'bg-sidebar-primary/14 font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-primary/20'
+                          : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
+                      )}
                     onContextMenu={(event) => onOpenContextMenu(event, { kind: 'goal', goal, project })}
                   >
                     <Target className="size-3 shrink-0 text-muted-foreground/80" />

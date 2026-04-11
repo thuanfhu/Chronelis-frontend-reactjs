@@ -55,6 +55,7 @@ import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { Goal, GoalStatusType, GoalType, Task, WorkspaceMemberRoleType } from '@/types/domain'
+import type { PageResult } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
   SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
@@ -251,6 +252,27 @@ export function GoalsPage() {
 
       return goalApi.create(payload)
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
+      const snapshot = queryClient.getQueryData<PageResult<Goal>>(queryKeys.goals.byProject(projectId, 1, 50))
+      const user = useAuthStore.getState().currentUser
+      const optimisticGoal: Goal = {
+        id: -Date.now(),
+        projectId,
+        title: title.trim(),
+        goalType,
+        status,
+        progressPercent: 0,
+        createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      queryClient.setQueryData<PageResult<Goal>>(queryKeys.goals.byProject(projectId, 1, 50), (old) => {
+        if (!old) return old
+        return { ...old, content: [...old.content, optimisticGoal], meta: { ...old.meta, totalElements: old.meta.totalElements + 1 } }
+      })
+      return { snapshot }
+    },
     onSuccess: () => {
       setTitle('')
       setGoalType('SHORT_TERM')
@@ -261,7 +283,10 @@ export function GoalsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
       toast.success('Tạo goal thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(queryKeys.goals.byProject(projectId, 1, 50), context.snapshot)
+      }
       toast.error('Tạo goal thất bại', { description: error.message })
     },
   })
@@ -288,6 +313,23 @@ export function GoalsPage() {
 
       return goalApi.update(editGoal.id, payload)
     },
+    onMutate: async () => {
+      if (!editGoal) return
+      await queryClient.cancelQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
+      const snapshot = queryClient.getQueryData<PageResult<Goal>>(queryKeys.goals.byProject(projectId, 1, 50))
+      queryClient.setQueryData<PageResult<Goal>>(queryKeys.goals.byProject(projectId, 1, 50), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          content: old.content.map((g) =>
+            g.id === editGoal.id
+              ? { ...g, title: editTitle.trim(), goalType: editGoalType, status: editStatus, updatedAt: new Date().toISOString() }
+              : g,
+          ),
+        }
+      })
+      return { snapshot }
+    },
     onSuccess: () => {
       setEditDialogOpen(false)
       setEditGoal(null)
@@ -296,7 +338,10 @@ export function GoalsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
       toast.success('Cập nhật goal thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(queryKeys.goals.byProject(projectId, 1, 50), context.snapshot)
+      }
       toast.error('Cập nhật goal thất bại', { description: error.message })
     },
   })
@@ -714,9 +759,14 @@ export function GoalsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa goal</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa goal {deleteGoalTarget ? `"${deleteGoalTarget.title}"` : 'này'} không?
-              Goal sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
+            <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
+              <p>Bạn có chắc muốn xóa goal này không?</p>
+              {deleteGoalTarget ? (
+                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                  <strong>{deleteGoalTarget.title}</strong>
+                </div>
+              ) : null}
+              <p>Goal sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -740,7 +790,7 @@ export function GoalsPage() {
               }}
               disabled={Boolean(deleteGoalTarget && isGoalDeleteQueued(`goal-${deleteGoalTarget.id}`))}
             >
-              Xóa (5s undo)
+              Xóa
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -41,6 +41,7 @@ import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { Project, ProjectStatusType, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
+import type { PageResult } from '@/types/domain'
 
 /** Human-friendly display name for workspace member roles */
 const roleDisplayName: Record<WorkspaceMemberRoleType, string> = {
@@ -231,6 +232,26 @@ export function WorkspaceDetailPage() {
 
       return projectApi.create(payload)
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      const snapshot = queryClient.getQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50))
+      const user = useAuthStore.getState().currentUser
+      const optimistic: Project = {
+        id: -Date.now(),
+        workspaceId,
+        name: projectName.trim(),
+        description: projectDescription.trim() || undefined,
+        status: 'ACTIVE',
+        createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      queryClient.setQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50), (old) => {
+        if (!old) return old
+        return { ...old, content: [...old.content, optimistic], meta: { ...old.meta, totalElements: old.meta.totalElements + 1 } }
+      })
+      return { snapshot }
+    },
     onSuccess: () => {
       setProjectName('')
       setProjectDescription('')
@@ -240,7 +261,10 @@ export function WorkspaceDetailPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Tạo project thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
+      }
       toast.error('Tạo project thất bại', { description: error.message })
     },
   })
@@ -292,6 +316,23 @@ export function WorkspaceDetailPage() {
 
       return projectApi.update(editProjectId, payload)
     },
+    onMutate: async () => {
+      if (!editProjectId) return
+      await queryClient.cancelQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      const snapshot = queryClient.getQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50))
+      queryClient.setQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50), (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          content: old.content.map((p) =>
+            p.id === editProjectId
+              ? { ...p, name: editProjectName.trim(), description: editProjectDescription.trim() || undefined, updatedAt: new Date().toISOString() }
+              : p,
+          ),
+        }
+      })
+      return { snapshot }
+    },
     onSuccess: () => {
       setEditProjectDialogOpen(false)
       setEditProjectId(null)
@@ -300,7 +341,10 @@ export function WorkspaceDetailPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Cập nhật project thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
+      }
       toast.error('Cập nhật project thất bại', { description: error.message })
     },
   })
@@ -308,11 +352,23 @@ export function WorkspaceDetailPage() {
   const updateProjectStatusMutation = useMutation({
     mutationFn: ({ projectId, status }: { projectId: number; status: ProjectStatusType }) =>
       projectApi.updateStatus(projectId, status),
+    onMutate: async ({ projectId, status }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      const snapshot = queryClient.getQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50))
+      queryClient.setQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50), (old) => {
+        if (!old) return old
+        return { ...old, content: old.content.map((p) => p.id === projectId ? { ...p, status } : p) }
+      })
+      return { snapshot }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       toast.success('Cập nhật trạng thái project thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot !== undefined) {
+        queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
+      }
       toast.error('Cập nhật trạng thái thất bại', { description: error.message })
     },
   })
@@ -969,10 +1025,15 @@ export function WorkspaceDetailPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Xóa project</DialogTitle>
-                <DialogDescription>
-                  Bạn có chắc muốn xóa project {deleteProject ? `"${deleteProject.name}"` : 'này'} không?
-                  Project sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
-                  Sau khi hết thời gian, toàn bộ goals, tasks, lịch và comment liên quan sẽ bị xóa.
+                <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
+                  <p>Bạn có chắc muốn xóa project này không?</p>
+                  {deleteProject ? (
+                    <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                      <strong>{deleteProject.name}</strong>
+                    </div>
+                  ) : null}
+                  <p>Project sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+                  <p>Sau khi hết thời gian, toàn bộ goals, tasks, lịch và comment liên quan sẽ bị xóa.</p>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -1001,7 +1062,7 @@ export function WorkspaceDetailPage() {
                   }}
                   disabled={Boolean(deleteProject && isWorkspaceDeleteQueued(`project-${deleteProject.id}`))}
                 >
-                  Xóa project (5s undo)
+                  Xóa project
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1629,10 +1690,13 @@ export function WorkspaceDetailPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Xóa workspace</DialogTitle>
-              <DialogDescription>
-                Bạn có chắc muốn xóa workspace "{workspace.name}" không?
-                    Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
-                  Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.
+              <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
+                <p>Bạn có chắc muốn xóa workspace này không?</p>
+                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                  <strong>{workspace.name}</strong>
+                </div>
+                <p>Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+                <p>Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.</p>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -1656,7 +1720,7 @@ export function WorkspaceDetailPage() {
                 }}
                 disabled={workspaceDeleteQueued}
               >
-                Xóa workspace (5s undo)
+                Xóa workspace
               </Button>
             </DialogFooter>
           </DialogContent>

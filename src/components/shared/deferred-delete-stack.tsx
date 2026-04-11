@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { DeferredDeleteEntry } from '@/lib/delete/use-deferred-delete'
@@ -79,41 +80,48 @@ export function DeferredDeleteStack<TPayload>({
 
   return (
     <div className="pointer-events-none fixed right-4 bottom-4 z-70 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
-      {pendingDeletes.map((entry) => {
-        const remainingMs = Math.max(0, entry.expiresAt - clockMs)
-        const progress = Math.max(
-          0,
-          Math.min(100, (remainingMs / undoWindowMs) * 100),
-        )
-        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+      <AnimatePresence initial={false}>
+        {pendingDeletes.map((entry) => {
+          const remainingMs = Math.max(0, entry.expiresAt - clockMs)
+          const progress = Math.max(
+            0,
+            Math.min(100, (remainingMs / undoWindowMs) * 100),
+          )
+          const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
 
-        return (
-          <div
-            key={entry.key}
-            className="pointer-events-auto rounded-lg border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{itemTitle ? itemTitle(entry) : 'Đang chờ xóa'}</p>
-                <p className="truncate text-xs text-muted-foreground">{entry.label}</p>
+          return (
+            <motion.div
+              key={entry.key}
+              layout
+              initial={{ opacity: 0, y: 18, scale: 0.96, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: 12, scale: 0.96, filter: 'blur(8px)' }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="pointer-events-auto rounded-lg border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{itemTitle ? itemTitle(entry) : 'Đang chờ xóa'}</p>
+                  <p className="break-all text-xs text-muted-foreground">{entry.label}</p>
+                </div>
+
+                <CircularCountdownUndo
+                  progress={progress}
+                  remainingSeconds={remainingSeconds}
+                  onUndo={() => onUndo(entry.key)}
+                  disabled={entry.status !== 'pending'}
+                />
               </div>
 
-              <CircularCountdownUndo
-                progress={progress}
-                remainingSeconds={remainingSeconds}
-                onUndo={() => onUndo(entry.key)}
-                disabled={entry.status !== 'pending'}
-              />
-            </div>
-
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {entry.status === 'finalizing'
-                ? finalizingText
-                : (countdownText ? countdownText(remainingSeconds) : `Tự động xóa sau ${remainingSeconds}s`)}
-            </p>
-          </div>
-        )
-      })}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {entry.status === 'finalizing'
+                  ? finalizingText
+                  : (countdownText ? countdownText(remainingSeconds) : `Tự động xóa sau ${remainingSeconds}s`)}
+              </p>
+            </motion.div>
+          )
+        })}
+      </AnimatePresence>
     </div>
   )
 }

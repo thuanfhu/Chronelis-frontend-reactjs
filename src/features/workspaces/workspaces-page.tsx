@@ -274,9 +274,14 @@ export function WorkspacesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa workspace</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa workspace {deleteWorkspace ? `"${deleteWorkspace.name}"` : 'này'} không?
-              Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.
+            <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
+              <p>Bạn có chắc muốn xóa workspace này không?</p>
+              {deleteWorkspace ? (
+                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
+                  <strong>{deleteWorkspace.name}</strong>
+                </div>
+              ) : null}
+              <p>Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -303,7 +308,7 @@ export function WorkspacesPage() {
               }}
               disabled={Boolean(deleteWorkspace && isWorkspaceDeleteQueued(`workspace-${deleteWorkspace.id}`))}
             >
-              Xóa workspace (5s undo)
+              Xóa workspace
             </Button>
           </DialogFooter>
         </DialogContent>

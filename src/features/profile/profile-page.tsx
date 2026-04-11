@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import Cropper from 'react-easy-crop'
+import type { Area } from 'react-easy-crop'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   Camera,
   CheckCircle2,
+  Crop,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
+  RotateCcw,
   Save,
   Settings2,
   Shield,
   User,
+  ZoomIn,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -21,6 +26,14 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -66,6 +79,83 @@ function buildInitials(firstName: string, lastName: string) {
 const EMAIL_PATTERN = /^[\w._%+-]+@(gmail\.com|yopmail\.com)$/i
 const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
 
+// ─── Image crop helpers ───
+
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.addEventListener('load', () => resolve(img))
+    img.addEventListener('error', (e) => reject(e))
+    img.setAttribute('crossOrigin', 'anonymous')
+    img.src = url
+  })
+}
+
+async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): Promise<Blob> {
+  const image = await createImage(imageSrc)
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas context not available')
+
+  const maxSize = Math.max(image.width, image.height)
+  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
+  canvas.width = safeArea
+  canvas.height = safeArea
+
+  ctx.translate(safeArea / 2, safeArea / 2)
+  ctx.rotate((rotation * Math.PI) / 180)
+  ctx.translate(-safeArea / 2, -safeArea / 2)
+  ctx.drawImage(image, safeArea / 2 - image.width / 2, safeArea / 2 - image.height / 2)
+
+  const data = ctx.getImageData(0, 0, safeArea, safeArea)
+  canvas.width = pixelCrop.width
+  canvas.height = pixelCrop.height
+  ctx.putImageData(
+    data,
+    0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x,
+    0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y,
+  )
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) { reject(new Error('Canvas is empty')); return }
+        resolve(blob)
+      },
+      'image/jpeg',
+      0.92,
+    )
+  })
+}
+
+// ─── Country/City API types ───
+
+interface CountryOption {
+  name: string
+  flag: string
+}
+
+async function fetchCountries(): Promise<CountryOption[]> {
+  const res = await fetch('https://restcountries.com/v3.1/all?fields=name,flags')
+  if (!res.ok) throw new Error('Failed to fetch countries')
+  const data = (await res.json()) as Array<{ name: { common: string }; flags: { svg: string; png: string } }>
+  return data
+    .map((c) => ({ name: c.name.common, flag: c.flags.svg || c.flags.png }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+async function fetchCities(countryName: string): Promise<string[]> {
+  const res = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ country: countryName }),
+  })
+  if (!res.ok) return []
+  const data = (await res.json()) as { error: boolean; data: string[] }
+  if (data.error) return []
+  return data.data.sort((a, b) => a.localeCompare(b))
+}
+
 export function ProfilePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -79,6 +169,18 @@ export function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'email' | 'password'>('profile')
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
+
+  // ─── Image crop state ───
+  const [cropDialogOpen, setCropDialogOpen] = useState(false)
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
+
+  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels)
+  }, [])
 
   const [profileForm, setProfileForm] = useState<ProfileFormState>(() => mapUserToForm(currentUser ?? {
     userId: '',
@@ -103,6 +205,21 @@ export function ProfilePage() {
     queryKey: queryKeys.auth.me,
     queryFn: authApi.getAccount,
     staleTime: 60_000,
+  })
+
+  const countriesQuery = useQuery({
+    queryKey: ['external', 'countries'],
+    queryFn: fetchCountries,
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: 1,
+  })
+
+  const citiesQuery = useQuery({
+    queryKey: ['external', 'cities', profileForm.nationality],
+    queryFn: () => fetchCities(profileForm.nationality),
+    enabled: Boolean(profileForm.nationality),
+    staleTime: 60 * 60 * 1000,
+    retry: 1,
   })
 
   useEffect(() => {
@@ -219,38 +336,48 @@ export function ProfilePage() {
     },
   })
 
-  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) {
-      return
-    }
+    event.target.value = ''
+    if (!file) return
 
     if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
       toast.error('Ảnh đại diện phải là PNG, JPG hoặc WEBP')
-      event.target.value = ''
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Ảnh đại diện tối đa 5MB')
-      event.target.value = ''
       return
     }
 
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setRawImageSrc(reader.result as string)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+      setRotation(0)
+      setCropDialogOpen(true)
+    })
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropConfirm = async () => {
+    if (!rawImageSrc || !croppedAreaPixels) return
     setAvatarUploading(true)
     try {
+      const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels, rotation)
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
       const uploaded = await storageApi.uploadSingle(file, 'user-avatars')
-      setProfileForm((prev) => ({
-        ...prev,
-        avatarUrl: uploaded.fileUrl,
-      }))
-      toast.success('Đã tải ảnh đại diện')
+      setProfileForm((prev) => ({ ...prev, avatarUrl: uploaded.fileUrl }))
+      setCropDialogOpen(false)
+      setRawImageSrc(null)
+      toast.success('Đã cập nhật ảnh đại diện')
     } catch (error) {
       const description = error instanceof Error ? error.message : 'Upload ảnh thất bại'
       toast.error('Không thể tải ảnh đại diện', { description })
     } finally {
       setAvatarUploading(false)
-      event.target.value = ''
     }
   }
 
@@ -360,17 +487,28 @@ export function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center">
-                <Avatar className="h-18 w-18">
-                  <AvatarImage src={profileForm.avatarUrl} alt={`${profileForm.firstName} ${profileForm.lastName}`} />
-                  <AvatarFallback className="text-sm font-semibold text-primary">
-                    {buildInitials(profileForm.firstName, profileForm.lastName)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative inline-flex">
+                  <Avatar className="h-18 w-18">
+                    <AvatarImage src={profileForm.avatarUrl} alt={`${profileForm.firstName} ${profileForm.lastName}`} />
+                    <AvatarFallback className="text-sm font-semibold text-primary">
+                      {buildInitials(profileForm.firstName, profileForm.lastName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100 disabled:pointer-events-none"
+                    title="Đổi ảnh đại diện"
+                  >
+                    <Camera className="size-5 text-white" />
+                  </button>
+                </div>
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{profileForm.firstName} {profileForm.lastName}</p>
                   <p className="truncate text-xs text-muted-foreground">{profileForm.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Tối đa 5MB, định dạng PNG/JPG/WEBP.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Tối đa 5MB, định dạng PNG/JPG/WEBP. Chỉnh sửa trước khi lưu.</p>
                 </div>
 
                 <Button
@@ -387,7 +525,7 @@ export function ProfilePage() {
                   type="file"
                   className="hidden"
                   accept="image/png,image/jpeg,image/jpg,image/webp"
-                  onChange={(event) => { void handleAvatarFileChange(event) }}
+                  onChange={handleAvatarFileChange}
                 />
               </div>
 
@@ -426,22 +564,42 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-city">Thành phố</Label>
-                  <Input
-                    id="profile-city"
-                    value={profileForm.city}
-                    onChange={(event) => setProfileForm((prev) => ({ ...prev, city: event.target.value }))}
-                    placeholder="Ví dụ: Ho Chi Minh City"
+                  <Label htmlFor="profile-nationality">Quốc tịch</Label>
+                  <SearchableSelectPopover
+                    value={profileForm.nationality || undefined}
+                    options={(countriesQuery.data ?? []).map((country) => ({
+                      value: country.name,
+                      label: country.name,
+                      prefix: country.flag
+                        ? <img src={country.flag} alt="" className="size-4 rounded-xs object-cover" loading="lazy" />
+                        : null,
+                    }))}
+                    placeholder={countriesQuery.isLoading ? 'Đang tải...' : 'Chọn quốc tịch'}
+                    searchPlaceholder="Tìm quốc tịch..."
+                    emptyLabel="Không tìm thấy quốc tịch phù hợp."
+                    onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, nationality: nextValue, city: '' }))}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-nationality">Quốc tịch</Label>
-                  <Input
-                    id="profile-nationality"
-                    value={profileForm.nationality}
-                    onChange={(event) => setProfileForm((prev) => ({ ...prev, nationality: event.target.value }))}
-                    placeholder="Ví dụ: Vietnam"
+                  <Label htmlFor="profile-city">
+                    Thành phố
+                    {!profileForm.nationality && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">(chọn quốc tịch trước)</span>
+                    )}
+                  </Label>
+                  <SearchableSelectPopover
+                    value={profileForm.city || undefined}
+                    options={(citiesQuery.data ?? []).map((city) => ({
+                      value: city,
+                      label: city,
+                      description: profileForm.nationality || undefined,
+                    }))}
+                    placeholder={citiesQuery.isLoading ? 'Đang tải thành phố...' : 'Chọn thành phố'}
+                    searchPlaceholder="Tìm thành phố..."
+                    emptyLabel={profileForm.nationality ? 'Không tìm thấy thành phố phù hợp.' : 'Chọn quốc tịch trước.'}
+                    disabled={!profileForm.nationality}
+                    onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, city: nextValue }))}
                   />
                 </div>
               </div>
@@ -603,6 +761,89 @@ export function ProfilePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ─── Avatar Crop Dialog ─── */}
+      <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!open && !avatarUploading) { setCropDialogOpen(false); setRawImageSrc(null) } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crop className="size-4" />
+              Chỉnh sửa ảnh đại diện
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative h-64 w-full overflow-hidden rounded-lg bg-black">
+            {rawImageSrc && (
+              <Cropper
+                image={rawImageSrc}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                cropShape="round"
+                showGrid={false}
+              />
+            )}
+          </div>
+
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5 text-xs">
+                  <ZoomIn className="size-3.5" />
+                  Phóng to
+                </Label>
+                <span className="text-xs tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5 text-xs">
+                  <RotateCcw className="size-3.5" />
+                  Xoay
+                </Label>
+                <span className="text-xs tabular-nums text-muted-foreground">{rotation}°</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={360}
+                step={1}
+                value={rotation}
+                onChange={(e) => setRotation(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setCropDialogOpen(false); setRawImageSrc(null) }}
+              disabled={avatarUploading}
+            >
+              Huỷ
+            </Button>
+            <Button onClick={() => { void handleCropConfirm() }} disabled={avatarUploading}>
+              {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Crop className="size-4" />}
+              Áp dụng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
