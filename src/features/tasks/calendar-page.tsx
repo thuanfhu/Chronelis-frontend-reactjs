@@ -31,14 +31,18 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import {
   applyScheduleUpdate,
+  patchProjectTaskQueries,
   patchProjectCalendarQueries,
+  restoreProjectTaskQueries,
   patchTaskScheduleQueries,
   restoreProjectCalendarQueries,
   restoreTaskScheduleQueries,
+  snapshotProjectTaskQueries,
   snapshotProjectCalendarQueries,
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
@@ -267,6 +271,7 @@ export function CalendarPage() {
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.currentUser)
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
   const calendarRef = useRef<FullCalendar | null>(null)
@@ -353,15 +358,92 @@ export function CalendarPage() {
         sourceView: 'CALENDAR',
       })
 
-      await taskScheduleApi.create({
+      const schedule = await taskScheduleApi.create({
         taskId: task.id,
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
       })
 
-      return task
+      return {
+        task,
+        schedule,
+      }
     },
-    onSuccess: (task) => {
+    onMutate: async () => {
+      if (!canManageProject) {
+        return {}
+      }
+
+      const defaultStatus = statusesQuery.data?.[0]
+      if (!defaultStatus || !createDialog) {
+        return {}
+      }
+
+      const start = parseInputDateTimeValue(newStartDateTime)
+      const end = parseInputDateTimeValue(newEndDateTime)
+      if (!(end > start)) {
+        return {}
+      }
+
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+      ])
+
+      const taskSnapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const calendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const optimisticTaskId = -Date.now()
+      const optimisticScheduleId = optimisticTaskId - 1
+      const nowIso = new Date().toISOString()
+      const scheduledStart = toApiLocalDateTime(start)
+      const scheduledEnd = toApiLocalDateTime(end)
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        projectId,
+        goalId: newTaskGoalId ?? undefined,
+        status: defaultStatus,
+        title: newTaskTitle.trim(),
+        priority: newTaskPriority,
+        sourceView: 'CALENDAR',
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        estimatedMinutes: 0,
+        boardPosition: 9999,
+        isCompleted: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const optimisticSchedule: TaskSchedule = {
+        id: optimisticScheduleId,
+        taskId: optimisticTaskId,
+        scheduledStart,
+        scheduledEnd,
+        scheduledDate: scheduledStart.slice(0, 10),
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
+
+      return {
+        taskSnapshot,
+        calendarSnapshot,
+        optimisticTaskId,
+        optimisticScheduleId,
+      }
+    },
+    onSuccess: ({ task, schedule }, _variables, context) => {
       setCreateDialog(null)
       setNewTaskTitle('')
       setNewTaskPriority('MEDIUM')
@@ -369,11 +451,39 @@ export function CalendarPage() {
       setNewEndDateTime('')
       setNewTaskGoalId(null)
 
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
+        const replacedTasks = tasks.map((item) => (
+          item.id === context?.optimisticTaskId ? task : item
+        ))
+
+        return replacedTasks.some((item) => item.id === task.id)
+          ? replacedTasks
+          : [...replacedTasks, task]
+      })
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => {
+        const replacedSchedules = schedules.map((item) => (
+          item.id === context?.optimisticScheduleId ? schedule : item
+        ))
+
+        return replacedSchedules.some((item) => item.id === schedule.id)
+          ? replacedSchedules
+          : [...replacedSchedules, schedule]
+      })
+
       void invalidateTaskAndCalendarQueries(task.id)
       toast.success('Tạo task thành công')
       openTaskDrawer(task.id, 'view')
     },
-    onError: (err: Error) => toast.error('Tạo task thất bại', { description: err.message }),
+    onError: (err: Error, _variables, context) => {
+      if (context?.taskSnapshot) {
+        restoreProjectTaskQueries(queryClient, context.taskSnapshot)
+      }
+      if (context?.calendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.calendarSnapshot)
+      }
+
+      toast.error('Tạo task thất bại', { description: err.message })
+    },
   })
 
   const updateScheduleMutation = useMutation({

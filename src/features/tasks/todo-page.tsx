@@ -39,6 +39,7 @@ import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import {
   applyTaskCompletion,
   applyTaskReorder,
@@ -168,6 +169,7 @@ export function TodoPage() {
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
+  const currentUser = useAuthStore((s) => s.currentUser)
   useProjectRealtime(workspaceId, projectId)
   const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
     workspaceId,
@@ -232,12 +234,66 @@ export function TodoPage() {
         sourceView: 'TODO',
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      const statuses = statusesQuery.data
+      const defaultStatus = statuses?.[0]
+      if (!defaultStatus) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const optimisticTaskId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        projectId,
+        title: newTaskTitle.trim(),
+        status: defaultStatus,
+        priority: 'MEDIUM',
+        sourceView: 'TODO',
+        estimatedMinutes: 0,
+        boardPosition: 9999,
+        isCompleted: false,
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+
+      return {
+        snapshot,
+        optimisticTaskId,
+      }
+    },
+    onSuccess: (savedTask, _variables, context) => {
       setNewTaskTitle('')
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
+        const replacedTasks = tasks.map((task) => (
+          task.id === context?.optimisticTaskId ? savedTask : task
+        ))
+
+        return replacedTasks.some((task) => task.id === savedTask.id)
+          ? replacedTasks
+          : [...replacedTasks, savedTask]
+      })
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
       toast.success('Tạo task thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+
       toast.error('Tạo task thất bại', { description: error.message })
     },
   })

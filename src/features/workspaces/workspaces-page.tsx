@@ -26,10 +26,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
+import { useAuthStore } from '@/app/store/auth-store'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
-import type { Workspace } from '@/types/domain'
+import type { PageResult, Workspace } from '@/types/domain'
 
 export function WorkspacesPage() {
   const [name, setName] = useState('')
@@ -40,6 +41,36 @@ export function WorkspacesPage() {
   const [editInitialName, setEditInitialName] = useState('')
   const [deleteWorkspace, setDeleteWorkspace] = useState<Workspace | null>(null)
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.currentUser)
+
+  const snapshotWorkspaceListQueries = () =>
+    queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+
+  const restoreWorkspaceListQueries = (
+    snapshot: Array<[readonly unknown[], PageResult<Workspace> | undefined]>,
+  ) => {
+    for (const [queryKey, data] of snapshot) {
+      queryClient.setQueryData(queryKey, data)
+    }
+  }
+
+  const patchWorkspaceListQueries = (
+    updater: (workspaces: Workspace[], pageSize: number) => Workspace[],
+  ) => {
+    queryClient.setQueriesData<PageResult<Workspace>>(
+      { queryKey: ['workspaces', 'list'] },
+      (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
+
+        return {
+          ...oldData,
+          content: updater(oldData.content, oldData.meta.pageSize),
+        }
+      },
+    )
+  }
 
   const listQuery = useQuery({
     queryKey: queryKeys.workspaces.list(1, 30),
@@ -48,13 +79,54 @@ export function WorkspacesPage() {
 
   const createMutation = useMutation({
     mutationFn: workspaceApi.create,
-    onSuccess: () => {
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
+
+      const snapshot = snapshotWorkspaceListQueries()
+      const optimisticWorkspaceId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticWorkspace: Workspace = {
+        id: optimisticWorkspaceId,
+        name: payload.name,
+        owner: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchWorkspaceListQueries((workspaces, pageSize) => [optimisticWorkspace, ...workspaces].slice(0, pageSize))
+
+      return {
+        snapshot,
+        optimisticWorkspaceId,
+      }
+    },
+    onSuccess: (savedWorkspace, _variables, context) => {
       setName('')
       setDialogOpen(false)
+
+      patchWorkspaceListQueries((workspaces) => {
+        const replacedWorkspaces = workspaces.map((workspace) => (
+          workspace.id === context?.optimisticWorkspaceId ? savedWorkspace : workspace
+        ))
+
+        return replacedWorkspaces.some((workspace) => workspace.id === savedWorkspace.id)
+          ? replacedWorkspaces
+          : [savedWorkspace, ...replacedWorkspaces]
+      })
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Tạo workspace thành công')
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _variables, context) => {
+      if (context?.snapshot) {
+        restoreWorkspaceListQueries(context.snapshot)
+      }
+
       const description = error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn, vui lòng thử lại.'
       toast.error('Tạo workspace thất bại', { description })
     },
@@ -65,13 +137,59 @@ export function WorkspacesPage() {
       if (!editWsId) throw new Error('Workspace không tồn tại')
       return workspaceApi.update(editWsId, { name: editName.trim() })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!editWsId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
+
+      const snapshot = snapshotWorkspaceListQueries()
+      const workspaceSnapshot = queryClient.getQueryData<Workspace>(queryKeys.workspaces.detail(editWsId))
+
+      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
+        workspace.id === editWsId
+          ? {
+            ...workspace,
+            name: editName.trim(),
+            updatedAt: new Date().toISOString(),
+          }
+          : workspace
+      )))
+
+      if (workspaceSnapshot) {
+        queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(editWsId), {
+          ...workspaceSnapshot,
+          name: editName.trim(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
+      return {
+        snapshot,
+        workspaceSnapshot,
+      }
+    },
+    onSuccess: (savedWorkspace) => {
       setEditDialogOpen(false)
       setEditWsId(null)
+
+      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
+        workspace.id === savedWorkspace.id ? savedWorkspace : workspace
+      )))
+      queryClient.setQueryData(queryKeys.workspaces.detail(savedWorkspace.id), savedWorkspace)
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Cập nhật workspace thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreWorkspaceListQueries(context.snapshot)
+      }
+      if (context?.workspaceSnapshot && editWsId) {
+        queryClient.setQueryData(queryKeys.workspaces.detail(editWsId), context.workspaceSnapshot)
+      }
+
       toast.error('Cập nhật workspace thất bại', { description: error.message })
     },
   })
@@ -281,7 +399,7 @@ export function WorkspacesPage() {
                   <strong>{deleteWorkspace.name}</strong>
                 </div>
               ) : null}
-              <p>Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+              <p>Workspace sẽ được xóa sau 5 giây.</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

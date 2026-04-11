@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Pencil, Timer, X, NotebookText,
   Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock,
 } from 'lucide-react'
+import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
 import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
 import { Button } from '@/components/ui/button'
@@ -40,7 +42,7 @@ import { useProjectPermissions } from '@/lib/permissions/use-project-permissions
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import { formatDateTime } from '@/lib/utils/datetime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
-import { TaskCommentsDialog } from '@/features/tasks/task-comments-dialog'
+import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
 
@@ -85,6 +87,7 @@ export function TaskDetailsDrawer() {
   const setTaskDrawerMode = useUiStore((state) => state.setTaskDrawerMode)
   const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((state) => state.openTaskDeleteConfirm)
+  const currentUser = useAuthStore((state) => state.currentUser)
 
   const queryClient = useQueryClient()
 
@@ -98,7 +101,7 @@ export function TaskDetailsDrawer() {
   const [editScheduleStart, setEditScheduleStart] = useState('')
   const [editScheduleEnd, setEditScheduleEnd] = useState('')
   const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null)
-  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
+  const [activeDrawerPanel, setActiveDrawerPanel] = useState<'details' | 'comments'>('details')
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
   const [editorInitKey, setEditorInitKey] = useState<string | null>(null)
   const [editorSnapshot, setEditorSnapshot] = useState<{
@@ -183,7 +186,7 @@ export function TaskDetailsDrawer() {
     setEditScheduleStart('')
     setEditScheduleEnd('')
     setActiveScheduleId(null)
-    setCommentsDialogOpen(false)
+    setActiveDrawerPanel('details')
     setDescriptionExpanded(false)
     setEditorInitKey(null)
     setEditorSnapshot(null)
@@ -305,14 +308,66 @@ export function TaskDetailsDrawer() {
       if (!hasTask) throw new Error('Task chưa được chọn')
       return taskCommentApi.add(taskId, newComment.trim(), replyParentCommentId ?? undefined)
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!hasTask || !currentUser) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.byTask(taskId) })
+
+      const commentsSnapshot = queryClient.getQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId))
+      const optimisticCommentId = -Date.now()
+      const nowIso = new Date().toISOString()
+
+      queryClient.setQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId), (oldComments) => [
+        {
+          id: optimisticCommentId,
+          taskId,
+          parentCommentId: replyParentCommentId ?? null,
+          user: {
+            userId: currentUser.userId,
+            email: currentUser.email,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName,
+          },
+          content: newComment.trim(),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        },
+        ...(oldComments ?? []),
+      ])
+
+      return {
+        commentsSnapshot,
+        optimisticCommentId,
+      }
+    },
+    onSuccess: (savedComment, _variables, context) => {
       setNewComment('')
       setReplyParentCommentId(null)
-      void invalidateTaskData()
+
+      queryClient.setQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId), (oldComments) => {
+        const comments = oldComments ?? []
+        const replacedComments = comments.map((comment) => (
+          comment.id === context?.optimisticCommentId ? savedComment : comment
+        ))
+
+        return replacedComments.some((comment) => comment.id === savedComment.id)
+          ? replacedComments
+          : [savedComment, ...replacedComments]
+      })
+
       toast.success('Thêm comment thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.commentsSnapshot) {
+        queryClient.setQueryData(queryKeys.comments.byTask(taskId), context.commentsSnapshot)
+      }
+
       toast.error('Thêm comment thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void invalidateTaskData()
     },
   })
 
@@ -450,14 +505,51 @@ export function TaskDetailsDrawer() {
       if (!editingCommentId) throw new Error('Comment không tồn tại')
       return taskCommentApi.update(editingCommentId, editingCommentContent.trim())
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!editingCommentId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: queryKeys.comments.byTask(taskId) })
+
+      const commentsSnapshot = queryClient.getQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId))
+      const optimisticUpdatedAt = new Date().toISOString()
+
+      queryClient.setQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId), (oldComments) =>
+        (oldComments ?? []).map((comment) => (
+          comment.id === editingCommentId
+            ? {
+              ...comment,
+              content: editingCommentContent.trim(),
+              updatedAt: optimisticUpdatedAt,
+            }
+            : comment
+        )),
+      )
+
+      return {
+        commentsSnapshot,
+      }
+    },
+    onSuccess: (savedComment) => {
       setEditingCommentId(null)
       setEditingCommentContent('')
-      void invalidateTaskData()
+
+      queryClient.setQueryData<TaskComment[]>(queryKeys.comments.byTask(taskId), (oldComments) =>
+        (oldComments ?? []).map((comment) => (comment.id === savedComment.id ? savedComment : comment)),
+      )
+
       toast.success('Cập nhật comment thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.commentsSnapshot) {
+        queryClient.setQueryData(queryKeys.comments.byTask(taskId), context.commentsSnapshot)
+      }
+
       toast.error('Cập nhật comment thất bại', { description: error.message })
+    },
+    onSettled: () => {
+      void invalidateTaskData()
     },
   })
 
@@ -535,6 +627,10 @@ export function TaskDetailsDrawer() {
   const task = taskQuery.data
   const goals = goalsQuery.data?.content ?? []
   const members = membersQuery.data ?? []
+  const latestCommentPreview = useMemo(
+    () => [...comments].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0] ?? null,
+    [comments],
+  )
   const goalTitleById = useMemo(
     () => new Map(goals.map((goal) => [goal.id, goal.title] as const)),
     [goals],
@@ -638,6 +734,7 @@ export function TaskDetailsDrawer() {
   const enterEditMode = () => {
     if (!task || !canManageCurrentTask) return
     setEditorInitKey(null)
+    setActiveDrawerPanel('details')
     setTaskDrawerMode('edit')
   }
 
@@ -652,12 +749,13 @@ export function TaskDetailsDrawer() {
     setEditScheduleStart('')
     setEditScheduleEnd('')
     setActiveScheduleId(null)
+    setActiveDrawerPanel('details')
     setEditorSnapshot(null)
     setEditorInitKey(null)
   }
 
   useEffect(() => {
-    setCommentsDialogOpen(false)
+    setActiveDrawerPanel('details')
     setDescriptionExpanded(false)
   }, [taskId])
 
@@ -727,13 +825,24 @@ export function TaskDetailsDrawer() {
   return (
     <>
       <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
-      <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
         <SheetHeader className="border-b px-6 py-4">
           <div className="flex items-center gap-2">
             <SheetTitle className="text-base">{isDuplicateMode ? 'Nhân bản task' : 'Chi tiết task'}</SheetTitle>
             <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
 
             <div className="ml-auto flex items-center gap-1">
+              {task && !isEditingTask && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`size-7 ${activeDrawerPanel === 'comments' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setActiveDrawerPanel((currentPanel) => currentPanel === 'comments' ? 'details' : 'comments')}
+                  title={activeDrawerPanel === 'comments' ? 'Quay lại chi tiết task' : 'Xem bình luận task'}
+                >
+                  <MessageSquare className="size-3.5" />
+                </Button>
+              )}
               {task && canManageCurrentTask && !isEditingTask && (
                 <Button
                   variant="ghost"
@@ -775,9 +884,10 @@ export function TaskDetailsDrawer() {
           </div>
         ) : task ? (
           <>
-            <ScrollArea className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-hidden">
               {isEditingTask ? (
                 /* ─── EDIT / DUPLICATE FORM ─── */
+                <ScrollArea className="h-full">
                 <div className="space-y-5 px-6 py-5">
                   {isDuplicateMode && (
                     <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
@@ -928,228 +1038,288 @@ export function TaskDetailsDrawer() {
                     )}
                   </div>
                 </div>
+                </ScrollArea>
               ) : (
                 /* ─── VIEW MODE ─── */
-                <div className="divide-y divide-border/50">
-                  {/* Title + description + quick actions */}
-                  <div className="px-6 py-5">
-                    <h2
-                      className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
-                      style={{ overflowWrap: 'anywhere' }}
-                    >
-                      {task.title}
-                    </h2>
-                    {task.description && (
-                      <div className="mt-2">
-                        <p
-                          className={`whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${hasLongDescription && !descriptionExpanded ? 'line-clamp-4' : ''}`}
+                <div className="relative h-full overflow-hidden bg-background">
+                  <AnimatePresence initial={false} mode="wait">
+                    {activeDrawerPanel === 'details' ? (
+                      <motion.div
+                        key="details"
+                        initial={{ x: -36, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: 36, opacity: 0 }}
+                        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute inset-0"
+                      >
+                        <ScrollArea className="h-full">
+                    <div className="divide-y divide-border/50 pb-6">
+                      {/* Title + description + quick actions */}
+                      <div className="px-6 py-5">
+                        <h2
+                          className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
                           style={{ overflowWrap: 'anywhere' }}
                         >
-                          {task.description}
-                        </p>
-                        {hasLongDescription && (
-                          <button
-                            type="button"
-                            className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-                            onClick={() => setDescriptionExpanded((value) => !value)}
-                          >
-                            {descriptionExpanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant={task.isCompleted ? 'secondary' : 'default'}
-                        className="h-8 gap-1.5 text-xs"
-                        onClick={() => {
-                          if (!canManageCurrentTask) {
-                            toast.error('Bạn không có quyền cập nhật task này')
-                            return
-                          }
-                          toggleCompletionMutation.mutate()
-                        }}
-                        disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
-                      >
-                        {toggleCompletionMutation.isPending ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : task.isCompleted ? (
-                          <CheckCircle2 className="size-3.5" />
-                        ) : (
-                          <Circle className="size-3.5" />
-                        )}
-                        {task.isCompleted ? 'Bỏ hoàn thành' : 'Đánh dấu hoàn thành'}
-                      </Button>
-                      <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title="Pomodoro">
-                        <Timer className="size-3.5" />
-                      </Button>
-                      <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title="Ghi chú">
-                        <NotebookText className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 gap-1.5 text-xs"
-                        onClick={() => setCommentsDialogOpen(true)}
-                      >
-                        <MessageSquare className="size-3.5" />
-                        Bình luận ({comments.length})
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Properties */}
-                  <div className="px-6 py-4">
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Thông tin</p>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-[11px] text-muted-foreground">Mức ưu tiên</p>
-                          <TaskPriorityBadge priority={task.priority} />
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-[11px] text-muted-foreground">Trạng thái</p>
-                          <Badge
-                            variant={task.status.isClosed ? 'secondary' : 'outline'}
-                            className="text-xs"
-                          >
-                            {task.status.name}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-[11px] text-muted-foreground">Người nhận</p>
-                          {task.assignee ? (
-                            <div className="flex items-center gap-1.5">
-                              <Avatar className="size-5">
-                                <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
-                                  {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground/50">Chưa giao</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-[11px] text-muted-foreground">Hạn chót</p>
-                          {task.dueDate ? (
-                            <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
-                              {formatDateTime(task.dueDate)}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground/50">Chưa đặt</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="mb-1 text-[11px] text-muted-foreground">Goal</p>
-                          {task.goalId ? (
-                            <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                              <Target className="size-3 shrink-0" />
-                              <span className="truncate">{goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`}</span>
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground/50">Chưa gán</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {task.taskType && (
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-1 text-[11px] text-muted-foreground">Loại task</p>
-                            <Badge
-                              variant="secondary"
-                              className="gap-1 text-[11px]"
-                              style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
+                          {task.title}
+                        </h2>
+                        {task.description && (
+                          <div className="mt-2">
+                            <p
+                              className={`whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${hasLongDescription && !descriptionExpanded ? 'line-clamp-4' : ''}`}
+                              style={{ overflowWrap: 'anywhere' }}
                             >
-                              {task.taskType.icon && <span>{task.taskType.icon}</span>}
-                              {task.taskType.name}
-                            </Badge>
+                              {task.description}
+                            </p>
+                            {hasLongDescription && (
+                              <button
+                                type="button"
+                                className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                                onClick={() => setDescriptionExpanded((value) => !value)}
+                              >
+                                {descriptionExpanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant={task.isCompleted ? 'secondary' : 'default'}
+                            className="h-8 gap-1.5 text-xs"
+                            onClick={() => {
+                              if (!canManageCurrentTask) {
+                                toast.error('Bạn không có quyền cập nhật task này')
+                                return
+                              }
+                              toggleCompletionMutation.mutate()
+                            }}
+                            disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
+                          >
+                            {toggleCompletionMutation.isPending ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : task.isCompleted ? (
+                              <CheckCircle2 className="size-3.5" />
+                            ) : (
+                              <Circle className="size-3.5" />
+                            )}
+                            {task.isCompleted ? 'Bỏ hoàn thành' : 'Đánh dấu hoàn thành'}
+                          </Button>
+                          <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title="Pomodoro">
+                            <Timer className="size-3.5" />
+                          </Button>
+                          <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title="Ghi chú">
+                            <NotebookText className="size-3.5" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-5 rounded-[28px] border border-border/70 bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(14,165,233,0.02)_58%,rgba(255,255,255,0.9))] p-4 shadow-[0_22px_50px_-34px_rgba(15,23,42,0.24)] dark:bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(14,165,233,0.05)_55%,rgba(15,23,42,0.72))]">
+                          <div className="flex items-start gap-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                              <MessageSquare className="size-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold">Bình luận và phối hợp</p>
+                                    <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
+                                      {comments.length} bình luận
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                    Chuyển sang khung bình luận để theo dõi trao đổi, phản hồi nhanh và giữ toàn bộ quyết định ngay trong cùng task.
+                                  </p>
+                                </div>
+
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs"
+                                  onClick={() => setActiveDrawerPanel('comments')}
+                                >
+                                  <MessageSquare className="size-3.5" />
+                                  {comments.length > 0 ? 'Mở bình luận' : 'Bắt đầu trao đổi'}
+                                </Button>
+                              </div>
+
+                              {latestCommentPreview ? (
+                                <div className="mt-3 rounded-[22px] border border-border/70 bg-background/75 px-3.5 py-3 dark:bg-background/15">
+                                  <p className="text-[11px] font-medium text-muted-foreground">
+                                    Mới nhất từ {latestCommentPreview.user.firstName} {latestCommentPreview.user.lastName}
+                                  </p>
+                                  <p className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80" style={{ overflowWrap: 'anywhere' }}>
+                                    {latestCommentPreview.content}
+                                  </p>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Properties */}
+                      <div className="px-6 py-4">
+                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Thông tin</p>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-1 text-[11px] text-muted-foreground">Mức ưu tiên</p>
+                              <TaskPriorityBadge priority={task.priority} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-1 text-[11px] text-muted-foreground">Trạng thái</p>
+                              <Badge
+                                variant={task.status.isClosed ? 'secondary' : 'outline'}
+                                className="text-xs"
+                              >
+                                {task.status.name}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-1 text-[11px] text-muted-foreground">Người nhận</p>
+                              {task.assignee ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Avatar className="size-5">
+                                    <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
+                                      {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">Chưa giao</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-1 text-[11px] text-muted-foreground">Hạn chót</p>
+                              {task.dueDate ? (
+                                <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
+                                  {formatDateTime(task.dueDate)}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">Chưa đặt</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="mb-1 text-[11px] text-muted-foreground">Goal</p>
+                              {task.goalId ? (
+                                <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                                  <Target className="size-3 shrink-0" />
+                                  <span className="truncate">{goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`}</span>
+                                </span>
+                              ) : (
+                                <span className="text-sm text-muted-foreground/50">Chưa gán</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {task.taskType && (
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
+                              <div className="min-w-0 flex-1">
+                                <p className="mb-1 text-[11px] text-muted-foreground">Loại task</p>
+                                <Badge
+                                  variant="secondary"
+                                  className="gap-1 text-[11px]"
+                                  style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
+                                >
+                                  {task.taskType.icon && <span>{task.taskType.icon}</span>}
+                                  {task.taskType.name}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Schedule */}
+                      {primarySchedule && (
+                        <div className="px-6 py-4">
+                          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Lịch hẹn</p>
+                          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
+                            <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="size-3 text-muted-foreground" />
+                                  <span className="text-[11px] text-muted-foreground">Bắt đầu:</span>
+                                  <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="size-3 text-muted-foreground" />
+                                  <span className="text-[11px] text-muted-foreground">Kết thúc:</span>
+                                  <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Schedule */}
-                  {primarySchedule && (
-                    <div className="px-6 py-4">
-                      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Lịch hẹn</p>
-                      <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
-                        <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="size-3 text-muted-foreground" />
-                              <span className="text-[11px] text-muted-foreground">Bắt đầu:</span>
-                              <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="size-3 text-muted-foreground" />
-                              <span className="text-[11px] text-muted-foreground">Kết thúc:</span>
-                              <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Comments */}
-                  <div className="px-6 py-4">
-                    <div className="rounded-2xl border bg-muted/20 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <MessageSquare className="size-4 text-primary" />
-                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                              Bình luận
-                            </p>
-                          </div>
-                          <p className="mt-2 text-sm font-medium text-foreground">
-                            {comments.length === 0 ? 'Chưa có trao đổi nào cho task này.' : `${comments.length} bình luận đang được thảo luận.`}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            Mở cửa sổ bình luận để trả lời theo cây, chỉnh sửa nội dung dài và thu gọn hoặc mở rộng từng nhánh trao đổi.
-                          </p>
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 shrink-0 gap-1.5 text-xs"
-                          onClick={() => setCommentsDialogOpen(true)}
-                        >
-                          <MessageSquare className="size-3.5" />
-                          Mở bình luận
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                        </ScrollArea>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="comments"
+                        initial={{ x: 36, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: -36, opacity: 0 }}
+                        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute inset-0"
+                      >
+                        <ScrollArea className="h-full">
+                          <TaskCommentsPanel
+                            taskTitle={task.title}
+                            comments={comments}
+                            canManageCurrentTask={canManageCurrentTask}
+                            canModifyComment={canModifyComment}
+                            newComment={newComment}
+                            replyParentCommentId={replyParentCommentId}
+                            editingCommentId={editingCommentId}
+                            editingCommentContent={editingCommentContent}
+                            addCommentPending={addCommentMutation.isPending}
+                            updateCommentPending={updateCommentMutation.isPending}
+                            onBack={() => setActiveDrawerPanel('details')}
+                            onNewCommentChange={setNewComment}
+                            onReplyParentCommentChange={setReplyParentCommentId}
+                            onEditingCommentContentChange={setEditingCommentContent}
+                            onStartEditing={(comment) => {
+                              setEditingCommentId(comment.id)
+                              setEditingCommentContent(comment.content)
+                            }}
+                            onCancelEditing={() => {
+                              setEditingCommentId(null)
+                              setEditingCommentContent('')
+                            }}
+                            onAddComment={() => addCommentMutation.mutate()}
+                            onUpdateComment={() => updateCommentMutation.mutate()}
+                            onDeleteComment={(commentId) => deleteCommentMutation.mutate(commentId)}
+                          />
+                        </ScrollArea>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
-            </ScrollArea>
+            </div>
 
             {isEditingTask && (
               <div className="border-t bg-background/95 px-6 py-3">
@@ -1175,36 +1345,6 @@ export function TaskDetailsDrawer() {
       </SheetContent>
       </Sheet>
 
-      {task ? (
-        <TaskCommentsDialog
-          open={commentsDialogOpen}
-          taskTitle={task.title}
-          comments={comments}
-          canManageCurrentTask={canManageCurrentTask}
-          canModifyComment={canModifyComment}
-          newComment={newComment}
-          replyParentCommentId={replyParentCommentId}
-          editingCommentId={editingCommentId}
-          editingCommentContent={editingCommentContent}
-          addCommentPending={addCommentMutation.isPending}
-          updateCommentPending={updateCommentMutation.isPending}
-          onOpenChange={setCommentsDialogOpen}
-          onNewCommentChange={setNewComment}
-          onReplyParentCommentChange={setReplyParentCommentId}
-          onEditingCommentContentChange={setEditingCommentContent}
-          onStartEditing={(comment) => {
-            setEditingCommentId(comment.id)
-            setEditingCommentContent(comment.content)
-          }}
-          onCancelEditing={() => {
-            setEditingCommentId(null)
-            setEditingCommentContent('')
-          }}
-          onAddComment={() => addCommentMutation.mutate()}
-          onUpdateComment={() => updateCommentMutation.mutate()}
-          onDeleteComment={(commentId) => deleteCommentMutation.mutate(commentId)}
-        />
-      ) : null}
     </>
   )
 }

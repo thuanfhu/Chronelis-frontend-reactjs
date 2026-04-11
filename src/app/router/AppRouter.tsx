@@ -10,6 +10,7 @@ import { VerifyEmailChangePage } from '@/features/auth/verify-email-change-page'
 import { ForbiddenPage } from '@/pages/forbidden-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { DashboardPage } from '@/pages/dashboard-page'
+import { LandingPage } from '@/pages/landing-page'
 import { WorkspacesPage } from '@/features/workspaces/workspaces-page'
 import { WorkspaceDetailPage } from '@/features/workspaces/workspace-detail-page'
 import { TasksLayout } from '@/features/tasks/tasks-layout'
@@ -26,6 +27,8 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+
         <Route
           path="/login"
           element={
@@ -109,7 +112,7 @@ export function AppRouter() {
             </ProtectedGuard>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />

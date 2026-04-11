@@ -106,10 +106,10 @@ export function TaskDeleteConfirmDialog() {
   )
 
   const description = !taskQuery.data
-    ? 'Bạn có chắc muốn xóa task này không? Bạn có thể hoàn tác trong 5 giây.'
+    ? 'Bạn có chắc muốn xóa task này không?'
     : !canDeleteTask
       ? 'Bạn không có quyền xóa task này theo vai trò quản lý hiện tại.'
-      : `Bạn có chắc muốn xóa task "${taskQuery.data.title}" không? Bạn có thể hoàn tác trong 5 giây.`
+      : `Bạn có chắc muốn xóa task "${taskQuery.data.title}" không?`
 
   const restoreCommentSnapshots = useCallback((snapshots: CommentSnapshot) => {
     for (const [queryKey, data] of snapshots) {
@@ -294,7 +294,6 @@ export function TaskDeleteConfirmDialog() {
                   <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
                     <strong>{taskQuery.data.title}</strong>
                   </div>
-                  <p>Bạn có thể hoàn tác trong 5 giây.</p>
                 </>
               )}
             </DialogDescription>

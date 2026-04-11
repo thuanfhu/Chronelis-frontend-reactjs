@@ -217,22 +217,22 @@ export function GoalTasksPage() {
       </div>
 
       {/* ─── Filter & Sort toolbar ─── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
+      <div className="flex flex-wrap items-center gap-2.5 xl:flex-nowrap">
+        <div className="relative min-w-64 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
             placeholder="Tìm task theo tên, mô tả..."
-            className="h-8 pl-8 text-xs"
+            className="h-9 pl-8 text-sm"
           />
         </div>
 
         <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v as TaskPriorityType | 'ALL'); setPage(1) }}>
-          <SelectTrigger className="h-8 w-36 text-xs">
+          <SelectTrigger className="h-9 w-46 shrink-0 px-3 text-sm whitespace-nowrap">
             <SelectValue placeholder="Độ ưu tiên" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-46">
             <SelectItem value="ALL">Tất cả độ ưu tiên</SelectItem>
             {(['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
               <SelectItem key={p} value={p}>{priorityConfig[p].label}</SelectItem>
@@ -241,10 +241,10 @@ export function GoalTasksPage() {
         </Select>
 
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as 'ALL' | 'OPEN' | 'CLOSED'); setPage(1) }}>
-          <SelectTrigger className="h-8 w-32 text-xs">
+          <SelectTrigger className="h-9 w-42 shrink-0 px-3 text-sm whitespace-nowrap">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-42">
             <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
             <SelectItem value="OPEN">Đang mở</SelectItem>
             <SelectItem value="CLOSED">Đã đóng</SelectItem>
@@ -252,11 +252,11 @@ export function GoalTasksPage() {
         </Select>
 
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-          <SelectTrigger className="h-8 w-36 text-xs">
+          <SelectTrigger className="h-9 w-43 shrink-0 px-3 text-sm whitespace-nowrap">
             <ArrowUpDown className="mr-1.5 size-3" />
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="min-w-43">
             <SelectItem value="status">Theo trạng thái</SelectItem>
             <SelectItem value="priority">Theo độ ưu tiên</SelectItem>
             <SelectItem value="title">Theo tên A→Z</SelectItem>
@@ -265,7 +265,7 @@ export function GoalTasksPage() {
           </SelectContent>
         </Select>
 
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground xl:ml-auto">
           {filteredTasks.length}/{allTasks.length} tasks
         </span>
       </div>

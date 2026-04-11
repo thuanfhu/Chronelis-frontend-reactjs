@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Copy, Edit3, Trash2 } from 'lucide-react'
 
 interface TaskContextMenuProps {
@@ -20,9 +20,23 @@ export function TaskContextMenu({
   onEdit,
   onDelete,
 }: TaskContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
   useEffect(() => {
     if (!open) {
       return
+    }
+
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) {
+        return
+      }
+
+      if (menuRef.current?.contains(event.target)) {
+        return
+      }
+
+      onClose()
     }
 
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -31,14 +45,12 @@ export function TaskContextMenu({
       }
     }
 
-    window.addEventListener('click', onClose)
-    window.addEventListener('contextmenu', onClose)
+    window.addEventListener('pointerdown', closeOnPointerDown)
     window.addEventListener('resize', onClose)
     window.addEventListener('keydown', closeOnEscape)
 
     return () => {
-      window.removeEventListener('click', onClose)
-      window.removeEventListener('contextmenu', onClose)
+      window.removeEventListener('pointerdown', closeOnPointerDown)
       window.removeEventListener('resize', onClose)
       window.removeEventListener('keydown', closeOnEscape)
     }
@@ -50,10 +62,15 @@ export function TaskContextMenu({
 
   return (
     <div
+      ref={menuRef}
       className="fixed z-80 w-44 rounded-xl border border-white/35 bg-background/85 p-1.5 shadow-2xl backdrop-blur-xl"
       style={{ top: y, left: x }}
       onClick={(event) => event.stopPropagation()}
-      onContextMenu={(event) => event.preventDefault()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
     >
       <button
         type="button"

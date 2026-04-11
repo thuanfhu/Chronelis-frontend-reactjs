@@ -766,7 +766,7 @@ export function GoalsPage() {
                   <strong>{deleteGoalTarget.title}</strong>
                 </div>
               ) : null}
-              <p>Goal sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+              <p>Goal sẽ được xóa sau 5 giây.</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -37,7 +37,7 @@ import { projectApi } from '@/lib/api/modules/project-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
-import type { Goal, GoalStatusType, GoalType, Project } from '@/types/domain'
+import type { Goal, GoalStatusType, GoalType, PageResult, Project } from '@/types/domain'
 
 function normalizeProgress(progressPercent: number | null | undefined): number {
   if (progressPercent == null || Number.isNaN(progressPercent)) {
@@ -100,6 +100,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
   const clearSession = useAuthStore((s) => s.clearSession)
+  const currentUser = useAuthStore((s) => s.currentUser)
 
   const [workspaceSearch, setWorkspaceSearch] = useState('')
   const [projectsExpanded, setProjectsExpanded] = useState(true)
@@ -257,16 +258,91 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         description: projectFormDescription.trim() || undefined,
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!workspaceId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
+
+      const snapshot = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
+      const optimisticProjectId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticProject: Project = {
+        id: optimisticProjectId,
+        workspaceId,
+        name: projectFormName.trim(),
+        description: projectFormDescription.trim() || undefined,
+        status: 'ACTIVE',
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      queryClient.setQueriesData<PageResult<Project>>(
+        { queryKey: ['projects', 'workspace', workspaceId] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: [optimisticProject, ...oldData.content],
+          }
+        },
+      )
+
+      return {
+        snapshot,
+        optimisticProjectId,
+      }
+    },
+    onSuccess: (savedProject, _variables, context) => {
       setProjectDialogOpen(false)
       setProjectFormName('')
       setProjectFormDescription('')
+      setExpandedProjects((previous) => new Set(previous).add(savedProject.id))
+
+      if (workspaceId) {
+        queryClient.setQueriesData<PageResult<Project>>(
+          { queryKey: ['projects', 'workspace', workspaceId] },
+          (oldData) => {
+            if (!oldData) {
+              return oldData
+            }
+
+            const replacedProjects = oldData.content.map((project) => (
+              project.id === context?.optimisticProjectId ? savedProject : project
+            ))
+
+            return {
+              ...oldData,
+              content: replacedProjects.some((project) => project.id === savedProject.id)
+                ? replacedProjects
+                : [savedProject, ...replacedProjects],
+            }
+          },
+        )
+      }
+
       if (workspaceId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       }
       toast.success('Tạo project thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        for (const [queryKey, data] of context.snapshot) {
+          queryClient.setQueryData(queryKey, data)
+        }
+      }
+
       toast.error('Tạo project thất bại', { description: error.message })
     },
   })
@@ -282,15 +358,76 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         description: projectFormDescription.trim() || undefined,
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!workspaceId || !projectDialogTargetId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
+
+      const snapshot = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
+
+      queryClient.setQueriesData<PageResult<Project>>(
+        { queryKey: ['projects', 'workspace', workspaceId] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: oldData.content.map((project) => (
+              project.id === projectDialogTargetId
+                ? {
+                  ...project,
+                  name: projectFormName.trim(),
+                  description: projectFormDescription.trim() || undefined,
+                  updatedAt: new Date().toISOString(),
+                }
+                : project
+            )),
+          }
+        },
+      )
+
+      return {
+        snapshot,
+      }
+    },
+    onSuccess: (savedProject) => {
       setProjectDialogOpen(false)
       setProjectDialogTargetId(null)
+
+      if (workspaceId) {
+        queryClient.setQueriesData<PageResult<Project>>(
+          { queryKey: ['projects', 'workspace', workspaceId] },
+          (oldData) => {
+            if (!oldData) {
+              return oldData
+            }
+
+            return {
+              ...oldData,
+              content: oldData.content.map((project) => (
+                project.id === savedProject.id ? savedProject : project
+              )),
+            }
+          },
+        )
+      }
+
       if (workspaceId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       }
       toast.success('Cập nhật project thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        for (const [queryKey, data] of context.snapshot) {
+          queryClient.setQueryData(queryKey, data)
+        }
+      }
+
       toast.error('Cập nhật project thất bại', { description: error.message })
     },
   })
@@ -308,16 +445,87 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         status: goalFormStatus,
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!goalDialogProjectId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['goals', goalDialogProjectId] })
+
+      const snapshot = queryClient.getQueriesData<PageResult<Goal>>({ queryKey: ['goals', goalDialogProjectId] })
+      const optimisticGoalId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticGoal: Goal = {
+        id: optimisticGoalId,
+        projectId: goalDialogProjectId,
+        title: goalFormTitle.trim(),
+        goalType: goalFormType,
+        status: goalFormStatus,
+        progressPercent: 0,
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      queryClient.setQueriesData<PageResult<Goal>>(
+        { queryKey: ['goals', goalDialogProjectId] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: [optimisticGoal, ...oldData.content],
+          }
+        },
+      )
+
+      return {
+        snapshot,
+        optimisticGoalId,
+      }
+    },
+    onSuccess: (savedGoal, _variables, context) => {
       const currentProjectId = goalDialogProjectId
       setGoalDialogOpen(false)
       setGoalDialogTargetId(null)
       if (currentProjectId) {
+        queryClient.setQueriesData<PageResult<Goal>>(
+          { queryKey: ['goals', currentProjectId] },
+          (oldData) => {
+            if (!oldData) {
+              return oldData
+            }
+
+            const replacedGoals = oldData.content.map((goal) => (
+              goal.id === context?.optimisticGoalId ? savedGoal : goal
+            ))
+
+            return {
+              ...oldData,
+              content: replacedGoals.some((goal) => goal.id === savedGoal.id)
+                ? replacedGoals
+                : [savedGoal, ...replacedGoals],
+            }
+          },
+        )
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
       toast.success('Tạo goal thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        for (const [queryKey, data] of context.snapshot) {
+          queryClient.setQueryData(queryKey, data)
+        }
+      }
+
       toast.error('Tạo goal thất bại', { description: error.message })
     },
   })
@@ -334,16 +542,74 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         status: goalFormStatus,
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!goalDialogProjectId || !goalDialogTargetId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['goals', goalDialogProjectId] })
+
+      const snapshot = queryClient.getQueriesData<PageResult<Goal>>({ queryKey: ['goals', goalDialogProjectId] })
+
+      queryClient.setQueriesData<PageResult<Goal>>(
+        { queryKey: ['goals', goalDialogProjectId] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: oldData.content.map((goal) => (
+              goal.id === goalDialogTargetId
+                ? {
+                  ...goal,
+                  title: goalFormTitle.trim(),
+                  goalType: goalFormType,
+                  status: goalFormStatus,
+                  updatedAt: new Date().toISOString(),
+                }
+                : goal
+            )),
+          }
+        },
+      )
+
+      return {
+        snapshot,
+      }
+    },
+    onSuccess: (savedGoal) => {
       const currentProjectId = goalDialogProjectId
       setGoalDialogOpen(false)
       setGoalDialogTargetId(null)
       if (currentProjectId) {
+        queryClient.setQueriesData<PageResult<Goal>>(
+          { queryKey: ['goals', currentProjectId] },
+          (oldData) => {
+            if (!oldData) {
+              return oldData
+            }
+
+            return {
+              ...oldData,
+              content: oldData.content.map((goal) => (
+                goal.id === savedGoal.id ? savedGoal : goal
+              )),
+            }
+          },
+        )
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
       toast.success('Cập nhật goal thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        for (const [queryKey, data] of context.snapshot) {
+          queryClient.setQueryData(queryKey, data)
+        }
+      }
+
       toast.error('Cập nhật goal thất bại', { description: error.message })
     },
   })
@@ -914,7 +1180,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
                   <strong>{deleteTarget.label}</strong>
                 </div>
-                <p>Mục sẽ bị xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+                <p>Mục sẽ bị xóa sau 5 giây.</p>
               </div>
             )
             : ''

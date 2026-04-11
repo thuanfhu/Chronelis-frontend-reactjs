@@ -40,7 +40,7 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
-import type { Project, ProjectStatusType, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
+import type { Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
 import type { PageResult } from '@/types/domain'
 
 /** Human-friendly display name for workspace member roles */
@@ -285,13 +285,81 @@ export function WorkspaceDetailPage() {
 
   const updateWorkspaceMutation = useMutation({
     mutationFn: () => workspaceApi.update(workspaceId, { name: editWsName.trim() }),
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
+      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
+
+      const workspaceListSnapshot = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+      const workspaceDetailSnapshot = queryClient.getQueryData<Workspace>(queryKeys.workspaces.detail(workspaceId))
+      const optimisticUpdatedAt = new Date().toISOString()
+
+      queryClient.setQueriesData<PageResult<Workspace>>(
+        { queryKey: ['workspaces', 'list'] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: oldData.content.map((workspace) => (
+              workspace.id === workspaceId
+                ? {
+                  ...workspace,
+                  name: editWsName.trim(),
+                  updatedAt: optimisticUpdatedAt,
+                }
+                : workspace
+            )),
+          }
+        },
+      )
+
+      if (workspaceDetailSnapshot) {
+        queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(workspaceId), {
+          ...workspaceDetailSnapshot,
+          name: editWsName.trim(),
+          updatedAt: optimisticUpdatedAt,
+        })
+      }
+
+      return {
+        workspaceListSnapshot,
+        workspaceDetailSnapshot,
+      }
+    },
+    onSuccess: (savedWorkspace) => {
       setEditWsDialogOpen(false)
+      queryClient.setQueryData(queryKeys.workspaces.detail(workspaceId), savedWorkspace)
+      queryClient.setQueriesData<PageResult<Workspace>>(
+        { queryKey: ['workspaces', 'list'] },
+        (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
+
+          return {
+            ...oldData,
+            content: oldData.content.map((workspace) => (
+              workspace.id === savedWorkspace.id ? savedWorkspace : workspace
+            )),
+          }
+        },
+      )
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Cập nhật workspace thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.workspaceListSnapshot) {
+        for (const [queryKey, data] of context.workspaceListSnapshot) {
+          queryClient.setQueryData(queryKey, data)
+        }
+      }
+      if (context?.workspaceDetailSnapshot) {
+        queryClient.setQueryData(queryKeys.workspaces.detail(workspaceId), context.workspaceDetailSnapshot)
+      }
+
       toast.error('Cập nhật workspace thất bại', { description: error.message })
     },
   })
@@ -1032,7 +1100,7 @@ export function WorkspaceDetailPage() {
                       <strong>{deleteProject.name}</strong>
                     </div>
                   ) : null}
-                  <p>Project sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+                  <p>Project sẽ được xóa sau 5 giây.</p>
                   <p>Sau khi hết thời gian, toàn bộ goals, tasks, lịch và comment liên quan sẽ bị xóa.</p>
                 </DialogDescription>
               </DialogHeader>
@@ -1695,7 +1763,7 @@ export function WorkspaceDetailPage() {
                 <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
                   <strong>{workspace.name}</strong>
                 </div>
-                <p>Workspace sẽ được xóa sau 5 giây và bạn có thể hoàn tác trong thời gian đó.</p>
+                <p>Workspace sẽ được xóa sau 5 giây.</p>
                 <p>Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.</p>
               </DialogDescription>
             </DialogHeader>
