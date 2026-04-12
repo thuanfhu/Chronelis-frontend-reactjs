@@ -40,7 +40,7 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
-import { formatDateTime } from '@/lib/utils/datetime'
+import { formatDateTime, toLocalDateTimePayload } from '@/lib/utils/datetime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
@@ -49,6 +49,14 @@ import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
 function toDateTimeLocalValue(isoValue?: string): string {
   if (!isoValue) {
     return ''
+  }
+
+  const normalized = isoValue.trim()
+  const localDateTimeMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/)
+  const hasExplicitTimeZone = /([zZ]|[+-]\d{2}:\d{2})$/.test(normalized)
+
+  if (localDateTimeMatch && !hasExplicitTimeZone) {
+    return `${localDateTimeMatch[1]}T${localDateTimeMatch[2]}`
   }
 
   const parsed = new Date(isoValue)
@@ -66,12 +74,7 @@ function toIsoDateTime(value: string): string | undefined {
     return undefined
   }
 
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined
-  }
-
-  return parsed.toISOString()
+  return toLocalDateTimePayload(value)
 }
 
 export function TaskDetailsDrawer() {
@@ -682,7 +685,7 @@ export function TaskDetailsDrawer() {
   )
 
   useEffect(() => {
-    if (!task || !canManageCurrentTask || !isEditingTask) {
+    if (!task || !canManageCurrentTask || !isEditingTask || !schedulesQuery.isFetched) {
       return
     }
 
@@ -691,7 +694,7 @@ export function TaskDetailsDrawer() {
       return
     }
 
-    const initialTitle = taskDrawerMode === 'duplicate' ? `${task.title} (Copy)` : task.title
+    const initialTitle = task.title
     const initialDescription = task.description ?? ''
     const initialPriority = task.priority
     const initialGoalId = task.goalId ?? null
@@ -724,6 +727,7 @@ export function TaskDetailsDrawer() {
     canManageCurrentTask,
     editorInitKey,
     isEditingTask,
+    schedulesQuery.isFetched,
     primarySchedule?.id,
     primarySchedule?.scheduledEnd,
     primarySchedule?.scheduledStart,

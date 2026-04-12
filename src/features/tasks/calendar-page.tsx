@@ -1096,7 +1096,16 @@ export function CalendarPage() {
         }}
         onDelete={() => {
           const menu = taskContextMenu
-          if (menu) openTaskDeleteConfirm(menu.taskId)
+          if (!menu) {
+            return
+          }
+
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền xóa task này')
+            return
+          }
+
+          openTaskDeleteConfirm(menu.taskId)
         }}
       />
     </div>

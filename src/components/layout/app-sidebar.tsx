@@ -1175,12 +1175,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         description={
           deleteTarget
             ? (
-              <div className="space-y-2">
-                <p>Bạn có chắc muốn xóa mục này không?</p>
-                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-                  <strong>{deleteTarget.label}</strong>
+              <div className="space-y-3 text-left leading-relaxed text-muted-foreground">
+                <p>
+                  {`Bạn có chắc muốn xóa ${deleteTarget.kind === 'project' ? 'project' : 'goal'} "${deleteTarget.label}" không?`}
+                </p>
+                <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                  Mục này sẽ bị gỡ khỏi sidebar và danh sách làm việc liên quan sau khi xác nhận.
                 </div>
-                <p>Mục sẽ bị xóa sau 5 giây.</p>
               </div>
             )
             : ''

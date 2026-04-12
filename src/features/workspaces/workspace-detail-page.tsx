@@ -1093,15 +1093,15 @@ export function WorkspaceDetailPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Xóa project</DialogTitle>
-                <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
-                  <p>Bạn có chắc muốn xóa project này không?</p>
-                  {deleteProject ? (
-                    <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-                      <strong>{deleteProject.name}</strong>
-                    </div>
-                  ) : null}
-                  <p>Project sẽ được xóa sau 5 giây.</p>
-                  <p>Sau khi hết thời gian, toàn bộ goals, tasks, lịch và comment liên quan sẽ bị xóa.</p>
+                <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+                  <p>
+                    {deleteProject
+                      ? `Bạn có chắc muốn xóa project "${deleteProject.name}" không?`
+                      : 'Bạn có chắc muốn xóa project này không?'}
+                  </p>
+                  <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                    Toàn bộ goals, tasks, lịch và comment liên quan của project này sẽ bị xóa cùng lúc.
+                  </div>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
@@ -1758,13 +1758,11 @@ export function WorkspaceDetailPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Xóa workspace</DialogTitle>
-              <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
-                <p>Bạn có chắc muốn xóa workspace này không?</p>
-                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-                  <strong>{workspace.name}</strong>
+              <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+                <p>{`Bạn có chắc muốn xóa workspace "${workspace.name}" không?`}</p>
+                <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                  Toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa cùng workspace này.
                 </div>
-                <p>Workspace sẽ được xóa sau 5 giây.</p>
-                <p>Sau khi hết thời gian, toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa.</p>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

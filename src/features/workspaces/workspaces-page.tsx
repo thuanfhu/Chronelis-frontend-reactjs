@@ -392,14 +392,15 @@ export function WorkspacesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa workspace</DialogTitle>
-            <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
-              <p>Bạn có chắc muốn xóa workspace này không?</p>
-              {deleteWorkspace ? (
-                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-                  <strong>{deleteWorkspace.name}</strong>
-                </div>
-              ) : null}
-              <p>Workspace sẽ được xóa sau 5 giây.</p>
+            <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+              <p>
+                {deleteWorkspace
+                  ? `Bạn có chắc muốn xóa workspace "${deleteWorkspace.name}" không?`
+                  : 'Bạn có chắc muốn xóa workspace này không?'}
+              </p>
+              <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                Workspace này sẽ được gỡ khỏi danh sách làm việc của bạn sau khi xác nhận.
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

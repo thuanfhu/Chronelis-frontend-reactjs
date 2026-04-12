@@ -759,14 +759,15 @@ export function GoalsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa goal</DialogTitle>
-            <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
-              <p>Bạn có chắc muốn xóa goal này không?</p>
-              {deleteGoalTarget ? (
-                <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-sm font-medium text-foreground">
-                  <strong>{deleteGoalTarget.title}</strong>
-                </div>
-              ) : null}
-              <p>Goal sẽ được xóa sau 5 giây.</p>
+            <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+              <p>
+                {deleteGoalTarget
+                  ? `Bạn có chắc muốn xóa goal "${deleteGoalTarget.title}" không?`
+                  : 'Bạn có chắc muốn xóa goal này không?'}
+              </p>
+              <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                Goal này sẽ bị gỡ khỏi danh sách mục tiêu của project sau khi xác nhận.
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
