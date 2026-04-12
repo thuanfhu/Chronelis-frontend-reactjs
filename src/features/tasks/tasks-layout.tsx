@@ -1,16 +1,18 @@
 import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, FolderKanban, ListTodo, Activity, Target } from 'lucide-react'
+import { CalendarDays, FolderKanban, ListTodo, Activity, Target, ChartNoAxesGantt } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KanbanPage } from '@/features/tasks/kanban-page'
 import { TodoPage } from '@/features/tasks/todo-page'
 import { CalendarPage } from '@/features/tasks/calendar-page'
 import { ActivityLogPage } from '@/features/activity/activity-log-page'
 import { GoalsPage } from '@/features/goals/goals-page'
+import { ProjectGanttPage } from '@/features/projects/project-gantt-page'
 
-export type TaskViewTab = 'calendar' | 'kanban' | 'todo' | 'goals' | 'activity'
+export type TaskViewTab = 'calendar' | 'gantt' | 'kanban' | 'todo' | 'goals' | 'activity'
 
 const TASK_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
   { value: 'calendar', label: 'Lịch', icon: CalendarDays },
+  { value: 'gantt', label: 'Gantt', icon: ChartNoAxesGantt },
   { value: 'kanban', label: 'Kanban', icon: FolderKanban },
   { value: 'todo', label: 'To Do', icon: ListTodo },
 ]
@@ -23,7 +25,7 @@ const PROJECT_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDa
 export function TasksLayout() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = (searchParams.get('view') as TaskViewTab) || 'calendar'
-  const isCalendarView = activeTab === 'calendar'
+  const isTimelineView = activeTab === 'calendar' || activeTab === 'gantt'
 
   const setActiveTab = (tab: TaskViewTab) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -32,9 +34,9 @@ export function TasksLayout() {
   }
 
   return (
-    <div className={`flex h-full min-h-0 flex-col ${isCalendarView ? 'gap-2' : 'gap-4'}`}>
+    <div className={`flex h-full min-h-0 flex-col ${isTimelineView ? 'gap-2' : 'gap-4'}`}>
       {/* ─── View tabs ─── */}
-      <div className={`border-b border-border/60 ${isCalendarView ? 'pb-2' : 'pb-3'}`}>
+      <div className={`border-b border-border/60 ${isTimelineView ? 'pb-2' : 'pb-3'}`}>
         <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TaskViewTab)}>
             <TabsList className="h-9 w-max bg-muted/60">
@@ -73,6 +75,7 @@ export function TasksLayout() {
       {/* ─── Active view ─── */}
       <div className="flex min-h-0 flex-1 flex-col">
         {activeTab === 'calendar' && <CalendarPage />}
+        {activeTab === 'gantt' && <ProjectGanttPage />}
         {activeTab === 'kanban' && <KanbanPage />}
         {activeTab === 'todo' && <TodoPage />}
         {activeTab === 'goals' && <GoalsPage />}

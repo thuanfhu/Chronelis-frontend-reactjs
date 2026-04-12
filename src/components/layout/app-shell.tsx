@@ -5,6 +5,7 @@ import { AppTopbar } from '@/components/layout/app-topbar'
 import { TaskDetailsDrawer } from '@/features/tasks/task-details-drawer'
 import { TaskDeleteConfirmDialog } from '@/features/tasks/task-delete-confirm-dialog'
 import { CommandPalette } from '@/components/shared/command-palette'
+import { GlobalAIAssistant } from '@/features/projects/project-assistant-sheet'
 import { useUiStore } from '@/app/store/ui-store'
 
 export function AppShell() {
@@ -53,6 +54,7 @@ export function AppShell() {
       <TaskDetailsDrawer />
       <TaskDeleteConfirmDialog />
       <CommandPalette />
+      <GlobalAIAssistant />
     </div>
   )
 }
