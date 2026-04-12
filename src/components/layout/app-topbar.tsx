@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2 } from 'lucide-react'
+import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2, ShieldCheck } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -26,18 +26,25 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
+import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { notificationApi } from '@/lib/api/modules/notification-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
+import { isAdminUser } from '@/lib/auth/role-utils'
+import { cn } from '@/lib/utils/cn'
 
 export function AppTopbar() {
   const navigate = useNavigate()
   const params = useParams()
-  const currentWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
+  const parsedWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
+  const workspaceIdFromRoute = Number.isFinite(parsedWorkspaceId) ? parsedWorkspaceId : undefined
   const toggleTheme = useUiStore((state) => state.toggleTheme)
   const theme = useUiStore((state) => state.theme)
+  const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
+  const setSelectedWorkspaceId = useUiStore((state) => state.setSelectedWorkspaceId)
+  const setSelectedProjectId = useUiStore((state) => state.setSelectedProjectId)
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen)
   const sidebarOpen = useUiStore((state) => state.sidebarOpen)
   const setCommandPaletteOpen = useUiStore((state) => state.setCommandPaletteOpen)
@@ -51,6 +58,8 @@ export function AppTopbar() {
   const [editOpen, setEditOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [editInitialName, setEditInitialName] = useState('')
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const unreadQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
@@ -70,6 +79,8 @@ export function AppTopbar() {
       setCreateOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Tạo workspace thành công')
+      setSelectedWorkspaceId(created.id)
+      setSelectedProjectId(null)
       navigate(`/workspaces/${created.id}`)
     },
     onError: (error: Error) => {
@@ -96,17 +107,27 @@ export function AppTopbar() {
   const openEdit = (wsId: number, wsName: string) => {
     setEditWsId(wsId)
     setEditName(wsName)
+    setEditInitialName(wsName.trim())
     setEditOpen(true)
   }
 
+  const handleWorkspaceSelect = (workspaceId: number) => {
+    setSelectedWorkspaceId(workspaceId)
+    setSelectedProjectId(null)
+    navigate(`/workspaces/${workspaceId}`)
+  }
+
   const workspaces = workspacesQuery.data?.content ?? []
-  const currentWorkspace = workspaces.find((ws) => ws.id === currentWorkspaceId)
+  const activeWorkspaceId = workspaceIdFromRoute ?? selectedWorkspaceId ?? undefined
+  const currentWorkspace = workspaces.find((ws) => ws.id === activeWorkspaceId)
 
   const unreadCount = unreadQuery.data?.unreadCount ?? 0
   const initials = `${currentUser?.firstName?.charAt(0) ?? ''}${currentUser?.lastName?.charAt(0) ?? ''}`
+  const canAccessAdmin = isAdminUser(currentUser)
 
   const handleLogout = () => {
     clearSession()
+    setLogoutConfirmOpen(false)
     navigate('/login')
   }
 
@@ -140,7 +161,7 @@ export function AppTopbar() {
                 {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
               </div>
               <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
-                {currentWorkspace?.name ?? 'Chọn workspace'}
+                {currentWorkspace?.name ?? (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : 'Chọn workspace')}
               </span>
               <ChevronsUpDown className="size-3 text-muted-foreground" />
             </button>
@@ -151,14 +172,14 @@ export function AppTopbar() {
             {workspaces.map((ws) => (
               <DropdownMenuItem
                 key={ws.id}
-                onClick={() => navigate(`/workspaces/${ws.id}`)}
+                onClick={() => handleWorkspaceSelect(ws.id)}
                 className="group flex items-center gap-2 pr-1"
               >
                 <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
                   {ws.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="flex-1 truncate text-sm">{ws.name}</span>
-                {ws.id === currentWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
+                {ws.id === activeWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
                 <button
                   className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                   onClick={(e) => {
@@ -200,7 +221,14 @@ export function AppTopbar() {
           <TooltipTrigger asChild>
             <Link to="/notifications" className="relative">
               <Button variant="ghost" size="icon" className="group size-8">
-                <Bell className="size-4 icon-hover-bounce" />
+                <Bell
+                  className={cn(
+                    'size-4',
+                    unreadCount > 0
+                      ? 'motion-safe:animate-[icon-subtle-bounce_1.6s_ease-in-out_infinite]'
+                      : 'icon-hover-bounce',
+                  )}
+                />
               </Button>
               {unreadCount > 0 && (
                 <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">
@@ -242,13 +270,17 @@ export function AppTopbar() {
               <User className="mr-2 size-4" />
               Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/notifications')}>
-              <Bell className="mr-2 size-4" />
-              Thông báo
-              {unreadCount > 0 && <Badge className="ml-auto" variant="secondary">{unreadCount}</Badge>}
-            </DropdownMenuItem>
+            {canAccessAdmin && (
+              <DropdownMenuItem
+                onClick={() => navigate('/admin/users')}
+                className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100 dark:text-amber-950"
+              >
+                <ShieldCheck className="mr-2 size-4" />
+                Admin dashboard
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-4" />
               Đăng xuất
             </DropdownMenuItem>
@@ -289,7 +321,13 @@ export function AppTopbar() {
     </Dialog>
 
     {/* Edit workspace dialog */}
-    <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditWsId(null) }}>
+    <Dialog open={editOpen} onOpenChange={(open) => {
+      setEditOpen(open)
+      if (!open) {
+        setEditWsId(null)
+        setEditInitialName('')
+      }
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Đổi tên workspace</DialogTitle>
@@ -301,7 +339,11 @@ export function AppTopbar() {
             id="edit-ws-name"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && editName.trim()) editMutation.mutate(editName.trim()) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) {
+                editMutation.mutate(editName.trim())
+              }
+            }}
             autoFocus
           />
         </div>
@@ -309,7 +351,7 @@ export function AppTopbar() {
           <Button variant="outline" onClick={() => setEditOpen(false)}>Hủy</Button>
           <Button
             onClick={() => editMutation.mutate(editName.trim())}
-            disabled={editMutation.isPending || !editName.trim()}
+            disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
           >
             {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Lưu
@@ -317,6 +359,16 @@ export function AppTopbar() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmModal
+      open={logoutConfirmOpen}
+      onOpenChange={setLogoutConfirmOpen}
+      title="Xác nhận đăng xuất"
+      description="Bạn có chắc chắn muốn đăng xuất khỏi Chronelis không?"
+      confirmText="Đăng xuất"
+      confirmVariant="destructive"
+      onConfirm={handleLogout}
+    />
     </>
   )
 }

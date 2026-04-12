@@ -58,3 +58,9 @@
 .task-notes-editor .task-notes-prosemirror img.ProseMirror-selectednode {
   outline: 2px solid hsl(var(--primary));
 }
+
+@media (max-width: 640px) {
+  .task-notes-editor .task-notes-prosemirror {
+    min-height: 300px;
+  }
+}

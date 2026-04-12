@@ -69,6 +69,13 @@ export interface UserSummary {
   lastName: string
 }
 
+export interface RoleSecure {
+  roleId: string
+  name: string
+  description?: string
+  active?: boolean
+}
+
 export interface UserSecure {
   userId: string
   email: string
@@ -80,6 +87,7 @@ export interface UserSecure {
   avatarUrl?: string
   city?: string
   nationality?: string
+  rolesSecured?: RoleSecure[]
 }
 
 export interface AuthenticationPayload {

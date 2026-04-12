@@ -4,6 +4,9 @@ import { parseApiError } from '@/lib/errors/parse-api-error'
 import { useAuthStore } from '@/app/store/auth-store'
 import type { ApiResponse, PaginationResponse } from '@/types/api'
 
+const AUTH_403_SAFE_ROUTE_MATCHER = /^\/auth\/(verify-active-account|reset-password)$/
+const AUTH_403_SAFE_API_MATCHER = /\/auth\/(verify-active-account|reset-password|forgot-password|resend-verify)$/
+
 export const http = axios.create({
   baseURL: env.apiBaseUrl,
   withCredentials: true,
@@ -23,16 +26,46 @@ http.interceptors.request.use((config) => {
 http.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
+    const requestUrl = axios.isAxiosError(error) ? (error.config?.url ?? '') : ''
+    const onTokenizedAuthRoute = AUTH_403_SAFE_ROUTE_MATCHER.test(window.location.pathname)
+    const isAuthVerificationRequest = AUTH_403_SAFE_API_MATCHER.test(requestUrl)
+    const onAdminRoute = window.location.pathname.startsWith('/admin')
+    const isAdminApiRequest = /\/admin(\/|$)/.test(requestUrl)
     const appError = parseApiError(error)
 
     if (appError.status === 401) {
-      useAuthStore.getState().clearSession()
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login'
+      // Only redirect to login if the access token is actually expired or missing.
+      // The backend may return 401 for "insufficient workspace permissions" on some endpoints
+      // (e.g. /workspace-teams/:id/members). In that case, the user IS authenticated but
+      // lacks the required role — we must not log them out.
+      const accessToken = useAuthStore.getState().accessToken
+      let tokenIsExpiredOrMissing = !accessToken
+      if (accessToken) {
+        try {
+          const [, b64Payload] = accessToken.split('.')
+          const payload = JSON.parse(atob(b64Payload)) as { exp?: number }
+          tokenIsExpiredOrMissing = payload.exp != null && payload.exp * 1000 < Date.now()
+        } catch {
+          tokenIsExpiredOrMissing = true
+        }
       }
+
+      if (tokenIsExpiredOrMissing) {
+        useAuthStore.getState().clearSession()
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login'
+        }
+      }
+      // If the token is still valid, let the error propagate normally (caught by mutation onError).
     }
 
-    if (appError.status === 403 && !window.location.pathname.startsWith('/forbidden')) {
+    if (
+      appError.status === 403
+      && (onAdminRoute || isAdminApiRequest)
+      && !onTokenizedAuthRoute
+      && !isAuthVerificationRequest
+      && !window.location.pathname.startsWith('/forbidden')
+    ) {
       window.location.href = '/forbidden'
     }
 

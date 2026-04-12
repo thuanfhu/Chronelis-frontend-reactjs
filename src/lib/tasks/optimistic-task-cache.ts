@@ -1,5 +1,10 @@
 import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import type { PageResult, Task, TaskSchedule, TaskStatus } from '@/types/domain'
+import {
+  clearRememberedTaskOpenStatus,
+  getRememberedTaskOpenStatus,
+  rememberTaskOpenStatus,
+} from '@/lib/tasks/task-status-memory'
 
 type TaskPage = PageResult<Task>
 type SchedulePage = PageResult<TaskSchedule>
@@ -25,6 +30,7 @@ interface ReorderTaskParams {
 interface CompletionParams {
   taskId: number
   isCompleted: boolean
+  statuses: TaskStatus[]
 }
 
 interface ScheduleUpdateParams {
@@ -73,6 +79,24 @@ function reindexBoardPositions(tasks: Task[]): Task[] {
   }))
 }
 
+function resolveDefaultOpenStatus(statuses: TaskStatus[]): TaskStatus | null {
+  const orderedOpenStatuses = [...statuses]
+    .filter((status) => !Boolean(status.isClosed))
+    .sort((left, right) => left.position - right.position)
+
+  if (orderedOpenStatuses.length === 0) {
+    return null
+  }
+
+  const preferred = orderedOpenStatuses.find((status) => {
+    const code = status.code.toUpperCase()
+    const name = status.name.toUpperCase()
+    return code.includes('TODO') || code.includes('INBOX') || name.includes('TODO') || name.includes('INBOX')
+  })
+
+  return preferred ?? orderedOpenStatuses[0]
+}
+
 export function applyTaskMove(tasks: Task[], params: MoveTaskParams): Task[] {
   const statusMap = mapByStatus(tasks)
   const statusById = new Map(params.statuses.map((status) => [status.id, status]))
@@ -103,6 +127,22 @@ export function applyTaskMove(tasks: Task[], params: MoveTaskParams): Task[] {
     status: targetStatus
       ? { ...targetStatus }
       : movingTask.status,
+    isCompleted: targetStatus ? Boolean(targetStatus.isClosed) : movingTask.isCompleted,
+    completedAt: targetStatus
+      ? (Boolean(targetStatus.isClosed)
+          ? (movingTask.completedAt ?? new Date().toISOString())
+          : undefined)
+      : movingTask.completedAt,
+  }
+
+  if (targetStatus) {
+    if (Boolean(targetStatus.isClosed)) {
+      if (!Boolean(movingTask.status.isClosed)) {
+        rememberTaskOpenStatus(movedTask.id, movingTask.status.id)
+      }
+    } else {
+      rememberTaskOpenStatus(movedTask.id, targetStatus.id)
+    }
   }
 
   targetList.splice(insertIndex, 0, movedTask)
@@ -133,18 +173,90 @@ export function applyTaskReorder(tasks: Task[], params: ReorderTaskParams): Task
 
 export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Task[] {
   const nowIso = new Date().toISOString()
-  return tasks.map((task) => {
-    if (task.id !== params.taskId) return task
+  const statusById = new Map(params.statuses.map((status) => [status.id, status]))
+  const statusMap = mapByStatus(tasks)
 
-    return {
-      ...task,
-      isCompleted: params.isCompleted,
-      completedAt: params.isCompleted ? nowIso : undefined,
+  let sourceStatusId: number | null = null
+  let movingTask: Task | null = null
+
+  for (const [statusId, list] of statusMap.entries()) {
+    const taskIndex = list.findIndex((task) => task.id === params.taskId)
+    if (taskIndex < 0) {
+      continue
     }
-  })
+
+    sourceStatusId = statusId
+    movingTask = list.splice(taskIndex, 1)[0]
+    statusMap.set(statusId, reindexBoardPositions(list))
+    break
+  }
+
+  if (!movingTask || sourceStatusId == null) {
+    return tasks
+  }
+
+  const sourceStatus = statusById.get(sourceStatusId) ?? movingTask.status
+  const closedStatuses = [...params.statuses]
+    .filter((status) => Boolean(status.isClosed))
+    .sort((left, right) => left.position - right.position)
+
+  let targetStatus = sourceStatus
+
+  if (params.isCompleted) {
+    if (!Boolean(sourceStatus.isClosed)) {
+      rememberTaskOpenStatus(movingTask.id, sourceStatus.id)
+    }
+
+    targetStatus = closedStatuses[0] ?? sourceStatus
+    movingTask = {
+      ...movingTask,
+      isCompleted: true,
+      completedAt: movingTask.completedAt ?? nowIso,
+    }
+  } else {
+    const rememberedOpenStatusId = getRememberedTaskOpenStatus(movingTask.id)
+    const rememberedOpenStatus = rememberedOpenStatusId != null
+      ? statusById.get(rememberedOpenStatusId)
+      : null
+    const defaultOpenStatus = resolveDefaultOpenStatus(params.statuses)
+
+    targetStatus = rememberedOpenStatus && !Boolean(rememberedOpenStatus.isClosed)
+      ? rememberedOpenStatus
+      : (defaultOpenStatus ?? sourceStatus)
+
+    if (!Boolean(targetStatus.isClosed)) {
+      rememberTaskOpenStatus(movingTask.id, targetStatus.id)
+    }
+
+    movingTask = {
+      ...movingTask,
+      isCompleted: false,
+      completedAt: undefined,
+    }
+  }
+
+  const targetStatusId = targetStatus.id
+  movingTask = {
+    ...movingTask,
+    status: { ...targetStatus },
+  }
+
+  if (targetStatusId === sourceStatusId) {
+    const sourceList = statusMap.get(sourceStatusId) ?? []
+    sourceList.push(movingTask)
+    statusMap.set(sourceStatusId, reindexBoardPositions(sourceList))
+    return flattenStatusMap(statusMap)
+  }
+
+  const targetList = statusMap.get(targetStatusId) ?? []
+  targetList.push(movingTask)
+  statusMap.set(targetStatusId, reindexBoardPositions(targetList))
+
+  return flattenStatusMap(statusMap)
 }
 
 export function applyTaskDelete(tasks: Task[], taskId: number): Task[] {
+  clearRememberedTaskOpenStatus(taskId)
   return tasks.filter((task) => task.id !== taskId)
 }
 

@@ -13,8 +13,12 @@ export const queryKeys = {
       ['projects', 'workspace', workspaceId, page, size] as const,
     detail: (projectId: number) => ['projects', 'detail', projectId] as const,
   },
+  projectAssistant: {
+    status: ['project-assistant', 'status'] as const,
+  },
   goals: {
     byProject: (projectId: number, page: number, size: number) => ['goals', projectId, page, size] as const,
+    detail: (goalId: number) => ['goals', 'detail', goalId] as const,
   },
   statuses: {
     byProject: (projectId: number) => ['task-statuses', projectId] as const,
@@ -54,5 +58,11 @@ export const queryKeys = {
   invites: {
     byWorkspace: (workspaceId: number) => ['workspace-invites', 'workspace', workspaceId] as const,
     validate: (code: string) => ['workspace-invites', 'validate', code] as const,
+  },
+  admin: {
+    roles: (page: number, size: number) => ['admin', 'roles', page, size] as const,
+    permissions: (page: number, size: number) => ['admin', 'permissions', page, size] as const,
+    modules: ['admin', 'permission-modules'] as const,
+    users: (page: number, size: number) => ['admin', 'users', page, size] as const,
   },
 }

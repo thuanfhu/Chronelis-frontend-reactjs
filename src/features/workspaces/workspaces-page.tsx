@@ -25,9 +25,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
+import { useAuthStore } from '@/app/store/auth-store'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
-import { isNotFoundError } from '@/lib/errors/is-not-found-error'
+import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { PageResult, Workspace } from '@/types/domain'
 
 export function WorkspacesPage() {
@@ -36,9 +38,39 @@ export function WorkspacesPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editInitialName, setEditInitialName] = useState('')
   const [deleteWorkspace, setDeleteWorkspace] = useState<Workspace | null>(null)
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.currentUser)
+
+  const snapshotWorkspaceListQueries = () =>
+    queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+
+  const restoreWorkspaceListQueries = (
+    snapshot: Array<[readonly unknown[], PageResult<Workspace> | undefined]>,
+  ) => {
+    for (const [queryKey, data] of snapshot) {
+      queryClient.setQueryData(queryKey, data)
+    }
+  }
+
+  const patchWorkspaceListQueries = (
+    updater: (workspaces: Workspace[], pageSize: number) => Workspace[],
+  ) => {
+    queryClient.setQueriesData<PageResult<Workspace>>(
+      { queryKey: ['workspaces', 'list'] },
+      (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
+
+        return {
+          ...oldData,
+          content: updater(oldData.content, oldData.meta.pageSize),
+        }
+      },
+    )
+  }
 
   const listQuery = useQuery({
     queryKey: queryKeys.workspaces.list(1, 30),
@@ -47,13 +79,54 @@ export function WorkspacesPage() {
 
   const createMutation = useMutation({
     mutationFn: workspaceApi.create,
-    onSuccess: () => {
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
+
+      const snapshot = snapshotWorkspaceListQueries()
+      const optimisticWorkspaceId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticWorkspace: Workspace = {
+        id: optimisticWorkspaceId,
+        name: payload.name,
+        owner: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchWorkspaceListQueries((workspaces, pageSize) => [optimisticWorkspace, ...workspaces].slice(0, pageSize))
+
+      return {
+        snapshot,
+        optimisticWorkspaceId,
+      }
+    },
+    onSuccess: (savedWorkspace, _variables, context) => {
       setName('')
       setDialogOpen(false)
+
+      patchWorkspaceListQueries((workspaces) => {
+        const replacedWorkspaces = workspaces.map((workspace) => (
+          workspace.id === context?.optimisticWorkspaceId ? savedWorkspace : workspace
+        ))
+
+        return replacedWorkspaces.some((workspace) => workspace.id === savedWorkspace.id)
+          ? replacedWorkspaces
+          : [savedWorkspace, ...replacedWorkspaces]
+      })
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Tạo workspace thành công')
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _variables, context) => {
+      if (context?.snapshot) {
+        restoreWorkspaceListQueries(context.snapshot)
+      }
+
       const description = error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn, vui lòng thử lại.'
       toast.error('Tạo workspace thất bại', { description })
     },
@@ -64,65 +137,86 @@ export function WorkspacesPage() {
       if (!editWsId) throw new Error('Workspace không tồn tại')
       return workspaceApi.update(editWsId, { name: editName.trim() })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      if (!editWsId) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
+
+      const snapshot = snapshotWorkspaceListQueries()
+      const workspaceSnapshot = queryClient.getQueryData<Workspace>(queryKeys.workspaces.detail(editWsId))
+
+      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
+        workspace.id === editWsId
+          ? {
+            ...workspace,
+            name: editName.trim(),
+            updatedAt: new Date().toISOString(),
+          }
+          : workspace
+      )))
+
+      if (workspaceSnapshot) {
+        queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(editWsId), {
+          ...workspaceSnapshot,
+          name: editName.trim(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
+      return {
+        snapshot,
+        workspaceSnapshot,
+      }
+    },
+    onSuccess: (savedWorkspace) => {
       setEditDialogOpen(false)
       setEditWsId(null)
+
+      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
+        workspace.id === savedWorkspace.id ? savedWorkspace : workspace
+      )))
+      queryClient.setQueryData(queryKeys.workspaces.detail(savedWorkspace.id), savedWorkspace)
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success('Cập nhật workspace thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreWorkspaceListQueries(context.snapshot)
+      }
+      if (context?.workspaceSnapshot && editWsId) {
+        queryClient.setQueryData(queryKeys.workspaces.detail(editWsId), context.workspaceSnapshot)
+      }
+
       toast.error('Cập nhật workspace thất bại', { description: error.message })
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: (workspaceId: number) => workspaceApi.remove(workspaceId),
-    onMutate: async (workspaceId: number) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all })
-
-      const workspaceSnapshots = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
-      queryClient.setQueriesData<PageResult<Workspace>>(
-        { queryKey: ['workspaces', 'list'] },
-        (oldData) => {
-          if (!oldData) return oldData
-          return {
-            ...oldData,
-            content: oldData.content.filter((workspace) => workspace.id !== workspaceId),
-          }
-        },
-      )
-
-      return {
-        workspaceSnapshots,
-      }
+  const {
+    pendingDeletes: pendingWorkspaceDeletes,
+    clockMs: workspaceDeleteClockMs,
+    undoWindowMs: workspaceDeleteUndoWindowMs,
+    scheduleDelete: scheduleWorkspaceDelete,
+    undoDelete: undoWorkspaceDelete,
+    isQueued: isWorkspaceDeleteQueued,
+  } = useDeferredDelete<{ id: number; name: string }>({
+    onFinalize: async (payload) => {
+      await workspaceApi.remove(payload.id)
     },
-    onSuccess: () => {
-      setDeleteDialogOpen(false)
-      setDeleteWorkspace(null)
-      toast.success('Xóa workspace thành công')
+    onFinalizeSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
     },
-    onError: (error: Error, _workspaceId, context) => {
-      if (context?.workspaceSnapshots) {
-        for (const [queryKey, snapshotData] of context.workspaceSnapshots) {
-          queryClient.setQueryData(queryKey, snapshotData)
-        }
-      }
-
-      if (isNotFoundError(error)) {
-        setDeleteDialogOpen(false)
-        setDeleteWorkspace(null)
-        toast.success('Workspace đã được xóa trước đó')
-        return
-      }
-
-      toast.error('Xóa workspace thất bại', { description: error.message })
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-    },
+    pendingMessage: (entry) => `Workspace "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`,
+    successMessage: (entry) => `Đã xóa workspace "${entry.label}"`,
+    alreadyDeletedMessage: (entry) => `Workspace "${entry.label}" đã được xóa trước đó`,
+    errorTitle: 'Xóa workspace thất bại',
   })
 
   const workspaces = listQuery.data?.content ?? []
+  const pendingWorkspaceIds = new Set(pendingWorkspaceDeletes.map((entry) => entry.payload.id))
+  const visibleWorkspaces = workspaces.filter((workspace) => !pendingWorkspaceIds.has(workspace.id))
 
   return (
     <div className="space-y-6">
@@ -177,7 +271,7 @@ export function WorkspacesPage() {
             <Skeleton key={i} className="h-36 rounded-xl" />
           ))}
         </div>
-      ) : workspaces.length === 0 ? (
+      ) : visibleWorkspaces.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <PanelsTopLeft className="mb-4 size-12 text-muted-foreground/30" />
@@ -193,7 +287,7 @@ export function WorkspacesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {workspaces.map((ws) => (
+          {visibleWorkspaces.map((ws) => (
             <Card key={ws.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
@@ -216,7 +310,12 @@ export function WorkspacesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setEditWsId(ws.id); setEditName(ws.name); setEditDialogOpen(true) }}>
+                      <DropdownMenuItem onClick={() => {
+                        setEditWsId(ws.id)
+                        setEditName(ws.name)
+                        setEditInitialName(ws.name.trim())
+                        setEditDialogOpen(true)
+                      }}>
                         <Pencil className="mr-2 size-4" />
                         Chỉnh sửa
                       </DropdownMenuItem>
@@ -225,7 +324,6 @@ export function WorkspacesPage() {
                         className="text-destructive focus:text-destructive"
                         onClick={() => {
                           setDeleteWorkspace(ws)
-                          setDeleteDialogOpen(true)
                         }}
                       >
                         <Trash2 className="mr-2 size-4" />
@@ -248,7 +346,15 @@ export function WorkspacesPage() {
       )}
 
       {/* Edit workspace dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open)
+          if (!open) {
+            setEditInitialName('')
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Chỉnh sửa workspace</DialogTitle>
@@ -261,13 +367,13 @@ export function WorkspacesPage() {
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && editName.trim()) editMutation.mutate()
+                if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) editMutation.mutate()
               }}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
-            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}>
+            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}>
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Lưu
             </Button>
@@ -276,9 +382,8 @@ export function WorkspacesPage() {
       </Dialog>
 
       <Dialog
-        open={deleteDialogOpen}
+        open={Boolean(deleteWorkspace)}
         onOpenChange={(open) => {
-          setDeleteDialogOpen(open)
           if (!open) {
             setDeleteWorkspace(null)
           }
@@ -287,29 +392,54 @@ export function WorkspacesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa workspace</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa workspace {deleteWorkspace ? `"${deleteWorkspace.name}"` : 'này'} không?
-              Hành động này không thể hoàn tác.
+            <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+              <p>
+                {deleteWorkspace
+                  ? `Bạn có chắc muốn xóa workspace "${deleteWorkspace.name}" không?`
+                  : 'Bạn có chắc muốn xóa workspace này không?'}
+              </p>
+              <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                Workspace này sẽ được gỡ khỏi danh sách làm việc của bạn sau khi xác nhận.
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setDeleteWorkspace(null)}>Hủy</Button>
             <Button
               variant="destructive"
               onClick={() => {
                 if (!deleteWorkspace) {
                   return
                 }
-                deleteMutation.mutate(deleteWorkspace.id)
+
+                const queued = scheduleWorkspaceDelete({
+                  key: `workspace-${deleteWorkspace.id}`,
+                  label: deleteWorkspace.name,
+                  payload: {
+                    id: deleteWorkspace.id,
+                    name: deleteWorkspace.name,
+                  },
+                })
+
+                if (queued) {
+                  setDeleteWorkspace(null)
+                }
               }}
-              disabled={deleteMutation.isPending || !deleteWorkspace}
+              disabled={Boolean(deleteWorkspace && isWorkspaceDeleteQueued(`workspace-${deleteWorkspace.id}`))}
             >
-              {deleteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Xóa workspace
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeferredDeleteStack
+        pendingDeletes={pendingWorkspaceDeletes}
+        clockMs={workspaceDeleteClockMs}
+        undoWindowMs={workspaceDeleteUndoWindowMs}
+        onUndo={undoWorkspaceDelete}
+        itemTitle={() => 'Đang xóa workspace'}
+      />
     </div>
   )
 }

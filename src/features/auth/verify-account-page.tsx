@@ -1,44 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Loader2, XCircle } from 'lucide-react'
 import { authApi } from '@/lib/api/modules/auth-api'
-import { useAuthStore } from '@/app/store/auth-store'
 import { AuthLayout } from '@/features/auth/auth-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { resolveAuthToken } from '@/features/auth/auth-token'
 
 export function VerifyAccountPage() {
   const [searchParams] = useSearchParams()
-  const [token, setToken] = useState(searchParams.get('token') ?? '')
-  const setSession = useAuthStore((state) => state.setSession)
+  const tokenFromQuery = useMemo(() => resolveAuthToken(searchParams), [searchParams])
+  const [token, setToken] = useState(tokenFromQuery)
+  const autoSubmitRef = useRef(false)
   const navigate = useNavigate()
 
   const verifyMutation = useMutation({
     mutationFn: (value: string) => authApi.verifyActiveAccount({ token: value }),
-    onSuccess: (data) => {
-      setSession({
-        accessToken: data.accessToken,
-        currentUser: data.userSecured,
-      })
-      toast.success('Xác thực tài khoản thành công')
-      navigate('/dashboard', { replace: true })
+    onSuccess: () => {
+      toast.success('Xác thực tài khoản thành công', { description: 'Vui lòng đăng nhập để tiếp tục.' })
+      navigate('/login', { replace: true })
     },
     onError: (error: Error) => {
       toast.error('Xác thực thất bại', { description: error.message })
     },
   })
 
-  // Auto-verify if token is in URL
   useEffect(() => {
-    const urlToken = searchParams.get('token')
-    if (urlToken && !verifyMutation.isPending && !verifyMutation.isSuccess && !verifyMutation.isError) {
-      verifyMutation.mutate(urlToken)
+    setToken(tokenFromQuery)
+  }, [tokenFromQuery])
+
+  useEffect(() => {
+    if (!tokenFromQuery || autoSubmitRef.current) {
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+
+    autoSubmitRef.current = true
+    verifyMutation.mutate(tokenFromQuery)
+  }, [tokenFromQuery, verifyMutation])
 
   return (
     <AuthLayout title="Xác thực tài khoản" subtitle="Nhập mã xác thực từ email kích hoạt của bạn">

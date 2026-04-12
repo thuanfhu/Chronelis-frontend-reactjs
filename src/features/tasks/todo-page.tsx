@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -35,9 +35,11 @@ import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import {
   applyTaskCompletion,
   applyTaskReorder,
@@ -46,6 +48,7 @@ import {
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import type { Task, TaskPriorityType } from '@/types/domain'
+import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 
 type GroupMode = 'none' | 'day' | 'goal'
 type GoalFilterValue = 'all' | '__nogoal' | `${number}`
@@ -166,6 +169,7 @@ export function TodoPage() {
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
+  const currentUser = useAuthStore((s) => s.currentUser)
   useProjectRealtime(workspaceId, projectId)
   const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
     workspaceId,
@@ -180,6 +184,7 @@ export function TodoPage() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilterValue>('all')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
+  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
 
   const selectedDateParam = searchParams.get('todoDate')
   const selectedDate = useMemo(() => parseDateKey(selectedDateParam), [selectedDateParam])
@@ -229,12 +234,66 @@ export function TodoPage() {
         sourceView: 'TODO',
       })
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      const statuses = statusesQuery.data
+      const defaultStatus = statuses?.[0]
+      if (!defaultStatus) {
+        return {}
+      }
+
+      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
+
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const optimisticTaskId = -Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        projectId,
+        title: newTaskTitle.trim(),
+        status: defaultStatus,
+        priority: 'MEDIUM',
+        sourceView: 'TODO',
+        estimatedMinutes: 0,
+        boardPosition: 9999,
+        isCompleted: false,
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+
+      return {
+        snapshot,
+        optimisticTaskId,
+      }
+    },
+    onSuccess: (savedTask, _variables, context) => {
       setNewTaskTitle('')
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
+        const replacedTasks = tasks.map((task) => (
+          task.id === context?.optimisticTaskId ? savedTask : task
+        ))
+
+        return replacedTasks.some((task) => task.id === savedTask.id)
+          ? replacedTasks
+          : [...replacedTasks, savedTask]
+      })
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
       toast.success('Tạo task thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
+
       toast.error('Tạo task thất bại', { description: error.message })
     },
   })
@@ -250,6 +309,7 @@ export function TodoPage() {
         applyTaskCompletion(tasks, {
           taskId,
           isCompleted,
+          statuses: statusesQuery.data ?? [],
         }),
       )
 
@@ -260,6 +320,11 @@ export function TodoPage() {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
       toast.error('Cập nhật thất bại', { description: error.message })
+    },
+    onSuccess: (_updatedTask, variables) => {
+      if (variables.isCompleted) {
+        void playTaskCompleteSound()
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
@@ -295,6 +360,7 @@ export function TodoPage() {
   })
 
   function handleDragStart(event: DragStartEvent) {
+    setTaskContextMenu(null)
     const task = event.active.data.current?.task as Task | undefined
     if (task) setActiveTask(task)
   }
@@ -303,6 +369,12 @@ export function TodoPage() {
     setActiveTask(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+
+    if (!canManageProject) {
+      toast.error('Bạn không có quyền sắp xếp task trong project này')
+      return
+    }
+
     const overData = over.data.current
     if (overData?.type === 'task') {
       const overTask = overData.task as Task
@@ -454,6 +526,12 @@ export function TodoPage() {
     }
   }
 
+  const openTaskContextMenu = (event: MouseEvent<HTMLElement>, task: Task) => {
+    const x = Math.min(event.clientX, window.innerWidth - 196)
+    const y = Math.min(event.clientY, window.innerHeight - 196)
+    setTaskContextMenu({ x, y, task })
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -478,9 +556,9 @@ export function TodoPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
           <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
-            <SelectTrigger className="h-7 w-39.5 text-xs">
+            <SelectTrigger className="h-7 w-full min-w-38 text-xs sm:w-40">
               <SelectValue placeholder="Goal" />
             </SelectTrigger>
             <SelectContent>
@@ -495,15 +573,27 @@ export function TodoPage() {
           </Select>
 
           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
-            <SelectTrigger className="h-7 w-33 text-xs">
+            <SelectTrigger className="h-7 w-full min-w-31 text-xs sm:w-33">
               <SelectValue placeholder="Ưu tiên" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả ưu tiên</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="URGENT">Urgent</SelectItem>
+              <SelectItem value="all">
+                <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
+                  All Priorities
+                </span>
+              </SelectItem>
+              <SelectItem value="LOW">
+                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">Low</span>
+              </SelectItem>
+              <SelectItem value="MEDIUM">
+                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">Medium</span>
+              </SelectItem>
+              <SelectItem value="HIGH">
+                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">High</span>
+              </SelectItem>
+              <SelectItem value="URGENT">
+                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">Urgent</span>
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -513,7 +603,7 @@ export function TodoPage() {
                 type="button"
                 variant={isDateFiltered ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 max-w-46 gap-1.5 px-2 text-xs"
+                className="h-7 w-full min-w-40 gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
               >
                 <CalendarIcon className="size-3.5" />
                 <span className="truncate">{selectedDateLabel}</span>
@@ -589,7 +679,7 @@ export function TodoPage() {
                 task={entry.task}
                 onToggle={() => handleToggleCompletion(entry.task, true)}
                 onClick={() => openTaskDrawer(entry.task.id, 'view')}
-                onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                onContextAction={(event) => openTaskContextMenu(event, entry.task)}
                 onPomodoro={() => openTaskPomodoro(entry.task.id)}
                 onNotebook={() => openTaskNotebook(entry.task.id)}
                 scheduleLabel={entry.scheduleId > 0
@@ -626,7 +716,7 @@ export function TodoPage() {
                       task={task}
                       onToggle={() => handleToggleCompletion(task, true)}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                      onContextAction={(event) => openTaskContextMenu(event, task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
                       onNotebook={() => openTaskNotebook(task.id)}
                     />
@@ -651,7 +741,7 @@ export function TodoPage() {
                     task={task}
                     onToggle={() => handleToggleCompletion(task, true)}
                     onClick={() => openTaskDrawer(task.id, 'view')}
-                    onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                    onContextAction={(event) => openTaskContextMenu(event, task)}
                     onPomodoro={() => openTaskPomodoro(task.id)}
                     onNotebook={() => openTaskNotebook(task.id)}
                   />
@@ -668,7 +758,7 @@ export function TodoPage() {
               task={task}
               onToggle={() => handleToggleCompletion(task, true)}
               onClick={() => openTaskDrawer(task.id, 'view')}
-              onContextAction={() => openDeleteConfirmIfPermitted(task)}
+              onContextAction={(event) => openTaskContextMenu(event, task)}
               onPomodoro={() => openTaskPomodoro(task.id)}
               onNotebook={() => openTaskNotebook(task.id)}
             />
@@ -682,7 +772,7 @@ export function TodoPage() {
               task={task}
               onToggle={() => handleToggleCompletion(task, true)}
               onClick={() => openTaskDrawer(task.id, 'view')}
-              onContextAction={() => openDeleteConfirmIfPermitted(task)}
+              onContextAction={(event) => openTaskContextMenu(event, task)}
               onPomodoro={() => openTaskPomodoro(task.id)}
               onNotebook={() => openTaskNotebook(task.id)}
             />
@@ -690,7 +780,7 @@ export function TodoPage() {
         </div>
       ) : (
         <DndContext
-          sensors={sensors}
+          sensors={canManageProject ? sensors : []}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
@@ -703,7 +793,7 @@ export function TodoPage() {
                   task={task}
                   onToggle={() => handleToggleCompletion(task, true)}
                   onClick={() => openTaskDrawer(task.id, 'view')}
-                  onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                  onContextAction={(event) => openTaskContextMenu(event, task)}
                   onPomodoro={() => openTaskPomodoro(task.id)}
                   onNotebook={() => openTaskNotebook(task.id)}
                 />
@@ -746,7 +836,7 @@ export function TodoPage() {
                       task={entry.task}
                       onToggle={() => handleToggleCompletion(entry.task, false)}
                       onClick={() => openTaskDrawer(entry.task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(entry.task)}
+                      onContextAction={(event) => openTaskContextMenu(event, entry.task)}
                       onPomodoro={() => openTaskPomodoro(entry.task.id)}
                       onNotebook={() => openTaskNotebook(entry.task.id)}
                       scheduleLabel={entry.scheduleId > 0
@@ -760,7 +850,7 @@ export function TodoPage() {
                       task={task}
                       onToggle={() => handleToggleCompletion(task, false)}
                       onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={() => openDeleteConfirmIfPermitted(task)}
+                      onContextAction={(event) => openTaskContextMenu(event, task)}
                       onPomodoro={() => openTaskPomodoro(task.id)}
                       onNotebook={() => openTaskNotebook(task.id)}
                     />
@@ -770,6 +860,45 @@ export function TodoPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <TaskContextMenu
+        open={Boolean(taskContextMenu)}
+        x={taskContextMenu?.x ?? 0}
+        y={taskContextMenu?.y ?? 0}
+        onClose={() => setTaskContextMenu(null)}
+        onDuplicate={() => {
+          const selectedTask = taskContextMenu?.task
+          if (!selectedTask) {
+            return
+          }
+
+          if (!canManageTask(selectedTask.goalId)) {
+            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            return
+          }
+
+          openTaskDrawer(selectedTask.id, 'duplicate')
+        }}
+        onEdit={() => {
+          const selectedTask = taskContextMenu?.task
+          if (!selectedTask) {
+            return
+          }
+
+          if (!canManageTask(selectedTask.goalId)) {
+            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            return
+          }
+
+          openTaskDrawer(selectedTask.id, 'edit')
+        }}
+        onDelete={() => {
+          const selectedTask = taskContextMenu?.task
+          if (selectedTask) {
+            openDeleteConfirmIfPermitted(selectedTask)
+          }
+        }}
+      />
     </div>
   )
 }
@@ -786,7 +915,7 @@ function SortableTodoItem({
   task: Task
   onToggle: () => void
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLElement>) => void
   onPomodoro: () => void
   onNotebook: () => void
   scheduleLabel?: string
@@ -814,7 +943,7 @@ function SortableTodoItem({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <button
@@ -873,7 +1002,7 @@ function TodoItem({
   task: Task
   onToggle: () => void
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLElement>) => void
   onPomodoro: () => void
   onNotebook: () => void
   scheduleLabel?: string
@@ -888,7 +1017,7 @@ function TodoItem({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <button
@@ -942,7 +1071,7 @@ function TodoRowMetaActions({
   onNotebook: () => void
 }) {
   return (
-    <div className="grid shrink-0 grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] items-center gap-2">
+    <div className="flex shrink-0 items-center gap-1.5 sm:grid sm:grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] sm:items-center sm:gap-2">
       <span className={cn(
         'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
         TODO_PRIORITY_CHIP_CLASSNAMES[priority],
@@ -951,7 +1080,7 @@ function TodoRowMetaActions({
       </span>
       <span
         className={cn(
-          'truncate text-right text-[10px]',
+          'hidden truncate text-right text-[10px] sm:block',
           assigneeName ? 'text-muted-foreground' : 'text-muted-foreground/70',
         )}
         title={assigneeName ?? 'Chưa gán'}

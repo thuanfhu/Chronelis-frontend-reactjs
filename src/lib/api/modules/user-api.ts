@@ -22,6 +22,10 @@ export interface UpdateUserPasswordPayload {
   confirmPassword: string
 }
 
+export interface VerifyEmailChangePayload {
+  token: string
+}
+
 export const userApi = {
   async updateProfile(payload: UpdateUserProfilePayload) {
     const response = await http.patch<ApiResponse<UserSecure>>('/users/update-profile', payload)
@@ -40,6 +44,11 @@ export const userApi = {
 
   async updatePassword(payload: UpdateUserPasswordPayload) {
     const response = await http.put<ApiResponse<UserSecure>>('/users/update-password', payload)
+    return unwrapData(response.data)
+  },
+
+  async verifyChangeEmail(payload: VerifyEmailChangePayload) {
+    const response = await http.post<ApiResponse<UserSecure>>('/users/verify-change-email', payload)
     return unwrapData(response.data)
   },
 }

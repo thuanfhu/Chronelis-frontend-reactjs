@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryKey } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
 import {
   Dialog,
   DialogContent,
@@ -33,10 +32,9 @@ import {
   snapshotProjectTaskQueries,
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
-import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import type { Task, TaskComment } from '@/types/domain'
 
-const TASK_DELETE_UNDO_WINDOW_MS = 5000
+const TASK_DELETE_UNDO_WINDOW_MS = 5_000
 
 type CommentSnapshot = Array<[QueryKey, TaskComment[] | undefined]>
 
@@ -59,9 +57,6 @@ interface PendingTaskDelete {
 
 export function TaskDeleteConfirmDialog() {
   const queryClient = useQueryClient()
-  const params = useParams()
-  const workspaceId = Number(params.workspaceId)
-  const routeProjectId = Number(params.projectId)
 
   const taskDeleteConfirmTaskId = useUiStore((state) => state.taskDeleteConfirmTaskId)
   const closeTaskDeleteConfirm = useUiStore((state) => state.closeTaskDeleteConfirm)
@@ -79,37 +74,6 @@ export function TaskDeleteConfirmDialog() {
 
   const hasTargetTask = taskDeleteConfirmTaskId !== null
   const targetTaskId = taskDeleteConfirmTaskId ?? 0
-
-  const taskQuery = useQuery({
-    queryKey: queryKeys.tasks.detail(targetTaskId),
-    queryFn: () => taskApi.detail(targetTaskId),
-    enabled: hasTargetTask,
-  })
-
-  const permissionProjectId = Number.isFinite(routeProjectId)
-    ? routeProjectId
-    : (taskQuery.data?.projectId ?? Number.NaN)
-
-  const {
-    canManageTask: canManageTaskByGoal,
-    permissionsReady,
-  } = useProjectPermissions({
-    workspaceId,
-    projectId: permissionProjectId,
-    enabled: Number.isFinite(workspaceId) && Number.isFinite(permissionProjectId),
-  })
-
-  const canDeleteTask = Boolean(
-    taskQuery.data
-    && permissionsReady
-    && canManageTaskByGoal(taskQuery.data.goalId),
-  )
-
-  const description = !taskQuery.data
-    ? 'Bạn có chắc muốn xóa task này không? Bạn có thể hoàn tác trong 5 giây.'
-    : !canDeleteTask
-      ? 'Bạn không có quyền xóa task này theo vai trò quản lý hiện tại.'
-      : `Bạn có chắc muốn xóa task "${taskQuery.data.title}" không? Bạn có thể hoàn tác trong 5 giây.`
 
   const restoreCommentSnapshots = useCallback((snapshots: CommentSnapshot) => {
     for (const [queryKey, data] of snapshots) {
@@ -240,22 +204,24 @@ export function TaskDeleteConfirmDialog() {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async () => {
-      const task = taskQuery.data
-      if (!task || !canDeleteTask) {
-        throw new Error('Bạn không có quyền xóa task này')
+      if (!hasTargetTask) {
+        throw new Error('Task không tồn tại')
       }
+
+      const cachedTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(targetTaskId))
+      const task = cachedTask ?? await taskApi.detail(targetTaskId)
 
       const existingPendingDelete = pendingDeletesRef.current.find((item) => item.taskId === task.id)
       if (existingPendingDelete) {
         throw new Error('Task này đang chờ xóa. Bạn có thể hoàn tác hoặc đợi hoàn tất.')
       }
 
-      const snapshots = applyOptimisticDelete(task)
-
       if (taskDrawerTaskId === task.id) {
         closeTaskDrawer()
       }
       closeTaskDeleteConfirm()
+
+      const snapshots = applyOptimisticDelete(task)
 
       const createdAt = Date.now()
       setPendingDeletes((previous) => [
@@ -271,9 +237,6 @@ export function TaskDeleteConfirmDialog() {
         },
       ])
     },
-    onSuccess: () => {
-      toast.success('Task đã được xóa tạm thời. Bạn có 5 giây để hoàn tác.')
-    },
     onError: (error: Error) => {
       toast.error('Không thể xóa task', { description: error.message })
     },
@@ -282,16 +245,21 @@ export function TaskDeleteConfirmDialog() {
   return (
     <>
       <Dialog open={hasTargetTask} onOpenChange={(open) => { if (!open) closeTaskDeleteConfirm() }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-destructive" />
               Xác nhận xóa task
             </DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
+              <p>Bạn có chắc muốn xóa task này không?</p>
+              <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                Task này sẽ bị gỡ khỏi danh sách công việc và lịch liên quan ngay sau khi bạn xác nhận.
+              </div>
+            </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               variant="outline"
               onClick={() => closeTaskDeleteConfirm()}
@@ -299,61 +267,32 @@ export function TaskDeleteConfirmDialog() {
             >
               Hủy
             </Button>
-            {canDeleteTask && (
-              <Button
-                variant="destructive"
-                onClick={() => deleteTaskMutation.mutate()}
-                disabled={deleteTaskMutation.isPending}
-              >
-                {deleteTaskMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-                Xóa task
-              </Button>
-            )}
+            <Button
+              variant="destructive"
+              onClick={() => deleteTaskMutation.mutate()}
+              disabled={deleteTaskMutation.isPending || !hasTargetTask}
+            >
+              {deleteTaskMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              Xóa task
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {pendingDeletes.length > 0 && (
-        <div className="pointer-events-none fixed right-4 bottom-4 z-70 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
-          {pendingDeletes.map((pendingDelete) => {
-            const remainingMs = Math.max(0, pendingDelete.expiresAt - clockMs)
-            const progress = Math.max(
-              0,
-              Math.min(100, (remainingMs / TASK_DELETE_UNDO_WINDOW_MS) * 100),
-            )
-            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
-
-            return (
-              <div
-                key={pendingDelete.taskId}
-                className="pointer-events-auto rounded-lg border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Đang xóa task</p>
-                    <p className="truncate text-xs text-muted-foreground">{pendingDelete.taskTitle}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => undoPendingDelete(pendingDelete.taskId)}
-                    disabled={pendingDelete.status !== 'pending'}
-                  >
-                    Hoàn tác
-                  </Button>
-                </div>
-
-                <Progress value={progress} className="mt-2 h-1.5 bg-muted/40" />
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {pendingDelete.status === 'finalizing'
-                    ? 'Đang xóa vĩnh viễn...'
-                    : `Tự động xóa sau ${remainingSeconds}s`}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <DeferredDeleteStack
+        pendingDeletes={pendingDeletes.map((pendingDelete) => ({
+          key: String(pendingDelete.taskId),
+          label: pendingDelete.taskTitle,
+          payload: pendingDelete,
+          createdAt: pendingDelete.createdAt,
+          expiresAt: pendingDelete.expiresAt,
+          status: pendingDelete.status,
+        }))}
+        clockMs={clockMs}
+        undoWindowMs={TASK_DELETE_UNDO_WINDOW_MS}
+        onUndo={(key) => undoPendingDelete(Number(key))}
+        itemTitle={() => 'Đang xóa task'}
+      />
     </>
   )
 }

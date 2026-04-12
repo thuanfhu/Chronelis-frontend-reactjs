@@ -1,73 +1,141 @@
-# React + TypeScript + Vite
+﻿# Chronelis Frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend chính của Chronelis, xây dựng bằng React 19 + TypeScript + Vite.
 
-Currently, two official plugins are available:
+## 1) Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- TypeScript
+- Vite 8
+- React Router
+- TanStack Query
+- Zustand
+- Axios
+- Framer Motion
+- Radix UI + shadcn-style components
+- FullCalendar
+- STOMP WebSocket client
 
-## React Compiler
+## 2) Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Auth UI (sliding login/register) + forgot/reset/verify account
+- Password visibility toggle trong các form auth có password
+- Password strength indicator khi đăng ký
+- Smooth transition từ login -> forgot password
+- Verify-change-email page theo backend email flow
+- Dashboard, workspaces, projects, goals, tasks, calendar, comments, notifications
+- Project Gantt page + AI assistant sheet for preview/apply planning actions
+- Admin dashboard (tab Users / Roles / Permissions) với guard theo role `ADMIN`
+- Realtime notifications qua WebSocket
 
-## Expanding the ESLint configuration
+## 3) Environment
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Tạo file `.env` ở root frontend:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_PROJECT_ASSISTANT_ENABLED=true
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Ghi chú:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- App tự suy ra WebSocket URL từ `VITE_API_BASE_URL` (`/ws`).
+- Axios được cấu hình `withCredentials=true` để dùng refresh cookie.
+- `VITE_PROJECT_ASSISTANT_ENABLED=false` sẽ ẩn UI assistant ở frontend mà không cần sửa code.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 3.1) Project AI Assistant
+
+- UI assistant nằm trong trang Gantt của project.
+- Frontend chỉ dùng env để bật/tắt UI (`VITE_PROJECT_ASSISTANT_ENABLED`).
+- Toàn bộ cấu hình model/API key nằm ở backend env, frontend không chứa secret AI.
+- Flow an toàn: AI chỉ tạo preview plan, người dùng chọn action, rồi mới apply.
+
+## 4) Run Locally
+
+```bash
+npm install
+npm run dev
 ```
+
+Build production:
+
+```bash
+npm run build
+npm run preview
+```
+
+## 5) Scripts
+
+- `npm run dev`: chạy môi trường development
+- `npm run build`: type-check + build production
+- `npm run lint`: chạy ESLint
+- `npm run preview`: preview bản build
+
+## 6) Auth Routes
+
+Public routes:
+
+- `/login`
+- `/register`
+- `/forgot-password`
+- `/reset-password`
+- `/auth/reset-password` (alias theo link email backend)
+- `/verify-account`
+- `/auth/verify-active-account` (alias theo link email backend)
+
+Protected routes (không cần AppShell):
+
+- `/verify-change-email`
+- `/auth/verify-change-email` (alias theo link email backend)
+
+Protected routes (trong AppShell):
+
+- `/dashboard`
+- `/workspaces`
+- `/workspaces/:workspaceId`
+- `/workspaces/:workspaceId/projects/:projectId`
+- `/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId`
+- `/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes`
+- `/notifications`
+- `/profile`
+- `/join`
+- `/admin` (chỉ role `ADMIN`)
+
+## 7) Admin Dashboard
+
+Trang `/admin` gồm 3 tab:
+
+- Users: sửa thông tin user, add/remove role, xóa user
+- Roles: tạo/sửa/xóa role, add/remove permissions cho role
+- Permissions: tạo/sửa/xóa permission, tạo/xóa module
+
+Lưu ý theo behavior backend:
+
+- Update role với `permissionIds` là add thêm, không replace toàn bộ.
+- Update user admin với `roleIds` là add thêm role, muốn gỡ role dùng endpoint delete roles.
+- UI dùng update payload theo diff để giảm lỗi do gửi field không đổi.
+
+## 8) API Integration Notes
+
+- Tất cả endpoint dùng base `/api/v1`.
+- Response được unwrap theo chuẩn `{ success, message, data, meta }`.
+- Endpoint trả `void` dùng `unwrapVoid` thay vì `unwrapData`.
+- 401 sẽ clear session và điều hướng về `/login`.
+- 403 sẽ điều hướng về `/forbidden`.
+
+## 9) Backend Alignment
+
+Frontend đã align với backend email links:
+
+- `/auth/verify-active-account?token=...`
+- `/auth/verify-change-email?token=...`
+- `/auth/reset-password?token=...`
+
+Ngoài ra vẫn hỗ trợ route cũ tương đương để tương thích ngược.
+
+## 10) Recommended Local Setup
+
+1. Chạy backend trước tại `http://localhost:8080`.
+2. Cấu hình `VITE_API_BASE_URL` trỏ đúng backend.
+3. Chạy frontend `npm run dev` tại `http://localhost:5173`.
+4. Đảm bảo cookie/credentials không bị chặn bởi CORS hoặc domain mismatch.

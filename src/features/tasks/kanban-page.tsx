@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -46,7 +46,9 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
+import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import {
   applyTaskMove,
   applyTaskReorder,
@@ -72,7 +74,7 @@ function SortableTaskCard({
 }: {
   task: Task
   onClick: () => void
-  onContextAction: () => void
+  onContextAction: (event: MouseEvent<HTMLDivElement>) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `task-${task.id}`,
@@ -97,7 +99,7 @@ function SortableTaskCard({
       onContextMenu={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        onContextAction()
+        onContextAction(event)
       }}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -131,7 +133,7 @@ function SortableTaskCard({
 
 function TaskDragOverlay({ task }: { task: Task }) {
   return (
-    <div className="w-72 rounded-lg border border-primary/30 bg-card p-3 shadow-xl ring-2 ring-primary/10">
+    <div className="w-[min(18rem,calc(100vw-3.5rem))] rounded-lg border border-primary/30 bg-card p-3 shadow-xl ring-2 ring-primary/10 sm:w-72">
       <div className="mb-2">
         <p className="line-clamp-2 text-sm font-medium">{task.title}</p>
       </div>
@@ -155,7 +157,7 @@ function KanbanColumn({
   status: TaskStatus
   tasks: Task[]
   onTaskClick: (taskId: number) => void
-  onTaskContextMenu: (task: Task) => void
+  onTaskContextMenu: (event: MouseEvent<HTMLDivElement>, task: Task) => void
   isOver?: boolean
 }) {
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
@@ -165,7 +167,7 @@ function KanbanColumn({
     <div
       ref={setDropRef}
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border bg-muted/20 transition-colors duration-200',
+        'flex w-[min(18rem,calc(100vw-3.5rem))] shrink-0 snap-start flex-col rounded-xl border bg-muted/20 transition-colors duration-200 sm:w-72',
         isOver && 'border-primary/40 bg-primary/5',
       )}
     >
@@ -189,7 +191,7 @@ function KanbanColumn({
                 key={task.id}
                 task={task}
                 onClick={() => onTaskClick(task.id)}
-                onContextAction={() => onTaskContextMenu(task)}
+                onContextAction={(event) => onTaskContextMenu(event, task)}
               />
             ))}
           </div>
@@ -227,6 +229,7 @@ export function KanbanPage() {
   const [taskGoalId, setTaskGoalId] = useState<number | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
+  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -286,6 +289,32 @@ export function KanbanPage() {
         sourceView: 'KANBAN',
       })
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const user = useAuthStore.getState().currentUser
+      const status = statusesQuery.data?.find((s) => s.id === taskStatusId)
+      if (status) {
+        const optimistic: Task = {
+          id: -Date.now(),
+          projectId,
+          title: taskTitle.trim(),
+          description: taskDescription.trim() || undefined,
+          status,
+          priority: taskPriority,
+          goalId: taskGoalId ?? undefined,
+          sourceView: 'KANBAN',
+          estimatedMinutes: 0,
+          boardPosition: 9999,
+          isCompleted: false,
+          createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimistic])
+      }
+      return { snapshot }
+    },
     onSuccess: () => {
       setTaskTitle('')
       setTaskDescription('')
@@ -294,7 +323,10 @@ export function KanbanPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
       toast.success('Tạo task thành công')
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.snapshot) {
+        restoreProjectTaskQueries(queryClient, context.snapshot)
+      }
       toast.error('Tạo task thất bại', { description: error.message })
     },
   })
@@ -358,11 +390,18 @@ export function KanbanPage() {
 
   // DnD handlers
   function handleDragStart(event: DragStartEvent) {
+    setTaskContextMenu(null)
     const { active } = event
     const data = active.data.current
     if (data?.type === 'task') {
       setActiveTask(data.task as Task)
     }
+  }
+
+  function openTaskContextMenu(event: MouseEvent<HTMLElement>, task: Task) {
+    const x = Math.min(event.clientX, window.innerWidth - 196)
+    const y = Math.min(event.clientY, window.innerHeight - 196)
+    setTaskContextMenu({ x, y, task })
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -459,7 +498,7 @@ export function KanbanPage() {
         title="Kanban Board"
         description="Kéo thả task giữa các cột theo workflow"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {/* Status dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
               <DialogTrigger asChild>
@@ -544,7 +583,9 @@ export function KanbanPage() {
                       <SelectContent>
                         <SelectItem value="__none">Không chọn goal</SelectItem>
                         {(goalsQuery.data?.content ?? []).map((g) => (
-                          <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                            <SelectItem key={g.id} value={String(g.id)}>
+                              <span className="block max-w-60 truncate" title={g.title}>{g.title}</span>
+                            </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -573,13 +614,13 @@ export function KanbanPage() {
         </Card>
       ) : (
         <DndContext
-          sensors={sensors}
+          sensors={canManageProject ? sensors : []}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
             {statuses.map((status) => {
               const columnTasks = grouped.get(status.id) ?? []
               return (
@@ -588,9 +629,9 @@ export function KanbanPage() {
                   status={status}
                   tasks={columnTasks}
                   onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
-                  onTaskContextMenu={(task) => {
+                  onTaskContextMenu={(event, task) => {
                     if (canManageTask(task.goalId)) {
-                      openTaskDeleteConfirm(task.id)
+                      openTaskContextMenu(event, task)
                     }
                   }}
                   isOver={overColumnId === status.id}
@@ -603,6 +644,31 @@ export function KanbanPage() {
           </DragOverlay>
         </DndContext>
       )}
+
+      <TaskContextMenu
+        open={Boolean(taskContextMenu)}
+        x={taskContextMenu?.x ?? 0}
+        y={taskContextMenu?.y ?? 0}
+        onClose={() => setTaskContextMenu(null)}
+        onDuplicate={() => {
+          const task = taskContextMenu?.task
+          if (task) {
+            openTaskDrawer(task.id, 'duplicate')
+          }
+        }}
+        onEdit={() => {
+          const task = taskContextMenu?.task
+          if (task) {
+            openTaskDrawer(task.id, 'edit')
+          }
+        }}
+        onDelete={() => {
+          const task = taskContextMenu?.task
+          if (task) {
+            openTaskDeleteConfirm(task.id)
+          }
+        }}
+      />
     </div>
   )
 }

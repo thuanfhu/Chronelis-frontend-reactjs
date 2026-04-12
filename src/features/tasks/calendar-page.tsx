@@ -31,15 +31,20 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import {
   applyScheduleUpdate,
+  patchProjectTaskQueries,
   patchProjectCalendarQueries,
+  restoreProjectTaskQueries,
   patchTaskScheduleQueries,
   restoreProjectCalendarQueries,
   restoreTaskScheduleQueries,
+  snapshotProjectTaskQueries,
   snapshotProjectCalendarQueries,
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
+import { useAuthStore } from '@/app/store/auth-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
@@ -266,6 +271,7 @@ export function CalendarPage() {
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.currentUser)
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
   const calendarRef = useRef<FullCalendar | null>(null)
@@ -283,6 +289,20 @@ export function CalendarPage() {
   const [headerTitle, setHeaderTitle] = useState(() => formatWeekRange(startOfWeek(new Date())))
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
   const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
+
+  // Context menu for calendar events
+  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; taskId: number; canManage: boolean } | null>(null)
+
+  const openCalendarTaskContextMenu = (event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>, taskId: number, canManage: boolean) => {
+    event.preventDefault()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const menuW = 176
+    const menuH = 120
+    const x = event.clientX + menuW > vw ? vw - menuW - 8 : event.clientX
+    const y = event.clientY + menuH > vh ? vh - menuH - 8 : event.clientY
+    setTaskContextMenu({ x, y, taskId, canManage })
+  }
 
   // Create task+schedule from calendar slot click/select
   const [createDialog, setCreateDialog] = useState<{ open: boolean; start: Date; end: Date } | null>(null)
@@ -338,15 +358,92 @@ export function CalendarPage() {
         sourceView: 'CALENDAR',
       })
 
-      await taskScheduleApi.create({
+      const schedule = await taskScheduleApi.create({
         taskId: task.id,
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
       })
 
-      return task
+      return {
+        task,
+        schedule,
+      }
     },
-    onSuccess: (task) => {
+    onMutate: async () => {
+      if (!canManageProject) {
+        return {}
+      }
+
+      const defaultStatus = statusesQuery.data?.[0]
+      if (!defaultStatus || !createDialog) {
+        return {}
+      }
+
+      const start = parseInputDateTimeValue(newStartDateTime)
+      const end = parseInputDateTimeValue(newEndDateTime)
+      if (!(end > start)) {
+        return {}
+      }
+
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+      ])
+
+      const taskSnapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const calendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const optimisticTaskId = -Date.now()
+      const optimisticScheduleId = optimisticTaskId - 1
+      const nowIso = new Date().toISOString()
+      const scheduledStart = toApiLocalDateTime(start)
+      const scheduledEnd = toApiLocalDateTime(end)
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        projectId,
+        goalId: newTaskGoalId ?? undefined,
+        status: defaultStatus,
+        title: newTaskTitle.trim(),
+        priority: newTaskPriority,
+        sourceView: 'CALENDAR',
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        estimatedMinutes: 0,
+        boardPosition: 9999,
+        isCompleted: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+      const optimisticSchedule: TaskSchedule = {
+        id: optimisticScheduleId,
+        taskId: optimisticTaskId,
+        scheduledStart,
+        scheduledEnd,
+        scheduledDate: scheduledStart.slice(0, 10),
+        createdBy: {
+          userId: currentUser?.userId ?? '',
+          email: currentUser?.email ?? '',
+          firstName: currentUser?.firstName ?? '',
+          lastName: currentUser?.lastName ?? '',
+        },
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
+
+      return {
+        taskSnapshot,
+        calendarSnapshot,
+        optimisticTaskId,
+        optimisticScheduleId,
+      }
+    },
+    onSuccess: ({ task, schedule }, _variables, context) => {
       setCreateDialog(null)
       setNewTaskTitle('')
       setNewTaskPriority('MEDIUM')
@@ -354,11 +451,39 @@ export function CalendarPage() {
       setNewEndDateTime('')
       setNewTaskGoalId(null)
 
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
+        const replacedTasks = tasks.map((item) => (
+          item.id === context?.optimisticTaskId ? task : item
+        ))
+
+        return replacedTasks.some((item) => item.id === task.id)
+          ? replacedTasks
+          : [...replacedTasks, task]
+      })
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => {
+        const replacedSchedules = schedules.map((item) => (
+          item.id === context?.optimisticScheduleId ? schedule : item
+        ))
+
+        return replacedSchedules.some((item) => item.id === schedule.id)
+          ? replacedSchedules
+          : [...replacedSchedules, schedule]
+      })
+
       void invalidateTaskAndCalendarQueries(task.id)
       toast.success('Tạo task thành công')
       openTaskDrawer(task.id, 'view')
     },
-    onError: (err: Error) => toast.error('Tạo task thất bại', { description: err.message }),
+    onError: (err: Error, _variables, context) => {
+      if (context?.taskSnapshot) {
+        restoreProjectTaskQueries(queryClient, context.taskSnapshot)
+      }
+      if (context?.calendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.calendarSnapshot)
+      }
+
+      toast.error('Tạo task thất bại', { description: err.message })
+    },
   })
 
   const updateScheduleMutation = useMutation({
@@ -571,7 +696,7 @@ export function CalendarPage() {
   }
 
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
-    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+    if (arg.event.extendedProps.isDueDateOnly) {
       arg.revert?.()
       return
     }
@@ -604,7 +729,7 @@ export function CalendarPage() {
   }
 
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
-    if (Boolean(arg.event.extendedProps.isDueDateOnly)) {
+    if (arg.event.extendedProps.isDueDateOnly) {
       arg.revert?.()
       return
     }
@@ -697,6 +822,11 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
+      {!canManageProject && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <span className="font-medium">Chế độ xem:</span> Bạn chỉ có quyền xem lịch này. Tạo và chỉnh sửa lịch yêu cầu quyền quản lý project.
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">Lịch</h1>
@@ -740,8 +870,9 @@ export function CalendarPage() {
           custom={navigationDirection}
           className="flex h-full min-h-0 flex-col"
         >
-          <div className="chronelis-calendar-frame flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <FullCalendar
+          <div className="flex min-h-0 flex-1 overflow-x-auto">
+            <div className="chronelis-calendar-frame flex h-full min-h-0 min-w-190 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:min-w-0">
+              <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
               initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
@@ -756,12 +887,12 @@ export function CalendarPage() {
               slotLabelInterval="01:00:00"
               snapDuration="00:15:00"
               scrollTime="08:00:00"
-              selectable
-              selectMirror
-              editable
-              eventStartEditable
-              eventDurationEditable
-              eventResizableFromStart
+              selectable={canManageProject}
+              selectMirror={canManageProject}
+              editable={canManageProject}
+              eventStartEditable={canManageProject}
+              eventDurationEditable={canManageProject}
+              eventResizableFromStart={canManageProject}
               expandRows
               dayMaxEvents={3}
               events={calendarEvents}
@@ -807,11 +938,10 @@ export function CalendarPage() {
               eventResize={handleEventResize}
               eventDidMount={(arg: CalendarEventMountArg) => {
                 arg.el.oncontextmenu = (event) => {
-                  event.preventDefault()
                   const taskId = Number(arg.event.extendedProps.taskId)
-                  const canDelete = Boolean(arg.event.extendedProps.canDelete)
-                  if (canDelete && Number.isFinite(taskId)) {
-                    openTaskDeleteConfirm(taskId)
+                  const canManage = Boolean(arg.event.extendedProps.canDelete)
+                  if (Number.isFinite(taskId)) {
+                    openCalendarTaskContextMenu(event as MouseEvent, taskId, canManage)
                   }
                 }
               }}
@@ -825,14 +955,24 @@ export function CalendarPage() {
               slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
               eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
               eventContent={(arg) => (
-                <div className="flex min-w-0 flex-col px-1 py-0.5">
+                <div
+                  className="flex min-w-0 flex-col px-1 py-0.5"
+                  onContextMenu={(event) => {
+                    const taskId = Number(arg.event.extendedProps.taskId)
+                    const canManage = Boolean(arg.event.extendedProps.canDelete)
+                    if (Number.isFinite(taskId)) {
+                      openCalendarTaskContextMenu(event.nativeEvent, taskId, canManage)
+                    }
+                  }}
+                >
                   <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
                   {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
                     <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
                   ) : null}
                 </div>
               )}
-            />
+              />
+            </div>
           </div>
         </motion.div>
       </div>
@@ -900,7 +1040,9 @@ export function CalendarPage() {
                 <SelectContent>
                   <SelectItem value="__none">Không chọn goal</SelectItem>
                   {(goalsQuery.data?.content ?? []).map((g) => (
-                    <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      <span className="block max-w-65 truncate" title={g.title}>{g.title}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -928,6 +1070,44 @@ export function CalendarPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TaskContextMenu
+        open={Boolean(taskContextMenu)}
+        x={taskContextMenu?.x ?? 0}
+        y={taskContextMenu?.y ?? 0}
+        onClose={() => setTaskContextMenu(null)}
+        onDuplicate={() => {
+          const menu = taskContextMenu
+          if (!menu) return
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền chỉnh sửa task này')
+            return
+          }
+          openTaskDrawer(menu.taskId, 'duplicate')
+        }}
+        onEdit={() => {
+          const menu = taskContextMenu
+          if (!menu) return
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền chỉnh sửa task này')
+            return
+          }
+          openTaskDrawer(menu.taskId, 'edit')
+        }}
+        onDelete={() => {
+          const menu = taskContextMenu
+          if (!menu) {
+            return
+          }
+
+          if (!menu.canManage) {
+            toast.error('Bạn không có quyền xóa task này')
+            return
+          }
+
+          openTaskDeleteConfirm(menu.taskId)
+        }}
+      />
     </div>
   )
 }
