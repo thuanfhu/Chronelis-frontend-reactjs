@@ -24,7 +24,7 @@ Frontend chính của Chronelis, xây dựng bằng React 19 + TypeScript + Vite
 - Smooth transition từ login -> forgot password
 - Verify-change-email page theo backend email flow
 - Dashboard, workspaces, projects, goals, tasks, calendar, comments, notifications
-- Project Gantt page + AI assistant sheet for preview/apply planning actions
+- My Work page + AI assistant sheet for preview/apply planning actions
 - Admin dashboard (tab Users / Roles / Permissions) với guard theo role `ADMIN`
 - Realtime notifications qua WebSocket
 
@@ -45,7 +45,7 @@ Ghi chú:
 
 ## 3.1) Project AI Assistant
 
-- UI assistant nằm trong trang Gantt của project.
+- UI assistant hoạt động như lớp planning/breakdown cho project đang được chọn.
 - Frontend chỉ dùng env để bật/tắt UI (`VITE_PROJECT_ASSISTANT_ENABLED`).
 - Toàn bộ cấu hình model/API key nằm ở backend env, frontend không chứa secret AI.
 - Flow an toàn: AI chỉ tạo preview plan, người dùng chọn action, rồi mới apply.

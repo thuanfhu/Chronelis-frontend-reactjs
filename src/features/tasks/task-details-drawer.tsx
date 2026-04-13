@@ -5,7 +5,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Pencil, Timer, X, NotebookText,
-  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock,
+  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock, Sparkles, Link2,
 } from 'lucide-react'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -43,8 +43,20 @@ import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import { formatDateTime, toLocalDateTimePayload } from '@/lib/utils/datetime'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
+import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { Task, TaskComment, TaskPriorityType } from '@/types/domain'
+import type { Task, TaskComment, TaskDependencyTask, TaskPriorityType } from '@/types/domain'
+
+function areNumberArraysEqual(left: number[], right: number[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  const sortedLeft = [...left].sort((a, b) => a - b)
+  const sortedRight = [...right].sort((a, b) => a - b)
+
+  return sortedLeft.every((value, index) => value === sortedRight[index])
+}
 
 function toDateTimeLocalValue(isoValue?: string): string {
   if (!isoValue) {
@@ -81,7 +93,7 @@ export function TaskDetailsDrawer() {
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
-  const workspaceId = Number(params.workspaceId)
+  const routeWorkspaceId = Number(params.workspaceId)
   const routeProjectId = Number(params.projectId)
 
   const taskDrawerTaskId = useUiStore((state) => state.taskDrawerTaskId)
@@ -90,6 +102,7 @@ export function TaskDetailsDrawer() {
   const setTaskDrawerMode = useUiStore((state) => state.setTaskDrawerMode)
   const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((state) => state.openTaskDeleteConfirm)
+  const openAIAssistant = useUiStore((state) => state.openAIAssistant)
   const currentUser = useAuthStore((state) => state.currentUser)
 
   const queryClient = useQueryClient()
@@ -103,6 +116,9 @@ export function TaskDetailsDrawer() {
   const [editDueDate, setEditDueDate] = useState('')
   const [editScheduleStart, setEditScheduleStart] = useState('')
   const [editScheduleEnd, setEditScheduleEnd] = useState('')
+  const [editDependencyTaskIds, setEditDependencyTaskIds] = useState<number[]>([])
+  const [editBlockerNote, setEditBlockerNote] = useState('')
+  const [dependencyCandidateId, setDependencyCandidateId] = useState<string | undefined>(undefined)
   const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null)
   const [activeDrawerPanel, setActiveDrawerPanel] = useState<'details' | 'comments'>('details')
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
@@ -116,6 +132,8 @@ export function TaskDetailsDrawer() {
     dueDate: string
     scheduleStart: string
     scheduleEnd: string
+      dependencyTaskIds: number[]
+      blockerNote: string
   } | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
@@ -130,6 +148,10 @@ export function TaskDetailsDrawer() {
     enabled: hasTask,
   })
 
+  const resolvedWorkspaceId = Number.isFinite(routeWorkspaceId)
+    ? routeWorkspaceId
+    : (taskQuery.data?.workspaceId ?? Number.NaN)
+
   const permissionProjectId = Number.isFinite(routeProjectId)
     ? routeProjectId
     : (taskQuery.data?.projectId ?? Number.NaN)
@@ -140,12 +162,12 @@ export function TaskDetailsDrawer() {
     canManageTask: canManageTaskByGoal,
     permissionsReady,
   } = useProjectPermissions({
-    workspaceId,
+    workspaceId: resolvedWorkspaceId,
     projectId: permissionProjectId,
-    enabled: Number.isFinite(workspaceId) && Number.isFinite(permissionProjectId),
+    enabled: Number.isFinite(resolvedWorkspaceId) && Number.isFinite(permissionProjectId),
   })
 
-  const realtimeWorkspaceId = Number.isFinite(workspaceId) ? workspaceId : null
+  const realtimeWorkspaceId = Number.isFinite(resolvedWorkspaceId) ? resolvedWorkspaceId : null
   const realtimeProjectId = Number.isFinite(routeProjectId)
     ? routeProjectId
     : (taskQuery.data?.projectId ?? null)
@@ -161,9 +183,24 @@ export function TaskDetailsDrawer() {
   })
 
   const membersQuery = useQuery({
-    queryKey: Number.isFinite(workspaceId) ? queryKeys.workspaces.members(workspaceId) : ['workspaces', 'members', 'drawer'],
-    queryFn: () => workspaceApi.members(workspaceId),
-    enabled: hasTask && Number.isFinite(workspaceId),
+    queryKey: Number.isFinite(resolvedWorkspaceId) ? queryKeys.workspaces.members(resolvedWorkspaceId) : ['workspaces', 'members', 'drawer'],
+    queryFn: () => workspaceApi.members(resolvedWorkspaceId),
+    enabled: hasTask && Number.isFinite(resolvedWorkspaceId),
+  })
+
+  const dependenciesQuery = useQuery({
+    queryKey: queryKeys.tasks.dependencies(taskId),
+    queryFn: () => taskApi.dependencies(taskId),
+    enabled: hasTask,
+  })
+
+  const projectTasksQuery = useQuery({
+    queryKey: Number.isFinite(permissionProjectId)
+      ? queryKeys.tasks.byProject(permissionProjectId, 1, 500)
+      : ['tasks', 'drawer', 'project', taskId],
+    queryFn: () => taskApi.listByProject(permissionProjectId, { page: 1, size: 500 }),
+    enabled: hasTask && Number.isFinite(permissionProjectId),
+    staleTime: 15_000,
   })
 
   const schedulesQuery = useQuery({
@@ -188,6 +225,9 @@ export function TaskDetailsDrawer() {
     setEditDueDate('')
     setEditScheduleStart('')
     setEditScheduleEnd('')
+    setEditDependencyTaskIds([])
+    setEditBlockerNote('')
+    setDependencyCandidateId(undefined)
     setActiveScheduleId(null)
     setActiveDrawerPanel('details')
     setDescriptionExpanded(false)
@@ -210,14 +250,16 @@ export function TaskDetailsDrawer() {
 
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.dependencies(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork }),
       projectId
-        ? queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+        ? queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
         : Promise.resolve(),
       projectId
-        ? queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 100) })
+        ? queryClient.invalidateQueries({ queryKey: ['goals', projectId] })
         : Promise.resolve(),
       projectId
         ? queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] })
@@ -387,6 +429,7 @@ export function TaskDetailsDrawer() {
       const dueDateIso = toIsoDateTime(editDueDate)
       const startIso = toIsoDateTime(editScheduleStart)
       const endIso = toIsoDateTime(editScheduleEnd)
+      const blockerNote = editBlockerNote.trim() || undefined
 
       if ((startIso && !endIso) || (!startIso && endIso)) {
         throw new Error('Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc')
@@ -424,6 +467,11 @@ export function TaskDetailsDrawer() {
           })
         }
 
+        await taskApi.updateDependencies(duplicatedTask.id, {
+          dependencyTaskIds: editDependencyTaskIds,
+          blockerNote,
+        })
+
         return duplicatedTask
       }
 
@@ -460,6 +508,11 @@ export function TaskDetailsDrawer() {
           })
         }
       }
+
+      await taskApi.updateDependencies(taskId, {
+        dependencyTaskIds: editDependencyTaskIds,
+        blockerNote,
+      })
 
       return updatedTask
     },
@@ -628,8 +681,10 @@ export function TaskDetailsDrawer() {
 
   const comments = commentsQuery.data ?? []
   const task = taskQuery.data
+  const dependencyDetails = dependenciesQuery.data
   const goals = goalsQuery.data?.content ?? []
   const members = membersQuery.data ?? []
+  const projectTasks = projectTasksQuery.data?.content ?? []
   const latestCommentPreview = useMemo(
     () => [...comments].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0] ?? null,
     [comments],
@@ -673,6 +728,38 @@ export function TaskDetailsDrawer() {
     )[0]
   }, [schedulesQuery.data])
 
+  const dependencyTaskLookup = useMemo(() => {
+    const map = new Map<number, Task | TaskDependencyTask>()
+    for (const projectTask of projectTasks) {
+      map.set(projectTask.id, projectTask)
+    }
+
+    for (const dependencyTask of dependencyDetails?.blockedByTasks ?? []) {
+      map.set(dependencyTask.id, dependencyTask)
+    }
+
+    return map
+  }, [dependencyDetails?.blockedByTasks, projectTasks])
+
+  const dependencyTaskOptions = useMemo(
+    () => projectTasks
+      .filter((projectTask) => projectTask.id !== taskId)
+      .map((projectTask) => ({
+        value: String(projectTask.id),
+        label: projectTask.title,
+        description: `${projectTask.status.name} • ${projectTask.priority}${projectTask.goalId ? ` • Goal #${projectTask.goalId}` : ''}`,
+        searchText: `${projectTask.description ?? ''} ${projectTask.priority} ${projectTask.status.name}`,
+      })),
+    [projectTasks, taskId],
+  )
+
+  const selectedDependencyTasks = useMemo(
+    () => editDependencyTaskIds
+      .map((dependencyTaskId) => dependencyTaskLookup.get(dependencyTaskId))
+      .filter((dependencyTask): dependencyTask is Task | TaskDependencyTask => Boolean(dependencyTask)),
+    [dependencyTaskLookup, editDependencyTaskIds],
+  )
+
   const canManageCurrentTask = Boolean(task && permissionsReady && canManageTaskByGoal(task.goalId))
   const isDuplicateMode = taskDrawerMode === 'duplicate' && canManageCurrentTask
   const isEditingTask = (taskDrawerMode === 'edit' || taskDrawerMode === 'duplicate') && canManageCurrentTask
@@ -685,7 +772,7 @@ export function TaskDetailsDrawer() {
   )
 
   useEffect(() => {
-    if (!task || !canManageCurrentTask || !isEditingTask || !schedulesQuery.isFetched) {
+    if (!task || !canManageCurrentTask || !isEditingTask || !schedulesQuery.isFetched || !dependenciesQuery.isFetched) {
       return
     }
 
@@ -702,6 +789,8 @@ export function TaskDetailsDrawer() {
     const initialDueDate = toDateTimeLocalValue(task.dueDate)
     const scheduleStart = toDateTimeLocalValue(primarySchedule?.scheduledStart ?? task.dueDate)
     const scheduleEnd = toDateTimeLocalValue(primarySchedule?.scheduledEnd ?? task.dueDate)
+    const initialDependencyTaskIds = dependenciesQuery.data?.blockedByTasks.map((dependencyTask) => dependencyTask.id) ?? []
+    const initialBlockerNote = dependenciesQuery.data?.blockerNote ?? ''
 
     setEditTitle(initialTitle)
     setEditDescription(initialDescription)
@@ -711,6 +800,9 @@ export function TaskDetailsDrawer() {
     setEditDueDate(initialDueDate)
     setEditScheduleStart(scheduleStart)
     setEditScheduleEnd(scheduleEnd)
+    setEditDependencyTaskIds(initialDependencyTaskIds)
+    setEditBlockerNote(initialBlockerNote)
+    setDependencyCandidateId(undefined)
     setActiveScheduleId(primarySchedule?.id ?? null)
     setEditorSnapshot({
       title: initialTitle,
@@ -721,10 +813,15 @@ export function TaskDetailsDrawer() {
       dueDate: initialDueDate,
       scheduleStart,
       scheduleEnd,
+      dependencyTaskIds: initialDependencyTaskIds,
+      blockerNote: initialBlockerNote,
     })
     setEditorInitKey(nextKey)
   }, [
     canManageCurrentTask,
+    dependenciesQuery.data?.blockedByTasks,
+    dependenciesQuery.data?.blockerNote,
+    dependenciesQuery.isFetched,
     editorInitKey,
     isEditingTask,
     schedulesQuery.isFetched,
@@ -752,6 +849,9 @@ export function TaskDetailsDrawer() {
     setEditDueDate('')
     setEditScheduleStart('')
     setEditScheduleEnd('')
+    setEditDependencyTaskIds([])
+    setEditBlockerNote('')
+    setDependencyCandidateId(undefined)
     setActiveScheduleId(null)
     setActiveDrawerPanel('details')
     setEditorSnapshot(null)
@@ -767,9 +867,9 @@ export function TaskDetailsDrawer() {
     if (!task) return
 
     const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
-    if (!Number.isFinite(workspaceId) || !Number.isFinite(resolvedProjectId)) return
+    if (!Number.isFinite(resolvedWorkspaceId) || !Number.isFinite(resolvedProjectId)) return
 
-    navigate(`/workspaces/${workspaceId}/projects/${resolvedProjectId}/pomodoro/${task.id}`, {
+    navigate(`/workspaces/${resolvedWorkspaceId}/projects/${resolvedProjectId}/pomodoro/${task.id}`, {
       state: {
         returnTo: `${location.pathname}${location.search}`,
       },
@@ -781,14 +881,38 @@ export function TaskDetailsDrawer() {
     if (!task) return
 
     const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
-    if (!Number.isFinite(workspaceId) || !Number.isFinite(resolvedProjectId)) return
+    if (!Number.isFinite(resolvedWorkspaceId) || !Number.isFinite(resolvedProjectId)) return
 
-    navigate(`/workspaces/${workspaceId}/projects/${resolvedProjectId}/tasks/${task.id}/notes`, {
+    navigate(`/workspaces/${resolvedWorkspaceId}/projects/${resolvedProjectId}/tasks/${task.id}/notes`, {
       state: {
         returnTo: `${location.pathname}${location.search}`,
       },
     })
     handleCloseDrawer()
+  }
+
+  const openFocusMode = () => {
+    if (!task) return
+
+    const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
+    if (!Number.isFinite(resolvedWorkspaceId) || !Number.isFinite(resolvedProjectId)) return
+
+    navigate(`/workspaces/${resolvedWorkspaceId}/projects/${resolvedProjectId}/focus/${task.id}`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
+    handleCloseDrawer()
+  }
+
+  const openTaskPlanningAssistant = () => {
+    if (!task) return
+
+    openAIAssistant({
+      workspaceId: task.workspaceId,
+      projectId: task.projectId,
+      prompt: `Phân rã task \"${task.title}\" thành các bước thực thi ngắn gọn, chỉ ra dependency đang chặn và đề xuất cập nhật cần áp dụng ngay trong project hiện tại.`,
+    })
   }
 
   const normalizedEditorState = {
@@ -800,6 +924,8 @@ export function TaskDetailsDrawer() {
     dueDate: editDueDate,
     scheduleStart: editScheduleStart,
     scheduleEnd: editScheduleEnd,
+    dependencyTaskIds: [...editDependencyTaskIds].sort((left, right) => left - right),
+    blockerNote: editBlockerNote.trim(),
   }
 
   const hasEditorChanges = isDuplicateMode
@@ -818,6 +944,8 @@ export function TaskDetailsDrawer() {
             || normalizedEditorState.dueDate !== editorSnapshot.dueDate
             || normalizedEditorState.scheduleStart !== editorSnapshot.scheduleStart
             || normalizedEditorState.scheduleEnd !== editorSnapshot.scheduleEnd
+            || !areNumberArraysEqual(normalizedEditorState.dependencyTaskIds, editorSnapshot.dependencyTaskIds)
+            || normalizedEditorState.blockerNote !== editorSnapshot.blockerNote.trim()
           )
           : false,
     )
@@ -1041,6 +1169,79 @@ export function TaskDetailsDrawer() {
                       </p>
                     )}
                   </div>
+
+                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 p-4">
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Link2 className="size-3" /> Dependencies & blockers
+                      </Label>
+                      <p className="text-[11px] leading-5 text-muted-foreground">
+                        Chọn các task cần hoàn tất trước và ghi chú blocker không nằm trong hệ thống nếu có.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <SearchableSelectPopover
+                        value={dependencyCandidateId}
+                        options={dependencyTaskOptions}
+                        placeholder={projectTasksQuery.isLoading ? 'Đang tải task...' : 'Tìm task phụ thuộc'}
+                        searchPlaceholder="Tìm theo tiêu đề, trạng thái hoặc ưu tiên..."
+                        emptyLabel="Không có task phù hợp"
+                        disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
+                        triggerClassName="h-9"
+                        onValueChange={setDependencyCandidateId}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 shrink-0"
+                        disabled={!dependencyCandidateId}
+                        onClick={() => {
+                          const nextDependencyId = Number(dependencyCandidateId)
+                          if (!Number.isFinite(nextDependencyId)) {
+                            return
+                          }
+
+                          setEditDependencyTaskIds((current) => current.includes(nextDependencyId)
+                            ? current
+                            : [...current, nextDependencyId])
+                          setDependencyCandidateId(undefined)
+                        }}
+                      >
+                        Thêm dependency
+                      </Button>
+                    </div>
+
+                    {selectedDependencyTasks.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedDependencyTasks.map((dependencyTask) => (
+                          <button
+                            key={dependencyTask.id}
+                            type="button"
+                            className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-400/35 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30"
+                            onClick={() => setEditDependencyTaskIds((current) => current.filter((id) => id !== dependencyTask.id))}
+                          >
+                            <Link2 className="size-3" />
+                            <span className="truncate">{dependencyTask.title}</span>
+                            <span className="text-[10px] opacity-70">Remove</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Chưa có task phụ thuộc nào được chọn.</p>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-medium text-muted-foreground">Blocker note</Label>
+                      <Textarea
+                        value={editBlockerNote}
+                        onChange={(event) => setEditBlockerNote(event.target.value)}
+                        placeholder="Ví dụ: đang chờ dữ liệu từ khách hàng hoặc quyết định từ quản lý"
+                        rows={3}
+                        className="resize-none text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
                 </ScrollArea>
               ) : (
@@ -1112,10 +1313,18 @@ export function TaskDetailsDrawer() {
                           <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title="Pomodoro">
                             <Timer className="size-3.5" />
                           </Button>
+                          <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title="Focus mode">
+                            <Target className="size-3.5" />
+                          </Button>
                           <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title="Ghi chú">
                             <NotebookText className="size-3.5" />
                           </Button>
+                          <Button variant="outline" size="icon" className="size-8" onClick={openTaskPlanningAssistant} title="AI breakdown">
+                            <Sparkles className="size-3.5" />
+                          </Button>
                         </div>
+
+                        <TaskBlockerBadge task={task} className="mt-3" />
 
                         <div className="mt-5 rounded-[28px] border border-border/70 bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(14,165,233,0.02)_58%,rgba(255,255,255,0.9))] p-4 shadow-[0_22px_50px_-34px_rgba(15,23,42,0.24)] dark:bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(14,165,233,0.05)_55%,rgba(15,23,42,0.72))]">
                           <div className="flex items-start gap-3">
@@ -1254,6 +1463,32 @@ export function TaskDetailsDrawer() {
                         </div>
                       </div>
 
+                      <div className="px-6 py-4">
+                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Dependencies & blockers</p>
+                        <div className="space-y-3">
+                          {dependencyDetails?.blockerNote ? (
+                            <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">Blocker note</p>
+                              <p className="mt-1 whitespace-pre-wrap leading-6">{dependencyDetails.blockerNote}</p>
+                            </div>
+                          ) : null}
+
+                          <DependencyTaskList
+                            title="Đang bị chặn bởi"
+                            emptyLabel="Task này chưa phụ thuộc task nào khác."
+                            tasks={dependencyDetails?.blockedByTasks ?? []}
+                            onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
+                          />
+
+                          <DependencyTaskList
+                            title="Đang chặn"
+                            emptyLabel="Chưa có task nào đang chờ task này hoàn tất."
+                            tasks={dependencyDetails?.blockingTasks ?? []}
+                            onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
+                          />
+                        </div>
+                      </div>
+
                       {/* Schedule */}
                       {primarySchedule && (
                         <div className="px-6 py-4">
@@ -1350,5 +1585,54 @@ export function TaskDetailsDrawer() {
       </Sheet>
 
     </>
+  )
+}
+
+function DependencyTaskList({
+  title,
+  emptyLabel,
+  tasks,
+  onOpenTask,
+}: {
+  title: string
+  emptyLabel: string
+  tasks: TaskDependencyTask[]
+  onOpenTask: (taskId: number) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+        <span className="text-[11px] text-muted-foreground">{tasks.length}</span>
+      </div>
+
+      {tasks.length > 0 ? (
+        <div className="space-y-2">
+          {tasks.map((dependencyTask) => (
+            <button
+              key={dependencyTask.id}
+              type="button"
+              className="flex w-full items-start justify-between gap-3 rounded-2xl border border-border/70 bg-muted/25 px-3.5 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+              onClick={() => onOpenTask(dependencyTask.id)}
+            >
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">{dependencyTask.title}</span>
+                  <span className="text-[10px] text-muted-foreground">#{dependencyTask.id}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>{dependencyTask.statusName}</span>
+                  <span>{dependencyTask.priority}</span>
+                  {dependencyTask.goalId ? <span>{`Goal #${dependencyTask.goalId}`}</span> : null}
+                </div>
+              </div>
+              <span className="text-[11px] font-medium text-primary">Mở</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+      )}
+    </div>
   )
 }

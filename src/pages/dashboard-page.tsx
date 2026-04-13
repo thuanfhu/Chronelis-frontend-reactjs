@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus } from 'lucide-react'
+import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { notificationApi } from '@/lib/api/modules/notification-api'
+import { taskApi } from '@/lib/api/modules/task-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useAuthStore } from '@/app/store/auth-store'
 
@@ -21,6 +22,11 @@ export function DashboardPage() {
   const notificationCountQuery = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: notificationApi.unreadCount,
+  })
+
+  const myWorkQuery = useQuery({
+    queryKey: queryKeys.tasks.myWork,
+    queryFn: taskApi.myWork,
   })
 
   const workspaces = workspaceQuery.data?.content ?? []
@@ -53,6 +59,12 @@ export function DashboardPage() {
           label="Thông báo chưa đọc"
           value={notificationCountQuery.isLoading ? null : unreadCount}
           accent="bg-destructive/10 text-destructive"
+        />
+        <StatCard
+          icon={Briefcase}
+          label="Task đang phụ trách"
+          value={myWorkQuery.isLoading ? null : myWorkQuery.data?.assignedCount ?? 0}
+          accent="bg-amber-100 text-amber-900"
         />
       </div>
 

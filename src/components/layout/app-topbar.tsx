@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -247,6 +247,7 @@ export function AppTopbar() {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
               <Avatar className="size-7">
+                {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.firstName} />}
                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials}</AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium md:inline-block">

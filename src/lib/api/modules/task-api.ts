@@ -1,6 +1,13 @@
 import { http, unwrapData, unwrapPagination, unwrapVoid } from '@/lib/api/http'
 import type { ApiResponse } from '@/types/api'
-import type { PageResult, SourceViewType, Task, TaskPriorityType } from '@/types/domain'
+import type {
+  MyWorkSummary,
+  PageResult,
+  SourceViewType,
+  Task,
+  TaskDependencyDetails,
+  TaskPriorityType,
+} from '@/types/domain'
 
 interface PageQuery {
   page?: number
@@ -35,6 +42,11 @@ export interface UpdateTaskPayload {
   taskTypeId?: number
 }
 
+export interface UpdateTaskDependenciesPayload {
+  dependencyTaskIds: number[]
+  blockerNote?: string
+}
+
 export const taskApi = {
   async create(payload: CreateTaskPayload) {
     const response = await http.post<ApiResponse<Task>>('/tasks', payload)
@@ -48,6 +60,21 @@ export const taskApi = {
 
   async detail(taskId: number) {
     const response = await http.get<ApiResponse<Task>>(`/tasks/${taskId}`)
+    return unwrapData(response.data)
+  },
+
+  async dependencies(taskId: number) {
+    const response = await http.get<ApiResponse<TaskDependencyDetails>>(`/tasks/${taskId}/dependencies`)
+    return unwrapData(response.data)
+  },
+
+  async updateDependencies(taskId: number, payload: UpdateTaskDependenciesPayload) {
+    const response = await http.put<ApiResponse<TaskDependencyDetails>>(`/tasks/${taskId}/dependencies`, payload)
+    return unwrapData(response.data)
+  },
+
+  async myWork() {
+    const response = await http.get<ApiResponse<MyWorkSummary>>('/tasks/my-work')
     return unwrapData(response.data)
   },
 

@@ -1,7 +1,7 @@
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   FolderKanban, ChevronRight, Search, LogOut, Menu,
-  ChevronsLeft, ChevronDown, Target, LayoutGrid, Plus, Loader2, Trash2,
+  ChevronsLeft, ChevronDown, Target, LayoutGrid, Plus, Loader2, Trash2, Briefcase, Sparkles,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -99,6 +99,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
+  const openAIAssistant = useUiStore((s) => s.openAIAssistant)
   const clearSession = useAuthStore((s) => s.clearSession)
   const currentUser = useAuthStore((s) => s.currentUser)
 
@@ -826,32 +827,57 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               />
             </div>
 
-            {workspaceId ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {workspaceId ? (
+                <Link
+                  to={`/workspaces/${workspaceId}`}
+                  className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  title="Workspace Overview"
+                >
+                  <LayoutGrid className="size-3.5" />
+                  Overview
+                </Link>
+              ) : null}
+
               <Link
-                to={`/workspaces/${workspaceId}`}
+                to="/my-work"
                 className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                title="Workspace Overview"
+                title="My Work"
               >
-                <LayoutGrid className="size-3.5" />
-                Overview
+                <Briefcase className="size-3.5" />
+                My Work
               </Link>
-            ) : null}
+            </div>
           </div>
-        ) : workspaceId ? (
+        ) : (
           <div className="flex flex-col items-center gap-1.5 py-2">
+            {workspaceId ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={`/workspaces/${workspaceId}`}
+                    className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  >
+                    <LayoutGrid className="size-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">Workspace Overview</TooltipContent>
+              </Tooltip>
+            ) : null}
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
-                  to={`/workspaces/${workspaceId}`}
+                  to="/my-work"
                   className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
-                  <LayoutGrid className="size-4" />
+                  <Briefcase className="size-4" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right">Workspace Overview</TooltipContent>
+              <TooltipContent side="right">My Work</TooltipContent>
             </Tooltip>
           </div>
-        ) : null}
+        )}
 
         {/* ─── Scrollable navigation ─── */}
         <ScrollArea className="flex-1">
@@ -971,6 +997,31 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           onClick={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
         >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
+            onClick={() => {
+              if (sidebarContextMenu.target.kind === 'goal') {
+                const { goal, project } = sidebarContextMenu.target
+                openAIAssistant({
+                  workspaceId: project.workspaceId,
+                  projectId: project.id,
+                  prompt: `Phân rã goal \"${goal.title}\" thành các task cụ thể, chỉ ra blocker chính, dependency cần thiết và đề xuất lịch triển khai ngắn gọn cho project hiện tại.`,
+                })
+              } else {
+                const { project } = sidebarContextMenu.target
+                openAIAssistant({
+                  workspaceId: project.workspaceId,
+                  projectId: project.id,
+                  prompt: `Lập kế hoạch thực thi cho project \"${project.name}\" trong 7 ngày tới, ưu tiên blocker, dependency và các task cần tạo hoặc cập nhật ngay.`,
+                })
+              }
+              setSidebarContextMenu(null)
+            }}
+          >
+            <Sparkles className="size-3.5" />
+            AI planning
+          </button>
           {sidebarContextMenu.target.kind === 'project' && (
             <button
               type="button"

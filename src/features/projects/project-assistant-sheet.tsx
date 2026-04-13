@@ -10,7 +10,6 @@ import {
   Rocket,
   Sparkles,
   WandSparkles,
-  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -47,9 +46,9 @@ import type {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PROMPT_SUGGESTIONS = [
-  'Lập kế hoạch sprint tiếp theo dựa trên backlog hiện tại và timeline đang có.',
-  'Tìm các task quan trọng đang chưa lên lịch và đề xuất sắp xếp vào tuần này.',
-  'Rà soát goals và đề xuất những thay đổi nhỏ để giảm rủi ro trễ hạn.',
+  'Phân rã backlog hiện tại thành các bước thực thi ưu tiên trong 7 ngày tới.',
+  'Tìm blocker và dependency quan trọng nhất rồi đề xuất task hoặc cập nhật cần làm ngay.',
+  'Rà soát goals hiện tại và đề xuất kế hoạch ngắn gọn để đẩy nhanh tiến độ.',
 ]
 
 const ACTION_LABELS: Record<ProjectAssistantActionType, string> = {
@@ -69,9 +68,13 @@ const ACTION_LABELS: Record<ProjectAssistantActionType, string> = {
 export function GlobalAIAssistant() {
   const selectedProjectId = useUiStore((state) => state.selectedProjectId)
   const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
+  const open = useUiStore((state) => state.aiAssistantOpen)
+  const aiAssistantPromptSeed = useUiStore((state) => state.aiAssistantPromptSeed)
+  const openAIAssistant = useUiStore((state) => state.openAIAssistant)
+  const closeAIAssistant = useUiStore((state) => state.closeAIAssistant)
+  const clearAIAssistantPromptSeed = useUiStore((state) => state.clearAIAssistantPromptSeed)
   const queryClient = useQueryClient()
 
-  const [open, setOpen] = useState(false)
   const [prompt, setPrompt] = useState(PROMPT_SUGGESTIONS[0])
   const [preview, setPreview] = useState<ProjectAssistantPreviewResponse | null>(null)
   const [applyResult, setApplyResult] = useState<ProjectAssistantApplyResponse | null>(null)
@@ -177,6 +180,19 @@ export function GlobalAIAssistant() {
     setAppliedActionIds([])
   }, [projectId])
 
+  useEffect(() => {
+    if (!aiAssistantPromptSeed) {
+      return
+    }
+
+    setPrompt(aiAssistantPromptSeed)
+    setPreview(null)
+    setApplyResult(null)
+    setSelectedActionIds([])
+    setAppliedActionIds([])
+    clearAIAssistantPromptSeed()
+  }, [aiAssistantPromptSeed, clearAIAssistantPromptSeed])
+
   // ── Derived state ──
   const status = statusQuery.data
   const promptLimit = 4000
@@ -247,14 +263,14 @@ export function GlobalAIAssistant() {
           <TooltipTrigger asChild>
             <button
               type="button"
-              onClick={() => setOpen(true)}
+              onClick={() => openAIAssistant()}
               className={cn(
                 'group relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg ring-1 transition-all duration-200 hover:scale-105 active:scale-95',
                 isReady && hasProject
                   ? 'bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.75))] ring-primary/30 hover:shadow-primary/25 hover:shadow-xl'
                   : 'bg-card ring-border hover:bg-muted',
               )}
-              aria-label="Mở AI assistant"
+              aria-label="Mở AI planning assistant"
             >
               {statusQuery.isLoading
                 ? <LoaderCircle className="size-6 animate-spin text-primary" />
@@ -278,45 +294,37 @@ export function GlobalAIAssistant() {
           </TooltipTrigger>
           <TooltipContent side="left">
             {!hasProject
-              ? 'Chọn một project để sử dụng AI assistant'
+              ? 'Chọn một project để dùng AI planning assistant'
               : isReady
-              ? `AI assistant · ${projectName}`
-              : 'AI assistant · Chưa cấu hình'}
+              ? `AI planning assistant · ${projectName}`
+              : 'AI planning assistant · Chưa cấu hình'}
           </TooltipContent>
         </Tooltip>
       </div>
 
       {/* ── Sheet panel ── */}
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={(nextOpen) => { if (!nextOpen) closeAIAssistant() }}>
         <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-3xl">
           {/* Header */}
           <div className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.04),transparent)]">
             <SheetHeader className="gap-4 px-5 py-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={statusTone.badgeVariant}>{statusTone.badgeLabel}</Badge>
-                  {status?.provider ? <Badge variant="outline">{status.provider}</Badge> : null}
-                  {status?.model ? <Badge variant="outline">{status.model}</Badge> : null}
+                  <div className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium', statusTone.pillClassName)}>
+                    {statusTone.icon}
+                    {statusTone.shortLabel}
+                  </div>
                   {projectName && <Badge variant="secondary">{projectName}</Badge>}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => setOpen(false)}
-                >
-                  <X className="size-4" />
-                </Button>
               </div>
 
               <div className="space-y-2">
                 <SheetTitle className="flex items-center gap-2 text-xl">
                   <Bot className="size-5 text-primary" />
-                  Project AI assistant
+                  AI Breakdown & Planning
                 </SheetTitle>
                 <SheetDescription className="max-w-2xl text-sm leading-6">
-                  Preview trước, chọn action hợp lệ, rồi mới apply vào{' '}
-                  {projectName || 'project đang được chọn'}. Mọi thay đổi đi qua service backend hiện có.
+                  Mô tả kết quả bạn muốn đạt được, AI sẽ đề xuất task, lịch và cập nhật phù hợp. Xem kỹ từng action rồi chỉ apply phần bạn thực sự muốn giữ.
                 </SheetDescription>
               </div>
 
@@ -344,7 +352,7 @@ export function GlobalAIAssistant() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <WandSparkles className="size-4 text-primary" />
-                      Tạo preview kế hoạch
+                      Tạo preview breakdown
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -354,7 +362,7 @@ export function GlobalAIAssistant() {
                         id="project-ai-prompt"
                         value={prompt}
                         onChange={(event) => setPrompt(event.target.value)}
-                        placeholder="Ví dụ: Ưu tiên backlog, tạo thêm goal ngắn hạn cho sprint này, và sắp lịch các task quá hạn vào 3 ngày tới."
+                        placeholder="Ví dụ: Phân rã task lớn thành các bước thực thi, tìm blocker chính, và đề xuất lịch làm việc trong tuần này."
                         className="min-h-32 resize-y"
                         maxLength={promptLimit}
                       />
@@ -627,7 +635,7 @@ export function GlobalAIAssistant() {
             <SheetFooter className="border-t border-border/70 bg-background/95 px-5 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
-                  AI chỉ đề xuất plan. Chỉ các action bạn chọn mới được gửi xuống backend để apply.
+                  Bạn kiểm soát hoàn toàn — chỉ những thay đổi bạn chọn mới được áp dụng vào project.
                 </div>
                 <Button
                   type="button"
@@ -681,7 +689,7 @@ function StatusCard({
           <div>
             <p className="font-medium text-foreground">Chưa có project được chọn</p>
             <p className="text-sm text-muted-foreground">
-              Mở một project từ sidebar để sử dụng AI assistant với đầy đủ context.
+              Mở một project từ sidebar để dùng AI planning assistant với đầy đủ context.
             </p>
           </div>
         </CardContent>
@@ -711,7 +719,9 @@ function resolveStatusTone(status?: ProjectAssistantStatus, error?: unknown) {
     return {
       badgeVariant: 'destructive' as const,
       badgeLabel: 'Status error',
-      title: 'Không kiểm tra được trạng thái AI assistant',
+      shortLabel: 'Lỗi kết nối',
+      pillClassName: 'border-destructive/35 bg-destructive/5 text-destructive',
+      title: 'Không kiểm tra được trạng thái AI planning assistant',
       description: error.message,
       icon: <CircleAlert className="size-4 text-destructive" />,
       cardClassName: 'border-destructive/35 bg-destructive/5',
@@ -723,7 +733,9 @@ function resolveStatusTone(status?: ProjectAssistantStatus, error?: unknown) {
     return {
       badgeVariant: 'outline' as const,
       badgeLabel: 'Disabled',
-      title: 'Assistant đang tắt ở backend',
+      shortLabel: 'Đã tắt',
+      pillClassName: 'border-border/60 bg-muted/50 text-muted-foreground',
+      title: 'AI planning assistant đang tắt ở backend',
       description:
         status?.message || 'Bật PROJECT_ASSISTANT_ENABLED và cấu hình Gemini để sử dụng.',
       icon: <CircleDashed className="size-4 text-muted-foreground" />,
@@ -736,7 +748,9 @@ function resolveStatusTone(status?: ProjectAssistantStatus, error?: unknown) {
     return {
       badgeVariant: 'destructive' as const,
       badgeLabel: 'Needs config',
-      title: 'Assistant chưa sẵn sàng',
+      shortLabel: 'Chưa cấu hình',
+      pillClassName: 'border-amber-300/60 bg-amber-50/80 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
+      title: 'AI planning assistant chưa sẵn sàng',
       description:
         status.message || 'Kiểm tra lại PROJECT_ASSISTANT_GOOGLE_* trong env backend.',
       icon: <CircleAlert className="size-4 text-amber-600 dark:text-amber-300" />,
@@ -749,7 +763,9 @@ function resolveStatusTone(status?: ProjectAssistantStatus, error?: unknown) {
   return {
     badgeVariant: 'secondary' as const,
     badgeLabel: 'Ready',
-    title: 'Assistant sẵn sàng tạo plan',
+    shortLabel: 'Sẵn sàng',
+    pillClassName: 'border-emerald-300/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
+    title: 'AI planning assistant sẵn sàng tạo plan',
     description:
       status.message || 'Bạn có thể preview và apply từng action một cách an toàn.',
     icon: <Check className="size-4 text-emerald-600 dark:text-emerald-300" />,

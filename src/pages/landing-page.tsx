@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react'
+﻿import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import {
   Activity,
   ArrowRight,
@@ -402,18 +402,18 @@ function FocusFeatureCard({ module, className }: { module: FocusModule; classNam
 
   return (
     <div className={cn(
-      'focus-module rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_26px_70px_-44px_rgba(15,23,42,0.24)]',
+      'focus-module rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-5 shadow-[0_32px_80px_-44px_rgba(0,0,0,0.5)] backdrop-blur-sm',
       className,
     )}>
-      <div className="flex size-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+      <div className="flex size-12 items-center justify-center rounded-2xl border border-sky-400/20 bg-sky-400/[0.12] text-sky-300">
         <Icon className="size-5" />
       </div>
-      <h3 className="mt-5 text-xl font-semibold tracking-[-0.03em] text-slate-950">{module.title}</h3>
-      <p className="mt-3 text-sm leading-7 text-slate-600">{module.body}</p>
-      <div className="mt-5 space-y-2 text-sm text-slate-700">
+      <h3 className="mt-5 text-xl font-semibold tracking-[-0.03em] text-white">{module.title}</h3>
+      <p className="mt-3 text-sm leading-7 text-slate-300">{module.body}</p>
+      <div className="mt-5 space-y-2 text-sm text-slate-300">
         {module.bullets.map((item) => (
-          <div key={item} className="flex items-start gap-2 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-3">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-600" />
+          <div key={item} className="flex items-start gap-2 rounded-[1rem] border border-white/8 bg-white/[0.04] px-3 py-3">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-400" />
             <span>{item}</span>
           </div>
         ))}
@@ -639,14 +639,14 @@ export function LandingPage() {
             .fromTo('.hero-glow--a', { scale: 0.78, autoAlpha: 0.18 }, { scale: 1.25, autoAlpha: 0.42, duration: 1 }, 0)
             .fromTo('.hero-glow--b', { scale: 0.84, autoAlpha: 0.12 }, { scale: 1.22, autoAlpha: 0.34, duration: 1 }, 0.05)
             .fromTo('.hero-grid', { yPercent: 0 }, { yPercent: -10, duration: 1 }, 0)
-            .fromTo('.hero-card--workspace', { x: 160, y: 120, rotate: 12, autoAlpha: 0, scale: 0.82 }, { x: 0, y: 0, rotate: -8, autoAlpha: 1, scale: 1, duration: 0.3 }, 0.02)
-            .fromTo('.hero-card--views', { x: -180, y: 150, rotate: -14, autoAlpha: 0, scale: 0.8 }, { x: 0, y: 0, rotate: 7, autoAlpha: 1, scale: 1, duration: 0.32 }, 0.06)
-            .fromTo('.hero-card--task', { x: 60, y: 220, rotate: 5, autoAlpha: 0, scale: 0.76 }, { x: 0, y: 0, rotate: 10, autoAlpha: 1, scale: 1, duration: 0.36 }, 0.1)
-            .fromTo('.hero-card--pulse', { x: 220, y: -90, rotate: 16, autoAlpha: 0, scale: 0.78 }, { x: 0, y: 0, rotate: -12, autoAlpha: 1, scale: 1, duration: 0.28 }, 0.14)
-            .to('.hero-card--workspace', { x: -250, y: -58, rotate: -16, scale: 0.84, duration: 0.42 }, 0.54)
-            .to('.hero-card--views', { x: -96, y: 236, rotate: 13, scale: 0.92, duration: 0.42 }, 0.54)
-            .to('.hero-card--task', { x: 194, y: 28, rotate: 15, scale: 1.05, duration: 0.42 }, 0.54)
-            .to('.hero-card--pulse', { x: 258, y: -146, rotate: 20, scale: 0.78, duration: 0.42 }, 0.54)
+            .fromTo('.hero-card--workspace', { x: 80, y: 56, autoAlpha: 0, scale: 0.88 }, { x: 0, y: 0, autoAlpha: 1, scale: 1, duration: 0.36, ease: 'power2.out' }, 0.02)
+            .fromTo('.hero-card--views', { x: -80, y: 68, autoAlpha: 0, scale: 0.86 }, { x: 0, y: 0, autoAlpha: 1, scale: 1, duration: 0.38, ease: 'power2.out' }, 0.06)
+            .fromTo('.hero-card--task', { x: 36, y: 88, autoAlpha: 0, scale: 0.84 }, { x: 0, y: 0, autoAlpha: 1, scale: 1, duration: 0.4, ease: 'power2.out' }, 0.1)
+            .fromTo('.hero-card--pulse', { x: 92, y: -48, autoAlpha: 0, scale: 0.86 }, { x: 0, y: 0, autoAlpha: 1, scale: 1, duration: 0.34, ease: 'power2.out' }, 0.14)
+            .to('.hero-card--workspace', { x: -56, y: -22, rotate: -2, scale: 0.9, autoAlpha: 0.55, duration: 0.5, ease: 'power2.inOut' }, 0.54)
+            .to('.hero-card--views', { x: -20, y: 56, rotate: 1, scale: 0.93, autoAlpha: 0.55, duration: 0.5, ease: 'power2.inOut' }, 0.54)
+            .to('.hero-card--task', { x: 48, y: 12, rotate: 2, scale: 0.97, autoAlpha: 0.55, duration: 0.5, ease: 'power2.inOut' }, 0.54)
+            .to('.hero-card--pulse', { x: 58, y: -36, rotate: -1, scale: 0.9, autoAlpha: 0.55, duration: 0.5, ease: 'power2.inOut' }, 0.54)
         }
 
         const storySection = root.querySelector<HTMLElement>('.system-story')
@@ -1062,14 +1062,19 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="tap-trung" className="focus-section border-b border-white/8 bg-[#f3f7fd] text-slate-950">
-        <div className="mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8 lg:py-20">
+      <section id="tap-trung" className="focus-section relative border-b border-white/8 bg-[#040d1a] text-white">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/4 top-0 h-[40rem] w-[40rem] -translate-x-1/2 rounded-full bg-sky-500/[0.07] blur-3xl" />
+          <div className="absolute right-0 top-1/2 h-[30rem] w-[30rem] -translate-y-1/2 rounded-full bg-emerald-500/[0.05] blur-3xl" />
+          <div className="absolute bottom-0 left-1/2 h-[24rem] w-[48rem] -translate-x-1/2 rounded-full bg-violet-500/[0.04] blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-7xl px-4 py-18 sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-3xl text-center" data-reveal>
-              <SectionPill className="border-slate-200 bg-white text-sky-700">Giữ task làm trung tâm</SectionPill>
-              <h2 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-slate-950 sm:text-5xl">
+              <SectionPill>Giữ task làm trung tâm</SectionPill>
+              <h2 className="mt-6 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
                 Mọi thứ quan trọng đều quay về task và nhịp phối hợp của team.
               </h2>
-              <p className="mt-5 text-base leading-8 text-slate-600">
+              <p className="mt-5 text-base leading-8 text-slate-300">
                 Task drawer là nơi Chronelis gom phần làm việc sâu nhất: comment, notes, lịch, pomodoro, thông báo và quyền thao tác bám đúng dữ liệu thật của hệ thống.
               </p>
           </div>
@@ -1095,12 +1100,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="bat-dau" className="landing-cta relative overflow-hidden bg-[#07111d] px-4 py-22 sm:px-6 lg:px-8">
-        <div className="cta-ring--a pointer-events-none absolute left-1/2 top-1/2 h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/18" />
-        <div className="cta-ring--b pointer-events-none absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/10" />
-        <div className="cta-ring--c pointer-events-none absolute left-1/2 top-1/2 h-[44rem] w-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/6" />
+      <section id="bat-dau" className="landing-cta relative overflow-hidden bg-[#040d1a] px-4 py-22 sm:px-6 lg:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(56,189,248,0.14),transparent_68%)]" />
+        <div className="cta-ring--a pointer-events-none absolute left-1/2 top-1/2 h-[26rem] w-[26rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/22" />
+        <div className="cta-ring--b pointer-events-none absolute left-1/2 top-1/2 h-[38rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/12" />
+        <div className="cta-ring--c pointer-events-none absolute left-1/2 top-1/2 h-[54rem] w-[54rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/6" />
 
-        <div className="cta-copy relative mx-auto max-w-5xl overflow-hidden rounded-[2.25rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-8 shadow-[0_42px_120px_-64px_rgba(56,189,248,0.5)] backdrop-blur-sm sm:p-10 lg:p-14">
+        <div className="cta-copy relative mx-auto max-w-5xl overflow-hidden rounded-[2.25rem] border border-white/12 bg-[linear-gradient(150deg,rgba(56,189,248,0.08),rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-8 shadow-[0_56px_140px_-64px_rgba(56,189,248,0.65)] backdrop-blur-sm sm:p-10 lg:p-14">
           <div className="grid gap-10 lg:grid-cols-[0.68fr_0.32fr] lg:items-end">
             <div>
               <SectionPill className="bg-white/[0.04]">Ready to operate cleaner?</SectionPill>

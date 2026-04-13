@@ -152,12 +152,14 @@ export interface TaskStatus {
 
 export interface Task {
   id: number
+  workspaceId: number
   projectId: number
   goalId?: number
   status: TaskStatus
   title: string
   description?: string
   notesHtml?: string
+  blockerNote?: string
   priority: TaskPriorityType
   taskType?: TaskType
   sourceView?: SourceViewType
@@ -167,9 +169,56 @@ export interface Task {
   estimatedMinutes: number
   boardPosition: number
   isCompleted: boolean
+  blocked?: boolean
+  blockedReason?: string
+  blockedByOpenCount?: number
+  blockingTaskCount?: number
   completedAt?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface TaskDependencyTask {
+  id: number
+  projectId: number
+  goalId?: number
+  title: string
+  statusName: string
+  statusCode: string
+  priority: TaskPriorityType
+  dueDate?: string
+  completed: boolean
+}
+
+export interface TaskDependencyDetails {
+  taskId: number
+  blockerNote?: string
+  blocked: boolean
+  blockedReason?: string
+  blockedByOpenCount: number
+  blockingTaskCount: number
+  blockedByTasks: TaskDependencyTask[]
+  blockingTasks: TaskDependencyTask[]
+}
+
+export interface MyWorkScheduleItem {
+  scheduleId: number
+  taskId: number
+  scheduledStart: string
+  scheduledEnd: string
+  task: Task
+}
+
+export interface MyWorkSummary {
+  assignedCount: number
+  blockedCount: number
+  overdueCount: number
+  dueTodayCount: number
+  highPriorityCount: number
+  upcomingScheduledCount: number
+  assignedTasks: Task[]
+  upcomingSchedules: MyWorkScheduleItem[]
+  generatedAt: string
 }
 
 export interface TaskSchedule {

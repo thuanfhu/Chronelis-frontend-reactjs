@@ -48,6 +48,7 @@ import {
   snapshotProjectTaskQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import type { Task, TaskPriorityType } from '@/types/domain'
+import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 
 type GroupMode = 'none' | 'day' | 'goal'
@@ -248,14 +249,20 @@ export function TodoPage() {
       const nowIso = new Date().toISOString()
       const optimisticTask: Task = {
         id: optimisticTaskId,
+        workspaceId,
         projectId,
         title: newTaskTitle.trim(),
         status: defaultStatus,
         priority: 'MEDIUM',
+        blockerNote: undefined,
         sourceView: 'TODO',
         estimatedMinutes: 0,
         boardPosition: 9999,
         isCompleted: false,
+        blocked: false,
+        blockedReason: undefined,
+        blockedByOpenCount: 0,
+        blockingTaskCount: 0,
         createdBy: {
           userId: currentUser?.userId ?? '',
           email: currentUser?.email ?? '',
@@ -505,6 +512,16 @@ export function TodoPage() {
     if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
 
     navigate(`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/notes`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
+  }
+
+  const openFocusMode = (taskId: number) => {
+    if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
+
+    navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${taskId}`, {
       state: {
         returnTo: `${location.pathname}${location.search}`,
       },
@@ -892,6 +909,12 @@ export function TodoPage() {
 
           openTaskDrawer(selectedTask.id, 'edit')
         }}
+        onFocus={() => {
+          const selectedTask = taskContextMenu?.task
+          if (selectedTask) {
+            openFocusMode(selectedTask.id)
+          }
+        }}
         onDelete={() => {
           const selectedTask = taskContextMenu?.task
           if (selectedTask) {
@@ -979,6 +1002,7 @@ function SortableTodoItem({
             {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
           </p>
         )}
+        <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
       <TodoRowMetaActions
         priority={task.priority}
@@ -1048,6 +1072,7 @@ function TodoItem({
         {task.description && (
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
         )}
+        <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
       <TodoRowMetaActions
         priority={task.priority}

@@ -22,6 +22,8 @@ import { ProfilePage } from '@/features/profile/profile-page'
 import { GoalTasksPage } from '@/features/goals/goal-tasks-page'
 import { AdminDashboardPage } from '@/features/admin/admin-dashboard-page'
 import { AdminShell } from '@/features/admin/layout/admin-shell'
+import { MyWorkPage } from '@/pages/my-work-page'
+import { TaskFocusPage } from '@/features/tasks/task-focus-page'
 
 export function AppRouter() {
   return (
@@ -114,11 +116,13 @@ export function AppRouter() {
         >
           <Route path="/app" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/my-work" element={<MyWorkPage />} />
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/goals/:goalId/tasks" element={<GoalTasksPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />
+          <Route path="/workspaces/:workspaceId/projects/:projectId/focus/:taskId" element={<TaskFocusPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />

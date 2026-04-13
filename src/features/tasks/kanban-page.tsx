@@ -1,6 +1,6 @@
 import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Loader2, GripVertical, Columns3 } from 'lucide-react'
 import {
@@ -47,6 +47,7 @@ import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
+import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import {
@@ -125,6 +126,7 @@ function SortableTaskCard({
           {task.assignee?.firstName ?? 'Unassigned'}
         </span>
       </div>
+      <TaskBlockerBadge task={task} compact className="mt-2" />
     </div>
   )
 }
@@ -204,6 +206,8 @@ function KanbanColumn({
 // ─── Main Kanban Page ───
 
 export function KanbanPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
@@ -297,16 +301,22 @@ export function KanbanPage() {
       if (status) {
         const optimistic: Task = {
           id: -Date.now(),
+          workspaceId,
           projectId,
           title: taskTitle.trim(),
           description: taskDescription.trim() || undefined,
           status,
           priority: taskPriority,
+          blockerNote: undefined,
           goalId: taskGoalId ?? undefined,
           sourceView: 'KANBAN',
           estimatedMinutes: 0,
           boardPosition: 9999,
           isCompleted: false,
+          blocked: false,
+          blockedReason: undefined,
+          blockedByOpenCount: 0,
+          blockingTaskCount: 0,
           createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -402,6 +412,14 @@ export function KanbanPage() {
     const x = Math.min(event.clientX, window.innerWidth - 196)
     const y = Math.min(event.clientY, window.innerHeight - 196)
     setTaskContextMenu({ x, y, task })
+  }
+
+  function openFocusMode(task: Task) {
+    navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${task.id}`, {
+      state: {
+        returnTo: `${location.pathname}${location.search}`,
+      },
+    })
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -660,6 +678,12 @@ export function KanbanPage() {
           const task = taskContextMenu?.task
           if (task) {
             openTaskDrawer(task.id, 'edit')
+          }
+        }}
+        onFocus={() => {
+          const task = taskContextMenu?.task
+          if (task) {
+            openFocusMode(task)
           }
         }}
         onDelete={() => {

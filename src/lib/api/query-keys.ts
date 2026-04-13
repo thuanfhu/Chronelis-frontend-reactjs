@@ -27,6 +27,8 @@ export const queryKeys = {
     byProject: (projectId: number, page: number, size: number) => ['tasks', 'project', projectId, page, size] as const,
     byGoal: (goalId: number, page: number, size: number) => ['tasks', 'goal', goalId, page, size] as const,
     detail: (taskId: number) => ['tasks', 'detail', taskId] as const,
+    dependencies: (taskId: number) => ['tasks', 'dependencies', taskId] as const,
+    myWork: ['tasks', 'my-work'] as const,
   },
   schedules: {
     byTask: (taskId: number) => ['task-schedules', 'task', taskId] as const,

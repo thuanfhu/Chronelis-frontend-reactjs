@@ -399,10 +399,12 @@ export function CalendarPage() {
       const scheduledEnd = toApiLocalDateTime(end)
       const optimisticTask: Task = {
         id: optimisticTaskId,
+        workspaceId,
         projectId,
         goalId: newTaskGoalId ?? undefined,
         status: defaultStatus,
         title: newTaskTitle.trim(),
+        blockerNote: undefined,
         priority: newTaskPriority,
         sourceView: 'CALENDAR',
         createdBy: {
@@ -414,6 +416,10 @@ export function CalendarPage() {
         estimatedMinutes: 0,
         boardPosition: 9999,
         isCompleted: false,
+        blocked: false,
+        blockedReason: undefined,
+        blockedByOpenCount: 0,
+        blockingTaskCount: 0,
         createdAt: nowIso,
         updatedAt: nowIso,
       }
@@ -1093,6 +1099,14 @@ export function CalendarPage() {
             return
           }
           openTaskDrawer(menu.taskId, 'edit')
+        }}
+        onFocus={() => {
+          const menu = taskContextMenu
+          if (!menu) {
+            return
+          }
+
+          navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${menu.taskId}`)
         }}
         onDelete={() => {
           const menu = taskContextMenu
