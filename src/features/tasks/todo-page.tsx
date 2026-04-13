@@ -1,6 +1,8 @@
 import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { TFunction } from 'i18next'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar as CalendarIcon,
@@ -39,7 +41,6 @@ import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import {
   applyTaskCompletion,
   applyTaskReorder,
@@ -49,6 +50,7 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import type { Task, TaskPriorityType } from '@/types/domain'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
+import { TaskCreateDialog } from '@/features/tasks/task-create-dialog'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 
 type GroupMode = 'none' | 'day' | 'goal'
@@ -80,10 +82,18 @@ function parseDateKey(value: string | null): Date | null {
   return new Date(year, month - 1, day)
 }
 
-function formatScheduleTimeRange(startIso: string, endIso: string): string {
+function resolveDateLocale(language: string): string {
+  return language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US'
+}
+
+function formatScheduleTimeRangeForLocale(startIso: string, endIso: string, locale: string): string {
   const start = new Date(startIso)
   const end = new Date(endIso)
-  return `${start.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+  return `${start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`
+}
+
+function formatDisplayDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function isToday(date: Date): boolean {
@@ -107,26 +117,11 @@ function getDayGroupKey(task: Task): string {
   return '__later'
 }
 
-const DAY_GROUP_LABELS: Record<string, string> = {
-  '__overdue': 'Quá hạn',
-  '__today': 'Hôm nay',
-  '__week': 'Tuần này',
-  '__later': 'Sau đó',
-  '__nodate': 'Không có hạn',
-}
-
 const TODO_PRIORITY_BORDER_CLASSNAMES: Record<TaskPriorityType, string> = {
   LOW: 'border-l-4 border-l-emerald-600 dark:border-l-emerald-400',
   MEDIUM: 'border-l-4 border-l-blue-600 dark:border-l-blue-400',
   HIGH: 'border-l-4 border-l-amber-600 dark:border-l-amber-400',
   URGENT: 'border-l-4 border-l-rose-600 dark:border-l-rose-400',
-}
-
-const TODO_PRIORITY_LABELS: Record<TaskPriorityType, string> = {
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  URGENT: 'Urgent',
 }
 
 const TODO_PRIORITY_CHIP_CLASSNAMES: Record<TaskPriorityType, string> = {
@@ -137,6 +132,31 @@ const TODO_PRIORITY_CHIP_CLASSNAMES: Record<TaskPriorityType, string> = {
 }
 
 const DAY_GROUP_ORDER = ['__overdue', '__today', '__week', '__later', '__nodate']
+
+function getDayGroupLabels(t: TFunction): Record<string, string> {
+  return {
+    '__overdue': t('todo.dayGroupOverdue'),
+    '__today': t('todo.dayGroupToday'),
+    '__week': t('todo.dayGroupWeek'),
+    '__later': t('todo.dayGroupLater'),
+    '__nodate': t('todo.dayGroupNoDueDate'),
+  }
+}
+
+function getPriorityLabel(t: TFunction, priority: TaskPriorityType): string {
+  switch (priority) {
+    case 'LOW':
+      return t('task.priorityLow')
+    case 'MEDIUM':
+      return t('task.priorityMedium')
+    case 'HIGH':
+      return t('task.priorityHigh')
+    case 'URGENT':
+      return t('task.priorityUrgent')
+    default:
+      return priority
+  }
+}
 
 function buildDayGroups(tasks: Task[]): Map<string, Task[]> {
   const map = new Map<string, Task[]>()
@@ -149,11 +169,11 @@ function buildDayGroups(tasks: Task[]): Map<string, Task[]> {
   return map
 }
 
-function buildGoalGroups(tasks: Task[], goalTitleById: Map<number, string>): Map<string, { label: string; tasks: Task[] }> {
+function buildGoalGroups(tasks: Task[], resolveLabel: (task: Task) => string): Map<string, { label: string; tasks: Task[] }> {
   const map = new Map<string, { label: string; tasks: Task[] }>()
   for (const task of tasks) {
     const key = task.goalId ? String(task.goalId) : '__nogoal'
-    const label = task.goalId ? goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}` : 'Không có goal'
+    const label = resolveLabel(task)
     if (!map.has(key)) map.set(key, { label, tasks: [] })
     map.get(key)!.tasks.push(task)
   }
@@ -161,6 +181,7 @@ function buildGoalGroups(tasks: Task[], goalTitleById: Map<number, string>): Map
 }
 
 export function TodoPage() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -170,7 +191,6 @@ export function TodoPage() {
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
-  const currentUser = useAuthStore((s) => s.currentUser)
   useProjectRealtime(workspaceId, projectId)
   const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
     workspaceId,
@@ -179,6 +199,7 @@ export function TodoPage() {
   })
 
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
   const [groupMode, setGroupMode] = useState<GroupMode>('none')
   const [goalFilter, setGoalFilter] = useState<GoalFilterValue>('all')
@@ -186,6 +207,8 @@ export function TodoPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
+  const dateLocale = useMemo(() => resolveDateLocale(i18n.resolvedLanguage ?? i18n.language), [i18n.language, i18n.resolvedLanguage])
+  const dayGroupLabels = useMemo(() => getDayGroupLabels(t), [t])
 
   const selectedDateParam = searchParams.get('todoDate')
   const selectedDate = useMemo(() => parseDateKey(selectedDateParam), [selectedDateParam])
@@ -222,89 +245,6 @@ export function TodoPage() {
     enabled: Number.isFinite(projectId) && Boolean(selectedDateKey),
   })
 
-  const createTaskMutation = useMutation({
-    mutationFn: () => {
-      const statuses = statusesQuery.data
-      const defaultStatus = statuses?.[0]
-      if (!defaultStatus) throw new Error('Chưa có cột trạng thái')
-      return taskApi.create({
-        projectId,
-        title: newTaskTitle.trim(),
-        statusId: defaultStatus.id,
-        priority: 'MEDIUM',
-        sourceView: 'TODO',
-      })
-    },
-    onMutate: async () => {
-      const statuses = statusesQuery.data
-      const defaultStatus = statuses?.[0]
-      if (!defaultStatus) {
-        return {}
-      }
-
-      await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
-
-      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
-      const optimisticTaskId = -Date.now()
-      const nowIso = new Date().toISOString()
-      const optimisticTask: Task = {
-        id: optimisticTaskId,
-        workspaceId,
-        projectId,
-        title: newTaskTitle.trim(),
-        status: defaultStatus,
-        priority: 'MEDIUM',
-        blockerNote: undefined,
-        sourceView: 'TODO',
-        estimatedMinutes: 0,
-        boardPosition: 9999,
-        isCompleted: false,
-        blocked: false,
-        blockedReason: undefined,
-        blockedByOpenCount: 0,
-        blockingTaskCount: 0,
-        createdBy: {
-          userId: currentUser?.userId ?? '',
-          email: currentUser?.email ?? '',
-          firstName: currentUser?.firstName ?? '',
-          lastName: currentUser?.lastName ?? '',
-        },
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      }
-
-      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
-
-      return {
-        snapshot,
-        optimisticTaskId,
-      }
-    },
-    onSuccess: (savedTask, _variables, context) => {
-      setNewTaskTitle('')
-
-      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
-        const replacedTasks = tasks.map((task) => (
-          task.id === context?.optimisticTaskId ? savedTask : task
-        ))
-
-        return replacedTasks.some((task) => task.id === savedTask.id)
-          ? replacedTasks
-          : [...replacedTasks, savedTask]
-      })
-
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 500) })
-      toast.success('Tạo task thành công')
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context?.snapshot) {
-        restoreProjectTaskQueries(queryClient, context.snapshot)
-      }
-
-      toast.error('Tạo task thất bại', { description: error.message })
-    },
-  })
-
   const toggleCompletionMutation = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: number; isCompleted: boolean }) =>
       taskApi.updateCompletion(taskId, isCompleted),
@@ -326,7 +266,7 @@ export function TodoPage() {
       if (context?.snapshot) {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
-      toast.error('Cập nhật thất bại', { description: error.message })
+      toast.error(t('task.updateFailed'), { description: error.message })
     },
     onSuccess: (_updatedTask, variables) => {
       if (variables.isCompleted) {
@@ -359,7 +299,7 @@ export function TodoPage() {
       if (context?.snapshot) {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
-      toast.error('Sắp xếp task thất bại', { description: error.message })
+      toast.error(t('todo.reorderFailed'), { description: error.message })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
@@ -378,7 +318,7 @@ export function TodoPage() {
     if (!over || active.id === over.id) return
 
     if (!canManageProject) {
-      toast.error('Bạn không có quyền sắp xếp task trong project này')
+      toast.error(t('todo.noReorderPermission'))
       return
     }
 
@@ -470,16 +410,24 @@ export function TodoPage() {
   const pendingTaskIds = pendingTasks.map((t) => `todo-${t.id}`)
 
   const dayGroups = groupMode === 'day' ? buildDayGroups(pendingTasks) : null
-  const goalGroups = groupMode === 'goal' ? buildGoalGroups(pendingTasks, goalTitleById) : null
+  const goalGroups = groupMode === 'goal'
+    ? buildGoalGroups(pendingTasks, (task) => {
+      if (task.goalId) {
+        return goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })
+      }
+
+      return t('task.goalNoneOption')
+    })
+    : null
 
   const selectedDateLabel = selectedDate
-    ? selectedDate.toLocaleDateString('vi-VN', {
+    ? selectedDate.toLocaleDateString(dateLocale, {
       weekday: 'short',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     })
-    : 'Chọn ngày'
+    : t('todo.selectDate')
 
   const setTodoDateFilter = (date: Date | undefined) => {
     const nextParams = new URLSearchParams(searchParams)
@@ -530,7 +478,7 @@ export function TodoPage() {
 
   const handleToggleCompletion = (task: Task, isCompleted: boolean) => {
     if (!canManageTask(task.goalId)) {
-      toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+      toast.error(t('todo.noManagePermission'))
       return
     }
 
@@ -552,8 +500,8 @@ export function TodoPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="To Do"
-        description="Quản lý task theo danh sách — kéo thả để sắp xếp lại"
+        title={t('todo.title')}
+        description={t('todo.pageDescription')}
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -566,9 +514,9 @@ export function TodoPage() {
               className="h-7 px-3 text-xs"
               onClick={() => setGroupMode(mode)}
             >
-              {mode === 'none' && 'Tất cả'}
-              {mode === 'day' && <><CalendarIcon className="mr-1 size-3" />Theo ngày</>}
-              {mode === 'goal' && <><Target className="mr-1 size-3" />Theo goal</>}
+              {mode === 'none' && t('common.all')}
+              {mode === 'day' && <><CalendarIcon className="mr-1 size-3" />{t('todo.groupDay')}</>}
+              {mode === 'goal' && <><Target className="mr-1 size-3" />{t('todo.groupGoal')}</>}
             </Button>
           ))}
         </div>
@@ -576,11 +524,11 @@ export function TodoPage() {
         <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
           <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
             <SelectTrigger className="h-7 w-full min-w-38 text-xs sm:w-40">
-              <SelectValue placeholder="Goal" />
+              <SelectValue placeholder={t('task.goal')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả goal</SelectItem>
-              <SelectItem value="__nogoal">Không có goal</SelectItem>
+              <SelectItem value="all">{t('todo.allGoals')}</SelectItem>
+              <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
               {(goalsQuery.data?.content ?? []).map((goal) => (
                 <SelectItem key={goal.id} value={String(goal.id)}>
                   <span className="block max-w-60 truncate" title={goal.title}>{goal.title}</span>
@@ -591,25 +539,25 @@ export function TodoPage() {
 
           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
             <SelectTrigger className="h-7 w-full min-w-31 text-xs sm:w-33">
-              <SelectValue placeholder="Ưu tiên" />
+              <SelectValue placeholder={t('task.priority')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">
                 <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
-                  All Priorities
+                  {t('todo.allPriorities')}
                 </span>
               </SelectItem>
               <SelectItem value="LOW">
-                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">Low</span>
+                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">{getPriorityLabel(t, 'LOW')}</span>
               </SelectItem>
               <SelectItem value="MEDIUM">
-                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">Medium</span>
+                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">{getPriorityLabel(t, 'MEDIUM')}</span>
               </SelectItem>
               <SelectItem value="HIGH">
-                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">High</span>
+                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">{getPriorityLabel(t, 'HIGH')}</span>
               </SelectItem>
               <SelectItem value="URGENT">
-                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">Urgent</span>
+                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">{getPriorityLabel(t, 'URGENT')}</span>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -639,7 +587,7 @@ export function TodoPage() {
           {isDateFiltered ? (
             <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={clearTodoDateFilter}>
               <X className="size-3" />
-              Bỏ ngày
+              {t('todo.clearDate')}
             </Button>
           ) : null}
         </div>
@@ -654,22 +602,41 @@ export function TodoPage() {
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) createTaskMutation.mutate()
+                if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
               }}
-              placeholder={canManageProject ? 'Thêm task mới...' : 'Bạn không có quyền tạo task'}
+              placeholder={canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')}
               disabled={!canManageProject}
               className="pl-9"
             />
           </div>
           <Button
-            onClick={() => createTaskMutation.mutate()}
-            disabled={createTaskMutation.isPending || !newTaskTitle.trim() || !canManageProject}
+            onClick={() => setTaskDialogOpen(true)}
+            disabled={!newTaskTitle.trim() || !canManageProject}
             size="sm"
           >
-            {createTaskMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Thêm'}
+            {t('todo.createDetailed')}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground">
+          {t('todo.quickCreateHint')}
+        </p>
       </div>
+
+      <TaskCreateDialog
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        workspaceId={workspaceId}
+        projectId={projectId}
+        title={t('todo.createFromTodoTitle')}
+        description={t('todo.createFromTodoDescription')}
+        submitLabel={t('task.createSubmit')}
+        defaultSourceView="TODO"
+        defaultStatusId={statusesQuery.data?.[0]?.id ?? null}
+        initialValues={{ title: newTaskTitle }}
+        onCreated={() => {
+          setNewTaskTitle('')
+        }}
+      />
 
       {/* Pending tasks */}
       {isDateFiltered ? (
@@ -677,15 +644,15 @@ export function TodoPage() {
           <Card className="border-dashed">
             <CardContent className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang tải task theo ngày...
+              {t('todo.loadingByDate')}
             </CardContent>
           </Card>
         ) : dateFilteredPendingEntries.length === 0 && dateFilteredCompletedEntries.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <CalendarIcon className="mb-3 size-10 text-muted-foreground/30" />
-              <p className="text-sm font-medium">Không có task cho {selectedDateLabel}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Thử chọn ngày khác hoặc bỏ bộ lọc ngày.</p>
+              <p className="text-sm font-medium">{t('todo.noTasksForDate', { date: selectedDateLabel })}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('todo.tryAnotherDate')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -700,7 +667,7 @@ export function TodoPage() {
                 onPomodoro={() => openTaskPomodoro(entry.task.id)}
                 onNotebook={() => openTaskNotebook(entry.task.id)}
                 scheduleLabel={entry.scheduleId > 0
-                  ? formatScheduleTimeRange(entry.scheduledStart, entry.scheduledEnd)
+                  ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
                   : undefined}
               />
             ))}
@@ -710,9 +677,9 @@ export function TodoPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ListTodo className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">{hasActiveFilters ? 'Không có task phù hợp bộ lọc' : 'Chưa có task nào'}</p>
+            <p className="text-sm font-medium">{hasActiveFilters ? t('todo.noMatchingTasks') : t('todo.noTasksYet')}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {hasActiveFilters ? 'Thử đổi bộ lọc goal hoặc mức ưu tiên.' : 'Thêm task đầu tiên ở phía trên'}
+              {hasActiveFilters ? t('todo.changeFiltersHint') : t('todo.addFirstTaskHint')}
             </p>
           </CardContent>
         </Card>
@@ -724,7 +691,7 @@ export function TodoPage() {
             return (
               <div key={key}>
                 <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {DAY_GROUP_LABELS[key]} ({tasks.length})
+                  {dayGroupLabels[key]} ({tasks.length})
                 </h3>
                 <div className="space-y-1">
                   {tasks.map((task) => (
@@ -835,7 +802,7 @@ export function TodoPage() {
             className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronDown className={cn('size-4 transition-transform', !showCompleted && '-rotate-90')} />
-            Đã hoàn thành ({isDateFiltered ? dateFilteredCompletedEntries.length : completedTasks.length})
+            {t('todo.completedSection', { count: isDateFiltered ? dateFilteredCompletedEntries.length : completedTasks.length })}
           </button>
           <AnimatePresence initial={false}>
             {showCompleted && (
@@ -857,7 +824,7 @@ export function TodoPage() {
                       onPomodoro={() => openTaskPomodoro(entry.task.id)}
                       onNotebook={() => openTaskNotebook(entry.task.id)}
                       scheduleLabel={entry.scheduleId > 0
-                        ? formatScheduleTimeRange(entry.scheduledStart, entry.scheduledEnd)
+                        ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
                         : undefined}
                     />
                   ))
@@ -890,7 +857,7 @@ export function TodoPage() {
           }
 
           if (!canManageTask(selectedTask.goalId)) {
-            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            toast.error(t('todo.noManagePermission'))
             return
           }
 
@@ -903,7 +870,7 @@ export function TodoPage() {
           }
 
           if (!canManageTask(selectedTask.goalId)) {
-            toast.error('Bạn không có quyền chỉnh sửa task trong project này')
+            toast.error(t('todo.noManagePermission'))
             return
           }
 
@@ -943,10 +910,12 @@ function SortableTodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
+  const { i18n } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `todo-${task.id}`,
     data: { type: 'task', task },
   })
+  const dateLocale = resolveDateLocale(i18n.resolvedLanguage ?? i18n.language)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -999,7 +968,7 @@ function SortableTodoItem({
         )}
         {task.dueDate && (
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            {formatDisplayDate(task.dueDate, dateLocale)}
           </p>
         )}
         <TaskBlockerBadge task={task} compact className="mt-2" />
@@ -1031,6 +1000,9 @@ function TodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
+  const { i18n } = useTranslation()
+  const dateLocale = resolveDateLocale(i18n.resolvedLanguage ?? i18n.language)
+
   return (
     <div
       className={cn(
@@ -1066,7 +1038,7 @@ function TodoItem({
         )}
         {task.dueDate && (
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            {formatDisplayDate(task.dueDate, dateLocale)}
           </p>
         )}
         {task.description && (
@@ -1095,22 +1067,25 @@ function TodoRowMetaActions({
   onPomodoro: () => void
   onNotebook: () => void
 }) {
+  const { t } = useTranslation()
+  const resolvedAssigneeName = assigneeName ?? t('task.assigneeNone')
+
   return (
     <div className="flex shrink-0 items-center gap-1.5 sm:grid sm:grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] sm:items-center sm:gap-2">
       <span className={cn(
         'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
         TODO_PRIORITY_CHIP_CLASSNAMES[priority],
       )}>
-        {TODO_PRIORITY_LABELS[priority]}
+        {getPriorityLabel(t, priority)}
       </span>
       <span
         className={cn(
           'hidden truncate text-right text-[10px] sm:block',
           assigneeName ? 'text-muted-foreground' : 'text-muted-foreground/70',
         )}
-        title={assigneeName ?? 'Chưa gán'}
+        title={resolvedAssigneeName}
       >
-        {assigneeName ?? 'Chưa gán'}
+        {resolvedAssigneeName}
       </span>
       <button
         type="button"
@@ -1119,7 +1094,7 @@ function TodoRowMetaActions({
           event.stopPropagation()
           onNotebook()
         }}
-        aria-label="Mở ghi chú task"
+        aria-label={t('task.openNotesButton')}
       >
         <NotebookText className="size-3.5" />
       </button>
@@ -1130,7 +1105,7 @@ function TodoRowMetaActions({
           event.stopPropagation()
           onPomodoro()
         }}
-        aria-label="Mở Pomodoro"
+        aria-label={t('task.pomodoroTitle')}
       >
         <Timer className="size-3.5" />
       </button>

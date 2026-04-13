@@ -1,11 +1,13 @@
 import { useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useRealtimeConnection, useRealtimeSubscription } from '@/lib/websocket/use-realtime'
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   useRealtimeConnection()
@@ -16,12 +18,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       if (parsed?.eventType === 'notification.created') {
         queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount })
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
-        toast.info('Thong bao moi', {
-          description: typeof parsed.data === 'object' ? 'Ban co cap nhat moi' : undefined,
+        toast.info(t('notification.newTitle'), {
+          description:
+            typeof parsed.data === 'object' ? t('notification.newDescription') : undefined,
         })
       }
     },
-    [queryClient],
+    [queryClient, t],
   )
 
   const handleUnreadCount = useCallback(
@@ -35,9 +38,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const parsed = tryParse(rawBody)
     const firstError = parsed?.errors?.[0]
     if (firstError?.message) {
-      toast.error('Realtime error', { description: firstError.message })
+      toast.error(t('notification.realtimeErrorTitle'), { description: firstError.message })
     }
-  }, [])
+  }, [t])
 
   useRealtimeSubscription('/client/private/notifications', handleNotification)
   useRealtimeSubscription('/client/private/notifications/unread-count', handleUnreadCount)

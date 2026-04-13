@@ -3,6 +3,7 @@ import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plu
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -34,9 +35,11 @@ import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
 import { isAdminUser } from '@/lib/auth/role-utils'
 import { cn } from '@/lib/utils/cn'
+import { LanguageSwitcher } from '@/components/shared/language-switcher'
 
 export function AppTopbar() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const params = useParams()
   const parsedWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
   const workspaceIdFromRoute = Number.isFinite(parsedWorkspaceId) ? parsedWorkspaceId : undefined
@@ -78,13 +81,13 @@ export function AppTopbar() {
       setCreateName('')
       setCreateOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success('Tạo workspace thành công')
+      toast.success(t('common.success'))
       setSelectedWorkspaceId(created.id)
       setSelectedProjectId(null)
       navigate(`/workspaces/${created.id}`)
     },
     onError: (error: Error) => {
-      toast.error('Tạo workspace thất bại', { description: error.message })
+      toast.error(t('common.error'), { description: error.message })
     },
   })
 
@@ -97,10 +100,10 @@ export function AppTopbar() {
       setEditOpen(false)
       setEditWsId(null)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success('Đổi tên workspace thành công')
+      toast.success(t('common.success'))
     },
     onError: (error: Error) => {
-      toast.error('Đổi tên thất bại', { description: error.message })
+      toast.error(t('common.error'), { description: error.message })
     },
   })
 
@@ -146,7 +149,7 @@ export function AppTopbar() {
           className="hidden items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75 sm:flex"
         >
           <Search className="size-3.5" />
-          <span>Tìm kiếm...</span>
+          <span>{t('common.searchPlaceholder')}</span>
           <kbd className="ml-4 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
         </button>
       </div>
@@ -161,7 +164,7 @@ export function AppTopbar() {
                 {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
               </div>
               <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
-                {currentWorkspace?.name ?? (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : 'Chọn workspace')}
+                {currentWorkspace?.name ?? (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : t('workspace.title'))}
               </span>
               <ChevronsUpDown className="size-3 text-muted-foreground" />
             </button>
@@ -186,7 +189,7 @@ export function AppTopbar() {
                     e.stopPropagation()
                     openEdit(ws.id, ws.name)
                   }}
-                  title="Đổi tên"
+                  title={t('common.edit')}
                 >
                   <Pencil className="size-3 text-muted-foreground" />
                 </button>
@@ -198,7 +201,7 @@ export function AppTopbar() {
               className="text-primary focus:text-primary"
             >
               <Plus className="mr-2 size-4" />
-              Tạo workspace mới
+              {t('workspace.create')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -213,8 +216,11 @@ export function AppTopbar() {
               <Moon className="hidden size-4 icon-hover-rotate dark:block" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}</TooltipContent>
+          <TooltipContent>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
         </Tooltip>
+
+        {/* Language toggle */}
+        <LanguageSwitcher />
 
         {/* Notifications */}
         <Tooltip>
@@ -237,7 +243,7 @@ export function AppTopbar() {
               )}
             </Link>
           </TooltipTrigger>
-          <TooltipContent>{unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Thông báo'}</TooltipContent>
+          <TooltipContent>{unreadCount > 0 ? `${unreadCount} ${t('notification.title').toLowerCase()}` : t('notification.title')}</TooltipContent>
         </Tooltip>
 
         <Separator orientation="vertical" className="mx-1 h-6" />
@@ -265,7 +271,7 @@ export function AppTopbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/profile')}>
               <User className="mr-2 size-4" />
-              Hồ sơ cá nhân
+              {t('profile.title')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/dashboard')}>
               <User className="mr-2 size-4" />
@@ -283,7 +289,7 @@ export function AppTopbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-4" />
-              Đăng xuất
+              {t('common.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -294,28 +300,28 @@ export function AppTopbar() {
     <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setCreateName('') }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tạo workspace mới</DialogTitle>
-          <DialogDescription>Workspace là không gian chứa các project và thành viên của bạn.</DialogDescription>
+          <DialogTitle>{t('workspace.create')}</DialogTitle>
+          <DialogDescription>{t('workspace.title')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="create-ws-name">Tên workspace</Label>
+          <Label htmlFor="create-ws-name">{t('workspace.title')}</Label>
           <Input
             id="create-ws-name"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
-            placeholder="Ví dụ: Team Product"
+            placeholder="e.g. Team Product"
             onKeyDown={(e) => { if (e.key === 'Enter' && createName.trim()) createMutation.mutate(createName.trim()) }}
             autoFocus
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setCreateOpen(false)}>Hủy</Button>
+          <Button variant="outline" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
           <Button
             onClick={() => createMutation.mutate(createName.trim())}
             disabled={createMutation.isPending || !createName.trim()}
           >
             {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Tạo
+            {t('common.create')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -331,11 +337,11 @@ export function AppTopbar() {
     }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Đổi tên workspace</DialogTitle>
-          <DialogDescription>Nhập tên mới cho workspace này.</DialogDescription>
+          <DialogTitle>{t('common.edit')} workspace</DialogTitle>
+          <DialogDescription>{t('workspace.title')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="edit-ws-name">Tên workspace</Label>
+          <Label htmlFor="edit-ws-name">{t('workspace.title')}</Label>
           <Input
             id="edit-ws-name"
             value={editName}
@@ -349,13 +355,13 @@ export function AppTopbar() {
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setEditOpen(false)}>Hủy</Button>
+          <Button variant="outline" onClick={() => setEditOpen(false)}>{t('common.cancel')}</Button>
           <Button
             onClick={() => editMutation.mutate(editName.trim())}
             disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
           >
             {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Lưu
+            {t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -364,9 +370,9 @@ export function AppTopbar() {
     <ConfirmModal
       open={logoutConfirmOpen}
       onOpenChange={setLogoutConfirmOpen}
-      title="Xác nhận đăng xuất"
-      description="Bạn có chắc chắn muốn đăng xuất khỏi Chronelis không?"
-      confirmText="Đăng xuất"
+      title={t('common.confirm')}
+      description={t('common.confirm')}
+      confirmText={t('common.logout')}
       confirmVariant="destructive"
       onConfirm={handleLogout}
     />

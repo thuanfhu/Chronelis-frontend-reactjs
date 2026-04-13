@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +22,7 @@ const statusBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = 
 }
 
 export function ProjectOverviewPage() {
+  const { t } = useTranslation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
@@ -58,8 +60,8 @@ export function ProjectOverviewPage() {
   if (!projectQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Project không tồn tại.</p>
-        <Link to={`/workspaces/${workspaceId}`} className="mt-2 text-sm text-primary hover:underline">Quay lại workspace</Link>
+        <p className="text-sm text-muted-foreground">{t('project.notFound')}</p>
+        <Link to={`/workspaces/${workspaceId}`} className="mt-2 text-sm text-primary hover:underline">{t('project.backToWorkspace')}</Link>
       </div>
     )
   }
@@ -71,26 +73,26 @@ export function ProjectOverviewPage() {
   const completedTasks = tasks.filter((t) => t.isCompleted).length
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
   const base = `/workspaces/${workspaceId}/projects/${projectId}`
-
+  const creatorName = `${project.createdBy.firstName} ${project.createdBy.lastName}`
   const quickLinks = [
-    { to: `${base}/kanban`, icon: Columns3, label: 'Kanban Board', desc: 'Quản lý task theo cột trạng thái' },
-    { to: `${base}/goals`, icon: Target, label: 'Goals', desc: 'Mục tiêu ngắn hạn và dài hạn' },
-    { to: `${base}/calendar`, icon: CalendarDays, label: 'Lịch', desc: 'Lịch task schedule theo ngày' },
-    { to: `${base}/activity`, icon: Activity, label: 'Hoạt động', desc: 'Lịch sử hành động trong project' },
+    { to: `${base}/kanban`, icon: Columns3, label: t('nav.kanban'), desc: t('project.quickLinkKanbanDescription') },
+    { to: `${base}/goals`, icon: Target, label: t('nav.goals'), desc: t('project.quickLinkGoalsDescription') },
+    { to: `${base}/calendar`, icon: CalendarDays, label: t('nav.calendar'), desc: t('project.quickLinkCalendarDescription') },
+    { to: `${base}/activity`, icon: Activity, label: t('nav.activity'), desc: t('project.quickLinkActivityDescription') },
   ]
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={project.name}
-        description={project.description || `Tạo bởi ${project.createdBy.firstName} ${project.createdBy.lastName}`}
+        description={project.description || t('project.createdBy', { name: creatorName })}
         actions={<ProjectNavTabs workspaceId={workspaceId} projectId={projectId} />}
       />
 
       <div className="flex items-center gap-3">
-        <Badge variant={statusBadgeVariant[project.status] ?? 'outline'}>{project.status}</Badge>
+        <Badge variant={statusBadgeVariant[project.status] ?? 'outline'}>{t(`project.status.${project.status}`, { defaultValue: project.status })}</Badge>
         <span className="text-xs text-muted-foreground">
-          Tạo bởi {project.createdBy.firstName} {project.createdBy.lastName}
+          {t('project.createdBy', { name: creatorName })}
         </span>
       </div>
 
@@ -103,7 +105,7 @@ export function ProjectOverviewPage() {
                 <Columns3 className="size-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Tổng tasks</p>
+                <p className="text-xs text-muted-foreground">{t('project.totalTasks')}</p>
                 <p className="text-xl font-bold">{tasks.length}</p>
               </div>
             </div>
@@ -117,7 +119,7 @@ export function ProjectOverviewPage() {
                 <CheckCircle2 className="size-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Hoàn thành</p>
+                <p className="text-xs text-muted-foreground">{t('project.completedTasks')}</p>
                 <p className="text-xl font-bold">{completedTasks}</p>
               </div>
             </div>
@@ -131,7 +133,7 @@ export function ProjectOverviewPage() {
                 <Columns3 className="size-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Cột kanban</p>
+                <p className="text-xs text-muted-foreground">{t('project.kanbanColumns')}</p>
                 <p className="text-xl font-bold">{statuses.length}</p>
               </div>
             </div>
@@ -145,7 +147,7 @@ export function ProjectOverviewPage() {
                 <Target className="size-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Goals</p>
+                <p className="text-xs text-muted-foreground">{t('goals.title')}</p>
                 <p className="text-xl font-bold">{goals.length}</p>
               </div>
             </div>
@@ -157,19 +159,19 @@ export function ProjectOverviewPage() {
       <Card>
         <CardContent className="p-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium">Tiến độ dự án</p>
+            <p className="text-sm font-medium">{t('project.progressLabel')}</p>
             <p className="text-sm font-semibold text-primary">{completionRate}%</p>
           </div>
           <Progress value={completionRate} className="h-2" />
           <p className="mt-2 text-xs text-muted-foreground">
-            {completedTasks} / {tasks.length} tasks hoàn thành
+            {t('project.progressSummary', { completed: completedTasks, total: tasks.length })}
           </p>
         </CardContent>
       </Card>
 
       {/* Quick links */}
       <div>
-        <h3 className="mb-3 text-sm font-medium">Chuyển nhanh</h3>
+        <h3 className="mb-3 text-sm font-medium">{t('project.quickLinksTitle')}</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {quickLinks.map((link) => (
             <Link key={link.to} to={link.to}>
@@ -194,7 +196,7 @@ export function ProjectOverviewPage() {
       {statuses.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Phân bổ theo cột</CardTitle>
+            <CardTitle className="text-sm">{t('project.columnDistribution')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -205,7 +207,7 @@ export function ProjectOverviewPage() {
                   <div key={status.id} className="flex items-center gap-3">
                     <span className="w-28 truncate text-sm">{status.name}</span>
                     <Progress value={pct} className="h-1.5 flex-1" />
-                    <span className="w-12 text-right text-xs text-muted-foreground">{count} tasks</span>
+                    <span className="w-16 text-right text-xs text-muted-foreground">{t('project.taskCount', { count })}</span>
                   </div>
                 )
               })}
@@ -218,15 +220,16 @@ export function ProjectOverviewPage() {
 }
 
 function ProjectNavTabs({ workspaceId, projectId }: { workspaceId: number; projectId: number }) {
+  const { t } = useTranslation()
   const location = useLocation()
   const base = `/workspaces/${workspaceId}/projects/${projectId}`
 
   const tabs = [
-    { value: 'overview', to: base, label: 'Tổng quan' },
-    { value: 'kanban', to: `${base}/kanban`, label: 'Kanban' },
-    { value: 'goals', to: `${base}/goals`, label: 'Goals' },
-    { value: 'calendar', to: `${base}/calendar`, label: 'Lịch' },
-    { value: 'activity', to: `${base}/activity`, label: 'Hoạt động' },
+    { value: 'overview', to: base, label: t('nav.overview') },
+    { value: 'kanban', to: `${base}/kanban`, label: t('nav.kanban') },
+    { value: 'goals', to: `${base}/goals`, label: t('nav.goals') },
+    { value: 'calendar', to: `${base}/calendar`, label: t('nav.calendar') },
+    { value: 'activity', to: `${base}/activity`, label: t('nav.activity') },
   ]
 
   const current = tabs.find((t) => t.to === location.pathname)?.value ?? 'overview'

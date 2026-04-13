@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { Activity } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,6 +28,7 @@ function getActionVariant(action: string): 'default' | 'secondary' | 'outline' |
 }
 
 export function ActivityLogPage() {
+  const { t } = useTranslation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
@@ -51,14 +53,14 @@ export function ActivityLogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Hoạt động" description="Lịch sử hành động trong project" />
+      <PageHeader title={t('activity.title')} description={t('activity.description')} />
 
       {logs.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Activity className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">Chưa có hoạt động nào</p>
-            <p className="mt-1 text-xs text-muted-foreground">Khi có hành động mới, chúng sẽ hiển thị ở đây</p>
+            <p className="text-sm font-medium">{t('activity.empty')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('activity.emptyDescription')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -66,7 +68,7 @@ export function ActivityLogPage() {
           {logs.map((log) => (
             <div key={log.id} className="relative pb-6 pl-6 last:pb-0">
               {/* Timeline dot */}
-              <div className="absolute -left-[9px] top-0.5 size-4 rounded-full border-2 border-background bg-primary/60" />
+              <div className="absolute -left-2.25 top-0.5 size-4 rounded-full border-2 border-background bg-primary/60" />
 
               <div className="flex gap-3">
                 <Avatar className="mt-0.5 size-8 shrink-0">

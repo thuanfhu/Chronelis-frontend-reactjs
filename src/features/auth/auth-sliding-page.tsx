@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -81,8 +82,8 @@ function resolvePasswordStrength(password: string): PasswordStrengthResult {
     return {
       level: 'weak',
       score,
-      label: 'Yếu',
-      helper: 'Cần thêm độ dài và đa dạng ký tự',
+      label: 'auth.strengthWeak',
+      helper: 'auth.strengthWeakHelper',
     }
   }
 
@@ -90,8 +91,8 @@ function resolvePasswordStrength(password: string): PasswordStrengthResult {
     return {
       level: 'fair',
       score,
-      label: 'Tạm ổn',
-      helper: 'Nên thêm chữ hoa, số và ký tự đặc biệt',
+      label: 'auth.strengthFair',
+      helper: 'auth.strengthFairHelper',
     }
   }
 
@@ -99,8 +100,8 @@ function resolvePasswordStrength(password: string): PasswordStrengthResult {
     return {
       level: 'good',
       score,
-      label: 'Khá',
-      helper: 'Thêm 1-2 tiêu chí nữa để mạnh hơn',
+      label: 'auth.strengthGood',
+      helper: 'auth.strengthGoodHelper',
     }
   }
 
@@ -108,16 +109,16 @@ function resolvePasswordStrength(password: string): PasswordStrengthResult {
     return {
       level: 'strong',
       score,
-      label: 'Mạnh',
-      helper: 'Đã gần đạt chuẩn bảo mật cao',
+      label: 'auth.strengthStrong',
+      helper: 'auth.strengthStrongHelper',
     }
   }
 
   return {
     level: 'very-strong',
     score,
-    label: 'Rất mạnh',
-    helper: 'Mật khẩu đáp ứng đầy đủ tiêu chí',
+    label: 'auth.strengthVeryStrong',
+    helper: 'auth.strengthVeryStrongHelper',
   }
 }
 
@@ -164,6 +165,7 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
 }
 
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
@@ -255,10 +257,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     mutationFn: (payload: ForgotFormValues) => authApi.forgotPassword(payload.email),
     onSuccess: () => {
       setForgotResendCountdown(RESEND_COOLDOWN_SECONDS)
-      toast.success('Đã gửi email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+      toast.success(t('auth.forgotEmailSentTitle'), { description: t('auth.forgotEmailSentDesc') })
     },
     onError: (error: Error) => {
-      toast.error('Gửi email thất bại', { description: error.message })
+      toast.error(t('auth.forgotEmailFailTitle'), { description: error.message })
     },
   })
 
@@ -266,10 +268,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     mutationFn: (email: string) => authApi.resendVerify(email),
     onSuccess: () => {
       setSignUpResendCountdown(RESEND_COOLDOWN_SECONDS)
-      toast.success('Đã gửi lại email xác thực', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+      toast.success(t('auth.resendVerifySentTitle'), { description: t('auth.resendVerifySentDesc') })
     },
     onError: (error: Error) => {
-      toast.error('Gửi lại email xác thực thất bại', { description: error.message })
+      toast.error(t('auth.resendVerifyFailTitle'), { description: error.message })
     },
   })
 
@@ -277,10 +279,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     mutationFn: (email: string) => authApi.forgotPassword(email),
     onSuccess: () => {
       setForgotResendCountdown(RESEND_COOLDOWN_SECONDS)
-      toast.success('Đã gửi lại email đặt lại mật khẩu', { description: 'Vui lòng kiểm tra hộp thư của bạn.' })
+      toast.success(t('auth.resendForgotSentTitle'), { description: t('auth.resendForgotSentDesc') })
     },
     onError: (error: Error) => {
-      toast.error('Gửi lại email thất bại', { description: error.message })
+      toast.error(t('auth.resendForgotFailTitle'), { description: error.message })
     },
   })
 
@@ -300,11 +302,11 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
         accessToken: data.accessToken,
         currentUser: data.userSecured,
       })
-      toast.success('Đăng nhập thành công')
+      toast.success(t('auth.loginSuccessTitle'))
       navigate('/dashboard', { replace: true })
     },
     onError: (error: Error) => {
-      toast.error('Đăng nhập thất bại', { description: error.message })
+      toast.error(t('auth.loginFailTitle'), { description: error.message })
     },
   })
 
@@ -312,10 +314,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     mutationFn: (values: RegisterPayload) => authApi.register(values),
     onSuccess: () => {
       setSignUpResendCountdown(RESEND_COOLDOWN_SECONDS)
-      toast.success('Đăng ký thành công', { description: 'Vui lòng kiểm tra email để xác thực tài khoản.' })
+      toast.success(t('auth.registerSuccessTitle'), { description: t('auth.registerSuccessDesc') })
     },
     onError: (error: Error) => {
-      toast.error('Đăng ký thất bại', { description: error.message })
+      toast.error(t('auth.registerFailTitle'), { description: error.message })
     },
   })
 
@@ -329,33 +331,33 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     ? {
         key: 'forgot-left',
         showBrand: true,
-        title: 'Cần lấy lại mật khẩu?',
-        description: 'Nhập email bạn đã dùng đăng ký, Chronelis sẽ gửi liên kết đặt lại mật khẩu đến hộp thư ngay lập tức.',
-        actionLabel: 'Đăng ký',
+        title: t('auth.panelForgotLeftTitle'),
+        description: t('auth.panelForgotLeftDesc'),
+        actionLabel: t('auth.switchSignUp'),
         onAction: () => switchMode('sign-up'),
       }
     : {
         key: 'welcome-left',
         showBrand: true,
-        title: 'Bạn mới đến Chronelis?',
-        description: 'Tạo tài khoản để bắt đầu quản lý workspace, theo dõi tiến độ và cộng tác realtime cùng đội nhóm.',
-        actionLabel: 'Đăng ký',
+        title: t('auth.panelWelcomeTitle'),
+        description: t('auth.panelWelcomeDesc'),
+        actionLabel: t('auth.switchSignUp'),
         onAction: () => switchMode('sign-up'),
       }
 
   const rightPanelCopy: PanelCopy = mode === 'forgot-password'
     ? {
         key: 'forgot-right',
-        title: 'Đã nhớ mật khẩu?',
-        description: 'Quay về đăng nhập để tiếp tục quản lý workspace, dự án và theo dõi tiến độ công việc của bạn.',
-        actionLabel: 'Đăng nhập',
+        title: t('auth.panelForgotRightTitle'),
+        description: t('auth.panelForgotRightDesc'),
+        actionLabel: t('auth.switchSignIn'),
         onAction: () => switchMode('sign-in'),
       }
     : {
         key: 'signin-right',
-        title: 'Đã có tài khoản?',
-        description: 'Đăng nhập để tiếp tục xử lý task, kế hoạch lịch và cập nhật tiến độ cho dự án của bạn.',
-        actionLabel: 'Đăng nhập',
+        title: t('auth.panelSignInRightTitle'),
+        description: t('auth.panelSignInRightDesc'),
+        actionLabel: t('auth.switchSignIn'),
         onAction: () => switchMode('sign-in'),
       }
 
@@ -381,15 +383,15 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <span className="chronelis-auth-brand-text">Chronelis</span>
             </Link>
 
-            <h2 className="chronelis-auth-title">Đăng nhập</h2>
-            <p className="chronelis-auth-subtitle">Truy cập workspace và dự án của bạn</p>
+            <h2 className="chronelis-auth-title">{t('auth.login')}</h2>
+            <p className="chronelis-auth-subtitle">{t('auth.loginSubtitle')}</p>
 
             <div className="chronelis-auth-input-field">
               <Mail className="chronelis-auth-input-icon" />
               <input
                 type="text"
                 autoComplete="username"
-                placeholder="Email hoặc số điện thoại"
+                placeholder={t('auth.emailOrPhone')}
                 {...loginForm.register('identifier')}
               />
             </div>
@@ -400,14 +402,14 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <input
                 type={showSignInPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                placeholder="Mật khẩu"
+                placeholder={t('auth.password')}
                 {...loginForm.register('password')}
               />
               <button
                 type="button"
                 className="chronelis-auth-input-toggle"
                 onClick={() => setShowSignInPassword((prev) => !prev)}
-                aria-label={showSignInPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                aria-label={showSignInPassword ? t('auth.hidePassword') : t('auth.showPassword')}
               >
                 {showSignInPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
               </button>
@@ -415,22 +417,22 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             <FieldError message={loginForm.formState.errors.password?.message} />
 
             <div className="chronelis-auth-form-meta">
-              <button type="button" className="chronelis-auth-link" onClick={() => switchMode('forgot-password')}>Quên mật khẩu?</button>
+              <button type="button" className="chronelis-auth-link" onClick={() => switchMode('forgot-password')}>{t('auth.forgotPasswordLink')}</button>
             </div>
 
             <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={loginMutation.isPending}>
               {loginMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
-              Đăng nhập
+              {t('auth.login')}
             </button>
 
-            <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng nhập">
-              <span>Chưa có tài khoản?</span>
+            <div className="chronelis-auth-mobile-switch" role="group" aria-label={t('auth.switchModeLogin')}>
+              <span>{t('auth.noAccount')}</span>
               <button
                 type="button"
                 className="chronelis-auth-mobile-switch-trigger"
                 onClick={() => switchMode('sign-up')}
               >
-                Đăng ký
+                {t('auth.switchSignUp')}
               </button>
             </div>
           </motion.form>
@@ -446,8 +448,8 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: -10 }}
             transition={FORM_TRANSITION}
           >
-            <h2 className="chronelis-auth-title">Đăng ký</h2>
-            <p className="chronelis-auth-subtitle">Tạo tài khoản để cộng tác cùng đội nhóm</p>
+            <h2 className="chronelis-auth-title">{t('auth.register')}</h2>
+            <p className="chronelis-auth-subtitle">{t('auth.registerSubtitle')}</p>
 
             <div className="chronelis-auth-grid-2">
               <div>
@@ -456,7 +458,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <input
                     type="text"
                     autoComplete="family-name"
-                    placeholder="Họ"
+                    placeholder={t('auth.lastName')}
                     {...registerForm.register('lastName')}
                   />
                 </div>
@@ -468,7 +470,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <input
                     type="text"
                     autoComplete="given-name"
-                    placeholder="Tên"
+                    placeholder={t('auth.firstName')}
                     {...registerForm.register('firstName')}
                   />
                 </div>
@@ -481,7 +483,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <input
                 type="email"
                 autoComplete="email"
-                placeholder="Email"
+                placeholder={t('auth.email')}
                 {...registerForm.register('email')}
               />
             </div>
@@ -492,7 +494,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <input
                 type="tel"
                 autoComplete="tel"
-                placeholder="Số điện thoại"
+                placeholder={t('auth.phone')}
                 {...registerForm.register('phoneNumber')}
               />
             </div>
@@ -505,14 +507,14 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <input
                     type={showSignUpPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    placeholder="Mật khẩu"
+                    placeholder={t('auth.password')}
                     {...registerForm.register('password')}
                   />
                   <button
                     type="button"
                     className="chronelis-auth-input-toggle"
                     onClick={() => setShowSignUpPassword((prev) => !prev)}
-                    aria-label={showSignUpPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    aria-label={showSignUpPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   >
                     {showSignUpPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
                   </button>
@@ -525,14 +527,14 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <input
                     type={showSignUpConfirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    placeholder="Xác nhận"
+                    placeholder={t('auth.confirmPassword')}
                     {...registerForm.register('confirmPassword')}
                   />
                   <button
                     type="button"
                     className="chronelis-auth-input-toggle"
                     onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
-                    aria-label={showSignUpConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
+                    aria-label={showSignUpConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                   >
                     {showSignUpConfirmPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
                   </button>
@@ -548,8 +550,8 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                     <span key={i} className={i <= passwordStrength.score ? 'chronelis-auth-strength-seg active' : 'chronelis-auth-strength-seg'} />
                   ))}
                 </div>
-                <span className="chronelis-auth-strength-lbl">{passwordStrength.label}</span>
-                <span className="chronelis-auth-strength-hint">{passwordStrength.helper}</span>
+                <span className="chronelis-auth-strength-lbl">{t(passwordStrength.label)}</span>
+                <span className="chronelis-auth-strength-hint">{t(passwordStrength.helper)}</span>
               </div>
             ) : null}
 
@@ -558,9 +560,9 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 <div className="chronelis-auth-forgot-success-icon">
                   <Mail className="size-5" />
                 </div>
-                <p className="chronelis-auth-forgot-success-title">Kiểm tra hộp thư của bạn</p>
+                <p className="chronelis-auth-forgot-success-title">{t('auth.checkInbox')}</p>
                 <p className="chronelis-auth-forgot-success-description">
-                  Email xác thực đã được gửi. Bấm vào liên kết trong email để kích hoạt tài khoản.
+                  {t('auth.verifyEmailSent')}
                 </p>
                 <button
                   type="button"
@@ -569,24 +571,24 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   disabled={!signUpEmail || signUpResendCountdown > 0 || resendVerifyMutation.isPending}
                 >
                   {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
-                  {signUpResendCountdown > 0 ? `Gửi lại sau ${signUpResendCountdown}s` : 'Gửi lại email xác thực'}
+                  {signUpResendCountdown > 0 ? t('auth.resendAfter', { seconds: signUpResendCountdown }) : t('auth.resendVerifyEmail')}
                 </button>
               </div>
             ) : (
               <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
                 {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
-                Tạo tài khoản
+                {t('auth.createAccount')}
               </button>
             )}
 
-            <div className="chronelis-auth-mobile-switch" role="group" aria-label="Chuyển đổi chế độ đăng ký">
-              <span>Đã có tài khoản?</span>
+            <div className="chronelis-auth-mobile-switch" role="group" aria-label={t('auth.switchModeRegister')}>
+              <span>{t('auth.hasAccount')}</span>
               <button
                 type="button"
                 className="chronelis-auth-mobile-switch-trigger"
                 onClick={() => switchMode('sign-in')}
               >
-                Đăng nhập
+                {t('auth.switchSignIn')}
               </button>
             </div>
           </motion.form>
@@ -607,17 +609,17 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <span className="chronelis-auth-brand-text">Chronelis</span>
             </Link>
 
-            <h2 className="chronelis-auth-title">Quên mật khẩu</h2>
-            <p className="chronelis-auth-subtitle">Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.</p>
+            <h2 className="chronelis-auth-title">{t('auth.forgotPassword')}</h2>
+            <p className="chronelis-auth-subtitle">{t('auth.forgotSubtitle')}</p>
 
             {forgotMutation.isSuccess ? (
               <div className="chronelis-auth-forgot-success">
                 <div className="chronelis-auth-forgot-success-icon">
                   <Mail className="size-5" />
                 </div>
-                <p className="chronelis-auth-forgot-success-title">Kiểm tra email của bạn</p>
+                <p className="chronelis-auth-forgot-success-title">{t('auth.checkYourEmail')}</p>
                 <p className="chronelis-auth-forgot-success-description">
-                  Chúng tôi đã gửi liên kết đặt lại mật khẩu đến hộp thư của bạn.
+                  {t('auth.resetLinkSent')}
                 </p>
                 <button
                   type="button"
@@ -626,7 +628,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   disabled={!forgotEmail || forgotResendCountdown > 0 || resendForgotMutation.isPending}
                 >
                   {resendForgotMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
-                  {forgotResendCountdown > 0 ? `Gửi lại sau ${forgotResendCountdown}s` : 'Gửi lại email'}
+                  {forgotResendCountdown > 0 ? t('auth.resendAfter', { seconds: forgotResendCountdown }) : t('auth.resendEmail')}
                 </button>
               </div>
             ) : (
@@ -637,7 +639,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                     id="forgot-email"
                     type="email"
                     autoComplete="email"
-                    placeholder="name@gmail.com"
+                    placeholder={t('auth.email')}
                     {...forgotForm.register('email')}
                   />
                 </div>
@@ -645,7 +647,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
 
                 <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={forgotMutation.isPending}>
                   {forgotMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
-                  Gửi email đặt lại
+                  {t('auth.sendResetEmail')}
                 </button>
               </>
             )}

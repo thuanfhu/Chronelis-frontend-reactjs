@@ -196,6 +196,31 @@
   }
 }
 
+/* ─── Landing page dark scrollbar ─── */
+.landing-scrollbar,
+.landing-scrollbar * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.18) transparent;
+}
+
+.landing-scrollbar ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.landing-scrollbar ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.landing-scrollbar ::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.18);
+  border-radius: 9999px;
+}
+
+.landing-scrollbar ::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.35);
+}
+
 /* ─── Icon hover utilities ─── */
 @layer utilities {
   .icon-hover {

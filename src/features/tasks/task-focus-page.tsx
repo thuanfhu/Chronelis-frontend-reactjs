@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, CheckCircle2, Circle, MessageSquare, NotebookText, Sparkles, Timer } from 'lucide-react'
+import { ArrowLeft, Bot, CalendarClock, CheckCircle2, Circle, MessageSquare, NotebookText, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 
 export function TaskFocusPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const location = useLocation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
@@ -63,7 +65,7 @@ export function TaskFocusPage() {
   const toggleCompletionMutation = useMutation({
     mutationFn: () => {
       if (!taskQuery.data) {
-        throw new Error('Task không tồn tại')
+        throw new Error(t('task.notFound'))
       }
 
       return taskApi.updateCompletion(taskQuery.data.id, !taskQuery.data.isCompleted)
@@ -77,7 +79,7 @@ export function TaskFocusPage() {
       ])
     },
     onError: (error: Error) => {
-      toast.error('Không cập nhật được trạng thái task', { description: error.message })
+      toast.error(t('task.focusUpdateStatusFailed'), { description: error.message })
     },
   })
 
@@ -117,24 +119,24 @@ export function TaskFocusPage() {
     openAIAssistant({
       workspaceId: task.workspaceId,
       projectId: task.projectId,
-      prompt: `Phân rã task \"${task.title}\" thành các bước thực thi gọn, nêu blocker và dependency chính, rồi đề xuất cập nhật khả thi nhất cho project hiện tại.`,
+      prompt: t('task.focusPlanningPrompt', { title: task.title }),
     })
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Focus Mode"
-        description="Giữ một task ở trung tâm, loại bỏ nhiễu và chỉ giữ lại context thật sự cần để hoàn thành."
+        title={t('task.focusPageTitle')}
+        description={t('task.focusPageDescription')}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="gap-1.5" onClick={() => navigate(returnTo ?? `/workspaces/${workspaceId}/projects/${projectId}`)}>
               <ArrowLeft className="size-4" />
-              Quay lại
+              {t('task.backButton')}
             </Button>
             <Button variant="outline" className="gap-1.5" onClick={() => openTaskDrawer(taskId, 'view')}>
               <MessageSquare className="size-4" />
-              Mở drawer
+              {t('task.openDrawerButton')}
             </Button>
           </div>
         }
@@ -168,55 +170,55 @@ export function TaskFocusPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <FocusInfoCard label="Due date" value={task.dueDate ? formatDateTime(task.dueDate) : 'Chưa đặt'} />
-                <FocusInfoCard label="Assignee" value={task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Chưa giao'} />
-                <FocusInfoCard label="Goal" value={task.goalId ? `Goal #${task.goalId}` : 'Không có goal'} />
-                <FocusInfoCard label="Created" value={formatDateTime(task.createdAt)} />
+                <FocusInfoCard label={t('task.dueDate')} value={task.dueDate ? formatDateTime(task.dueDate) : t('task.noDueDate')} />
+                <FocusInfoCard label={t('task.assigneeInfo')} value={task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : t('task.notAssigned')} />
+                <FocusInfoCard label={t('task.goalLabel')} value={task.goalId ? t('task.goalShort', { id: task.goalId }) : t('task.noGoal')} />
+                <FocusInfoCard label={t('task.createdAtLabel')} value={formatDateTime(task.createdAt)} />
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <Button className="gap-1.5" onClick={openPomodoro}>
                   <Timer className="size-4" />
-                  Bắt đầu Pomodoro
+                  {t('task.startPomodoro')}
                 </Button>
                 <Button variant="outline" className="gap-1.5" onClick={openNotes}>
                   <NotebookText className="size-4" />
-                  Mở ghi chú
+                  {t('task.openNotesButton')}
                 </Button>
                 <Button variant="outline" className="gap-1.5" onClick={openPlanning}>
-                  <Sparkles className="size-4" />
-                  AI breakdown
+                  <Bot className="size-4" />
+                  {t('task.aiBreakdownButton')}
                 </Button>
                 <Button variant="outline" className="gap-1.5" onClick={() => toggleCompletionMutation.mutate()}>
                   {task.isCompleted ? <Circle className="size-4" /> : <CheckCircle2 className="size-4" />}
-                  {task.isCompleted ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                  {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
                 </Button>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <Card className="border-border/70 bg-background/80 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">Blockers & dependencies</CardTitle>
+                    <CardTitle className="text-base">{t('task.focusBlockersDependencies')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
                     {dependenciesQuery.data?.blockerNote ? (
                       <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Blocker note</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t('task.blockerNoteLabel')}</p>
                         <p className="mt-1 whitespace-pre-wrap leading-6">{dependenciesQuery.data.blockerNote}</p>
                       </div>
                     ) : null}
 
                     <FocusDependencyList
-                      title="Đang bị chặn bởi"
+                      title={t('task.blockedBy')}
                       tasks={dependenciesQuery.data?.blockedByTasks ?? []}
-                      emptyLabel="Không có dependency đi trước."
+                      emptyLabel={t('task.noBlockedBy')}
                       onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
                     />
 
                     <FocusDependencyList
-                      title="Đang chặn"
+                      title={t('task.blocking')}
                       tasks={dependenciesQuery.data?.blockingTasks ?? []}
-                      emptyLabel="Chưa có task nào đang chờ task này."
+                      emptyLabel={t('task.noBlocking')}
                       onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
                     />
                   </CardContent>
@@ -224,11 +226,11 @@ export function TaskFocusPage() {
 
                 <Card className="border-border/70 bg-background/80 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base">Execution context</CardTitle>
+                    <CardTitle className="text-base">{t('task.focusExecutionContext')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 text-sm">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next schedule</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('task.focusLatestSchedule')}</p>
                       {primarySchedule ? (
                         <div className="mt-2 rounded-2xl border border-border/70 bg-muted/25 px-4 py-3">
                           <p className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -237,12 +239,12 @@ export function TaskFocusPage() {
                           </p>
                         </div>
                       ) : (
-                        <p className="mt-2 text-muted-foreground">Chưa có lịch hẹn nào cho task này.</p>
+                        <p className="mt-2 text-muted-foreground">{t('task.focusNoSchedule')}</p>
                       )}
                     </div>
 
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Recent comments</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('task.focusRecentComments')}</p>
                       {latestComments.length > 0 ? (
                         <div className="mt-2 space-y-2">
                           {latestComments.map((comment) => (
@@ -255,7 +257,7 @@ export function TaskFocusPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="mt-2 text-muted-foreground">Chưa có bình luận nào được ghi lại.</p>
+                        <p className="mt-2 text-muted-foreground">{t('task.noComments')}</p>
                       )}
                     </div>
                   </CardContent>
@@ -266,19 +268,31 @@ export function TaskFocusPage() {
 
           <Card className="border-border/70 bg-card/95 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Focus checklist</CardTitle>
+              <CardTitle className="text-base">{t('task.focusChecklistTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <ChecklistRow title="Xác nhận blocker" description={task.blocked ? task.blockedReason ?? 'Task đang bị chặn' : 'Task đã sẵn sàng để bắt đầu.'} done={!task.blocked} />
-              <ChecklistRow title="Mở ghi chú làm việc" description="Ghi lại quyết định, tài liệu tham chiếu và các ý cần giữ trong phiên focus." done={Boolean(task.notesHtml?.trim())} />
-              <ChecklistRow title="Bắt đầu phiên làm việc" description="Dùng Pomodoro để giữ nhịp và quay lại task này khi phiên kết thúc." done={Boolean(primarySchedule)} />
+              <ChecklistRow
+                title={t('task.focusChecklistConfirmBlockerTitle')}
+                description={task.blocked ? task.blockedReason ?? t('task.focusChecklistBlockedDescription') : t('task.focusChecklistReadyDescription')}
+                done={!task.blocked}
+              />
+              <ChecklistRow
+                title={t('task.focusChecklistOpenNotesTitle')}
+                description={t('task.focusChecklistOpenNotesDescription')}
+                done={Boolean(task.notesHtml?.trim())}
+              />
+              <ChecklistRow
+                title={t('task.focusChecklistStartSessionTitle')}
+                description={t('task.focusChecklistStartSessionDescription')}
+                done={Boolean(primarySchedule)}
+              />
             </CardContent>
           </Card>
         </motion.div>
       ) : (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Không tìm thấy task để mở Focus Mode.
+            {t('task.focusNotFound')}
           </CardContent>
         </Card>
       )}
@@ -306,6 +320,8 @@ function FocusDependencyList({
   emptyLabel: string
   onOpenTask: (taskId: number) => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
@@ -320,7 +336,7 @@ function FocusDependencyList({
             <p className="truncate text-sm font-medium">{dependencyTask.title}</p>
             <p className="mt-1 text-[11px] text-muted-foreground">{dependencyTask.statusName} • {dependencyTask.priority}</p>
           </div>
-          <span className="text-[11px] font-medium text-primary">Mở</span>
+          <span className="text-[11px] font-medium text-primary">{t('task.openTask')}</span>
         </button>
       )) : (
         <p className="text-muted-foreground">{emptyLabel}</p>

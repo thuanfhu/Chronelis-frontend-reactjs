@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -57,46 +58,44 @@ import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { Goal, GoalStatusType, GoalType, Task, WorkspaceMemberRoleType } from '@/types/domain'
 import type { PageResult } from '@/types/domain'
 
-const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
-  SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  MEDIUM_TERM: { label: 'Trung hạn', icon: Clock, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  LONG_TERM: { label: 'Dài hạn', icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+const goalTypeConfig: Record<GoalType, { icon: typeof Timer; color: string }> = {
+  SHORT_TERM: { icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  MEDIUM_TERM: { icon: Clock, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  LONG_TERM: { icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
 }
 
-const goalStatusConfig: Record<GoalStatusType, { label: string; icon: typeof CircleDashed; className: string }> = {
+const goalStatusConfig: Record<GoalStatusType, { icon: typeof CircleDashed; className: string }> = {
   NOT_STARTED: {
-    label: 'Chưa bắt đầu',
     icon: CircleDashed,
     className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
   },
   IN_PROGRESS: {
-    label: 'Đang thực hiện',
     icon: PlayCircle,
     className: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
   },
   ON_HOLD: {
-    label: 'Tạm dừng',
     icon: PauseCircle,
     className: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
   },
   COMPLETED: {
-    label: 'Hoàn thành',
     icon: CheckCircle2,
     className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
   },
 }
 
 function GoalStatusBadge({ status }: { status: GoalStatusType }) {
+  const { t } = useTranslation()
   const config = goalStatusConfig[status]
   const Icon = config.icon
+  const label = t(`goals.status.${status}`)
 
   return (
     <span
       className={`inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[10px] font-semibold ${config.className}`}
-      title={config.label}
+      title={label}
     >
       <Icon className="size-3" />
-      {config.label}
+      {label}
     </span>
   )
 }
@@ -120,6 +119,7 @@ function compareGoalTasks(left: Task, right: Task): number {
 }
 
 export function GoalsPage() {
+  const { t } = useTranslation()
   const params = useParams()
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
@@ -226,6 +226,8 @@ export function GoalsPage() {
   const canManageGoal = (goal: Goal) => canManageProject
     || goal.managerUser?.userId === currentUserId
     || isCurrentUserInManagerTeam(goal.managerTeamId)
+  const currentRoleLabel = t(`workspace.role.${currentRole.toLowerCase()}`)
+  const getMemberRoleLabel = (role: WorkspaceMemberRoleType) => t(`workspace.role.${role.toLowerCase()}`)
 
   const createMutation = useMutation({
     mutationFn: () => {
@@ -281,19 +283,19 @@ export function GoalsPage() {
       setManagerTeamId('')
       setDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
-      toast.success('Tạo goal thành công')
+      toast.success(t('goals.toast.createSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot !== undefined) {
         queryClient.setQueryData(queryKeys.goals.byProject(projectId, 1, 50), context.snapshot)
       }
-      toast.error('Tạo goal thất bại', { description: error.message })
+      toast.error(t('goals.toast.createFailed'), { description: error.message })
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      if (!editGoal) throw new Error('Goal không tồn tại')
+      if (!editGoal) throw new Error(t('goals.error.notFound'))
       const payload: {
         title: string
         goalType: GoalType
@@ -336,13 +338,13 @@ export function GoalsPage() {
       setEditManagerUserId('')
       setEditManagerTeamId('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(projectId, 1, 50) })
-      toast.success('Cập nhật goal thành công')
+      toast.success(t('goals.toast.updateSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot !== undefined) {
         queryClient.setQueryData(queryKeys.goals.byProject(projectId, 1, 50), context.snapshot)
       }
-      toast.error('Cập nhật goal thất bại', { description: error.message })
+      toast.error(t('goals.toast.updateFailed'), { description: error.message })
     },
   })
 
@@ -363,10 +365,10 @@ export function GoalsPage() {
         queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
       ])
     },
-    pendingMessage: (entry) => `Goal "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`,
-    successMessage: (entry) => `Đã xóa goal "${entry.label}"`,
-    alreadyDeletedMessage: (entry) => `Goal "${entry.label}" đã được xóa trước đó`,
-    errorTitle: 'Xóa goal thất bại',
+    pendingMessage: (entry) => t('goals.toast.deleteScheduled', { name: entry.label }),
+    successMessage: (entry) => t('goals.toast.deleteSuccess', { name: entry.label }),
+    alreadyDeletedMessage: (entry) => t('goals.toast.alreadyDeleted', { name: entry.label }),
+    errorTitle: t('goals.toast.deleteFailed'),
   })
 
   if (goalsQuery.isLoading || goalTasksQuery.isLoading || projectQuery.isLoading || membersQuery.isLoading || teamsQuery.isLoading || workspaceQuery.isLoading || teamMembershipQuery.isLoading) {
@@ -407,54 +409,54 @@ export function GoalsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Goals"
-        description={`Mục tiêu ngắn hạn và dài hạn trong project · Vai trò của bạn: ${currentRole}`}
+        title={t('goals.title')}
+        description={t('goals.pageDescription', { role: currentRoleLabel })}
         actions={
           canManageProject ? (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="mr-1.5 size-3.5" />
-                  Tạo goal
+                  {t('goals.createAction')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Tạo goal mới</DialogTitle>
+                  <DialogTitle>{t('goals.create')}</DialogTitle>
                   <DialogDescription>
                     {isOwner
-                      ? 'Đặt mục tiêu cho project và phân công manager nếu cần.'
-                      : 'Đặt mục tiêu cho project của bạn.'}
+                      ? t('goals.createOwnerDescription')
+                      : t('goals.createMemberDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="goal-title">Tiêu đề</Label>
+                    <Label htmlFor="goal-title">{t('goals.titleLabel')}</Label>
                     <Input
                       id="goal-title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ví dụ: Hoàn thành MVP"
+                      placeholder={t('goals.titlePlaceholder')}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Loại mục tiêu</Label>
+                    <Label>{t('goals.typeLabel')}</Label>
                     <div className="flex gap-2">
-                      {(Object.keys(goalTypeConfig) as GoalType[]).map((t) => (
+                      {(Object.keys(goalTypeConfig) as GoalType[]).map((goalTypeOption) => (
                         <Button
-                          key={t}
+                          key={goalTypeOption}
                           type="button"
-                          variant={goalType === t ? 'default' : 'outline'}
+                          variant={goalType === goalTypeOption ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setGoalType(t)}
+                          onClick={() => setGoalType(goalTypeOption)}
                         >
-                          {goalTypeConfig[t].label}
+                          {t(`goals.type.${goalTypeOption}`)}
                         </Button>
                       ))}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Trạng thái ban đầu</Label>
+                    <Label>{t('goals.initialStatusLabel')}</Label>
                     <div className="flex flex-wrap gap-2">
                       {(Object.keys(goalStatusConfig) as GoalStatusType[]).map((s) => (
                         <Button
@@ -464,7 +466,7 @@ export function GoalsPage() {
                           size="sm"
                           onClick={() => setStatus(s)}
                         >
-                          {goalStatusConfig[s].label}
+                          {t('goals.status.' + s)}
                         </Button>
                       ))}
                     </div>
@@ -472,29 +474,29 @@ export function GoalsPage() {
                   {isOwner && (
                     <>
                       <div className="space-y-2">
-                        <Label>Manager user (tùy chọn)</Label>
+                        <Label>{t('goals.managerUserOptionalLabel')}</Label>
                         <Select value={managerUserId || 'none'} onValueChange={(value) => setManagerUserId(value === 'none' ? '' : value)}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Không gán manager user" />
+                            <SelectValue placeholder={t('goals.managerUserPlaceholder')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Không gán</SelectItem>
+                            <SelectItem value="none">{t('goals.unassignedManager')}</SelectItem>
                             {members.map((member) => (
                               <SelectItem key={member.user.userId} value={member.user.userId}>
-                                {member.user.firstName} {member.user.lastName} ({member.role})
+                                {member.user.firstName} {member.user.lastName} ({getMemberRoleLabel(member.role)})
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Manager team (tùy chọn)</Label>
+                        <Label>{t('goals.managerTeamOptionalLabel')}</Label>
                         <Select value={managerTeamId || 'none'} onValueChange={(value) => setManagerTeamId(value === 'none' ? '' : value)}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Không gán manager team" />
+                            <SelectValue placeholder={t('goals.managerTeamPlaceholder')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Không gán</SelectItem>
+                            <SelectItem value="none">{t('goals.unassignedManager')}</SelectItem>
                             {teams.map((team) => (
                               <SelectItem key={team.id} value={String(team.id)}>
                                 {team.name}
@@ -507,16 +509,16 @@ export function GoalsPage() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
                   <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !title.trim()}>
                     {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
+                    {t('common.create')}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           ) : (
-            <Badge variant="outline">Read-only: chỉ manager mới có quyền tạo/sửa goal</Badge>
+            <Badge variant="outline">{t('goals.readOnlyBadge')}</Badge>
           )
         }
       />
@@ -525,8 +527,8 @@ export function GoalsPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Target className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">Chưa có goal nào</p>
-            <p className="mt-1 text-xs text-muted-foreground">Tạo goal đầu tiên để theo dõi tiến độ</p>
+            <p className="text-sm font-medium">{t('goals.emptyTitle')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('goals.emptyDescription')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -570,7 +572,7 @@ export function GoalsPage() {
                               }}
                             >
                               <Pencil className="mr-2 size-3.5" />
-                              Chỉnh sửa
+                              {t('common.edit')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -580,7 +582,7 @@ export function GoalsPage() {
                               }}
                             >
                               <Trash2 className="mr-2 size-3.5" />
-                              Xóa goal
+                              {t('goals.deleteTitle')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -592,26 +594,26 @@ export function GoalsPage() {
 
                   <div className="mt-3 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Tiến độ</span>
+                      <span className="text-xs text-muted-foreground">{t('goals.progress')}</span>
                       <span className="text-xs font-semibold">{goal.progressPercent}%</span>
                     </div>
                     <Progress value={goal.progressPercent} className="h-1.5" />
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{typeConfig.label}</span>
+                    <span>{t(`goals.type.${goal.goalType}`)}</span>
                     <span>{goal.createdBy.firstName} {goal.createdBy.lastName}</span>
                   </div>
                   {(goal.managerUser || goal.managerTeamName) && (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {goal.managerUser && (
                         <Badge variant="secondary" className="text-[10px]">
-                          Manager user: {goal.managerUser.firstName} {goal.managerUser.lastName}
+                          {t('goals.managerUserBadge', { name: `${goal.managerUser.firstName} ${goal.managerUser.lastName}` })}
                         </Badge>
                       )}
                       {goal.managerTeamName && (
                         <Badge variant="outline" className="text-[10px]">
-                          Manager team: {goal.managerTeamName}
+                          {t('goals.managerTeamBadge', { name: goal.managerTeamName })}
                         </Badge>
                       )}
                     </div>
@@ -622,8 +624,8 @@ export function GoalsPage() {
                       <ListTodo className="size-3.5" />
                       <span>
                         {orderedGoalTasks.length === 0
-                          ? 'Chưa có task'
-                          : `${orderedGoalTasks.length} task${orderedGoalTasks.length > 1 ? 's' : ''}`}
+                          ? t('goals.taskCountZero')
+                          : t('goals.taskCount', { count: orderedGoalTasks.length })}
                       </span>
                     </div>
                     <Link
@@ -631,7 +633,7 @@ export function GoalsPage() {
                       className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Xem tasks
+                      {t('goals.viewTasks')}
                       <ArrowRight className="size-3" />
                     </Link>
                   </div>
@@ -661,40 +663,40 @@ export function GoalsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa goal</DialogTitle>
+            <DialogTitle>{t('goals.editTitle')}</DialogTitle>
             <DialogDescription>
               {isOwner
-                ? 'Cập nhật thông tin mục tiêu và manager scope.'
-                : 'Cập nhật thông tin mục tiêu. Chỉ owner mới được chỉnh manager user/team.'}
+                ? t('goals.editOwnerDescription')
+                : t('goals.editMemberDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Tiêu đề goal" />
+              <Label>{t('goals.titleLabel')}</Label>
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={t('goals.editTitlePlaceholder')} />
             </div>
             <div className="space-y-2">
-              <Label>Loại mục tiêu</Label>
+              <Label>{t('goals.typeLabel')}</Label>
               <div className="flex gap-2">
-                {(Object.keys(goalTypeConfig) as GoalType[]).map((t) => (
-                  <Button key={t} type="button" variant={editGoalType === t ? 'default' : 'outline'} size="sm" onClick={() => setEditGoalType(t)}>
-                    {goalTypeConfig[t].label}
+                {(Object.keys(goalTypeConfig) as GoalType[]).map((goalTypeOption) => (
+                  <Button key={goalTypeOption} type="button" variant={editGoalType === goalTypeOption ? 'default' : 'outline'} size="sm" onClick={() => setEditGoalType(goalTypeOption)}>
+                    {t(`goals.type.${goalTypeOption}`)}
                   </Button>
                 ))}
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Trạng thái</Label>
+              <Label>{t('task.status')}</Label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(goalStatusConfig) as GoalStatusType[]).map((s) => (
                   <Button key={s} type="button" variant={editStatus === s ? 'default' : 'outline'} size="sm" onClick={() => setEditStatus(s)}>
-                    {goalStatusConfig[s].label}
+                    {t('goals.status.' + s)}
                   </Button>
                 ))}
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tiến độ (tự động tính theo tasks hoàn thành)</Label>
+              <Label>{t('goals.progressAutoLabel')}</Label>
               <div className="flex items-center gap-2">
                 <Progress value={editGoal?.progressPercent ?? 0} className="h-2 flex-1" />
                 <span className="text-sm font-semibold">{editGoal?.progressPercent ?? 0}%</span>
@@ -703,29 +705,29 @@ export function GoalsPage() {
             {isOwner && (
               <>
                 <div className="space-y-2">
-                  <Label>Manager user</Label>
+                  <Label>{t('goals.managerUserLabel')}</Label>
                   <Select value={editManagerUserId || 'none'} onValueChange={(value) => setEditManagerUserId(value === 'none' ? '' : value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Không gán manager user" />
+                      <SelectValue placeholder={t('goals.managerUserPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Không gán</SelectItem>
+                      <SelectItem value="none">{t('goals.unassignedManager')}</SelectItem>
                       {members.map((member) => (
                         <SelectItem key={member.user.userId} value={member.user.userId}>
-                          {member.user.firstName} {member.user.lastName} ({member.role})
+                          {member.user.firstName} {member.user.lastName} ({getMemberRoleLabel(member.role)})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Manager team</Label>
+                  <Label>{t('goals.managerTeamLabel')}</Label>
                   <Select value={editManagerTeamId || 'none'} onValueChange={(value) => setEditManagerTeamId(value === 'none' ? '' : value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Không gán manager team" />
+                      <SelectValue placeholder={t('goals.managerTeamPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Không gán</SelectItem>
+                      <SelectItem value="none">{t('goals.unassignedManager')}</SelectItem>
                       {teams.map((team) => (
                         <SelectItem key={team.id} value={String(team.id)}>
                           {team.name}
@@ -738,10 +740,10 @@ export function GoalsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !editTitle.trim() || !isGoalUpdateDirty}>
               {updateMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Lưu
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -758,20 +760,20 @@ export function GoalsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xóa goal</DialogTitle>
+            <DialogTitle>{t('goals.deleteTitle')}</DialogTitle>
             <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
               <p>
                 {deleteGoalTarget
-                  ? `Bạn có chắc muốn xóa goal "${deleteGoalTarget.title}" không?`
-                  : 'Bạn có chắc muốn xóa goal này không?'}
+                  ? t('goals.deleteConfirm', { name: deleteGoalTarget.title })
+                  : t('goals.deleteConfirmGeneric')}
               </p>
               <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                Goal này sẽ bị gỡ khỏi danh sách mục tiêu của project sau khi xác nhận.
+                {t('goals.deleteWarning')}
               </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteGoalTarget(null)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setDeleteGoalTarget(null)}>{t('common.cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -791,7 +793,7 @@ export function GoalsPage() {
               }}
               disabled={Boolean(deleteGoalTarget && isGoalDeleteQueued(`goal-${deleteGoalTarget.id}`))}
             >
-              Xóa
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -802,7 +804,7 @@ export function GoalsPage() {
         clockMs={goalDeleteClockMs}
         undoWindowMs={goalDeleteUndoWindowMs}
         onUndo={undoGoalDelete}
-        itemTitle={() => 'Đang xóa goal'}
+        itemTitle={() => t('goals.toast.deleting')}
       />
     </div>
   )

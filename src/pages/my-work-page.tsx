@@ -1,39 +1,82 @@
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion, AnimatePresence } from 'framer-motion'
+import type { TFunction } from 'i18next'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bot,
   Briefcase,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Clock3,
-  Target,
+  Filter,
+  Flame,
+  LayoutDashboard,
+  RefreshCw,
+  Rocket,
+  Search,
+  ShieldAlert,
   Sparkles,
-  CalendarClock,
-  ArrowRight,
+  Target,
+  TrendingUp,
+  Workflow,
+  Zap,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PageHeader } from '@/components/shared/page-header'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUiStore } from '@/app/store/ui-store'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { projectApi } from '@/lib/api/modules/project-api'
 import { queryKeys } from '@/lib/api/query-keys'
-import { formatDateTime } from '@/lib/utils/datetime'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { MyWorkScheduleItem, Task } from '@/types/domain'
+import { cn } from '@/lib/utils/cn'
+import type { Task, TaskPriorityType } from '@/types/domain'
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0 },
+/* ─── Animation ────────────────────────────────────────────────────────────── */
+
+const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }
+const fadeSlide = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: 'easeOut' as const } },
 }
+
+const TASKS_PER_PAGE = 5
+
+type SortMode = 'smart' | 'due' | 'recent' | 'title'
+type PriorityFilter = 'ALL' | TaskPriorityType
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
 export function MyWorkPage() {
   const navigate = useNavigate()
-  const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
-  const openAIAssistant = useUiStore((state) => state.openAIAssistant)
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
+  const openAIAssistant = useUiStore((s) => s.openAIAssistant)
+
+  const [searchValue, setSearchValue] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('ALL')
+  const [sortMode, setSortMode] = useState<SortMode>('smart')
+  const [blockedPage, setBlockedPage] = useState(1)
+  const [readyPage, setReadyPage] = useState(1)
+
+  /* ── Queries ── */
 
   const myWorkQuery = useQuery({
     queryKey: queryKeys.tasks.myWork,
@@ -42,184 +85,277 @@ export function MyWorkPage() {
 
   const uniqueProjectIds = useMemo(() => {
     const ids = new Set<number>()
-    for (const task of myWorkQuery.data?.assignedTasks ?? []) {
-      ids.add(task.projectId)
-    }
-    for (const schedule of myWorkQuery.data?.upcomingSchedules ?? []) {
-      ids.add(schedule.task.projectId)
-    }
+    for (const task of myWorkQuery.data?.assignedTasks ?? []) ids.add(task.projectId)
     return [...ids]
-  }, [myWorkQuery.data?.assignedTasks, myWorkQuery.data?.upcomingSchedules])
+  }, [myWorkQuery.data?.assignedTasks])
 
-  const projectDirectoryQuery = useQuery({
+  const projectDirQuery = useQuery({
     queryKey: ['projects', 'directory', uniqueProjectIds.join(',')],
     enabled: uniqueProjectIds.length > 0,
     queryFn: async () => {
-      const directory = new Map<number, string>()
-      const projects = await Promise.all(uniqueProjectIds.map((projectId) => projectApi.detail(projectId)))
-      for (const project of projects) {
-        directory.set(project.id, project.name)
-      }
-      return directory
+      const map = new Map<number, string>()
+      const list = await Promise.all(uniqueProjectIds.map((id) => projectApi.detail(id)))
+      for (const p of list) map.set(p.id, p.name)
+      return map
     },
     staleTime: 60_000,
   })
 
-  const assignedTasks = myWorkQuery.data?.assignedTasks ?? []
-  const blockedTasks = useMemo(
-    () => assignedTasks
-      .filter((task) => task.blocked)
-      .sort((left, right) => priorityRank(right) - priorityRank(left)),
-    [assignedTasks],
-  )
-  const readyTasks = useMemo(
-    () => assignedTasks
-      .filter((task) => !task.blocked)
-      .sort(compareActiveTasks),
-    [assignedTasks],
-  )
-  const upcomingSchedules = myWorkQuery.data?.upcomingSchedules ?? []
+  /* ── Derived ── */
 
-  const goToFocusMode = (task: Task) => {
-    navigate(`/workspaces/${task.workspaceId}/projects/${task.projectId}/focus/${task.id}`)
-  }
+  const assigned = myWorkQuery.data?.assignedTasks ?? []
+  const blocked = useMemo(() => assigned.filter((t) => t.blocked), [assigned])
+  const ready = useMemo(() => assigned.filter((t) => !t.blocked), [assigned])
+  const search = searchValue.trim().toLowerCase()
 
-  const openPlanning = (task: Task) => {
+  const filtBlocked = useMemo(
+    () => blocked.filter((t) => matchTask(t, search, priorityFilter, projectDirQuery.data)).sort((a, b) => cmpTasks(a, b, sortMode)),
+    [blocked, search, priorityFilter, projectDirQuery.data, sortMode],
+  )
+  const filtReady = useMemo(
+    () => ready.filter((t) => matchTask(t, search, priorityFilter, projectDirQuery.data)).sort((a, b) => cmpTasks(a, b, sortMode)),
+    [ready, search, priorityFilter, projectDirQuery.data, sortMode],
+  )
+
+  const blockedPg = paginate(filtBlocked, blockedPage, TASKS_PER_PAGE)
+  const readyPg = paginate(filtReady, readyPage, TASKS_PER_PAGE)
+  const primaryTask = blocked[0] ?? ready[0] ?? null
+
+  const topBlockers = useMemo(
+    () => blocked.slice().sort((a, b) => cmpTasks(a, b, 'smart')).slice(0, 4),
+    [blocked],
+  )
+
+  /* ── Signals ── */
+
+  const signals = useMemo(() => {
+    const nextDue = assigned.filter((t) => t.dueDate).sort((a, b) => dueTs(a) - dueTs(b))[0]
+    return [
+      { label: t('myWork.signalBlocker'), icon: ShieldAlert, tone: 'rose' as const, value: blocked[0]?.title ?? t('myWork.noBlocker') },
+      { label: t('myWork.signalReady'), icon: Rocket, tone: 'emerald' as const, value: ready[0]?.title ?? t('myWork.noReady') },
+      { label: t('myWork.signalDeadline'), icon: Clock3, tone: 'amber' as const, value: nextDue ? nextDue.title + ' · ' + fmtDue(nextDue.dueDate, t) : t('myWork.noDeadline') },
+    ]
+  }, [assigned, blocked, ready, t])
+
+  /* ── Handlers ── */
+
+  const goFocus = (task: Task) => navigate(`/workspaces/${task.workspaceId}/projects/${task.projectId}/focus/${task.id}`)
+
+  const askAI = (task: Task) =>
     openAIAssistant({
       workspaceId: task.workspaceId,
       projectId: task.projectId,
-      prompt: `Đề xuất bước tiếp theo cho task \"${task.title}\", nêu blocker đang tồn tại và các cập nhật nên áp dụng trong project hiện tại.`,
+      prompt: t('myWork.aiTaskPrompt', { title: task.title }),
+    })
+
+  const openSmartAI = () => {
+    if (!primaryTask) return
+    openAIAssistant({
+      workspaceId: primaryTask.workspaceId,
+      projectId: primaryTask.projectId,
+      prompt: t('myWork.aiSmartPrompt', { title: primaryTask.title }),
     })
   }
 
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork })
+  }
+
+  const hasBlocked = filtBlocked.length > 0
+  const hasReady = filtReady.length > 0
+
+  /* ═══ Render ═══ */
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="My Work"
-        description="Một nơi để xử lý việc đang phụ trách, blocker cần tháo gỡ và các phiên làm việc sắp tới."
-        actions={
-          <Button variant="outline" className="gap-1.5" onClick={() => myWorkQuery.refetch()}>
-            <ArrowRight className="size-4" />
-            Làm mới
-          </Button>
-        }
-      />
-
-      {myWorkQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-32 rounded-3xl" />
-          ))}
+      {/* ── Header ── */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }} className="flex flex-col gap-3 border-b border-border/60 pb-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3.5">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-amber-500 to-rose-500 text-white shadow-lg shadow-amber-500/30">
+            <LayoutDashboard className="size-5" />
+          </div>
+          <div>
+            <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight sm:text-2xl">
+              <span className="bg-linear-to-r from-amber-600 via-orange-500 to-rose-500 bg-clip-text text-transparent">{t('myWork.title')}</span>
+              <Flame className="size-5 text-orange-500 drop-shadow-[0_1px_3px_rgba(249,115,22,0.5)]" />
+              <Zap className="size-4 text-amber-400" />
+            </h1>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+              <TrendingUp className="size-3.5" />
+              <span>{t('myWork.blocked')}</span>
+              <span className="text-border">·</span>
+              <span>{t('myWork.ready')}</span>
+              <span className="text-border">·</span>
+              <span>{t('myWork.subtitle')}</span>
+            </p>
+          </div>
         </div>
-      ) : null}
 
-      {myWorkQuery.data ? (
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          transition={{ staggerChildren: 0.06 }}
-          className="space-y-6"
-        >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh}>
+            <RefreshCw className={cn('size-3.5', myWorkQuery.isFetching && 'animate-spin')} />
+            {myWorkQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
+          </Button>
+          <Button size="sm" className="gap-1.5 bg-sky-600 text-white shadow-md shadow-sky-600/25 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600" onClick={openSmartAI} disabled={!primaryTask}>
+            <Bot className="size-4" />
+            {t('myWork.askAI')}
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* ── Loading ── */}
+      {myWorkQuery.isLoading && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+        </div>
+      )}
+
+      {/* ── Body ── */}
+      {myWorkQuery.data && (
+        <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-6">
+
+          {/* Metric cards */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard icon={Briefcase} label="Assigned" value={myWorkQuery.data.assignedCount} tone="amber" />
-            <MetricCard icon={CircleAlert} label="Blocked" value={myWorkQuery.data.blockedCount} tone="rose" />
-            <MetricCard icon={Clock3} label="Due Today" value={myWorkQuery.data.dueTodayCount} tone="sky" />
-            <MetricCard icon={CalendarClock} label="Upcoming" value={myWorkQuery.data.upcomingScheduledCount} tone="emerald" />
+            <MetricCard icon={Briefcase} label={t('myWork.metricAssigned')} value={myWorkQuery.data.assignedCount} desc={t('myWork.metricAssignedDesc')} tone="amber" />
+            <MetricCard icon={CircleAlert} label={t('myWork.metricBlocked')} value={myWorkQuery.data.blockedCount} desc={t('myWork.metricBlockedDesc')} tone="rose" />
+            <MetricCard icon={Clock3} label={t('myWork.metricAttention')} value={myWorkQuery.data.overdueCount + myWorkQuery.data.dueTodayCount} desc={t('myWork.metricAttentionDesc')} tone="sky" />
+            <MetricCard icon={Workflow} label={t('myWork.metricHighPriority')} value={myWorkQuery.data.highPriorityCount} desc={t('myWork.metricHighPriorityDesc')} tone="emerald" />
           </div>
 
-          <motion.div variants={itemVariants} className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.95fr)]">
-            <Card className="overflow-hidden border-border/70 bg-[linear-gradient(145deg,rgba(251,191,36,0.15),rgba(255,255,255,0.95)_42%,rgba(191,219,254,0.32))] shadow-[0_30px_80px_-48px_rgba(15,23,42,0.38)] dark:bg-[linear-gradient(145deg,rgba(245,158,11,0.18),rgba(15,23,42,0.94)_50%,rgba(30,64,175,0.22))]">
-              <CardContent className="flex h-full flex-col gap-4 p-6">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700/80 dark:text-amber-200">Execution lane</p>
-                  <h2 className="text-2xl font-semibold tracking-tight">Ưu tiên xử lý blocker trước, rồi mới vào phiên focus</h2>
-                  <p className="text-sm text-muted-foreground">
-                    My Work tập hợp việc thật sự cần hành động: task bị chặn, task đã sẵn sàng để tập trung, và lịch gần nhất cần giữ nhịp.
+          {/* Hero + Sidebar */}
+          <motion.div variants={fadeSlide} className="grid gap-5 xl:grid-cols-[1fr_22rem]">
+
+            {/* Hero card */}
+            <Card className="overflow-hidden border-border/60 bg-linear-to-br from-amber-50/60 via-white to-sky-50/40 shadow-xl shadow-black/4 dark:from-amber-950/20 dark:via-background dark:to-sky-950/15">
+              <CardContent className="space-y-5 p-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
+                    <Flame className="size-3.5" />
+                    {t('myWork.boardTitle')}
+                  </div>
+                  <h2 className="text-2xl font-bold leading-snug tracking-tight text-foreground">
+                    {t('myWork.boardHero')}
+                  </h2>
+                  <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
+                    {t('myWork.boardDescription')}
                   </p>
                 </div>
 
+                {/* Summary row */}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <SummaryStrip title="Blocked" description="Tháo gỡ phụ thuộc và blocker note trước khi vào phiên làm việc sâu." value={blockedTasks.length} />
-                  <SummaryStrip title="Ready" description="Task đã đủ điều kiện để bật Focus Mode hoặc Pomodoro ngay." value={readyTasks.length} />
+                  <SummaryCard icon={AlertTriangle} tone="rose" title={t('myWork.blocked')} value={blocked.length} desc={t('myWork.blockedDesc')} />
+                  <SummaryCard icon={Rocket} tone="emerald" title={t('myWork.ready')} value={ready.length} desc={t('myWork.readyDesc')} />
+                </div>
+
+                {/* Signals */}
+                <div className="grid gap-3 md:grid-cols-3">
+                  {signals.map((s) => (
+                    <SignalCard key={s.label} icon={s.icon} tone={s.tone} label={s.label} value={s.value} />
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/70 bg-card/95 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">Lịch gần nhất</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {upcomingSchedules.length > 0 ? upcomingSchedules.slice(0, 4).map((schedule) => (
-                  <UpcomingScheduleCard
-                    key={`${schedule.scheduleId}-${schedule.taskId}`}
-                    schedule={schedule}
-                    projectName={projectDirectoryQuery.data?.get(schedule.task.projectId)}
-                    onFocus={() => goToFocusMode(schedule.task)}
-                    onOpen={() => openTaskDrawer(schedule.task.id, 'view')}
-                  />
-                )) : (
-                  <p className="text-sm text-muted-foreground">Chưa có phiên làm việc nào sắp tới trong 14 ngày tới.</p>
-                )}
+            {/* Right sidebar: AI + Blockers */}
+            <div className="flex flex-col gap-4">
+              <AICard task={primaryTask} projectName={primaryTask ? projectDirQuery.data?.get(primaryTask.projectId) : undefined} onOpen={openSmartAI} />
+              <BlockerDigestCard tasks={topBlockers} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
+            </div>
+          </motion.div>
+
+          {/* Filter bar */}
+          <motion.div variants={fadeSlide}>
+            <Card className="border-border/60 shadow-sm">
+              <CardContent className="space-y-3.5 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Filter className="size-4 text-muted-foreground" />
+                    <p className="text-sm font-semibold">{t('myWork.filterTitle')}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">{t('myWork.matchingTasks', { count: filtBlocked.length + filtReady.length })}</Badge>
+                </div>
+                <div className="grid gap-3 xl:grid-cols-[1fr_12rem_12rem]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input value={searchValue} onChange={(e) => setSearchValue(e.target.value)} placeholder={t('myWork.searchPlaceholder')} className="pl-9" />
+                  </div>
+                  <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}>
+                    <SelectTrigger><SelectValue placeholder={t('myWork.priorityPlaceholder')} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">{t('myWork.allPriorities')}</SelectItem>
+                      <SelectItem value="URGENT">{t('task.priorityUrgent')}</SelectItem>
+                      <SelectItem value="HIGH">{t('task.priorityHigh')}</SelectItem>
+                      <SelectItem value="MEDIUM">{t('task.priorityMedium')}</SelectItem>
+                      <SelectItem value="LOW">{t('task.priorityLow')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+                    <SelectTrigger><SelectValue placeholder={t('myWork.sortPlaceholder')} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="smart">{t('myWork.smartSort')}</SelectItem>
+                      <SelectItem value="due">{t('myWork.dueSort')}</SelectItem>
+                      <SelectItem value="recent">{t('myWork.recentSort')}</SelectItem>
+                      <SelectItem value="title">{t('myWork.titleSort')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <TaskColumn
-              title="Blocked right now"
-              emptyLabel="Không có task nào đang bị chặn."
-              tasks={blockedTasks}
-              projectNames={projectDirectoryQuery.data}
-              onOpen={(task) => openTaskDrawer(task.id, 'view')}
-              onFocus={goToFocusMode}
-              onPlan={openPlanning}
-            />
-
-            <TaskColumn
-              title="Ready for focus"
-              emptyLabel="Chưa có task nào sẵn sàng."
-              tasks={readyTasks}
-              projectNames={projectDirectoryQuery.data}
-              onOpen={(task) => openTaskDrawer(task.id, 'view')}
-              onFocus={goToFocusMode}
-              onPlan={openPlanning}
-            />
+          {/* Task queues — adaptive */}
+          <div className={cn('grid gap-4', hasBlocked && hasReady && 'xl:grid-cols-2 xl:items-start')}>
+            {hasBlocked && (
+              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+            )}
+            {hasReady && (
+              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+            )}
+            {!hasBlocked && !hasReady && (
+              <motion.div variants={fadeSlide}>
+                <Card className="border-border/60 shadow-sm">
+                  <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+                    <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-500/20">
+                      <CheckCircle2 className="size-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <p className="text-sm font-semibold">{t('myWork.emptyAllTitle')}</p>
+                    <p className="max-w-md text-sm text-muted-foreground">{t('myWork.emptyAllDescription')}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
+
         </motion.div>
-      ) : null}
+      )}
     </div>
   )
 }
 
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof Briefcase
-  label: string
-  value: number
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Sub-components                                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+function MetricCard({ icon: Icon, label, value, desc, tone }: {
+  icon: typeof Briefcase; label: string; value: number; desc: string
   tone: 'amber' | 'rose' | 'sky' | 'emerald'
 }) {
-  const toneClassName = {
-    amber: 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100',
-    rose: 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-100',
-    sky: 'bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-100',
-    emerald: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100',
+  const styles = {
+    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200',
+    rose: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200',
+    sky: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200',
+    emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200',
   }[tone]
-
   return (
-    <motion.div variants={itemVariants}>
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardContent className="flex items-center gap-4 p-5">
-          <div className={`flex size-12 items-center justify-center rounded-2xl ${toneClassName}`}>
+    <motion.div variants={fadeSlide}>
+      <Card className="border-border/60 shadow-sm">
+        <CardContent className="flex gap-4 p-5">
+          <div className={cn('flex size-11 shrink-0 items-center justify-center rounded-xl', styles)}>
             <Icon className="size-5" />
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold tracking-tight">{value}</p>
+          <div className="space-y-1">
+            <p className="text-[13px] text-muted-foreground">{label}</p>
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
+            <p className="text-xs leading-5 text-muted-foreground">{desc}</p>
           </div>
         </CardContent>
       </Card>
@@ -227,160 +363,286 @@ function MetricCard({
   )
 }
 
-function SummaryStrip({ title, description, value }: { title: string; description: string; value: number }) {
+function SummaryCard({ icon: Icon, tone, title, value, desc }: {
+  icon: typeof AlertTriangle; tone: 'rose' | 'emerald'; title: string; value: number; desc: string
+}) {
+  const ico = { rose: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' }[tone]
+  const val = { rose: 'text-rose-600 dark:text-rose-400', emerald: 'text-emerald-600 dark:text-emerald-400' }[tone]
   return (
-    <div className="rounded-3xl border border-border/70 bg-background/85 p-4 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+    <div className="rounded-xl border border-border/60 bg-background/90 p-4 shadow-sm">
+      <div className="mb-1.5 flex items-center gap-2">
+        <div className={cn('flex size-7 items-center justify-center rounded-lg', ico)}><Icon className="size-3.5" /></div>
+        <p className="text-xs font-semibold text-muted-foreground">{title}</p>
+      </div>
+      <p className={cn('text-3xl font-bold tracking-tight', val)}>{value}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{desc}</p>
     </div>
   )
 }
 
-function UpcomingScheduleCard({
-  schedule,
-  projectName,
-  onOpen,
-  onFocus,
-}: {
-  schedule: MyWorkScheduleItem
-  projectName?: string
-  onOpen: () => void
-  onFocus: () => void
+function SignalCard({ label, icon: Icon, tone, value }: {
+  label: string; icon: typeof AlertTriangle; tone: 'rose' | 'emerald' | 'amber'; value: string
 }) {
+  const wrap = { rose: 'border-rose-200/60 bg-rose-50/70 dark:border-rose-500/25 dark:bg-rose-500/10', emerald: 'border-emerald-200/60 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-500/10', amber: 'border-amber-200/60 bg-amber-50/70 dark:border-amber-500/25 dark:bg-amber-500/10' }[tone]
+  const ico = { rose: 'bg-rose-200 text-rose-700 dark:bg-rose-500/25 dark:text-rose-300', emerald: 'bg-emerald-200 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300', amber: 'bg-amber-200 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300' }[tone]
+  const lbl = { rose: 'text-rose-700 dark:text-rose-300', emerald: 'text-emerald-700 dark:text-emerald-300', amber: 'text-amber-700 dark:text-amber-300' }[tone]
   return (
-    <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{schedule.task.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{projectName ?? `Project #${schedule.task.projectId}`}</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {formatDateTime(schedule.scheduledStart)} - {formatDateTime(schedule.scheduledEnd)}
-          </p>
+    <div className={cn('rounded-xl border p-3.5', wrap)}>
+      <div className="mb-2 flex items-center gap-2">
+        <div className={cn('flex size-6 items-center justify-center rounded-md', ico)}><Icon className="size-3.5" /></div>
+        <p className={cn('text-xs font-bold', lbl)}>{label}</p>
+      </div>
+      <p className="text-[13px] font-medium leading-6 text-foreground">{value}</p>
+    </div>
+  )
+}
+
+/* ── AI Assistant Card ── */
+
+function AICard({ task, projectName, onOpen }: {
+  task: Task | null; projectName?: string; onOpen: () => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <Card className="overflow-hidden border-2 border-sky-200/50 bg-linear-to-br from-sky-50/80 to-indigo-50/50 shadow-lg shadow-sky-500/6 dark:border-sky-700/40 dark:from-sky-950/30 dark:to-indigo-950/25">
+      <CardContent className="relative space-y-4 p-5">
+        {/* Decorative glow */}
+        <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-sky-400/15 blur-2xl" />
+
+        {/* Header */}
+        <div className="relative flex items-center gap-3">
+          <div className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-md shadow-sky-500/30">
+            <Bot className="size-5" />
+            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-gray-900" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">{t('myWork.aiTitle')}</p>
+            <p className="text-[11px] text-muted-foreground">{t('myWork.aiDesc')}</p>
+          </div>
         </div>
-        <TaskPriorityBadge priority={schedule.task.priority} />
-      </div>
 
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpen}>
-          Mở task
+        {/* Project context */}
+        {task ? (
+          <div className="rounded-lg border border-sky-200/50 bg-white/70 p-3 dark:border-sky-800/35 dark:bg-white/5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">{t('myWork.aiPrioritizing')}</p>
+            <p className="mt-1 text-sm font-semibold leading-5 text-foreground">{projectName ?? t('myWork.projectFallback', { id: task.projectId })}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">↳ {task.title}</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border/60 bg-white/70 p-3 dark:bg-white/5">
+            <p className="text-sm text-muted-foreground">{t('myWork.aiNoTask')}</p>
+          </div>
+        )}
+
+        {/* CTA */}
+        <Button className="w-full gap-2 bg-sky-600 text-white shadow-md shadow-sky-600/25 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600" onClick={onOpen} disabled={!task}>
+          <Sparkles className="size-4" />
+          {t('myWork.aiOpenBtn')}
         </Button>
-        <Button size="sm" className="gap-1.5" onClick={onFocus}>
-          <Target className="size-4" />
-          Focus
-        </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
-function TaskColumn({
-  title,
-  emptyLabel,
-  tasks,
-  projectNames,
-  onOpen,
-  onFocus,
-  onPlan,
-}: {
-  title: string
-  emptyLabel: string
-  tasks: Task[]
-  projectNames?: Map<number, string>
-  onOpen: (task: Task) => void
-  onFocus: (task: Task) => void
-  onPlan: (task: Task) => void
+/* ── Blocker Digest ── */
+
+function BlockerDigestCard({ tasks, names, onOpen }: {
+  tasks: Task[]; names?: Map<number, string>; onOpen: (t: Task) => void
 }) {
+  const { t } = useTranslation()
   return (
-    <motion.div variants={itemVariants}>
-      <Card className="h-full border-border/70 bg-card/95 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <span className="flex size-6 items-center justify-center rounded-md bg-rose-100 dark:bg-rose-500/20">
+            <CircleAlert className="size-3.5 text-rose-600 dark:text-rose-400" />
+          </span>
+          <span className="text-rose-700 dark:text-rose-300">{t('myWork.blockerDigest')}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {tasks.length > 0 ? tasks.map((task) => (
+          <button key={task.id} type="button" className="flex w-full items-start justify-between gap-2 rounded-lg border border-border/60 bg-background/80 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5" onClick={() => onOpen(task)}>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold">{task.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{names?.get(task.projectId) ?? t('myWork.projectFallback', { id: task.projectId })}</p>
+            </div>
+            <TaskPriorityBadge priority={task.priority} />
+          </button>
+        )) : (
+          <p className="py-2 text-sm text-muted-foreground">{t('myWork.noBlockerDigest')}</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ── Task Queue Section ── */
+
+function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, onOpen, onFocus, onPlan }: {
+  title: string; tone: 'rose' | 'emerald'; icon: typeof AlertTriangle
+  desc: string; empty: string; tasks: Task[]; total: number
+  page: number; pages: number; onPage: (p: number) => void
+  names?: Map<number, string>; onOpen: (t: Task) => void; onFocus: (t: Task) => void; onPlan: (t: Task) => void
+}) {
+  const s = {
+    rose: { ico: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', txt: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
+    emerald: { ico: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400', txt: 'text-emerald-700 dark:text-emerald-300', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' },
+  }[tone]
+  return (
+    <motion.div variants={fadeSlide}>
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="space-y-3 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <span className={cn('flex size-6 items-center justify-center rounded-md', s.ico)}><Icon className="size-3.5" /></span>
+              <span className={s.txt}>{title}</span>
+              <Badge className={cn('text-[10px]', s.badge)}>{total}</Badge>
+            </CardTitle>
+          </div>
+          <p className="text-sm text-muted-foreground">{desc}</p>
+          <Pager page={page} pages={pages} onChange={onPage} />
         </CardHeader>
         <CardContent className="space-y-3">
-          {tasks.length > 0 ? tasks.map((task) => (
-            <TaskExecutionCard
-              key={task.id}
-              task={task}
-              projectName={projectNames?.get(task.projectId)}
-              onOpen={() => onOpen(task)}
-              onFocus={() => onFocus(task)}
-              onPlan={() => onPlan(task)}
-            />
-          )) : (
-            <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-          )}
+          <AnimatePresence mode="popLayout">
+            {tasks.length > 0 ? tasks.map((t) => (
+              <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                <TaskCard task={t} projectName={names?.get(t.projectId)} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} onPlan={() => onPlan(t)} />
+              </motion.div>
+            )) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>
+            )}
+          </AnimatePresence>
         </CardContent>
       </Card>
     </motion.div>
   )
 }
 
-function TaskExecutionCard({
-  task,
-  projectName,
-  onOpen,
-  onFocus,
-  onPlan,
-}: {
-  task: Task
-  projectName?: string
-  onOpen: () => void
-  onFocus: () => void
-  onPlan: () => void
+function TaskCard({ task, projectName, onOpen, onFocus, onPlan }: {
+  task: Task; projectName?: string; onOpen: () => void; onFocus: () => void; onPlan: () => void
 }) {
+  const { t } = useTranslation()
   return (
-    <div className="rounded-[1.75rem] border border-border/70 bg-background/80 p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.32)]">
+    <div className={cn('rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm', priorityBorder(task.priority))}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold">{task.title}</p>
             <Badge variant="outline" className="text-[10px]">#{task.id}</Badge>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{projectName ?? `Project #${task.projectId}`}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{projectName ?? t('myWork.projectFallback', { id: task.projectId })}</p>
         </div>
         <TaskPriorityBadge priority={task.priority} />
       </div>
 
-      <TaskBlockerBadge task={task} className="mt-3" />
+      <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs">
+        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 font-medium', dueTone(task.dueDate))}>
+          <Clock3 className="mr-1 size-3" />{fmtDue(task.dueDate, t)}
+        </span>
+        <Badge variant="outline" className="text-[10px]">{task.status.name}</Badge>
+        {task.sourceView && <Badge variant="secondary" className="text-[10px]">{viewLabel(task.sourceView, t)}</Badge>}
+        {task.estimatedMinutes > 0 && <Badge variant="outline" className="text-[10px]">{task.estimatedMinutes} min</Badge>}
+      </div>
 
-      {task.dueDate ? (
-        <p className="mt-3 text-xs text-muted-foreground">Due: {formatDateTime(task.dueDate)}</p>
-      ) : null}
+      {task.description?.trim() && <p className="mt-2.5 line-clamp-2 text-sm leading-6 text-muted-foreground">{task.description}</p>}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpen}>
-          Mở task
-        </Button>
-        <Button size="sm" className="gap-1.5" onClick={onFocus}>
-          <Target className="size-4" />
-          Focus Mode
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={onPlan}>
-          <Sparkles className="size-4" />
-          AI plan
-        </Button>
+      <TaskBlockerBadge task={task} className="mt-2.5" />
+
+      {task.blocked && task.blockedReason?.trim() && (
+        <div className="mt-2.5 rounded-lg border border-rose-200 bg-rose-50/90 px-3 py-2.5 text-xs leading-5 text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">{task.blockedReason}</div>
+      )}
+
+      <div className="mt-3.5 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={onOpen}><ArrowUpRight className="size-3.5" />{t('myWork.openTask')}</Button>
+        <Button size="sm" className="gap-1.5 text-xs" onClick={onFocus}><Target className="size-3.5" />{t('myWork.focusMode')}</Button>
+        <Button size="sm" variant="secondary" className="gap-1.5 text-xs" onClick={onPlan}><Bot className="size-3.5" />{t('myWork.aiSuggest')}</Button>
       </div>
     </div>
   )
 }
 
-function priorityRank(task: Task) {
-  return {
-    LOW: 1,
-    MEDIUM: 2,
-    HIGH: 3,
-    URGENT: 4,
-  }[task.priority]
+function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (p: number) => void }) {
+  const { t } = useTranslation()
+  if (pages <= 1) return null
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-xs text-muted-foreground">{t('myWork.pageOf', { current: page, total: pages })}</p>
+      <div className="flex gap-1.5">
+        <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={page <= 1} onClick={() => onChange(page - 1)}><ChevronLeft className="size-3.5" />{t('common.previous')}</Button>
+        <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={page >= pages} onClick={() => onChange(page + 1)}>{t('common.next')}<ChevronRight className="size-3.5" /></Button>
+      </div>
+    </div>
+  )
 }
 
-function compareActiveTasks(left: Task, right: Task) {
-  const priorityDelta = priorityRank(right) - priorityRank(left)
-  if (priorityDelta !== 0) {
-    return priorityDelta
-  }
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Utilities                                                                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
-  const leftDue = left.dueDate ? new Date(left.dueDate).getTime() : Number.POSITIVE_INFINITY
-  const rightDue = right.dueDate ? new Date(right.dueDate).getTime() : Number.POSITIVE_INFINITY
-  return leftDue - rightDue
+function matchTask(task: Task, search: string, pf: PriorityFilter, names?: Map<number, string>) {
+  if (pf !== 'ALL' && task.priority !== pf) return false
+  if (!search) return true
+  return [task.title, task.description, task.blockedReason, task.status.name, names?.get(task.projectId)].filter(Boolean).join(' ').toLowerCase().includes(search)
+}
+
+function cmpTasks(a: Task, b: Task, m: SortMode) {
+  if (m === 'title') return a.title.localeCompare(b.title)
+  if (m === 'recent') return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  if (m === 'due') {
+    const d = dueTs(a) - dueTs(b)
+    return d !== 0 ? d : pRank(b.priority) - pRank(a.priority)
+  }
+  const bl = (b.blockedByOpenCount ?? 0) - (a.blockedByOpenCount ?? 0)
+  if (bl !== 0 && (a.blocked || b.blocked)) return bl
+  const pr = pRank(b.priority) - pRank(a.priority)
+  if (pr !== 0) return pr
+  const d = dueTs(a) - dueTs(b)
+  return d !== 0 ? d : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+}
+
+function paginate<T>(items: T[], req: number, size: number) {
+  const pages = Math.max(1, Math.ceil(items.length / size))
+  const page = Math.min(req, pages)
+  const start = (page - 1) * size
+  return { items: items.slice(start, start + size), page, pages }
+}
+
+function pRank(p: TaskPriorityType) { return { LOW: 1, MEDIUM: 2, HIGH: 3, URGENT: 4 }[p] }
+function dueTs(t: Task) { return t.dueDate ? new Date(t.dueDate).getTime() : Infinity }
+
+function fmtDue(d: string | undefined, t: TFunction) {
+  if (!d) return t('myWork.noDeadlineSet')
+  const due = new Date(d)
+  if (Number.isNaN(due.getTime())) return d
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate())
+  const delta = Math.round((dueDay.getTime() - today.getTime()) / 86_400_000)
+  if (delta < 0) return t('myWork.overdue', { count: Math.abs(delta) })
+  if (delta === 0) return t('myWork.dueToday')
+  if (delta === 1) return t('myWork.dueTomorrow')
+  if (delta <= 7) return t('myWork.dueInDays', { count: delta })
+  return due.toLocaleDateString(undefined)
+}
+
+function dueTone(d?: string) {
+  if (!d) return 'border-border/60 bg-background text-muted-foreground'
+  const due = new Date(d)
+  if (Number.isNaN(due.getTime())) return 'border-border/60 bg-background text-muted-foreground'
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate())
+  const delta = Math.round((dueDay.getTime() - today.getTime()) / 86_400_000)
+  if (delta < 0) return 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100'
+  if (delta <= 1) return 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100'
+  return 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100'
+}
+
+function priorityBorder(p: TaskPriorityType) {
+  return { LOW: 'border-l-4 border-l-emerald-400', MEDIUM: 'border-l-4 border-l-sky-400', HIGH: 'border-l-4 border-l-amber-400', URGENT: 'border-l-4 border-l-rose-400' }[p]
+}
+
+function viewLabel(v: string, t: TFunction) {
+  return v === 'KANBAN' ? t('task.viewKanban') : v === 'CALENDAR' ? t('task.viewCalendar') : v === 'TODO' ? t('task.viewTodo') : t('task.viewTask')
 }

@@ -15,10 +15,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/app/store/auth-store'
 import { ConfirmModal } from '@/components/shared/confirm-modal'
+import { LanguageSwitcher } from '@/components/shared/language-switcher'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,23 +70,6 @@ const ICON_ACTION_BUTTON_BASE = 'size-8 rounded-full p-0 transition-all duration
 type AdminSection = 'users' | 'roles' | 'permissions'
 
 const ADMIN_SECTION_ORDER: AdminSection[] = ['users', 'roles', 'permissions']
-const ADMIN_SECTION_META = {
-  users: {
-    label: 'Users',
-    description: 'Quản lý tài khoản và role',
-  },
-  roles: {
-    label: 'Roles',
-    description: 'Vai trò hệ thống',
-  },
-  permissions: {
-    label: 'Permissions',
-    description: 'Quyền truy cập API',
-  },
-} satisfies Record<AdminSection, {
-  label: string
-  description: string
-}>
 
 function resolveAdminSection(value: string | undefined): AdminSection | null {
   if (!value) {
@@ -137,6 +122,7 @@ function resolveModuleBadgeClass(moduleName: string): string {
 }
 
 export function AdminDashboardPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const params = useParams<{ section?: string }>()
@@ -204,27 +190,33 @@ export function AdminDashboardPage() {
     return (
       <Card className="border-dashed">
         <CardContent className="py-8 text-sm text-muted-foreground">
-          Bạn không có quyền quản trị hệ thống.
+          {t('admin.accessDenied')}
         </CardContent>
       </Card>
     )
   }
 
-  const sectionMeta = ADMIN_SECTION_META[activeSection]
+  const sectionMeta = {
+    label: t(`admin.sections.${activeSection}.label`),
+    description: t(`admin.sections.${activeSection}.description`),
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin Console</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('admin.consoleTitle')}</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
           <p className="text-sm text-muted-foreground">{sectionMeta.description}</p>
         </div>
 
-        <Button variant="outline" onClick={() => void refreshAll()}>
-          <RefreshCcw className="size-4" />
-          Làm mới
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <LanguageSwitcher showLabel className="rounded-full border border-border/70 bg-background/80 px-3 hover:bg-muted" />
+          <Button variant="outline" onClick={() => void refreshAll()}>
+            <RefreshCcw className="size-4" />
+            {t('common.refresh')}
+          </Button>
+        </div>
       </div>
 
       {activeSection === 'users' && (
@@ -263,6 +255,7 @@ interface AdminTablePaginationProps {
 }
 
 function AdminTablePagination({ page, pageSize, totalItems, onPageChange }: AdminTablePaginationProps) {
+  const { t } = useTranslation()
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
   const safePage = Math.min(page, totalPages)
   const startItem = totalItems === 0 ? 0 : ((safePage - 1) * pageSize) + 1
@@ -271,7 +264,7 @@ function AdminTablePagination({ page, pageSize, totalItems, onPageChange }: Admi
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2">
       <p className="text-xs text-muted-foreground">
-        Hiển thị {startItem}-{endItem} / {totalItems}
+        {t('admin.paginationSummary', { start: startItem, end: endItem, total: totalItems })}
       </p>
       <div className="inline-flex items-center gap-1.5">
         <Button
@@ -283,7 +276,7 @@ function AdminTablePagination({ page, pageSize, totalItems, onPageChange }: Admi
           disabled={safePage <= 1}
         >
           <ChevronLeft className="size-3.5" />
-          Trước
+          {t('common.previous')}
         </Button>
         <span className="min-w-14 text-center text-xs font-medium">
           {safePage}/{totalPages}
@@ -296,7 +289,7 @@ function AdminTablePagination({ page, pageSize, totalItems, onPageChange }: Admi
           onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
           disabled={safePage >= totalPages}
         >
-          Sau
+          {t('common.next')}
           <ChevronRight className="size-3.5" />
         </Button>
       </div>
@@ -336,6 +329,7 @@ const EMPTY_USER_FORM: UserEditFormState = {
 }
 
 function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdminTabProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [deleteUserTarget, setDeleteUserTarget] = useState<AdminUser | null>(null)
@@ -384,46 +378,46 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
   const updateUserMutation = useMutation({
     mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserForAdminPayload }) => adminUserApi.update(userId, payload),
     onSuccess: () => {
-      toast.success('Cập nhật người dùng thành công')
+      toast.success(t('admin.users.updateSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Cập nhật người dùng thất bại', { description: error.message })
+      toast.error(t('admin.users.updateFailed'), { description: error.message })
     },
   })
 
   const addRoleMutation = useMutation({
     mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) => adminUserApi.update(userId, { roleIds: [roleId] }),
     onSuccess: () => {
-      toast.success('Đã thêm role cho người dùng')
+      toast.success(t('admin.users.addRoleSuccess'))
       setAddRoleId('')
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Thêm role thất bại', { description: error.message })
+      toast.error(t('admin.users.addRoleFailed'), { description: error.message })
     },
   })
 
   const removeRoleMutation = useMutation({
     mutationFn: ({ userId, roleId }: { userId: string; roleId: string }) => adminUserApi.deleteRoles(userId, { roleIds: [roleId] }),
     onSuccess: () => {
-      toast.success('Đã gỡ role khỏi người dùng')
+      toast.success(t('admin.users.removeRoleSuccess'))
       setRemoveRoleId('')
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Gỡ role thất bại', { description: error.message })
+      toast.error(t('admin.users.removeRoleFailed'), { description: error.message })
     },
   })
 
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => adminUserApi.remove(userId),
     onSuccess: () => {
-      toast.success('Đã xóa người dùng')
+      toast.success(t('admin.users.deleteSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Xóa người dùng thất bại', { description: error.message })
+      toast.error(t('admin.users.deleteFailed'), { description: error.message })
     },
   })
 
@@ -509,7 +503,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
     }
 
     if (Object.keys(payload).length === 0) {
-      toast.info('Không có thay đổi để cập nhật')
+      toast.info(t('admin.noChanges'))
       return
     }
 
@@ -532,9 +526,9 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Quản lý Users</CardTitle>
+            <CardTitle>{t('admin.users.title')}</CardTitle>
             <CardDescription>
-              Cập nhật thông tin user và quản lý role cấp hệ thống.
+              {t('admin.users.description')}
             </CardDescription>
           </div>
           <div className="relative w-full max-w-xs">
@@ -542,7 +536,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm theo tên, email, role..."
+              placeholder={t('admin.users.searchPlaceholder')}
               className="pl-9"
             />
           </div>
@@ -554,14 +548,14 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
           <Table className="min-w-195">
             <TableHeader>
               <TableRow>
-                <TableHead>Người dùng</TableHead>
-                <TableHead>Email / SĐT</TableHead>
+                <TableHead>{t('admin.users.tableUser')}</TableHead>
+                <TableHead>{t('admin.users.tableContact')}</TableHead>
                 <TableHead className="w-44 px-2">
-                  <div className="flex items-center justify-center text-center">Role</div>
+                  <div className="flex items-center justify-center text-center">{t('admin.users.tableRole')}</div>
                 </TableHead>
-                <TableHead>Trạng thái</TableHead>
+                <TableHead>{t('admin.users.tableStatus')}</TableHead>
                 <TableHead className="w-32 px-2">
-                  <div className="flex items-center justify-center text-center">Hành động</div>
+                  <div className="flex items-center justify-center text-center">{t('admin.users.tableActions')}</div>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -574,12 +568,12 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                   </TableCell>
                   <TableCell>
                     <p>{user.email}</p>
-                    <p className="text-xs text-muted-foreground">{user.phoneNumber || 'Chưa cập nhật'}</p>
+                    <p className="text-xs text-muted-foreground">{user.phoneNumber || t('admin.users.phoneEmpty')}</p>
                   </TableCell>
                   <TableCell className="px-2">
                     <div className="flex flex-wrap items-center justify-center gap-1">
                       {(user.roles ?? []).length === 0 ? (
-                        <Badge variant="outline" className="text-muted-foreground">No role</Badge>
+                        <Badge variant="outline" className="text-muted-foreground">{t('admin.users.noRole')}</Badge>
                       ) : (
                         (user.roles ?? []).map((role) => (
                           <RoleBadge key={role.roleId} roleName={role.name} />
@@ -598,7 +592,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                       )}
                     >
                       {user.isVerified ? <Check className="size-3.5" /> : <X className="size-3.5" />}
-                      {user.isVerified ? 'Đã xác thực' : 'Chưa xác thực'}
+                      {user.isVerified ? t('admin.users.verified') : t('admin.users.unverified')}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-2">
@@ -607,22 +601,22 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
-                        title="Sửa người dùng"
+                        title={t('admin.users.editUser')}
                         onClick={() => openEditDialog(user)}
                       >
                         <Pencil className="size-4" />
-                        <span className="sr-only">Sửa người dùng</span>
+                        <span className="sr-only">{t('admin.users.editUser')}</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deleteUserMutation.isPending || user.userId === currentUserId}
-                        title="Xóa người dùng"
+                        title={t('admin.users.deleteUser')}
                         onClick={() => setDeleteUserTarget(user)}
                       >
                         <Trash2 className="size-4" />
-                        <span className="sr-only">Xóa người dùng</span>
+                        <span className="sr-only">{t('admin.users.deleteUser')}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -631,7 +625,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                    Không có người dùng phù hợp.
+                    {t('admin.users.empty')}
                   </TableCell>
                 </TableRow>
               )}
@@ -650,16 +644,16 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
       <Dialog open={editOpen} onOpenChange={(open) => { if (!open) closeEditDialog() }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Cập nhật người dùng</DialogTitle>
+            <DialogTitle>{t('admin.users.dialogTitle')}</DialogTitle>
             <DialogDescription>
-              Chỉ các trường thay đổi mới được gửi lên backend để tránh xung đột dữ liệu.
+              {t('admin.users.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-first-name">Tên</Label>
+                <Label htmlFor="admin-user-first-name">{t('auth.firstName')}</Label>
                 <Input
                   id="admin-user-first-name"
                   value={form.firstName}
@@ -668,7 +662,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-last-name">Họ</Label>
+                <Label htmlFor="admin-user-last-name">{t('auth.lastName')}</Label>
                 <Input
                   id="admin-user-last-name"
                   value={form.lastName}
@@ -677,7 +671,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-email">Email</Label>
+                <Label htmlFor="admin-user-email">{t('auth.email')}</Label>
                 <Input
                   id="admin-user-email"
                   type="email"
@@ -687,7 +681,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-phone">Số điện thoại</Label>
+                <Label htmlFor="admin-user-phone">{t('auth.phone')}</Label>
                 <Input
                   id="admin-user-phone"
                   value={form.phoneNumber}
@@ -696,7 +690,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-nickname">Nickname</Label>
+                <Label htmlFor="admin-user-nickname">{t('admin.users.nickname')}</Label>
                 <Input
                   id="admin-user-nickname"
                   value={form.nickname}
@@ -705,7 +699,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="admin-user-city">Thành phố</Label>
+                <Label htmlFor="admin-user-city">{t('admin.users.city')}</Label>
                 <Input
                   id="admin-user-city"
                   value={form.city}
@@ -714,7 +708,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="admin-user-nationality">Quốc tịch</Label>
+                <Label htmlFor="admin-user-nationality">{t('admin.users.nationality')}</Label>
                 <Input
                   id="admin-user-nationality"
                   value={form.nationality}
@@ -723,7 +717,7 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="admin-user-biography">Giới thiệu</Label>
+                <Label htmlFor="admin-user-biography">{t('admin.users.biography')}</Label>
                 <Textarea
                   id="admin-user-biography"
                   rows={3}
@@ -735,8 +729,8 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
 
             <div className="flex items-center justify-between rounded-md border px-3 py-2">
               <div>
-                <p className="text-sm font-medium">Tài khoản đã xác thực</p>
-                <p className="text-xs text-muted-foreground">Bật hoặc tắt trạng thái xác thực tài khoản</p>
+                <p className="text-sm font-medium">{t('admin.users.verifiedTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('admin.users.verifiedDescription')}</p>
               </div>
               <Switch
                 checked={form.isVerified}
@@ -746,11 +740,11 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
 
             <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Thêm role</Label>
+                <Label>{t('admin.users.addRole')}</Label>
                 <div className="flex gap-2">
                   <Select value={addRoleId} onValueChange={setAddRoleId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn role để thêm" />
+                      <SelectValue placeholder={t('admin.users.addRolePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {availableRolesToAdd.map((role) => (
@@ -775,11 +769,11 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
               </div>
 
               <div className="space-y-2">
-                <Label>Gỡ role</Label>
+                <Label>{t('admin.users.removeRole')}</Label>
                 <div className="flex gap-2">
                   <Select value={removeRoleId} onValueChange={setRemoveRoleId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn role để gỡ" />
+                      <SelectValue placeholder={t('admin.users.removeRolePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {assignedRoles.map((role) => (
@@ -807,11 +801,11 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
 
           <DialogFooter>
             <Button variant="outline" onClick={closeEditDialog}>
-              Hủy
+              {t('common.cancel')}
             </Button>
             <Button onClick={submitUserUpdate} disabled={updateUserMutation.isPending}>
               {updateUserMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Lưu thay đổi
+              {t('task.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -824,9 +818,11 @@ function UsersAdminTab({ users, roles, currentUserId, onDataChanged }: UsersAdmi
             setDeleteUserTarget(null)
           }
         }}
-        title="Xóa người dùng"
-        description={deleteUserTarget ? `Có chắc chắn muốn xóa không? (${deleteUserTarget.email})` : 'Có chắc chắn muốn xóa không?'}
-        confirmText="Xóa"
+        title={t('admin.users.deleteConfirmTitle')}
+        description={deleteUserTarget
+          ? t('admin.users.deleteConfirmDescription', { target: deleteUserTarget.email })
+          : t('admin.users.deleteConfirmDescriptionGeneric')}
+        confirmText={t('common.delete')}
         confirmVariant="destructive"
         loading={deleteUserMutation.isPending}
         onConfirm={() => {
@@ -864,6 +860,7 @@ const EMPTY_ROLE_FORM: RoleFormState = {
 }
 
 function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [deleteRoleTarget, setDeleteRoleTarget] = useState<AdminRole | null>(null)
@@ -912,35 +909,35 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
   const createRoleMutation = useMutation({
     mutationFn: (payload: CreateRolePayload) => adminRoleApi.create(payload),
     onSuccess: () => {
-      toast.success('Tạo role thành công')
+      toast.success(t('admin.roles.createSuccess'))
       onDataChanged()
       closeRoleDialog()
     },
     onError: (error: Error) => {
-      toast.error('Tạo role thất bại', { description: error.message })
+      toast.error(t('admin.roles.createFailed'), { description: error.message })
     },
   })
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ roleId, payload }: { roleId: string; payload: UpdateRolePayload }) => adminRoleApi.update(roleId, payload),
     onSuccess: () => {
-      toast.success('Cập nhật role thành công')
+      toast.success(t('admin.roles.updateSuccess'))
       onDataChanged()
       closeRoleDialog()
     },
     onError: (error: Error) => {
-      toast.error('Cập nhật role thất bại', { description: error.message })
+      toast.error(t('admin.roles.updateFailed'), { description: error.message })
     },
   })
 
   const deleteRoleMutation = useMutation({
     mutationFn: (roleId: string) => adminRoleApi.remove(roleId),
     onSuccess: () => {
-      toast.success('Đã xóa role')
+      toast.success(t('admin.roles.deleteSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Xóa role thất bại', { description: error.message })
+      toast.error(t('admin.roles.deleteFailed'), { description: error.message })
     },
   })
 
@@ -948,23 +945,23 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
     mutationFn: ({ roleId, active }: { roleId: string; active: boolean }) =>
       adminRoleApi.update(roleId, { active }),
     onSuccess: () => {
-      toast.success('Đã cập nhật trạng thái role')
+      toast.success(t('admin.roles.statusUpdated'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Cập nhật trạng thái role thất bại', { description: error.message })
+      toast.error(t('admin.roles.statusUpdateFailed'), { description: error.message })
     },
   })
 
   const addPermissionsMutation = useMutation({
     mutationFn: ({ roleId, permissionIds }: { roleId: string; permissionIds: string[] }) => adminRoleApi.update(roleId, { permissionIds }),
     onSuccess: () => {
-      toast.success('Đã thêm permissions vào role')
+      toast.success(t('admin.roles.addPermissionsSuccess'))
       setSelectedPermissionIds([])
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Thêm permissions thất bại', { description: error.message })
+      toast.error(t('admin.roles.addPermissionsFailed'), { description: error.message })
     },
   })
 
@@ -972,11 +969,11 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
     mutationFn: ({ roleId, permissionId }: { roleId: string; permissionId: string }) =>
       adminRoleApi.deletePermissions(roleId, { permissionIds: [permissionId] }),
     onSuccess: () => {
-      toast.success('Đã gỡ permission khỏi role')
+      toast.success(t('admin.roles.removePermissionSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Gỡ permission thất bại', { description: error.message })
+      toast.error(t('admin.roles.removePermissionFailed'), { description: error.message })
     },
   })
 
@@ -1013,7 +1010,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
     const description = roleForm.description.trim()
 
     if (!normalizedName) {
-      toast.error('Tên role không được để trống')
+      toast.error(t('admin.roles.nameRequired'))
       return
     }
 
@@ -1045,7 +1042,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
     }
 
     if (Object.keys(payload).length === 0) {
-      toast.info('Không có thay đổi để cập nhật')
+      toast.info(t('admin.noChanges'))
       return
     }
 
@@ -1074,9 +1071,9 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Quản lý Roles</CardTitle>
+            <CardTitle>{t('admin.roles.title')}</CardTitle>
             <CardDescription>
-              Tạo role, chỉnh sửa thông tin và quản lý permissions cho từng role.
+              {t('admin.roles.description')}
             </CardDescription>
           </div>
           <div className="flex w-full max-w-md gap-2">
@@ -1085,13 +1082,13 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm theo role hoặc permission..."
+                placeholder={t('admin.roles.searchPlaceholder')}
                 className="pl-9"
               />
             </div>
             <Button onClick={openCreateDialog}>
               <Plus className="size-4" />
-              Role mới
+              {t('admin.roles.newRole')}
             </Button>
           </div>
         </div>
@@ -1107,9 +1104,9 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
             </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead className="px-1 text-center">Role</TableHead>
-                <TableHead>Mô tả</TableHead>
-                <TableHead className="px-1 text-center">Hành động</TableHead>
+                <TableHead className="px-1 text-center">{t('admin.roles.tableRole')}</TableHead>
+                <TableHead>{t('admin.roles.tableDescription')}</TableHead>
+                <TableHead className="px-1 text-center">{t('admin.roles.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1121,7 +1118,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-normal text-sm leading-relaxed text-muted-foreground align-top">
-                    {role.description || 'Không có mô tả'}
+                    {role.description || t('admin.roles.noDescription')}
                   </TableCell>
                   <TableCell className="px-1 py-2 text-center align-top">
                     <div className="inline-flex items-center justify-center gap-1">
@@ -1135,7 +1132,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                             : 'text-slate-500 hover:bg-slate-500/15 hover:text-slate-700',
                         )}
                         disabled={toggleRoleActiveMutation.isPending}
-                        title={role.active ? 'Tắt role' : 'Bật role'}
+                        title={role.active ? t('admin.roles.deactivate') : t('admin.roles.activate')}
                         onClick={() => {
                           toggleRoleActiveMutation.mutate({
                             roleId: role.roleId,
@@ -1144,25 +1141,25 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                         }}
                       >
                         <Power className="size-4" />
-                        <span className="sr-only">{role.active ? 'Tắt role' : 'Bật role'}</span>
+                        <span className="sr-only">{role.active ? t('admin.roles.deactivate') : t('admin.roles.activate')}</span>
                       </Button>
 
                       <Button
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
-                        title="Sửa role"
+                        title={t('admin.roles.editRole')}
                         onClick={() => openEditDialog(role)}
                       >
                         <Pencil className="size-4" />
-                        <span className="sr-only">Sửa role</span>
+                        <span className="sr-only">{t('admin.roles.editRole')}</span>
                       </Button>
 
                       <Button
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-sky-600 hover:bg-sky-500/15 hover:text-sky-700')}
-                        title="Quản lý permissions"
+                        title={t('admin.roles.managePermissions')}
                         onClick={() => {
                           setPermissionDialogRoleId(role.roleId)
                           setSelectedPermissionIds([])
@@ -1170,7 +1167,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                         }}
                       >
                         <ShieldCheck className="size-4" />
-                        <span className="sr-only">Quản lý permissions</span>
+                        <span className="sr-only">{t('admin.roles.managePermissions')}</span>
                       </Button>
 
                       <Button
@@ -1178,11 +1175,11 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deleteRoleMutation.isPending}
-                        title="Xóa role"
+                        title={t('admin.roles.deleteRole')}
                         onClick={() => setDeleteRoleTarget(role)}
                       >
                         <Trash2 className="size-4" />
-                        <span className="sr-only">Xóa role</span>
+                        <span className="sr-only">{t('admin.roles.deleteRole')}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -1191,7 +1188,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
               {filteredRoles.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
-                    Không có role phù hợp.
+                    {t('admin.roles.empty')}
                   </TableCell>
                 </TableRow>
               )}
@@ -1210,25 +1207,25 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
       <Dialog open={roleDialogOpen} onOpenChange={(open) => { if (!open) closeRoleDialog() }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{roleDialogMode === 'create' ? 'Tạo role mới' : 'Cập nhật role'}</DialogTitle>
+            <DialogTitle>{roleDialogMode === 'create' ? t('admin.roles.createTitle') : t('admin.roles.editTitle')}</DialogTitle>
             <DialogDescription>
-              Role name sẽ được lưu ở định dạng uppercase để đồng bộ backend.
+              {t('admin.roles.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="admin-role-name">Role name</Label>
+              <Label htmlFor="admin-role-name">{t('admin.roles.nameLabel')}</Label>
               <Input
                 id="admin-role-name"
                 value={roleForm.name}
                 onChange={(event) => setRoleForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Ví dụ: ADMIN_SUPPORT"
+                placeholder={t('admin.roles.namePlaceholder')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="admin-role-description">Mô tả</Label>
+              <Label htmlFor="admin-role-description">{t('admin.roles.tableDescription')}</Label>
               <Textarea
                 id="admin-role-description"
                 rows={3}
@@ -1239,8 +1236,8 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
 
             <div className="flex items-center justify-between rounded-md border px-3 py-2">
               <div>
-                <p className="text-sm font-medium">Role active</p>
-                <p className="text-xs text-muted-foreground">Bật/tắt role trong hệ thống</p>
+                <p className="text-sm font-medium">{t('admin.roles.activeTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('admin.roles.activeDescription')}</p>
               </div>
               <Switch
                 checked={roleForm.active}
@@ -1251,11 +1248,11 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
 
           <DialogFooter>
             <Button variant="outline" onClick={closeRoleDialog}>
-              Hủy
+              {t('common.cancel')}
             </Button>
             <Button onClick={submitRole} disabled={createRoleMutation.isPending || updateRoleMutation.isPending}>
               {(createRoleMutation.isPending || updateRoleMutation.isPending) && <Loader2 className="size-4 animate-spin" />}
-              {roleDialogMode === 'create' ? 'Tạo role' : 'Lưu thay đổi'}
+              {roleDialogMode === 'create' ? t('admin.roles.createAction') : t('task.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1264,24 +1261,24 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
       <Dialog open={permissionDialogOpen} onOpenChange={setPermissionDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Quản lý permissions cho role {activeRoleForPermissions?.name}</DialogTitle>
+            <DialogTitle>{t('admin.roles.permissionsDialogTitle', { role: activeRoleForPermissions?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              Backend xử lý add/remove permissions theo từng thao tác riêng, không replace toàn bộ.
+              {t('admin.roles.permissionsDialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           {activeRoleForPermissions ? (
             <div className="space-y-5">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Permissions hiện tại</p>
+                <p className="text-sm font-medium">{t('admin.roles.currentPermissions')}</p>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Tên</TableHead>
-                        <TableHead>API</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead>{t('admin.roles.permissionTableName')}</TableHead>
+                        <TableHead>{t('admin.roles.permissionTableApi')}</TableHead>
+                        <TableHead>{t('admin.roles.permissionTableMethod')}</TableHead>
+                        <TableHead className="text-right">{t('admin.roles.permissionTableAction')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1313,7 +1310,7 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                       {(activeRoleForPermissions.permissions ?? []).length === 0 && (
                         <TableRow>
                           <TableCell colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
-                            Role chưa có permission.
+                            {t('admin.roles.noPermissions')}
                           </TableCell>
                         </TableRow>
                       )}
@@ -1323,10 +1320,10 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Thêm permissions</p>
+                <p className="text-sm font-medium">{t('admin.roles.addPermissions')}</p>
                 <div className="rounded-md border p-3">
                   {addablePermissions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Không còn permission để thêm.</p>
+                    <p className="text-sm text-muted-foreground">{t('admin.roles.noAddablePermissions')}</p>
                   ) : (
                     <div className="grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                       {addablePermissions.map((permission) => {
@@ -1371,14 +1368,14 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
                       }}
                     >
                       {addPermissionsMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-                      Thêm permissions đã chọn
+                      {t('admin.roles.addSelectedPermissions')}
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Không tìm thấy role để quản lý permissions.</p>
+            <p className="text-sm text-muted-foreground">{t('admin.roles.roleNotFound')}</p>
           )}
         </DialogContent>
       </Dialog>
@@ -1390,9 +1387,11 @@ function RolesAdminTab({ roles, permissions, onDataChanged }: RolesAdminTabProps
             setDeleteRoleTarget(null)
           }
         }}
-        title="Xóa role"
-        description={deleteRoleTarget ? `Có chắc chắn muốn xóa không? (${deleteRoleTarget.name})` : 'Có chắc chắn muốn xóa không?'}
-        confirmText="Xóa"
+        title={t('admin.roles.deleteConfirmTitle')}
+        description={deleteRoleTarget
+          ? t('admin.roles.deleteConfirmDescription', { target: deleteRoleTarget.name })
+          : t('admin.roles.deleteConfirmDescriptionGeneric')}
+        confirmText={t('common.delete')}
         confirmVariant="destructive"
         loading={deleteRoleMutation.isPending}
         onConfirm={() => {
@@ -1432,6 +1431,7 @@ const EMPTY_PERMISSION_FORM: PermissionFormState = {
 }
 
 function PermissionsAdminTab({ permissions, modules, onDataChanged }: PermissionsAdminTabProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [deletePermissionTarget, setDeletePermissionTarget] = useState<AdminPermission | null>(null)
@@ -1479,12 +1479,12 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
   const createPermissionMutation = useMutation({
     mutationFn: (payload: CreatePermissionPayload) => adminPermissionApi.create(payload),
     onSuccess: () => {
-      toast.success('Tạo permission thành công')
+      toast.success(t('admin.permissions.createSuccess'))
       onDataChanged()
       closePermissionDialog()
     },
     onError: (error: Error) => {
-      toast.error('Tạo permission thất bại', { description: error.message })
+      toast.error(t('admin.permissions.createFailed'), { description: error.message })
     },
   })
 
@@ -1492,23 +1492,23 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
     mutationFn: ({ permissionId, payload }: { permissionId: string; payload: UpdatePermissionPayload }) =>
       adminPermissionApi.update(permissionId, payload),
     onSuccess: () => {
-      toast.success('Cập nhật permission thành công')
+      toast.success(t('admin.permissions.updateSuccess'))
       onDataChanged()
       closePermissionDialog()
     },
     onError: (error: Error) => {
-      toast.error('Cập nhật permission thất bại', { description: error.message })
+      toast.error(t('admin.permissions.updateFailed'), { description: error.message })
     },
   })
 
   const deletePermissionMutation = useMutation({
     mutationFn: (permissionId: string) => adminPermissionApi.remove(permissionId),
     onSuccess: () => {
-      toast.success('Đã xóa permission')
+      toast.success(t('admin.permissions.deleteSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Xóa permission thất bại', { description: error.message })
+      toast.error(t('admin.permissions.deleteFailed'), { description: error.message })
     },
   })
 
@@ -1516,23 +1516,23 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
     mutationFn: ({ newModuleName, permissionIds }: { newModuleName: string; permissionIds: string[] }) =>
       adminPermissionApi.createModule({ moduleName: newModuleName, permissionIds }),
     onSuccess: () => {
-      toast.success('Tạo module thành công')
+      toast.success(t('admin.permissions.createModuleSuccess'))
       onDataChanged()
       closeModuleDialog()
     },
     onError: (error: Error) => {
-      toast.error('Tạo module thất bại', { description: error.message })
+      toast.error(t('admin.permissions.createModuleFailed'), { description: error.message })
     },
   })
 
   const deleteModuleMutation = useMutation({
     mutationFn: (targetModule: string) => adminPermissionApi.deleteModule(targetModule),
     onSuccess: () => {
-      toast.success('Đã xóa module khỏi permissions')
+      toast.success(t('admin.permissions.deleteModuleSuccess'))
       onDataChanged()
     },
     onError: (error: Error) => {
-      toast.error('Xóa module thất bại', { description: error.message })
+      toast.error(t('admin.permissions.deleteModuleFailed'), { description: error.message })
     },
   })
 
@@ -1580,7 +1580,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
     const apiPath = permissionForm.apiPath.trim()
 
     if (!name || !apiPath) {
-      toast.error('Tên permission và API path không được để trống')
+      toast.error(t('admin.permissions.validationRequired'))
       return
     }
 
@@ -1620,7 +1620,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
     }
 
     if (Object.keys(payload).length === 0) {
-      toast.info('Không có thay đổi để cập nhật')
+      toast.info(t('admin.noChanges'))
       return
     }
 
@@ -1640,9 +1640,9 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
       <CardHeader className="gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Quản lý Permissions</CardTitle>
+            <CardTitle>{t('admin.permissions.title')}</CardTitle>
             <CardDescription>
-              Quản lý endpoint permissions và nhóm module hệ thống.
+              {t('admin.permissions.description')}
             </CardDescription>
           </div>
           <div className="flex w-full max-w-3xl flex-wrap gap-2">
@@ -1651,24 +1651,24 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm theo API path, method, module..."
+                placeholder={t('admin.permissions.searchPlaceholder')}
                 className="pl-9"
               />
             </div>
             <Button variant="outline" onClick={() => setModuleDialogOpen(true)}>
               <Settings className="size-4" />
-              Tạo module
+              {t('admin.permissions.createModule')}
             </Button>
             <Button onClick={openCreatePermissionDialog}>
               <Plus className="size-4" />
-              Permission mới
+              {t('admin.permissions.newPermission')}
             </Button>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {modules.length === 0 ? (
-            <Badge variant="outline">Chưa có module</Badge>
+            <Badge variant="outline">{t('admin.permissions.emptyModules')}</Badge>
           ) : (
             modules.map((moduleName) => (
               <div key={moduleName} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
@@ -1677,6 +1677,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                   type="button"
                   className="text-destructive"
                   disabled={deleteModuleMutation.isPending}
+                  aria-label={t('admin.permissions.removeModuleButtonAria', { module: moduleName })}
                   onClick={() => setDeleteModuleTarget(moduleName)}
                 >
                   <Trash2 className="size-3.5" />
@@ -1692,11 +1693,11 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
           <Table className="min-w-225">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-60">Tên permission</TableHead>
-                <TableHead className="w-90">API Path</TableHead>
-                <TableHead className="w-30">Method</TableHead>
-                <TableHead className="w-35">Module</TableHead>
-                <TableHead className="w-40 text-right">Hành động</TableHead>
+                <TableHead className="w-60">{t('admin.permissions.tableName')}</TableHead>
+                <TableHead className="w-90">{t('admin.permissions.tableApiPath')}</TableHead>
+                <TableHead className="w-30">{t('admin.permissions.tableMethod')}</TableHead>
+                <TableHead className="w-35">{t('admin.permissions.tableModule')}</TableHead>
+                <TableHead className="w-40 text-right">{t('admin.permissions.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1716,7 +1717,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                     {permission.module ? (
                       <Badge variant="outline" className={resolveModuleBadgeClass(permission.module)}>{permission.module}</Badge>
                     ) : (
-                      <Badge variant="secondary">No module</Badge>
+                      <Badge variant="secondary">{t('admin.permissions.noModule')}</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -1725,22 +1726,22 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-amber-500 hover:bg-amber-500/15 hover:text-amber-600')}
-                        title="Sửa permission"
+                        title={t('admin.permissions.editPermission')}
                         onClick={() => openEditPermissionDialog(permission)}
                       >
                         <Pencil className="size-4" />
-                        <span className="sr-only">Sửa permission</span>
+                        <span className="sr-only">{t('admin.permissions.editPermission')}</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         className={cn(ICON_ACTION_BUTTON_BASE, 'text-destructive hover:bg-destructive/15 hover:text-destructive')}
                         disabled={deletePermissionMutation.isPending}
-                        title="Xóa permission"
+                        title={t('admin.permissions.deletePermission')}
                         onClick={() => setDeletePermissionTarget(permission)}
                       >
                         <Trash2 className="size-4" />
-                        <span className="sr-only">Xóa permission</span>
+                        <span className="sr-only">{t('admin.permissions.deletePermission')}</span>
                       </Button>
                     </div>
                   </TableCell>
@@ -1749,7 +1750,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
               {filteredPermissions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                    Không có permission phù hợp.
+                    {t('admin.permissions.empty')}
                   </TableCell>
                 </TableRow>
               )}
@@ -1768,15 +1769,15 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
       <Dialog open={permissionDialogOpen} onOpenChange={(open) => { if (!open) closePermissionDialog() }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{permissionDialogMode === 'create' ? 'Tạo permission mới' : 'Cập nhật permission'}</DialogTitle>
+            <DialogTitle>{permissionDialogMode === 'create' ? t('admin.permissions.createTitle') : t('admin.permissions.editTitle')}</DialogTitle>
             <DialogDescription>
-              Chỉnh sửa chính xác endpoint path và HTTP method theo backend contract.
+              {t('admin.permissions.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="admin-permission-name">Tên</Label>
+              <Label htmlFor="admin-permission-name">{t('admin.permissions.nameLabel')}</Label>
               <Input
                 id="admin-permission-name"
                 value={permissionForm.name}
@@ -1785,18 +1786,18 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="admin-permission-api-path">API path</Label>
+              <Label htmlFor="admin-permission-api-path">{t('admin.permissions.apiPathLabel')}</Label>
               <Input
                 id="admin-permission-api-path"
                 value={permissionForm.apiPath}
                 onChange={(event) => setPermissionForm((prev) => ({ ...prev, apiPath: event.target.value }))}
-                placeholder="/api/v1/example"
+                placeholder={t('admin.permissions.apiPathPlaceholder')}
               />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>HTTP method</Label>
+                <Label>{t('admin.permissions.methodLabel')}</Label>
                 <Select
                   value={permissionForm.httpMethod}
                   onValueChange={(value) => setPermissionForm((prev) => ({ ...prev, httpMethod: normalizeHttpMethod(value) }))}
@@ -1813,13 +1814,13 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
               </div>
 
               <div className="space-y-1.5">
-                <Label>Module</Label>
+                <Label>{t('admin.permissions.moduleLabel')}</Label>
                 <Select value={permissionForm.module} onValueChange={(value) => setPermissionForm((prev) => ({ ...prev, module: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_MODULE}>No module</SelectItem>
+                    <SelectItem value={NO_MODULE}>{t('admin.permissions.noModule')}</SelectItem>
                     {modules.map((moduleName) => (
                       <SelectItem key={moduleName} value={moduleName}>{moduleName}</SelectItem>
                     ))}
@@ -1831,11 +1832,11 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
 
           <DialogFooter>
             <Button variant="outline" onClick={closePermissionDialog}>
-              Hủy
+              {t('common.cancel')}
             </Button>
             <Button onClick={submitPermission} disabled={createPermissionMutation.isPending || updatePermissionMutation.isPending}>
               {(createPermissionMutation.isPending || updatePermissionMutation.isPending) && <Loader2 className="size-4 animate-spin" />}
-              {permissionDialogMode === 'create' ? 'Tạo permission' : 'Lưu thay đổi'}
+              {permissionDialogMode === 'create' ? t('admin.permissions.createAction') : t('task.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1844,28 +1845,28 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
       <Dialog open={moduleDialogOpen} onOpenChange={(open) => { if (!open) closeModuleDialog() }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Tạo module cho permissions</DialogTitle>
+            <DialogTitle>{t('admin.permissions.moduleDialogTitle')}</DialogTitle>
             <DialogDescription>
-              Chỉ permissions chưa thuộc module mới có thể gán vào module mới.
+              {t('admin.permissions.moduleDialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="admin-module-name">Tên module</Label>
+              <Label htmlFor="admin-module-name">{t('admin.permissions.moduleNameLabel')}</Label>
               <Input
                 id="admin-module-name"
                 value={moduleName}
                 onChange={(event) => setModuleName(event.target.value)}
-                placeholder="Ví dụ: REPORTS"
+                placeholder={t('admin.permissions.moduleNamePlaceholder')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Permissions chưa thuộc module</Label>
+              <Label>{t('admin.permissions.unassignedPermissions')}</Label>
               <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
                 {unassignedPermissions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Tất cả permissions đã có module.</p>
+                  <p className="text-sm text-muted-foreground">{t('admin.permissions.allAssigned')}</p>
                 ) : (
                   unassignedPermissions.map((permission) => {
                     const checked = selectedPermissionIds.includes(permission.permissionId)
@@ -1899,7 +1900,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
 
           <DialogFooter>
             <Button variant="outline" onClick={closeModuleDialog}>
-              Hủy
+              {t('common.cancel')}
             </Button>
             <Button
               disabled={createModuleMutation.isPending || moduleName.trim().length === 0 || selectedPermissionIds.length === 0}
@@ -1911,7 +1912,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
               }}
             >
               {createModuleMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Tạo module
+              {t('admin.permissions.createModuleAction')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1924,9 +1925,11 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
             setDeletePermissionTarget(null)
           }
         }}
-        title="Xóa permission"
-        description={deletePermissionTarget ? `Có chắc chắn muốn xóa không? (${deletePermissionTarget.name})` : 'Có chắc chắn muốn xóa không?'}
-        confirmText="Xóa"
+        title={t('admin.permissions.deleteConfirmTitle')}
+        description={deletePermissionTarget
+          ? t('admin.permissions.deleteConfirmDescription', { target: deletePermissionTarget.name })
+          : t('admin.permissions.deleteConfirmDescriptionGeneric')}
+        confirmText={t('common.delete')}
         confirmVariant="destructive"
         loading={deletePermissionMutation.isPending}
         onConfirm={() => {
@@ -1949,9 +1952,11 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
             setDeleteModuleTarget(null)
           }
         }}
-        title="Gỡ module"
-        description={deleteModuleTarget ? `Có chắc chắn muốn xóa không? Module ${deleteModuleTarget} sẽ bị gỡ khỏi tất cả permissions.` : 'Có chắc chắn muốn xóa không?'}
-        confirmText="Gỡ module"
+        title={t('admin.permissions.removeModuleTitle')}
+        description={deleteModuleTarget
+          ? t('admin.permissions.removeModuleDescription', { module: deleteModuleTarget })
+          : t('admin.permissions.removeModuleDescriptionGeneric')}
+        confirmText={t('admin.permissions.removeModuleConfirm')}
         confirmVariant="destructive"
         loading={deleteModuleMutation.isPending}
         onConfirm={() => {

@@ -7,6 +7,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils/cn'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -94,6 +95,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
@@ -250,7 +252,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const createProjectMutation = useMutation({
     mutationFn: () => {
       if (!workspaceId) {
-        throw new Error('Không tìm thấy workspace hiện tại')
+        throw new Error(t('sidebar.workspaceMissing'))
       }
 
       return projectApi.create({
@@ -335,7 +337,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       if (workspaceId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       }
-      toast.success('Tạo project thành công')
+      toast.success(t('workspace.toast.projectCreated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot) {
@@ -344,14 +346,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         }
       }
 
-      toast.error('Tạo project thất bại', { description: error.message })
+      toast.error(t('workspace.toast.projectCreateFailed'), { description: error.message })
     },
   })
 
   const updateProjectMutation = useMutation({
     mutationFn: () => {
       if (!projectDialogTargetId) {
-        throw new Error('Không tìm thấy project cần cập nhật')
+        throw new Error(t('sidebar.projectMissing'))
       }
 
       return projectApi.update(projectDialogTargetId, {
@@ -420,7 +422,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       if (workspaceId) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
       }
-      toast.success('Cập nhật project thành công')
+      toast.success(t('workspace.toast.projectUpdated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot) {
@@ -429,14 +431,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         }
       }
 
-      toast.error('Cập nhật project thất bại', { description: error.message })
+      toast.error(t('workspace.toast.projectUpdateFailed'), { description: error.message })
     },
   })
 
   const createGoalMutation = useMutation({
     mutationFn: () => {
       if (!goalDialogProjectId) {
-        throw new Error('Không tìm thấy project của goal')
+        throw new Error(t('sidebar.goalProjectMissing'))
       }
 
       return goalApi.create({
@@ -518,7 +520,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         )
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
-      toast.success('Tạo goal thành công')
+      toast.success(t('goals.toast.createSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot) {
@@ -527,14 +529,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         }
       }
 
-      toast.error('Tạo goal thất bại', { description: error.message })
+      toast.error(t('goals.toast.createFailed'), { description: error.message })
     },
   })
 
   const updateGoalMutation = useMutation({
     mutationFn: () => {
       if (!goalDialogTargetId) {
-        throw new Error('Không tìm thấy goal cần cập nhật')
+        throw new Error(t('sidebar.goalMissing'))
       }
 
       return goalApi.update(goalDialogTargetId, {
@@ -602,7 +604,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         )
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
-      toast.success('Cập nhật goal thành công')
+      toast.success(t('goals.toast.updateSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot) {
@@ -611,7 +613,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         }
       }
 
-      toast.error('Cập nhật goal thất bại', { description: error.message })
+      toast.error(t('goals.toast.updateFailed'), { description: error.message })
     },
   })
 
@@ -648,18 +650,18 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       ])
     },
     pendingMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project' ? 'Project' : 'Goal'
-      return `${entityName} "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`
+      const entityName = entry.payload.kind === 'project' ? t('sidebar.projectKind') : t('sidebar.goalKind')
+      return t('workspace.toast.deleteScheduled', { entity: entityName, name: entry.label })
     },
     successMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project' ? 'project' : 'goal'
-      return `Đã xóa ${entityName} "${entry.label}"`
+      const entityName = entry.payload.kind === 'project' ? t('sidebar.projectKind') : t('sidebar.goalKind')
+      return t('workspace.toast.deleteSuccess', { entity: entityName, name: entry.label })
     },
     alreadyDeletedMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project' ? 'Project' : 'Goal'
-      return `${entityName} "${entry.label}" đã được xóa trước đó`
+      const entityName = entry.payload.kind === 'project' ? t('sidebar.projectKind') : t('sidebar.goalKind')
+      return t('workspace.toast.alreadyDeleted', { entity: entityName, name: entry.label })
     },
-    errorTitle: 'Xóa dữ liệu thất bại',
+    errorTitle: t('common.error'),
   })
 
   const pendingProjectIds = new Set<number>()
@@ -798,7 +800,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   <ChevronsLeft className="size-3.5 rotate-180" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Mở rộng sidebar</TooltipContent>
+              <TooltipContent side="right">{t('sidebar.expand')}</TooltipContent>
             </Tooltip>
           )}
 
@@ -822,7 +824,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               <Input
                 value={workspaceSearch}
                 onChange={(event) => setWorkspaceSearch(event.target.value)}
-                placeholder="Lọc project và goal..."
+                placeholder={t('nav.searchProjectGoal')}
                 className="h-8 border-sidebar-border bg-sidebar-accent/35 pl-8 text-xs"
               />
             </div>
@@ -832,20 +834,20 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 <Link
                   to={`/workspaces/${workspaceId}`}
                   className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  title="Workspace Overview"
+                  title={t('sidebar.workspaceOverview')}
                 >
                   <LayoutGrid className="size-3.5" />
-                  Overview
+                  {t('sidebar.workspaceOverview')}
                 </Link>
               ) : null}
 
               <Link
                 to="/my-work"
                 className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                title="My Work"
+                title={t('nav.myWork')}
               >
                 <Briefcase className="size-3.5" />
-                My Work
+                {t('nav.myWork')}
               </Link>
             </div>
           </div>
@@ -861,7 +863,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                     <LayoutGrid className="size-4" />
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="right">Workspace Overview</TooltipContent>
+                <TooltipContent side="right">{t('sidebar.workspaceOverview')}</TooltipContent>
               </Tooltip>
             ) : null}
 
@@ -874,7 +876,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   <Briefcase className="size-4" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right">My Work</TooltipContent>
+              <TooltipContent side="right">{t('nav.myWork')}</TooltipContent>
             </Tooltip>
           </div>
         )}
@@ -890,7 +892,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 transition-colors hover:text-muted-foreground"
                 >
                   <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
-                  Projects
+                  {t('sidebar.projectsSection')}
                 </button>
 
                 <div className="flex items-center gap-0.5">
@@ -899,7 +901,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                     size="icon"
                     className="size-6 text-muted-foreground hover:text-foreground"
                     onClick={openProjectCreateDialog}
-                    title="Tạo project"
+                    title={t('common.create')}
                   >
                     <Plus className="size-3.5" />
                   </Button>
@@ -976,7 +978,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   <LogOut className="size-4 icon-hover" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">Đăng xuất</TooltipContent>
+              <TooltipContent side="right">{t('common.logout')}</TooltipContent>
             </Tooltip>
           ) : (
             <button
@@ -984,7 +986,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-sidebar-foreground/90 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut className="size-4 icon-hover" />
-              Đăng xuất
+              {t('common.logout')}
             </button>
           )}
         </div>
@@ -1006,21 +1008,21 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 openAIAssistant({
                   workspaceId: project.workspaceId,
                   projectId: project.id,
-                  prompt: `Phân rã goal \"${goal.title}\" thành các task cụ thể, chỉ ra blocker chính, dependency cần thiết và đề xuất lịch triển khai ngắn gọn cho project hiện tại.`,
+                  prompt: t('sidebar.goalPlanningPrompt', { title: goal.title }),
                 })
               } else {
                 const { project } = sidebarContextMenu.target
                 openAIAssistant({
                   workspaceId: project.workspaceId,
                   projectId: project.id,
-                  prompt: `Lập kế hoạch thực thi cho project \"${project.name}\" trong 7 ngày tới, ưu tiên blocker, dependency và các task cần tạo hoặc cập nhật ngay.`,
+                  prompt: t('sidebar.projectPlanningPrompt', { name: project.name }),
                 })
               }
               setSidebarContextMenu(null)
             }}
           >
             <Sparkles className="size-3.5" />
-            AI planning
+            {t('sidebar.aiPlanning')}
           </button>
           {sidebarContextMenu.target.kind === 'project' && (
             <button
@@ -1033,7 +1035,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               }}
             >
               <Target className="size-3.5" />
-              Create Goal
+              {t('sidebar.createGoal')}
             </button>
           )}
           <button
@@ -1049,7 +1051,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             }}
           >
             <LayoutGrid className="size-3.5" />
-            Edit
+            {t('common.edit')}
           </button>
           <button
             type="button"
@@ -1074,7 +1076,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             }}
           >
             <Trash2 className="size-3.5" />
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       ) : null}
@@ -1082,39 +1084,35 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{projectDialogMode === 'create' ? 'Tạo project' : 'Chỉnh sửa project'}</DialogTitle>
-            <DialogDescription>
-              {projectDialogMode === 'create'
-                ? 'Tạo project mới trong workspace hiện tại.'
-                : 'Cập nhật thông tin project trong sidebar.'}
-            </DialogDescription>
+            <DialogTitle>{projectDialogMode === 'create' ? t('sidebar.projectDialogCreateTitle') : t('sidebar.projectDialogEditTitle')}</DialogTitle>
+            <DialogDescription>{t('sidebar.projectDialogDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="sidebar-project-name">Tên project</Label>
+              <Label htmlFor="sidebar-project-name">{t('sidebar.projectNameLabel')}</Label>
               <Input
                 id="sidebar-project-name"
                 value={projectFormName}
                 onChange={(event) => setProjectFormName(event.target.value)}
-                placeholder="Ví dụ: Q2 Launch"
+                placeholder={t('sidebar.projectNamePlaceholder')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="sidebar-project-description">Mô tả (tuỳ chọn)</Label>
+              <Label htmlFor="sidebar-project-description">{t('task.description')}</Label>
               <Textarea
                 id="sidebar-project-description"
                 value={projectFormDescription}
                 onChange={(event) => setProjectFormDescription(event.target.value)}
                 rows={3}
-                placeholder="Mô tả ngắn về project"
+                placeholder={t('task.descriptionPlaceholder')}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button
               onClick={() => {
                 if (projectDialogMode === 'create') {
@@ -1131,7 +1129,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               }
             >
               {(createProjectMutation.isPending || updateProjectMutation.isPending) && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-              {projectDialogMode === 'create' ? 'Tạo' : 'Lưu'}
+              {projectDialogMode === 'create' ? t('common.create') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1140,51 +1138,47 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{goalDialogMode === 'create' ? 'Tạo goal' : 'Chỉnh sửa goal'}</DialogTitle>
-            <DialogDescription>
-              {goalDialogMode === 'create'
-                ? 'Thêm goal mới cho project đã chọn.'
-                : 'Cập nhật goal từ menu ngữ cảnh sidebar.'}
-            </DialogDescription>
+            <DialogTitle>{goalDialogMode === 'create' ? t('sidebar.goalDialogCreateTitle') : t('sidebar.goalDialogEditTitle')}</DialogTitle>
+            <DialogDescription>{goalDialogMode === 'create' ? t('sidebar.goalDialogCreateDescription') : t('sidebar.goalDialogEditDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="sidebar-goal-title">Tiêu đề goal</Label>
+              <Label htmlFor="sidebar-goal-title">{t('sidebar.goalTitleLabel')}</Label>
               <Input
                 id="sidebar-goal-title"
                 value={goalFormTitle}
                 onChange={(event) => setGoalFormTitle(event.target.value)}
-                placeholder="Ví dụ: Hoàn thành onboarding"
+                placeholder={t('sidebar.goalTitlePlaceholder')}
               />
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Loại goal</Label>
+                <Label>{t('sidebar.goalTypeLabel')}</Label>
                 <Select value={goalFormType} onValueChange={(value) => setGoalFormType(value as GoalType)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SHORT_TERM">Ngắn hạn</SelectItem>
-                    <SelectItem value="MEDIUM_TERM">Trung hạn</SelectItem>
-                    <SelectItem value="LONG_TERM">Dài hạn</SelectItem>
+                    <SelectItem value="SHORT_TERM">{t('goals.type.SHORT_TERM')}</SelectItem>
+                    <SelectItem value="MEDIUM_TERM">{t('goals.type.MEDIUM_TERM')}</SelectItem>
+                    <SelectItem value="LONG_TERM">{t('goals.type.LONG_TERM')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label>Trạng thái</Label>
+                <Label>{t('sidebar.goalStatusLabel')}</Label>
                 <Select value={goalFormStatus} onValueChange={(value) => setGoalFormStatus(value as GoalStatusType)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NOT_STARTED">Chưa bắt đầu</SelectItem>
-                    <SelectItem value="IN_PROGRESS">Đang thực hiện</SelectItem>
-                    <SelectItem value="ON_HOLD">Tạm dừng</SelectItem>
-                    <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                    <SelectItem value="NOT_STARTED">{t('goals.status.NOT_STARTED')}</SelectItem>
+                    <SelectItem value="IN_PROGRESS">{t('goals.status.IN_PROGRESS')}</SelectItem>
+                    <SelectItem value="ON_HOLD">{t('goals.status.ON_HOLD')}</SelectItem>
+                    <SelectItem value="COMPLETED">{t('goals.status.COMPLETED')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1192,7 +1186,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button
               onClick={() => {
                 if (goalDialogMode === 'create') {
@@ -1209,7 +1203,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               }
             >
               {(createGoalMutation.isPending || updateGoalMutation.isPending) && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-              {goalDialogMode === 'create' ? 'Tạo' : 'Lưu'}
+              {goalDialogMode === 'create' ? t('common.create') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1222,22 +1216,24 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
             setDeleteTarget(null)
           }
         }}
-        title={`Xóa ${deleteTarget?.kind === 'project' ? 'project' : 'goal'}`}
+        title={deleteTarget?.kind === 'project' ? t('sidebar.deleteProjectTitle') : t('sidebar.deleteGoalTitle')}
         description={
           deleteTarget
             ? (
               <div className="space-y-3 text-left leading-relaxed text-muted-foreground">
                 <p>
-                  {`Bạn có chắc muốn xóa ${deleteTarget.kind === 'project' ? 'project' : 'goal'} "${deleteTarget.label}" không?`}
+                  {deleteTarget.kind === 'project'
+                    ? t('sidebar.deleteProjectDescription', { name: deleteTarget.label })
+                    : t('sidebar.deleteGoalDescription', { name: deleteTarget.label })}
                 </p>
                 <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                  Mục này sẽ bị gỡ khỏi sidebar và danh sách làm việc liên quan sau khi xác nhận.
+                  {deleteTarget.kind === 'project' ? t('sidebar.deleteProjectWarning') : t('sidebar.deleteGoalWarning')}
                 </div>
               </div>
             )
             : ''
         }
-        confirmText="Xóa"
+        confirmText={t('common.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
@@ -1249,8 +1245,8 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         onUndo={undoSidebarDelete}
         itemTitle={(entry) => (
           entry.payload.kind === 'project'
-            ? 'Đang xóa project'
-            : 'Đang xóa goal'
+            ? t('sidebar.deletingProject')
+            : t('sidebar.deletingGoal')
         )}
       />
     </>
@@ -1280,6 +1276,7 @@ function ProjectItem({
   onCreateGoal: (project: Project) => void
   onOpenContextMenu: (event: MouseEvent<HTMLElement>, target: SidebarContextTarget) => void
 }) {
+  const { t } = useTranslation()
   const goalsQuery = useQuery({
     queryKey: queryKeys.goals.byProject(project.id, 1, 50),
     queryFn: () => goalApi.listByProject(project.id, { page: 1, size: 50 }),
@@ -1352,14 +1349,14 @@ function ProjectItem({
           >
             <div className="ml-6 space-y-0.5 border-l border-sidebar-border py-1 pl-2">
               {goalsQuery.isLoading && (
-                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Đang tải...</p>
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">{t('sidebar.loadingGoals')}</p>
               )}
               {visibleGoals.length === 0 && !goalsQuery.isLoading && (
-                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">Chưa có goal nào</p>
+                <p className="px-2 py-1 text-[11px] text-muted-foreground/75">{t('sidebar.noGoals')}</p>
               )}
               {visibleGoals.length > 0 && filteredGoals.length === 0 && searchKeyword && !goalsQuery.isLoading ? (
                 <div className="flex items-center justify-between gap-2 px-2 py-1">
-                  <p className="text-[11px] text-muted-foreground/75">Không có goal phù hợp</p>
+                  <p className="text-[11px] text-muted-foreground/75">{t('sidebar.noMatchingGoals')}</p>
                   <Button variant="ghost" size="icon" className="size-6" onClick={() => onCreateGoal(project)}>
                     <Plus className="size-3" />
                   </Button>

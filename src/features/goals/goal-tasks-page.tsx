@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -32,40 +33,40 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useUiStore } from '@/app/store/ui-store'
 import type { GoalStatusType, GoalType, Task, TaskPriorityType } from '@/types/domain'
 
-const goalTypeConfig: Record<GoalType, { label: string; icon: typeof Timer; color: string }> = {
-  SHORT_TERM: { label: 'Ngắn hạn', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  MEDIUM_TERM: { label: 'Trung hạn', icon: Clock, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  LONG_TERM: { label: 'Dài hạn', icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+const goalTypeConfig: Record<GoalType, { translationKey: string; icon: typeof Timer; color: string }> = {
+  SHORT_TERM: { translationKey: 'goals.type.SHORT_TERM', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  MEDIUM_TERM: { translationKey: 'goals.type.MEDIUM_TERM', icon: Clock, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  LONG_TERM: { translationKey: 'goals.type.LONG_TERM', icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
 }
 
-const goalStatusConfig: Record<GoalStatusType, { label: string; icon: typeof CircleDashed; className: string }> = {
+const goalStatusConfig: Record<GoalStatusType, { translationKey: string; icon: typeof CircleDashed; className: string }> = {
   NOT_STARTED: {
-    label: 'Chưa bắt đầu',
+    translationKey: 'goals.status.NOT_STARTED',
     icon: CircleDashed,
     className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
   },
   IN_PROGRESS: {
-    label: 'Đang thực hiện',
+    translationKey: 'goals.status.IN_PROGRESS',
     icon: PlayCircle,
     className: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
   },
   ON_HOLD: {
-    label: 'Tạm dừng',
+    translationKey: 'goals.status.ON_HOLD',
     icon: PauseCircle,
     className: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
   },
   COMPLETED: {
-    label: 'Hoàn thành',
+    translationKey: 'goals.status.COMPLETED',
     icon: CheckCircle2,
     className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
   },
 }
 
-const priorityConfig: Record<TaskPriorityType, { label: string; className: string; icon: string }> = {
-  LOW: { label: 'Thấp', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300', icon: '·' },
-  MEDIUM: { label: 'Vừa', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300', icon: '↑' },
-  HIGH: { label: 'Cao', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', icon: '↑↑' },
-  URGENT: { label: 'Khẩn cấp', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', icon: '!!!' },
+const priorityConfig: Record<TaskPriorityType, { translationKey: string; className: string; icon: string }> = {
+  LOW: { translationKey: 'task.priorityLow', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300', icon: '·' },
+  MEDIUM: { translationKey: 'task.priorityMedium', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300', icon: '↑' },
+  HIGH: { translationKey: 'task.priorityHigh', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', icon: '↑↑' },
+  URGENT: { translationKey: 'task.priorityUrgent', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', icon: '!!!' },
 }
 
 type SortKey = 'status' | 'priority' | 'created' | 'title' | 'dueDate'
@@ -73,7 +74,7 @@ type SortKey = 'status' | 'priority' | 'created' | 'title' | 'dueDate'
 const PRIORITY_ORDER: Record<TaskPriorityType, number> = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
 const PAGE_SIZE = 25
 
-function compareTasks(a: Task, b: Task, sortBy: SortKey): number {
+function compareTasks(a: Task, b: Task, sortBy: SortKey, locale: string): number {
   switch (sortBy) {
     case 'status':
       if (a.status.position !== b.status.position) return a.status.position - b.status.position
@@ -83,7 +84,7 @@ function compareTasks(a: Task, b: Task, sortBy: SortKey): number {
     case 'created':
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     case 'title':
-      return a.title.localeCompare(b.title, 'vi')
+      return a.title.localeCompare(b.title, locale)
     case 'dueDate': {
       if (!a.dueDate && !b.dueDate) return 0
       if (!a.dueDate) return 1
@@ -96,6 +97,7 @@ function compareTasks(a: Task, b: Task, sortBy: SortKey): number {
 }
 
 export function GoalTasksPage() {
+  const { t, i18n } = useTranslation()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
@@ -149,7 +151,7 @@ export function GoalTasksPage() {
   })
 
   // Sort
-  const sortedTasks = [...filteredTasks].sort((a, b) => compareTasks(a, b, sortBy))
+  const sortedTasks = [...filteredTasks].sort((a, b) => compareTasks(a, b, sortBy, i18n.language))
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(sortedTasks.length / PAGE_SIZE))
@@ -170,7 +172,7 @@ export function GoalTasksPage() {
           className="mb-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" />
-          Quay lại Goals
+          {t('goals.tasksPage.backToGoals')}
         </Link>
 
         {goal ? (
@@ -186,10 +188,10 @@ export function GoalTasksPage() {
                     className={`inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[10px] font-semibold ${statusCfg?.className ?? ''}`}
                   >
                     <StatusIcon className="size-3" />
-                    {statusCfg?.label}
+                    {statusCfg ? t(statusCfg.translationKey) : null}
                   </span>
                   <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                    {typeConfig?.label}
+                    {typeConfig ? t(typeConfig.translationKey) : null}
                   </Badge>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
@@ -199,7 +201,7 @@ export function GoalTasksPage() {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ListTodo className="size-3.5" />
-                    <span>{allTasks.length} tasks</span>
+                    <span>{allTasks.length === 0 ? t('goals.taskCountZero') : t('goals.taskCount', { count: allTasks.length })}</span>
                   </div>
                   {goal.managerUser && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -223,19 +225,19 @@ export function GoalTasksPage() {
           <Input
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
-            placeholder="Tìm task theo tên, mô tả..."
+            placeholder={t('goals.tasksPage.searchPlaceholder')}
             className="h-9 pl-8 text-sm"
           />
         </div>
 
         <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v as TaskPriorityType | 'ALL'); setPage(1) }}>
           <SelectTrigger className="h-9 w-46 shrink-0 px-3 text-sm whitespace-nowrap">
-            <SelectValue placeholder="Độ ưu tiên" />
+            <SelectValue placeholder={t('goals.tasksPage.priorityPlaceholder')} />
           </SelectTrigger>
           <SelectContent className="min-w-46">
-            <SelectItem value="ALL">Tất cả độ ưu tiên</SelectItem>
+            <SelectItem value="ALL">{t('goals.tasksPage.allPriorities')}</SelectItem>
             {(['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
-              <SelectItem key={p} value={p}>{priorityConfig[p].label}</SelectItem>
+              <SelectItem key={p} value={p}>{t(priorityConfig[p].translationKey)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -245,9 +247,9 @@ export function GoalTasksPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="min-w-42">
-            <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-            <SelectItem value="OPEN">Đang mở</SelectItem>
-            <SelectItem value="CLOSED">Đã đóng</SelectItem>
+            <SelectItem value="ALL">{t('goals.tasksPage.allStatuses')}</SelectItem>
+            <SelectItem value="OPEN">{t('goals.tasksPage.statusOpen')}</SelectItem>
+            <SelectItem value="CLOSED">{t('goals.tasksPage.statusClosed')}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -257,16 +259,16 @@ export function GoalTasksPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="min-w-43">
-            <SelectItem value="status">Theo trạng thái</SelectItem>
-            <SelectItem value="priority">Theo độ ưu tiên</SelectItem>
-            <SelectItem value="title">Theo tên A→Z</SelectItem>
-            <SelectItem value="dueDate">Theo ngày hết hạn</SelectItem>
-            <SelectItem value="created">Theo ngày tạo</SelectItem>
+            <SelectItem value="status">{t('goals.tasksPage.sortByStatus')}</SelectItem>
+            <SelectItem value="priority">{t('goals.tasksPage.sortByPriority')}</SelectItem>
+            <SelectItem value="title">{t('goals.tasksPage.sortByTitle')}</SelectItem>
+            <SelectItem value="dueDate">{t('goals.tasksPage.sortByDueDate')}</SelectItem>
+            <SelectItem value="created">{t('goals.tasksPage.sortByCreated')}</SelectItem>
           </SelectContent>
         </Select>
 
         <span className="text-sm text-muted-foreground xl:ml-auto">
-          {filteredTasks.length}/{allTasks.length} tasks
+          {t('goals.tasksPage.countSummary', { filtered: filteredTasks.length, total: allTasks.length })}
         </span>
       </div>
 
@@ -278,12 +280,12 @@ export function GoalTasksPage() {
               <ListTodo className="size-8 text-muted-foreground/40" />
             </div>
             <p className="text-sm font-semibold">
-              {allTasks.length === 0 ? 'Goal này chưa có task nào' : 'Không tìm thấy task phù hợp'}
+              {allTasks.length === 0 ? t('goals.tasksPage.emptyNoTasks') : t('goals.tasksPage.emptyFiltered')}
             </p>
             {allTasks.length === 0 ? (
-              <p className="mt-1.5 text-xs text-muted-foreground">Gắn task vào goal từ trang Kanban hoặc To-Do</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">{t('goals.tasksPage.emptyNoTasksDescription')}</p>
             ) : (
-              <p className="mt-1.5 text-xs text-muted-foreground">Thử xóa bộ lọc hoặc tìm kiếm khác</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">{t('goals.tasksPage.emptyFilteredDescription')}</p>
             )}
           </CardContent>
         </Card>
@@ -291,12 +293,12 @@ export function GoalTasksPage() {
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           {/* Table header */}
           <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-x-4 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]">
-            <span className="text-center">#</span>
-            <span>Tên task</span>
-            <span className="hidden sm:block">Trạng thái</span>
-            <span className="hidden sm:block">Ưu tiên</span>
-            <span className="hidden sm:block">Người nhận</span>
-            <span className="hidden text-right sm:block">Hết hạn</span>
+            <span className="text-center">{t('goals.tasksPage.tableIndex')}</span>
+            <span>{t('goals.tasksPage.tableTaskName')}</span>
+            <span className="hidden sm:block">{t('goals.tasksPage.tableStatus')}</span>
+            <span className="hidden sm:block">{t('goals.tasksPage.tablePriority')}</span>
+            <span className="hidden sm:block">{t('goals.tasksPage.tableAssignee')}</span>
+            <span className="hidden text-right sm:block">{t('goals.tasksPage.tableDueDate')}</span>
           </div>
 
           <div className="divide-y divide-border/30">
@@ -304,7 +306,7 @@ export function GoalTasksPage() {
               const pCfg = priorityConfig[task.priority]
               const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1
               const dueDateStr = task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: '2-digit' })
                 : null
               const isPastDue = task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date()
               const statusChipClass = task.status.isClosed
@@ -337,7 +339,7 @@ export function GoalTasksPage() {
                         {task.status.name}
                       </span>
                       <span className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}>
-                        {pCfg.icon} {pCfg.label}
+                        {pCfg.icon} {t(pCfg.translationKey)}
                       </span>
                       {dueDateStr && (
                         <span className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -354,7 +356,7 @@ export function GoalTasksPage() {
 
                   {/* Priority */}
                   <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center ${pCfg.className}`}>
-                    {pCfg.icon} {pCfg.label}
+                    {pCfg.icon} {t(pCfg.translationKey)}
                   </span>
 
                   {/* Assignee */}
@@ -392,17 +394,14 @@ export function GoalTasksPage() {
       <div className="flex items-center justify-between gap-4 pt-0.5">
         <p className="text-xs text-muted-foreground">
           {filteredTasks.length > 0 ? (
-            <>
-              Hiển thị{' '}
-              <span className="font-semibold text-foreground">
-                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredTasks.length)}
-              </span>{' '}
-              trong{' '}
-              <span className="font-semibold text-foreground">{filteredTasks.length}</span>{' '}
-              task{filteredTasks.length !== allTasks.length ? ` (lọc từ ${allTasks.length})` : ''}
-            </>
+            t(filteredTasks.length !== allTasks.length ? 'goals.tasksPage.showingRangeFiltered' : 'goals.tasksPage.showingRange', {
+              start: (currentPage - 1) * PAGE_SIZE + 1,
+              end: Math.min(currentPage * PAGE_SIZE, filteredTasks.length),
+              filtered: filteredTasks.length,
+              total: allTasks.length,
+            })
           ) : (
-            <span>0 task phù hợp / {allTasks.length} tổng</span>
+            <span>{t('goals.tasksPage.noMatchingCount', { total: allTasks.length })}</span>
           )}
         </p>
         {totalPages > 1 && (

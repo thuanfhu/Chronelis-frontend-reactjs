@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -32,8 +33,7 @@ interface PomodoroLocationState {
 }
 
 interface PomodoroAlarmPreset {
-  label: string
-  description: string
+  translationKey: string
   source: string
 }
 
@@ -43,16 +43,10 @@ const MODE_DURATION_SECONDS: Record<PomodoroMode, number> = {
   'long-break': 15 * 60,
 }
 
-const MODE_LABELS: Record<PomodoroMode, string> = {
-  focus: 'Focus Session',
-  'short-break': 'Short Break',
-  'long-break': 'Long Break',
-}
-
-const MODE_HINTS: Record<PomodoroMode, string> = {
-  focus: 'Tập trung vào task chính và tránh đa nhiệm.',
-  'short-break': 'Nghỉ ngắn, đứng dậy và thả lỏng vai cổ.',
-  'long-break': 'Nghỉ dài hơn để hồi năng lượng cho chu kỳ mới.',
+const MODE_TRANSLATION_KEYS: Record<PomodoroMode, 'focus' | 'shortBreak' | 'longBreak'> = {
+  focus: 'focus',
+  'short-break': 'shortBreak',
+  'long-break': 'longBreak',
 }
 
 const MODE_THEME: Record<PomodoroMode, { text: string; ring: string; chip: string }> = {
@@ -77,28 +71,23 @@ const POMODORO_ALARM_STORAGE_KEY = 'chronelis.pomodoro.alarm-sound'
 
 const POMODORO_ALARM_PRESETS: Record<PomodoroAlarmId, PomodoroAlarmPreset> = {
   'crystal-bell': {
-    label: 'Crystal Bell',
-    description: 'Âm ngân sáng, rõ ràng cho chuyển phiên focus/break.',
+    translationKey: 'crystalBell',
     source: '/audio/pomodoro/crystal-bell.wav',
   },
   'digital-chime': {
-    label: 'Digital Chime',
-    description: 'Âm điện tử gọn, nổi bật khi bạn đang đeo tai nghe.',
+    translationKey: 'digitalChime',
     source: '/audio/pomodoro/digital-chime.wav',
   },
   'soft-bloom': {
-    label: 'Soft Bloom',
-    description: 'Âm dịu, phù hợp khi muốn ít giật mình hơn.',
+    translationKey: 'softBloom',
     source: '/audio/pomodoro/soft-bloom.wav',
   },
   'deep-gong': {
-    label: 'Deep Gong',
-    description: 'Âm trầm và dày, tạo cảm giác chuyển nhịp rõ rệt.',
+    translationKey: 'deepGong',
     source: '/audio/pomodoro/deep-gong.wav',
   },
   'wood-block': {
-    label: 'Wood Block',
-    description: 'Nhịp gỗ ngắn, gọn, hợp khi cần tín hiệu nhanh.',
+    translationKey: 'woodBlock',
     source: '/audio/pomodoro/wood-block.wav',
   },
 }
@@ -191,6 +180,7 @@ function usePomodoroAlarm(soundId: PomodoroAlarmId) {
 }
 
 export function TaskPomodoroPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -379,6 +369,10 @@ export function TaskPomodoroPage() {
 
   const focusMinutes = Math.round(durations.focus / 60)
   const selectedAlarmPreset = POMODORO_ALARM_PRESETS[alarmSoundId]
+  const modeTranslationKey = MODE_TRANSLATION_KEYS[mode]
+  const modeLabel = t(`pomodoro.modes.${modeTranslationKey}.label`)
+  const modeHint = t(`pomodoro.modes.${modeTranslationKey}.hint`)
+  const selectedAlarmDescription = t(`pomodoro.alarms.${selectedAlarmPreset.translationKey}.description`)
 
   const modeIcon = useMemo(() => {
     if (mode === 'focus') return <Zap className="size-4" />
@@ -389,10 +383,10 @@ export function TaskPomodoroPage() {
   if (!Number.isFinite(taskId) || taskId <= 0) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Pomodoro" description="Không tìm thấy task hợp lệ." />
+        <PageHeader title={t('pomodoro.pageTitle')} description={t('pomodoro.invalidTaskDescription')} />
         <Button variant="outline" className="w-fit" onClick={handleBack}>
           <ArrowLeft className="size-4" />
-          Quay lại
+          {t('common.back')}
         </Button>
       </div>
     )
@@ -401,16 +395,16 @@ export function TaskPomodoroPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Pomodoro theo task"
-        description="Giữ nhịp tập trung với chu kỳ focus và break theo task hiện tại."
+        title={t('pomodoro.pageTitle')}
+        description={t('pomodoro.pageDescription')}
         actions={(
           <>
             <Button variant="outline" size="sm" onClick={handleBack}>
               <ArrowLeft className="size-4" />
-              Quay lại
+              {t('common.back')}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleOpenTaskDetail}>
-              Mở chi tiết task
+              {t('pomodoro.openTaskDetail')}
             </Button>
           </>
         )}
@@ -418,14 +412,14 @@ export function TaskPomodoroPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Task hiện tại</CardTitle>
-          <CardDescription>Pomodoro đang gắn với task này để bạn tập trung theo đúng ngữ cảnh công việc.</CardDescription>
+          <CardTitle className="text-base">{t('pomodoro.currentTaskTitle')}</CardTitle>
+          <CardDescription>{t('pomodoro.currentTaskDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           {taskQuery.isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang tải task...
+              {t('pomodoro.loadingTask')}
             </div>
           ) : taskQuery.data ? (
             <div className="space-y-2">
@@ -436,7 +430,7 @@ export function TaskPomodoroPage() {
                 {taskQuery.data.isCompleted && (
                   <Badge className="gap-1" variant="secondary">
                     <CheckCircle2 className="size-3.5" />
-                    Completed
+                    {t('pomodoro.completedBadge')}
                   </Badge>
                 )}
               </div>
@@ -446,7 +440,7 @@ export function TaskPomodoroPage() {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Không thể tải thông tin task.</p>
+            <p className="text-sm text-muted-foreground">{t('pomodoro.loadTaskFailed')}</p>
           )}
         </CardContent>
       </Card>
@@ -456,18 +450,18 @@ export function TaskPomodoroPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={`gap-1 border-0 ${MODE_THEME[mode].chip}`}>
               {modeIcon}
-              {MODE_LABELS[mode]}
+              {modeLabel}
             </Badge>
-            <Badge variant="outline">{completedFocusSessions} phiên focus hoàn thành</Badge>
+            <Badge variant="outline">{t('pomodoro.focusSessionsCompleted', { count: completedFocusSessions })}</Badge>
           </div>
-          <CardDescription>{MODE_HINTS[mode]}</CardDescription>
+          <CardDescription>{modeHint}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-2">
-            <Button variant={mode === 'focus' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('focus')}>Focus</Button>
-            <Button variant={mode === 'short-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('short-break')}>Short break</Button>
-            <Button variant={mode === 'long-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('long-break')}>Long break</Button>
+            <Button variant={mode === 'focus' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('focus')}>{t('pomodoro.actions.focus')}</Button>
+            <Button variant={mode === 'short-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('short-break')}>{t('pomodoro.actions.shortBreak')}</Button>
+            <Button variant={mode === 'long-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('long-break')}>{t('pomodoro.actions.longBreak')}</Button>
           </div>
 
           <div className="flex items-center justify-center">
@@ -499,7 +493,7 @@ export function TaskPomodoroPage() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
-                <span className={`text-sm font-medium ${MODE_THEME[mode].text}`}>{MODE_LABELS[mode]}</span>
+                <span className={`text-sm font-medium ${MODE_THEME[mode].text}`}>{modeLabel}</span>
                 <span className="text-5xl font-bold tracking-tight">{formatClock(secondsLeft)}</span>
               </div>
             </motion.div>
@@ -508,28 +502,28 @@ export function TaskPomodoroPage() {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button onClick={() => setIsRunning((running) => !running)}>
               {isRunning ? <Pause className="size-4" /> : <Play className="size-4" />}
-              {isRunning ? 'Tạm dừng' : 'Bắt đầu'}
+              {isRunning ? t('pomodoro.actions.pause') : t('pomodoro.actions.start')}
             </Button>
             <Button variant="outline" onClick={resetCurrentMode}>
               <RotateCcw className="size-4" />
-              Reset
+              {t('pomodoro.actions.reset')}
             </Button>
             <Button variant="ghost" onClick={skipCurrentMode}>
               <SkipForward className="size-4" />
-              Skip
+              {t('pomodoro.actions.skip')}
             </Button>
           </div>
 
           <div className="rounded-lg border border-border/80 bg-muted/40 p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Âm báo chuyển phiên</p>
-                <p className="text-xs text-muted-foreground">{selectedAlarmPreset.description}</p>
-                <p className="text-[11px] text-muted-foreground/85">Sử dụng file âm thanh nội bộ royalty-free.</p>
+                <p className="text-xs font-medium text-muted-foreground">{t('pomodoro.alarmTitle')}</p>
+                <p className="text-xs text-muted-foreground">{selectedAlarmDescription}</p>
+                <p className="text-[11px] text-muted-foreground/85">{t('pomodoro.internalSoundsNote')}</p>
               </div>
               <Button variant="outline" size="sm" onClick={playBellTone}>
                 <Volume2 className="size-4" />
-                Nghe thử
+                {t('pomodoro.actions.previewSound')}
               </Button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -542,21 +536,21 @@ export function TaskPomodoroPage() {
                   className="justify-start"
                   onClick={() => setAlarmSoundId(alarmId)}
                 >
-                  {preset.label}
+                  {t(`pomodoro.alarms.${preset.translationKey}.label`)}
                 </Button>
               ))}
             </div>
           </div>
 
           <div className="rounded-lg border border-border/80 bg-muted/40 p-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Focus duration cho task này</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">{t('pomodoro.focusDurationTitle')}</p>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(-5)}>-5m</Button>
                 <span className="min-w-16 text-center text-sm font-semibold">{focusMinutes} phút</span>
                 <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(5)}>+5m</Button>
               </div>
-              <p className="text-xs text-muted-foreground">Theo ước tính task: {taskQuery.data?.estimatedMinutes ?? 0} phút</p>
+              <p className="text-xs text-muted-foreground">{t('pomodoro.estimatedDuration', { minutes: taskQuery.data?.estimatedMinutes ?? 0 })}</p>
             </div>
           </div>
         </CardContent>

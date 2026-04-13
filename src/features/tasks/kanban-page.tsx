@@ -1,5 +1,6 @@
 import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Loader2, GripVertical, Columns3 } from 'lucide-react'
@@ -10,7 +11,10 @@ import {
   useSensor,
   useSensors,
   closestCorners,
+  rectIntersection,
+  pointerWithin,
   useDroppable,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -20,13 +24,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -41,13 +41,12 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { taskApi } from '@/lib/api/modules/task-api'
-import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
+import { TaskCreateDialog } from '@/features/tasks/task-create-dialog'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
 import {
@@ -162,6 +161,7 @@ function KanbanColumn({
   onTaskContextMenu: (event: MouseEvent<HTMLDivElement>, task: Task) => void
   isOver?: boolean
 }) {
+  const { t } = useTranslation()
   const taskIds = useMemo(() => tasks.map((t) => `task-${t.id}`), [tasks])
   const { setNodeRef: setDropRef } = useDroppable({ id: `column-${status.id}` })
 
@@ -180,14 +180,19 @@ function KanbanColumn({
           <Badge variant="secondary" className="text-[10px]">{tasks.length}</Badge>
         </div>
         {status.isClosed && (
-          <Badge variant="outline" className="text-[9px]">Closed</Badge>
+          <Badge variant="outline" className="text-[9px]">{t('kanban.closed')}</Badge>
         )}
       </div>
 
       {/* Column body */}
       <ScrollArea className="flex-1">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          <div className="min-h-16 space-y-2 p-2">
+          <div className="min-h-32 space-y-2 p-2">
+            {tasks.length === 0 && (
+              <div className="flex min-h-24 items-center justify-center rounded-lg border border-dashed border-border/50 text-xs text-muted-foreground">
+                {t('kanban.dragHere')}
+              </div>
+            )}
             {tasks.map((task) => (
               <SortableTaskCard
                 key={task.id}
@@ -206,6 +211,7 @@ function KanbanColumn({
 // ─── Main Kanban Page ───
 
 export function KanbanPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -226,11 +232,6 @@ export function KanbanPage() {
   const [statusName, setStatusName] = useState('')
   const [statusCode, setStatusCode] = useState('')
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
-  const [taskTitle, setTaskTitle] = useState('')
-  const [taskDescription, setTaskDescription] = useState('')
-  const [taskStatusId, setTaskStatusId] = useState<number | null>(null)
-  const [taskPriority, setTaskPriority] = useState<TaskPriorityType>('MEDIUM')
-  const [taskGoalId, setTaskGoalId] = useState<number | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
@@ -238,6 +239,26 @@ export function KanbanPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
+
+  // Custom collision detection: prefer pointerWithin first (catches empty columns),
+  // then fall back to closestCorners for task-level precision
+  const customCollisionDetection: CollisionDetection = (args) => {
+    // First check if pointer is within any droppable (works well for empty columns)
+    const pointerCollisions = pointerWithin(args)
+    if (pointerCollisions.length > 0) {
+      // Prefer column-level droppables when pointer is inside them
+      const columnCollision = pointerCollisions.find((c) => String(c.id).startsWith('column-'))
+      // If we're over a task, use that; otherwise use the column
+      const taskCollision = pointerCollisions.find((c) => String(c.id).startsWith('task-'))
+      if (taskCollision) return [taskCollision]
+      if (columnCollision) return [columnCollision]
+      return pointerCollisions
+    }
+    // Fallback to rect intersection then closest corners
+    const rectCollisions = rectIntersection(args)
+    if (rectCollisions.length > 0) return rectCollisions
+    return closestCorners(args)
+  }
 
   const statusesQuery = useQuery({
     queryKey: queryKeys.statuses.byProject(projectId),
@@ -251,16 +272,10 @@ export function KanbanPage() {
     enabled: Number.isFinite(projectId),
   })
 
-  const goalsQuery = useQuery({
-    queryKey: queryKeys.goals.byProject(projectId, 1, 50),
-    queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
-    enabled: Number.isFinite(projectId),
-  })
-
   const createStatusMutation = useMutation({
     mutationFn: () => {
       if (!canManageProject) {
-        throw new Error('Bạn không có quyền tạo cột trạng thái trong project này')
+        throw new Error(t('kanban.noPermissionColumn'))
       }
 
       return taskStatusApi.create({ projectId, name: statusName.trim(), code: statusCode.trim() })
@@ -270,74 +285,10 @@ export function KanbanPage() {
       setStatusCode('')
       setStatusDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.statuses.byProject(projectId) })
-      toast.success('Tạo cột thành công')
+      toast.success(t('kanban.createColumnSuccess'))
     },
     onError: (error: Error) => {
-      toast.error('Tạo cột thất bại', { description: error.message })
-    },
-  })
-
-  const createTaskMutation = useMutation({
-    mutationFn: () => {
-      if (!canManageProject) {
-        throw new Error('Bạn không có quyền tạo task trong project này')
-      }
-
-      return taskApi.create({
-        projectId,
-        title: taskTitle.trim(),
-        description: taskDescription.trim() || undefined,
-        statusId: taskStatusId ?? 0,
-        priority: taskPriority,
-        goalId: taskGoalId ?? undefined,
-        sourceView: 'KANBAN',
-      })
-    },
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
-      const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
-      const user = useAuthStore.getState().currentUser
-      const status = statusesQuery.data?.find((s) => s.id === taskStatusId)
-      if (status) {
-        const optimistic: Task = {
-          id: -Date.now(),
-          workspaceId,
-          projectId,
-          title: taskTitle.trim(),
-          description: taskDescription.trim() || undefined,
-          status,
-          priority: taskPriority,
-          blockerNote: undefined,
-          goalId: taskGoalId ?? undefined,
-          sourceView: 'KANBAN',
-          estimatedMinutes: 0,
-          boardPosition: 9999,
-          isCompleted: false,
-          blocked: false,
-          blockedReason: undefined,
-          blockedByOpenCount: 0,
-          blockingTaskCount: 0,
-          createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-        patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimistic])
-      }
-      return { snapshot }
-    },
-    onSuccess: () => {
-      setTaskTitle('')
-      setTaskDescription('')
-      setTaskGoalId(null)
-      setTaskDialogOpen(false)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
-      toast.success('Tạo task thành công')
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context?.snapshot) {
-        restoreProjectTaskQueries(queryClient, context.snapshot)
-      }
-      toast.error('Tạo task thất bại', { description: error.message })
+      toast.error(t('kanban.createColumnError'), { description: error.message })
     },
   })
 
@@ -362,7 +313,7 @@ export function KanbanPage() {
       if (context?.snapshot) {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
-      toast.error('Di chuyển task thất bại', { description: error.message })
+      toast.error(t('kanban.moveTaskError'), { description: error.message })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
@@ -391,7 +342,7 @@ export function KanbanPage() {
       if (context?.snapshot) {
         restoreProjectTaskQueries(queryClient, context.snapshot)
       }
-      toast.error('Di chuyển task thất bại', { description: error.message })
+      toast.error(t('kanban.moveTaskError'), { description: error.message })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] })
@@ -449,7 +400,7 @@ export function KanbanPage() {
     setOverColumnId(null)
 
     if (!canManageProject) {
-      toast.error('Bạn không có quyền sắp xếp task trên Kanban board này')
+      toast.error(t('kanban.noPermission'))
       return
     }
 
@@ -513,8 +464,8 @@ export function KanbanPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Kanban Board"
-        description="Kéo thả task giữa các cột theo workflow"
+        title={t('kanban.title')}
+        description={t('kanban.description')}
         actions={
           <div className="flex flex-wrap gap-2">
             {/* Status dialog */}
@@ -522,118 +473,66 @@ export function KanbanPage() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={!canManageProject}>
                   <Plus className="mr-1.5 size-3.5" />
-                  Thêm cột
+                  {t('kanban.addColumn')}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Thêm cột trạng thái</DialogTitle>
-                  <DialogDescription>Tạo một cột mới trên kanban board.</DialogDescription>
+                  <DialogTitle>{t('kanban.addColumnTitle')}</DialogTitle>
+                  <DialogDescription>{t('kanban.addColumnDesc')}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label>Tên cột</Label>
-                    <Input value={statusName} onChange={(e) => setStatusName(e.target.value)} placeholder="Ví dụ: In Review" />
+                    <Label>{t('kanban.columnName')}</Label>
+                    <Input value={statusName} onChange={(e) => setStatusName(e.target.value)} placeholder={t('kanban.columnNamePlaceholder')} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Code</Label>
-                    <Input value={statusCode} onChange={(e) => setStatusCode(e.target.value)} placeholder="Ví dụ: IN_REVIEW" />
+                    <Label>{t('kanban.columnCode')}</Label>
+                    <Input value={statusCode} onChange={(e) => setStatusCode(e.target.value)} placeholder={t('kanban.columnCodePlaceholder')} />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Hủy</Button>
+                  <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>{t('common.cancel')}</Button>
                   <Button onClick={() => createStatusMutation.mutate()} disabled={createStatusMutation.isPending || !statusName.trim() || !statusCode.trim() || !canManageProject}>
                     {createStatusMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
+                    {t('common.create')}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
 
-            {/* Task dialog */}
-            <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" disabled={!canManageProject}>
-                  <Plus className="mr-1.5 size-3.5" />
-                  Tạo task
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Tạo task mới</DialogTitle>
-                  <DialogDescription>Thêm task vào một cột trên board.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Tiêu đề</Label>
-                    <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Tiêu đề task" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mô tả (tùy chọn)</Label>
-                    <Textarea value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="Mô tả chi tiết..." rows={3} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cột</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {statuses.map((s) => (
-                        <Button key={s.id} type="button" variant={taskStatusId === s.id ? 'default' : 'outline'} size="sm" onClick={() => setTaskStatusId(s.id)}>
-                          {s.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Mức ưu tiên</Label>
-                    <div className="flex gap-2">
-                      {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
-                        <Button key={p} type="button" variant={taskPriority === p ? 'default' : 'outline'} size="sm" onClick={() => setTaskPriority(p)}>
-                          {p}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Goal (tùy chọn)</Label>
-                    <Select value={taskGoalId ? String(taskGoalId) : '__none'} onValueChange={(v) => setTaskGoalId(v === '__none' ? null : Number(v))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Không chọn goal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">Không chọn goal</SelectItem>
-                        {(goalsQuery.data?.content ?? []).map((g) => (
-                            <SelectItem key={g.id} value={String(g.id)}>
-                              <span className="block max-w-60 truncate" title={g.title}>{g.title}</span>
-                            </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>Hủy</Button>
-                  <Button onClick={() => createTaskMutation.mutate()} disabled={createTaskMutation.isPending || !taskTitle.trim() || !taskStatusId || !canManageProject}>
-                    {createTaskMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Tạo
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" disabled={!canManageProject} onClick={() => setTaskDialogOpen(true)}>
+              <Plus className="mr-1.5 size-3.5" />
+              {t('kanban.createTask')}
+            </Button>
           </div>
         }
+      />
+
+      <TaskCreateDialog
+        open={taskDialogOpen}
+        onOpenChange={setTaskDialogOpen}
+        workspaceId={workspaceId}
+        projectId={projectId}
+        title={t('kanban.createTaskTitle')}
+        description={t('kanban.createTaskDesc')}
+        submitLabel={t('task.createSubmit')}
+        defaultSourceView="KANBAN"
+        defaultStatusId={statusesQuery.data?.[0]?.id ?? null}
       />
 
       {statuses.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Columns3 className="mb-3 size-10 text-muted-foreground/30" />
-            <p className="text-sm font-medium">Chưa có cột nào</p>
-            <p className="mt-1 text-xs text-muted-foreground">Thêm cột trạng thái đầu tiên để bắt đầu</p>
+            <p className="text-sm font-medium">{t('kanban.noColumns')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('kanban.noColumnsDesc')}</p>
           </CardContent>
         </Card>
       ) : (
         <DndContext
           sensors={canManageProject ? sensors : []}
-          collisionDetection={closestCorners}
+          collisionDetection={customCollisionDetection}
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}

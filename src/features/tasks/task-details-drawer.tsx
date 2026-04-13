@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -90,6 +91,7 @@ function toIsoDateTime(value: string): string | undefined {
 }
 
 export function TaskDetailsDrawer() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -282,7 +284,7 @@ export function TaskDetailsDrawer() {
 
   const toggleCompletionMutation = useMutation({
     mutationFn: () => {
-      if (!taskQuery.data) throw new Error('Task không tồn tại')
+      if (!taskQuery.data) throw new Error(t('task.notFound'))
       return taskApi.updateCompletion(taskQuery.data.id, !taskQuery.data.isCompleted)
     },
     onMutate: async () => {
@@ -332,11 +334,11 @@ export function TaskDetailsDrawer() {
 
       if (isNotFoundError(error)) {
         handleCloseDrawer()
-        toast.success('Task đã được xóa trước đó')
+        toast.success(t('task.deletedBefore'))
         return
       }
 
-      toast.error('Cập nhật thất bại', { description: error.message })
+      toast.error(t('task.updateFailed'), { description: error.message })
     },
     onSuccess: (updatedTask) => {
       if (updatedTask.isCompleted) {
@@ -350,7 +352,7 @@ export function TaskDetailsDrawer() {
 
   const addCommentMutation = useMutation({
     mutationFn: () => {
-      if (!hasTask) throw new Error('Task chưa được chọn')
+      if (!hasTask) throw new Error(t('task.notSelected'))
       return taskCommentApi.add(taskId, newComment.trim(), replyParentCommentId ?? undefined)
     },
     onMutate: async () => {
@@ -402,14 +404,14 @@ export function TaskDetailsDrawer() {
           : [savedComment, ...replacedComments]
       })
 
-      toast.success('Thêm comment thành công')
+      toast.success(t('task.commentAddSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.commentsSnapshot) {
         queryClient.setQueryData(queryKeys.comments.byTask(taskId), context.commentsSnapshot)
       }
 
-      toast.error('Thêm comment thất bại', { description: error.message })
+      toast.error(t('task.commentAddFailed'), { description: error.message })
     },
     onSettled: () => {
       void invalidateTaskData()
@@ -418,7 +420,7 @@ export function TaskDetailsDrawer() {
 
   const saveTaskMutation = useMutation({
     mutationFn: async () => {
-      if (!taskQuery.data) throw new Error('Task không tồn tại')
+      if (!taskQuery.data) throw new Error(t('task.notFound'))
 
       const currentTask = taskQuery.data
       const nextTitle = (editTitle ?? currentTask.title).trim()
@@ -432,11 +434,11 @@ export function TaskDetailsDrawer() {
       const blockerNote = editBlockerNote.trim() || undefined
 
       if ((startIso && !endIso) || (!startIso && endIso)) {
-        throw new Error('Vui lòng nhập đầy đủ cả thời gian bắt đầu và kết thúc')
+        throw new Error(t('task.scheduleBothRequired'))
       }
 
       if (startIso && endIso && new Date(endIso).getTime() <= new Date(startIso).getTime()) {
-        throw new Error('Thời gian kết thúc phải lớn hơn thời gian bắt đầu')
+        throw new Error(t('task.scheduleEndAfterStart'))
       }
 
       if (taskDrawerMode === 'duplicate') {
@@ -532,10 +534,10 @@ export function TaskDetailsDrawer() {
 
       if (taskDrawerMode === 'duplicate') {
         openTaskDrawer(savedTask.id, 'view')
-        toast.success('Nhân bản task thành công')
+        toast.success(t('task.duplicateSuccess'))
       } else {
         setTaskDrawerMode('view')
-        toast.success('Cập nhật task thành công')
+        toast.success(t('task.updateSuccess'))
       }
 
       void invalidateTaskData()
@@ -546,11 +548,11 @@ export function TaskDetailsDrawer() {
     onError: (error: Error) => {
       if (isNotFoundError(error)) {
         handleCloseDrawer()
-        toast.success('Task đã được xóa trước đó')
+        toast.success(t('task.deletedBefore'))
         return
       }
 
-      toast.error(taskDrawerMode === 'duplicate' ? 'Nhân bản task thất bại' : 'Cập nhật task thất bại', {
+      toast.error(taskDrawerMode === 'duplicate' ? t('task.duplicateFailed') : t('task.updateFailed'), {
         description: error.message,
       })
     },
@@ -558,7 +560,7 @@ export function TaskDetailsDrawer() {
 
   const updateCommentMutation = useMutation({
     mutationFn: () => {
-      if (!editingCommentId) throw new Error('Comment không tồn tại')
+      if (!editingCommentId) throw new Error(t('task.commentNotFound'))
       return taskCommentApi.update(editingCommentId, editingCommentContent.trim())
     },
     onMutate: async () => {
@@ -595,14 +597,14 @@ export function TaskDetailsDrawer() {
         (oldComments ?? []).map((comment) => (comment.id === savedComment.id ? savedComment : comment)),
       )
 
-      toast.success('Cập nhật comment thành công')
+      toast.success(t('task.commentUpdateSuccess'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.commentsSnapshot) {
         queryClient.setQueryData(queryKeys.comments.byTask(taskId), context.commentsSnapshot)
       }
 
-      toast.error('Cập nhật comment thất bại', { description: error.message })
+      toast.error(t('task.commentUpdateFailed'), { description: error.message })
     },
     onSettled: () => {
       void invalidateTaskData()
@@ -660,7 +662,7 @@ export function TaskDetailsDrawer() {
         }
       }
 
-      toast.success('Xóa comment thành công')
+      toast.success(t('task.commentDeleteSuccess'))
     },
     onError: (error: Error, _commentId, context) => {
       if (context?.commentsSnapshot) {
@@ -668,11 +670,11 @@ export function TaskDetailsDrawer() {
       }
 
       if (isNotFoundError(error)) {
-        toast.success('Comment đã được xóa trước đó')
+        toast.success(t('task.commentDeletedBefore'))
         return
       }
 
-      toast.error('Xóa comment thất bại', { description: error.message })
+      toast.error(t('task.commentDeleteFailed'), { description: error.message })
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.comments.byTask(taskId) })
@@ -697,8 +699,8 @@ export function TaskDetailsDrawer() {
     () => [
       {
         value: '__unassigned',
-        label: 'Không giao cho ai',
-        description: 'Task này hiện chưa có người nhận',
+        label: t('task.unassigned'),
+        description: t('task.unassignedDesc'),
         searchText: 'unassigned no assignee',
       },
       ...members.map((member) => ({
@@ -715,7 +717,7 @@ export function TaskDetailsDrawer() {
         ),
       })),
     ],
-    [members],
+    [members, t],
   )
   const primarySchedule = useMemo(() => {
     const schedules = schedulesQuery.data ?? []
@@ -747,10 +749,10 @@ export function TaskDetailsDrawer() {
       .map((projectTask) => ({
         value: String(projectTask.id),
         label: projectTask.title,
-        description: `${projectTask.status.name} • ${projectTask.priority}${projectTask.goalId ? ` • Goal #${projectTask.goalId}` : ''}`,
+        description: `${projectTask.status.name} • ${projectTask.priority}${projectTask.goalId ? ` • ${t('task.goalShort', { id: projectTask.goalId })}` : ''}`,
         searchText: `${projectTask.description ?? ''} ${projectTask.priority} ${projectTask.status.name}`,
       })),
-    [projectTasks, taskId],
+    [projectTasks, taskId, t],
   )
 
   const selectedDependencyTasks = useMemo(
@@ -911,7 +913,7 @@ export function TaskDetailsDrawer() {
     openAIAssistant({
       workspaceId: task.workspaceId,
       projectId: task.projectId,
-      prompt: `Phân rã task \"${task.title}\" thành các bước thực thi ngắn gọn, chỉ ra dependency đang chặn và đề xuất cập nhật cần áp dụng ngay trong project hiện tại.`,
+      prompt: t('task.aiPlanPrompt', { title: task.title }),
     })
   }
 
@@ -960,7 +962,7 @@ export function TaskDetailsDrawer() {
       <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
         <SheetHeader className="border-b px-6 py-4">
           <div className="flex items-center gap-2">
-            <SheetTitle className="text-base">{isDuplicateMode ? 'Nhân bản task' : 'Chi tiết task'}</SheetTitle>
+            <SheetTitle className="text-base">{isDuplicateMode ? t('task.duplicateTitle') : t('task.detailTitle')}</SheetTitle>
             <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
 
             <div className="ml-auto flex items-center gap-1">
@@ -970,7 +972,7 @@ export function TaskDetailsDrawer() {
                   size="icon"
                   className={`size-7 ${activeDrawerPanel === 'comments' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                   onClick={() => setActiveDrawerPanel((currentPanel) => currentPanel === 'comments' ? 'details' : 'comments')}
-                  title={activeDrawerPanel === 'comments' ? 'Quay lại chi tiết task' : 'Xem bình luận task'}
+                  title={activeDrawerPanel === 'comments' ? t('task.backToDetail') : t('task.viewComments')}
                 >
                   <MessageSquare className="size-3.5" />
                 </Button>
@@ -1007,7 +1009,7 @@ export function TaskDetailsDrawer() {
               </SheetClose>
             </div>
           </div>
-          <SheetDescription className="sr-only">Xem và quản lý chi tiết task</SheetDescription>
+          <SheetDescription className="sr-only">{t('task.detailDescription')}</SheetDescription>
         </SheetHeader>
 
         {taskQuery.isLoading ? (
@@ -1023,20 +1025,20 @@ export function TaskDetailsDrawer() {
                 <div className="space-y-5 px-6 py-5">
                   {isDuplicateMode && (
                     <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
-                      <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">Draft</span>
-                      Nhân bản — chỉnh sửa nội dung rồi bấm <strong className="ml-0.5">Save Duplicate</strong> để tạo.
+                      <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t('task.draftBadge')}</span>
+                      {t('task.duplicateBanner')}
                     </div>
                   )}
 
                   {/* Tiêu đề */}
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <AlignLeft className="size-3" /> Tiêu đề <span className="text-destructive">*</span>
+                      <AlignLeft className="size-3" /> {t('task.titleLabel')} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       value={editTitle ?? task.title}
                       onChange={(e) => setEditTitle(e.target.value)}
-                      placeholder="Tiêu đề task..."
+                      placeholder={t('task.titlePlaceholderShort')}
                       className="text-sm font-medium"
                     />
                   </div>
@@ -1044,12 +1046,12 @@ export function TaskDetailsDrawer() {
                   {/* Mô tả */}
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <AlignLeft className="size-3" /> Mô tả
+                      <AlignLeft className="size-3" /> {t('task.descriptionLabel')}
                     </Label>
                     <Textarea
                       value={editDescription ?? task.description ?? ''}
                       onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="Mô tả chi tiết task..."
+                      placeholder={t('task.descriptionPlaceholderShort')}
                       rows={3}
                       className="resize-none text-sm"
                     />
@@ -1058,14 +1060,14 @@ export function TaskDetailsDrawer() {
                   {/* Ưu tiên */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Flag className="size-3" /> Mức ưu tiên
+                      <Flag className="size-3" /> {t('task.priorityLabel')}
                     </Label>
                     <div className="grid grid-cols-4 gap-1.5">
                       {([
-                        { value: 'LOW', label: 'Thấp', cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
-                        { value: 'MEDIUM', label: 'Vừa', cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
-                        { value: 'HIGH', label: 'Cao', cls: 'border-amber-300 text-amber-600 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500' },
-                        { value: 'URGENT', label: 'Khẩn', cls: 'border-red-300 text-red-600 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500' },
+                        { value: 'LOW', label: t('task.priorityLow'), cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
+                        { value: 'MEDIUM', label: t('task.priorityMedium'), cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
+                        { value: 'HIGH', label: t('task.priorityHigh'), cls: 'border-amber-300 text-amber-600 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500' },
+                        { value: 'URGENT', label: t('task.priorityUrgent'), cls: 'border-red-300 text-red-600 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500' },
                       ] as const).map(({ value, label, cls }) => (
                         <button
                           key={value}
@@ -1083,18 +1085,18 @@ export function TaskDetailsDrawer() {
                   {/* Goal */}
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Target className="size-3" /> Goal (tùy chọn)
+                      <Target className="size-3" /> {t('task.goalOptional')}
                     </Label>
                     <Select
                       value={editGoalId != null ? String(editGoalId) : '__none'}
                       onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Không gán goal" />
+                        <SelectValue placeholder={t('task.goalNonePlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none">
-                          <span className="text-muted-foreground">Không có goal</span>
+                          <span className="text-muted-foreground">{t('task.goalNoneOption')}</span>
                         </SelectItem>
                         {goals.map((goal) => (
                           <SelectItem key={goal.id} value={String(goal.id)}>
@@ -1108,14 +1110,14 @@ export function TaskDetailsDrawer() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <User className="size-3" /> Người nhận
+                        <User className="size-3" /> {t('task.assigneeLabel')}
                       </Label>
                       <SearchableSelectPopover
                         value={editAssigneeId ?? '__unassigned'}
                         options={assigneeOptions}
-                        placeholder={membersQuery.isLoading ? 'Đang tải thành viên...' : 'Chọn người nhận'}
-                        searchPlaceholder="Tìm theo tên, email hoặc vai trò..."
-                        emptyLabel="Không tìm thấy thành viên phù hợp"
+                        placeholder={membersQuery.isLoading ? t('task.loadingMembers') : t('task.selectAssignee')}
+                        searchPlaceholder={t('task.searchAssignee')}
+                        emptyLabel={t('task.noMemberFound')}
                         disabled={membersQuery.isLoading || membersQuery.isError}
                         triggerClassName="h-9"
                         onValueChange={(value) => setEditAssigneeId(value === '__unassigned' ? null : value)}
@@ -1124,7 +1126,7 @@ export function TaskDetailsDrawer() {
 
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <Calendar className="size-3" /> Deadline
+                        <Calendar className="size-3" /> {t('task.deadline')}
                       </Label>
                       <Input
                         type="datetime-local"
@@ -1139,11 +1141,11 @@ export function TaskDetailsDrawer() {
                   {/* Lịch hẹn */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <CalendarClock className="size-3" /> Lịch hẹn (tùy chọn)
+                      <CalendarClock className="size-3" /> {t('task.scheduleOptionalLabel')}
                     </Label>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">Bắt đầu</p>
+                        <p className="text-[11px] text-muted-foreground">{t('task.scheduleStartLabel')}</p>
                         <Input
                           type="datetime-local"
                           step={900}
@@ -1153,7 +1155,7 @@ export function TaskDetailsDrawer() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">Kết thúc</p>
+                        <p className="text-[11px] text-muted-foreground">{t('task.scheduleEndLabel')}</p>
                         <Input
                           type="datetime-local"
                           step={900}
@@ -1165,7 +1167,7 @@ export function TaskDetailsDrawer() {
                     </div>
                     {editScheduleStart && editScheduleEnd && (
                       <p className="text-[11px] text-muted-foreground">
-                        Thời gian kết thúc phải lớn hơn thời gian bắt đầu.
+                        {t('task.scheduleEndValidation')}
                       </p>
                     )}
                   </div>
@@ -1173,10 +1175,10 @@ export function TaskDetailsDrawer() {
                   <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 p-4">
                     <div className="space-y-1">
                       <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <Link2 className="size-3" /> Dependencies & blockers
+                        <Link2 className="size-3" /> {t('task.dependenciesBlockers')}
                       </Label>
                       <p className="text-[11px] leading-5 text-muted-foreground">
-                        Chọn các task cần hoàn tất trước và ghi chú blocker không nằm trong hệ thống nếu có.
+                        {t('task.dependenciesHelp')}
                       </p>
                     </div>
 
@@ -1184,9 +1186,9 @@ export function TaskDetailsDrawer() {
                       <SearchableSelectPopover
                         value={dependencyCandidateId}
                         options={dependencyTaskOptions}
-                        placeholder={projectTasksQuery.isLoading ? 'Đang tải task...' : 'Tìm task phụ thuộc'}
-                        searchPlaceholder="Tìm theo tiêu đề, trạng thái hoặc ưu tiên..."
-                        emptyLabel="Không có task phù hợp"
+                        placeholder={projectTasksQuery.isLoading ? t('task.loadingTasks') : t('task.searchDependency')}
+                        searchPlaceholder={t('task.searchDependencyPlaceholder')}
+                        emptyLabel={t('task.noTaskFound')}
                         disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
                         triggerClassName="h-9"
                         onValueChange={setDependencyCandidateId}
@@ -1208,7 +1210,7 @@ export function TaskDetailsDrawer() {
                           setDependencyCandidateId(undefined)
                         }}
                       >
-                        Thêm dependency
+                        {t('task.addDependency')}
                       </Button>
                     </div>
 
@@ -1223,20 +1225,20 @@ export function TaskDetailsDrawer() {
                           >
                             <Link2 className="size-3" />
                             <span className="truncate">{dependencyTask.title}</span>
-                            <span className="text-[10px] opacity-70">Remove</span>
+                            <span className="text-[10px] opacity-70">{t('task.removeDependency')}</span>
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">Chưa có task phụ thuộc nào được chọn.</p>
+                      <p className="text-xs text-muted-foreground">{t('task.noDependency')}</p>
                     )}
 
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-medium text-muted-foreground">Blocker note</Label>
+                      <Label className="text-[11px] font-medium text-muted-foreground">{t('task.blockerNoteLabel')}</Label>
                       <Textarea
                         value={editBlockerNote}
                         onChange={(event) => setEditBlockerNote(event.target.value)}
-                        placeholder="Ví dụ: đang chờ dữ liệu từ khách hàng hoặc quyết định từ quản lý"
+                        placeholder={t('task.blockerNotePlaceholderLong')}
                         rows={3}
                         className="resize-none text-sm"
                       />
@@ -1281,7 +1283,7 @@ export function TaskDetailsDrawer() {
                                 className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
                                 onClick={() => setDescriptionExpanded((value) => !value)}
                               >
-                                {descriptionExpanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'}
+                                {descriptionExpanded ? t('common.showLess') : t('common.showMore')}
                               </button>
                             )}
                           </div>
@@ -1294,7 +1296,7 @@ export function TaskDetailsDrawer() {
                             className="h-8 gap-1.5 text-xs"
                             onClick={() => {
                               if (!canManageCurrentTask) {
-                                toast.error('Bạn không có quyền cập nhật task này')
+                                toast.error(t('task.noPermission'))
                                 return
                               }
                               toggleCompletionMutation.mutate()
@@ -1308,18 +1310,18 @@ export function TaskDetailsDrawer() {
                             ) : (
                               <Circle className="size-3.5" />
                             )}
-                            {task.isCompleted ? 'Bỏ hoàn thành' : 'Đánh dấu hoàn thành'}
+                            {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
                           </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title="Pomodoro">
+                          <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title={t('task.pomodoroTitle')}>
                             <Timer className="size-3.5" />
                           </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title="Focus mode">
+                          <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title={t('task.focusMode')}>
                             <Target className="size-3.5" />
                           </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title="Ghi chú">
+                          <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
                             <NotebookText className="size-3.5" />
                           </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openTaskPlanningAssistant} title="AI breakdown">
+                          <Button variant="outline" size="icon" className="size-8" onClick={openTaskPlanningAssistant} title={t('task.aiBreakdownButton')}>
                             <Sparkles className="size-3.5" />
                           </Button>
                         </div>
@@ -1335,13 +1337,13 @@ export function TaskDetailsDrawer() {
                               <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-sm font-semibold">Bình luận và phối hợp</p>
+                                    <p className="text-sm font-semibold">{t('common.commentSection')}</p>
                                     <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
-                                      {comments.length} bình luận
+                                      {t('common.commentCount', { count: comments.length })}
                                     </span>
                                   </div>
                                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                    Chuyển sang khung bình luận để theo dõi trao đổi, phản hồi nhanh và giữ toàn bộ quyết định ngay trong cùng task.
+                                    {t('common.commentSectionDesc')}
                                   </p>
                                 </div>
 
@@ -1352,14 +1354,14 @@ export function TaskDetailsDrawer() {
                                   onClick={() => setActiveDrawerPanel('comments')}
                                 >
                                   <MessageSquare className="size-3.5" />
-                                  {comments.length > 0 ? 'Mở bình luận' : 'Bắt đầu trao đổi'}
+                                  {comments.length > 0 ? t('task.openCommentsAction') : t('task.startConversationAction')}
                                 </Button>
                               </div>
 
                               {latestCommentPreview ? (
                                 <div className="mt-3 rounded-[22px] border border-border/70 bg-background/75 px-3.5 py-3 dark:bg-background/15">
                                   <p className="text-[11px] font-medium text-muted-foreground">
-                                    Mới nhất từ {latestCommentPreview.user.firstName} {latestCommentPreview.user.lastName}
+                                    {t('task.latestCommentBy', { name: `${latestCommentPreview.user.firstName} ${latestCommentPreview.user.lastName}` })}
                                   </p>
                                   <p className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80" style={{ overflowWrap: 'anywhere' }}>
                                     {latestCommentPreview.content}
@@ -1373,12 +1375,12 @@ export function TaskDetailsDrawer() {
 
                       {/* Properties */}
                       <div className="px-6 py-4">
-                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Thông tin</p>
+                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.info')}</p>
                         <div className="space-y-3">
                           <div className="flex items-start gap-3">
                             <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">Mức ưu tiên</p>
+                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.priorityLabel')}</p>
                               <TaskPriorityBadge priority={task.priority} />
                             </div>
                           </div>
@@ -1386,7 +1388,7 @@ export function TaskDetailsDrawer() {
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
                             <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">Trạng thái</p>
+                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.statusLabel')}</p>
                               <Badge
                                 variant={task.status.isClosed ? 'secondary' : 'outline'}
                                 className="text-xs"
@@ -1399,7 +1401,7 @@ export function TaskDetailsDrawer() {
                           <div className="flex items-start gap-3">
                             <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">Người nhận</p>
+                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.assigneeInfo')}</p>
                               {task.assignee ? (
                                 <div className="flex items-center gap-1.5">
                                   <Avatar className="size-5">
@@ -1410,7 +1412,7 @@ export function TaskDetailsDrawer() {
                                   <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
                                 </div>
                               ) : (
-                                <span className="text-sm text-muted-foreground/50">Chưa giao</span>
+                                <span className="text-sm text-muted-foreground/50">{t('task.notAssigned')}</span>
                               )}
                             </div>
                           </div>
@@ -1418,13 +1420,13 @@ export function TaskDetailsDrawer() {
                           <div className="flex items-start gap-3">
                             <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">Hạn chót</p>
+                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.dueDate')}</p>
                               {task.dueDate ? (
                                 <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
                                   {formatDateTime(task.dueDate)}
                                 </span>
                               ) : (
-                                <span className="text-sm text-muted-foreground/50">Chưa đặt</span>
+                                <span className="text-sm text-muted-foreground/50">{t('task.noDueDate')}</span>
                               )}
                             </div>
                           </div>
@@ -1432,14 +1434,14 @@ export function TaskDetailsDrawer() {
                           <div className="flex items-start gap-3">
                             <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">Goal</p>
+                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.goalLabel')}</p>
                               {task.goalId ? (
                                 <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
                                   <Target className="size-3 shrink-0" />
-                                  <span className="truncate">{goalTitleById.get(task.goalId) ?? `Goal #${task.goalId}`}</span>
+                                  <span className="truncate">{goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })}</span>
                                 </span>
                               ) : (
-                                <span className="text-sm text-muted-foreground/50">Chưa gán</span>
+                                <span className="text-sm text-muted-foreground/50">{t('task.noGoal')}</span>
                               )}
                             </div>
                           </div>
@@ -1448,7 +1450,7 @@ export function TaskDetailsDrawer() {
                             <div className="flex items-start gap-3">
                               <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
                               <div className="min-w-0 flex-1">
-                                <p className="mb-1 text-[11px] text-muted-foreground">Loại task</p>
+                                <p className="mb-1 text-[11px] text-muted-foreground">{t('task.taskTypeLabel')}</p>
                                 <Badge
                                   variant="secondary"
                                   className="gap-1 text-[11px]"
@@ -1464,25 +1466,25 @@ export function TaskDetailsDrawer() {
                       </div>
 
                       <div className="px-6 py-4">
-                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Dependencies & blockers</p>
+                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.dependenciesBlockers')}</p>
                         <div className="space-y-3">
                           {dependencyDetails?.blockerNote ? (
                             <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">Blocker note</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">{t('task.blockerNoteLabel')}</p>
                               <p className="mt-1 whitespace-pre-wrap leading-6">{dependencyDetails.blockerNote}</p>
                             </div>
                           ) : null}
 
                           <DependencyTaskList
-                            title="Đang bị chặn bởi"
-                            emptyLabel="Task này chưa phụ thuộc task nào khác."
+                            title={t('task.blockedBy')}
+                            emptyLabel={t('task.noBlockedBy')}
                             tasks={dependencyDetails?.blockedByTasks ?? []}
                             onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
                           />
 
                           <DependencyTaskList
-                            title="Đang chặn"
-                            emptyLabel="Chưa có task nào đang chờ task này hoàn tất."
+                            title={t('task.blocking')}
+                            emptyLabel={t('task.noBlocking')}
                             tasks={dependencyDetails?.blockingTasks ?? []}
                             onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
                           />
@@ -1492,19 +1494,19 @@ export function TaskDetailsDrawer() {
                       {/* Schedule */}
                       {primarySchedule && (
                         <div className="px-6 py-4">
-                          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">Lịch hẹn</p>
+                          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.scheduleLabel')}</p>
                           <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
                             <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="size-3 text-muted-foreground" />
-                                  <span className="text-[11px] text-muted-foreground">Bắt đầu:</span>
+                                  <span className="text-[11px] text-muted-foreground">{t('task.scheduleStartView')}</span>
                                   <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="size-3 text-muted-foreground" />
-                                  <span className="text-[11px] text-muted-foreground">Kết thúc:</span>
+                                  <span className="text-[11px] text-muted-foreground">{t('task.scheduleEndView')}</span>
                                   <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
                                 </div>
                               </div>
@@ -1563,14 +1565,14 @@ export function TaskDetailsDrawer() {
             {isEditingTask && (
               <div className="border-t bg-background/95 px-6 py-3">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={leaveEditMode}>Hủy</Button>
+                  <Button variant="outline" size="sm" onClick={leaveEditMode}>{t('task.cancel')}</Button>
                   <Button
                     size="sm"
                     onClick={() => saveTaskMutation.mutate()}
                     disabled={saveTaskMutation.isPending || !hasEditorChanges}
                   >
                     {saveTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-                    {isDuplicateMode ? 'Save Duplicate' : 'Lưu thay đổi'}
+                    {t('task.saveChanges')}
                   </Button>
                 </div>
               </div>
@@ -1578,7 +1580,7 @@ export function TaskDetailsDrawer() {
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-muted-foreground">Không tìm thấy task.</p>
+            <p className="text-sm text-muted-foreground">{t('task.notFoundPage')}</p>
           </div>
         )}
       </SheetContent>
@@ -1599,6 +1601,8 @@ function DependencyTaskList({
   tasks: TaskDependencyTask[]
   onOpenTask: (taskId: number) => void
 }) {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -1623,10 +1627,10 @@ function DependencyTaskList({
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                   <span>{dependencyTask.statusName}</span>
                   <span>{dependencyTask.priority}</span>
-                  {dependencyTask.goalId ? <span>{`Goal #${dependencyTask.goalId}`}</span> : null}
+                  {dependencyTask.goalId ? <span>{t('task.goalShort', { id: dependencyTask.goalId })}</span> : null}
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-primary">Mở</span>
+              <span className="text-[11px] font-medium text-primary">{t('task.openTask')}</span>
             </button>
           ))}
         </div>

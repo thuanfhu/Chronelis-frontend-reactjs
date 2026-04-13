@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div className="flex min-h-dvh">
       {/* Left panel — brand */}
@@ -14,11 +16,11 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         </Link>
 
         <div className="max-w-md">
-          <h2 className="text-3xl font-bold leading-tight">
-            Quản lý công việc<br />cộng tác hiệu quả.
+          <h2 className="text-3xl font-bold leading-tight whitespace-pre-line">
+            {t('auth.layoutHeading')}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-primary-foreground/70">
-            Tổ chức workspace, theo dõi tiến độ dự án, phân công task và cộng tác realtime với đội nhóm của bạn.
+            {t('auth.layoutDescription')}
           </p>
         </div>
 

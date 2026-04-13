@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -31,6 +32,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { queryKeys } from '@/lib/api/query-keys'
 import { storageApi } from '@/lib/api/modules/storage-api'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { formatDateTime } from '@/lib/utils/datetime'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
 import '@/styles/task-notes-editor.css'
@@ -40,6 +42,7 @@ interface NotesLocationState {
 }
 
 export function TaskNotesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -127,10 +130,10 @@ export function TaskNotesPage() {
 
       queryClient.setQueryData(queryKeys.tasks.detail(taskId), updatedTask)
       void queryClient.invalidateQueries({ queryKey: ['tasks', 'project', updatedTask.projectId] })
-      toast.success('Đã lưu ghi chú task')
+      toast.success(t('task.notesSaved'))
     },
     onError: (error: Error) => {
-      toast.error('Lưu ghi chú thất bại', { description: error.message })
+      toast.error(t('task.notesSaveFailed'), { description: error.message })
     },
   })
 
@@ -179,7 +182,7 @@ export function TaskNotesPage() {
 
     const imageFiles = files.filter((file) => file.type.startsWith('image/'))
     if (imageFiles.length === 0) {
-      toast.error('Chỉ hỗ trợ upload file ảnh cho ghi chú')
+      toast.error(t('task.notesImageOnlyError'))
       return
     }
 
@@ -201,7 +204,7 @@ export function TaskNotesPage() {
           .run()
       } catch (error) {
         const description = error instanceof Error ? error.message : 'Không thể upload ảnh'
-        toast.error('Upload ảnh thất bại', { description })
+        toast.error(t('task.notesUploadFailed'), { description })
       }
     }
   }
@@ -293,10 +296,10 @@ export function TaskNotesPage() {
   if (!Number.isFinite(taskId) || taskId <= 0) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Task Notes" description="Không tìm thấy task hợp lệ." />
+        <PageHeader title={t('task.notesTitle')} description={t('task.notesInvalidDescription')} />
         <Button variant="outline" className="w-fit" onClick={handleBack}>
           <ArrowLeft className="size-4" />
-          Quay lại
+          {t('common.back')}
         </Button>
       </div>
     )
@@ -305,13 +308,13 @@ export function TaskNotesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Task Notes"
-        description="Soạn ghi chú rich text cho task với nội dung HTML được lưu trực tiếp."
+        title={t('task.notesTitle')}
+        description={t('task.notesPageDescription')}
         actions={(
           <>
             <Button variant="outline" size="sm" onClick={handleBack}>
               <ArrowLeft className="size-4" />
-              Quay lại
+              {t('common.back')}
             </Button>
             <Button
               size="sm"
@@ -319,7 +322,7 @@ export function TaskNotesPage() {
               disabled={!editor || saveMutation.isPending || !isDirty || !canEditNotes}
             >
               {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Lưu ghi chú
+              {t('task.notesSaveAction')}
             </Button>
           </>
         )}
@@ -327,23 +330,25 @@ export function TaskNotesPage() {
 
       {!canEditNotes && permissionsReady && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          <span className="font-medium">Chế độ xem:</span> Bạn chỉ có quyền xem ghi chú này. Chỉnh sửa yêu cầu quyền quản lý task.
+          <span className="font-medium">{t('task.notesViewOnlyTitle')}</span> {t('task.notesViewOnlyDescription')}
         </div>
       )}
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">{taskQuery.data?.title ?? 'Task'}</CardTitle>
+          <CardTitle className="text-base">{taskQuery.data?.title ?? t('task.notesTaskFallback')}</CardTitle>
           <CardDescription>
-            {lastSavedAt ? `Lần lưu gần nhất: ${new Date(lastSavedAt).toLocaleString()}` : 'Chưa lưu thay đổi mới'}
+            {lastSavedAt ? t('task.notesLastSaved', { date: formatDateTime(lastSavedAt) }) : t('task.notesNoRecentSave')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {taskQuery.isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang tải ghi chú...
+              {t('task.notesLoading')}
             </div>
+          ) : !taskQuery.data ? (
+            <div className="text-sm text-muted-foreground">{t('task.notesLoadFailed')}</div>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-2">
