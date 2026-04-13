@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { highlightMatch } from '@/lib/utils/highlight-match'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -1305,10 +1306,10 @@ export function WorkspaceDetailPage() {
                       </Avatar>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-sm font-medium">{member.user.firstName} {member.user.lastName}</p>
+                          <p className="truncate text-sm font-medium">{highlightMatch(`${member.user.firstName} ${member.user.lastName}`, memberSearch.trim())}</p>
                           {isSelf && <Badge variant="outline" className="h-4 px-1 text-[9px]">{t('workspace.badge.you')}</Badge>}
                         </div>
-                        <p className="truncate text-xs text-muted-foreground">{member.user.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">{highlightMatch(member.user.email, memberSearch.trim())}</p>
                         <p className="text-[10px] text-muted-foreground/60">{t('workspace.members.joinedAt', { date: joinedDate })}</p>
                       </div>
                       <RoleBadge role={member.role} />
@@ -1585,9 +1586,9 @@ export function WorkspaceDetailPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-2">
                               <div className="min-w-0 flex-1">
-                                <CardTitle className="text-sm font-semibold leading-tight">{team.name}</CardTitle>
+                                <CardTitle className="text-sm font-semibold leading-tight">{highlightMatch(team.name, teamSearch.trim())}</CardTitle>
                                 {team.description && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{team.description}</p>
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{highlightMatch(team.description, teamSearch.trim())}</p>
                                 )}
                               </div>
                               {canManageWorkspace && (

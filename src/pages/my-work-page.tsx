@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { highlightMatch } from '@/lib/utils/highlight-match'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TFunction } from 'i18next'
 import { useNavigate } from 'react-router-dom'
@@ -305,10 +306,10 @@ export function MyWorkPage() {
           {/* Task queues — adaptive */}
           <div className={cn('grid gap-4', hasBlocked && hasReady && 'xl:grid-cols-2 xl:items-start')}>
             {hasBlocked && (
-              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
             )}
             {hasReady && (
-              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
             )}
             {!hasBlocked && !hasReady && (
               <motion.div variants={fadeSlide}>
@@ -479,11 +480,11 @@ function BlockerDigestCard({ tasks, names, onOpen }: {
 
 /* ── Task Queue Section ── */
 
-function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, onOpen, onFocus, onPlan }: {
+function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, search, onOpen, onFocus, onPlan }: {
   title: string; tone: 'rose' | 'emerald'; icon: typeof AlertTriangle
   desc: string; empty: string; tasks: Task[]; total: number
   page: number; pages: number; onPage: (p: number) => void
-  names?: Map<number, string>; onOpen: (t: Task) => void; onFocus: (t: Task) => void; onPlan: (t: Task) => void
+  names?: Map<number, string>; search?: string; onOpen: (t: Task) => void; onFocus: (t: Task) => void; onPlan: (t: Task) => void
 }) {
   const s = {
     rose: { ico: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', txt: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
@@ -507,7 +508,7 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
           <AnimatePresence mode="popLayout">
             {tasks.length > 0 ? tasks.map((t) => (
               <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <TaskCard task={t} projectName={names?.get(t.projectId)} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} onPlan={() => onPlan(t)} />
+                <TaskCard task={t} projectName={names?.get(t.projectId)} search={search} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} onPlan={() => onPlan(t)} />
               </motion.div>
             )) : (
               <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>
@@ -519,16 +520,17 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
   )
 }
 
-function TaskCard({ task, projectName, onOpen, onFocus, onPlan }: {
-  task: Task; projectName?: string; onOpen: () => void; onFocus: () => void; onPlan: () => void
+function TaskCard({ task, projectName, search, onOpen, onFocus, onPlan }: {
+  task: Task; projectName?: string; search?: string; onOpen: () => void; onFocus: () => void; onPlan: () => void
 }) {
   const { t } = useTranslation()
+  const kw = search ?? ''
   return (
     <div className={cn('rounded-2xl border border-border/60 bg-background/90 p-4 shadow-sm', priorityBorder(task.priority))}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold">{task.title}</p>
+            <p className="text-sm font-semibold">{highlightMatch(task.title, kw)}</p>
             <Badge variant="outline" className="text-[10px]">#{task.id}</Badge>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{projectName ?? t('myWork.projectFallback', { id: task.projectId })}</p>
@@ -545,7 +547,7 @@ function TaskCard({ task, projectName, onOpen, onFocus, onPlan }: {
         {task.estimatedMinutes > 0 && <Badge variant="outline" className="text-[10px]">{task.estimatedMinutes} min</Badge>}
       </div>
 
-      {task.description?.trim() && <p className="mt-2.5 line-clamp-2 text-sm leading-6 text-muted-foreground">{task.description}</p>}
+      {task.description?.trim() && <p className="mt-2.5 line-clamp-2 text-sm leading-6 text-muted-foreground">{highlightMatch(task.description, kw)}</p>}
 
       <TaskBlockerBadge task={task} className="mt-2.5" />
 

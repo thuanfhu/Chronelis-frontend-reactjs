@@ -394,7 +394,7 @@
     "createGoal": "Tạo goal",
     "goalPlanningPrompt": "Phân rã goal \"{{title}}\" thành các task cụ thể, chỉ ra blocker chính, dependency cần thiết và đề xuất lịch triển khai ngắn gọn cho project hiện tại.",
     "projectPlanningPrompt": "Lập kế hoạch thực thi cho project \"{{name}}\" trong 7 ngày tới, ưu tiên blocker, dependency và các task cần tạo hoặc cập nhật ngay.",
-    "workspaceOverview": "Tổng quan workspace",
+    "workspaceOverview": "Workspace",
     "expand": "Mở rộng",
     "projectsSection": "Projects",
     "loadingGoals": "Đang tải...",

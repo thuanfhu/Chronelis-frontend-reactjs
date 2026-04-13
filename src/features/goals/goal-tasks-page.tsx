@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { highlightMatch } from '@/lib/utils/highlight-match'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
@@ -328,10 +329,10 @@ export function GoalTasksPage() {
                   {/* Title + description */}
                   <div className="min-w-0">
                     <p className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}>
-                      {task.title}
+                      {highlightMatch(task.title, searchQuery.trim())}
                     </p>
                     {task.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">{task.description}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">{highlightMatch(task.description, searchQuery.trim())}</p>
                     )}
                     {/* Mobile-only inline badges */}
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
