@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, Loader2, GripVertical, Columns3 } from 'lucide-react'
+import { Plus, Loader2, GripVertical, Columns3, RefreshCw } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -468,7 +468,18 @@ export function KanbanPage() {
         description={t('kanban.description')}
         actions={
           <div className="flex flex-wrap gap-2">
-            {/* Status dialog */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId, 1, 200) })
+                void queryClient.invalidateQueries({ queryKey: queryKeys.statuses.byProject(projectId) })
+              }}
+            >
+              <RefreshCw className={cn('size-3.5', (tasksQuery.isFetching || statusesQuery.isFetching) && 'animate-spin')} />
+              {t('common.refresh')}
+            </Button>
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={!canManageProject}>

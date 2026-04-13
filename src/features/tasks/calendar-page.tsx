@@ -11,7 +11,7 @@ import viLocale from '@fullcalendar/core/locales/vi'
 import type { EventInput } from '@fullcalendar/core'
 import { motion, useAnimationControls } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -33,6 +33,7 @@ import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
 import { TaskCreateDialog } from '@/features/tasks/task-create-dialog'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
+import { cn } from '@/lib/utils/cn'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
@@ -640,6 +641,15 @@ export function CalendarPage() {
           <h1 className="text-xl font-bold tracking-tight text-foreground">{t('calendar.title')}</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('calendar.pageDescription')}</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => void invalidateTaskAndCalendarQueries()}
+        >
+          <RefreshCw className={cn('size-3.5', (schedulesQuery.isFetching || tasksQuery.isFetching) && 'animate-spin')} />
+          {t('common.refresh')}
+        </Button>
       </div>
 
       {/* Calendar toolbar */}

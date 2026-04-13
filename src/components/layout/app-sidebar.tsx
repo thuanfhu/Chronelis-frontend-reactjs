@@ -829,26 +829,39 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               />
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:grid-cols-2">
               {workspaceId ? (
-                <Link
+                <NavLink
                   to={`/workspaces/${workspaceId}`}
-                  className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  end
+                  className={({ isActive }) =>
+                    `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+                      isActive
+                        ? 'border-primary/30 bg-primary/10 text-primary'
+                        : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    }`
+                  }
                   title={t('sidebar.workspaceOverview')}
                 >
-                  <LayoutGrid className="size-3.5" />
-                  {t('sidebar.workspaceOverview')}
-                </Link>
+                  <LayoutGrid className="size-3.5 shrink-0" />
+                  <span className="truncate">{t('sidebar.workspaceOverview')}</span>
+                </NavLink>
               ) : null}
 
-              <Link
+              <NavLink
                 to="/my-work"
-                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-sidebar-border bg-sidebar-accent/35 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className={({ isActive }) =>
+                  `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+                    isActive
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  }`
+                }
                 title={t('nav.myWork')}
               >
-                <Briefcase className="size-3.5" />
-                {t('nav.myWork')}
-              </Link>
+                <Briefcase className="size-3.5 shrink-0" />
+                <span className="truncate">{t('nav.myWork')}</span>
+              </NavLink>
             </div>
           </div>
         ) : (
@@ -973,7 +986,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleLogout}
-                  className="group flex w-full items-center justify-center rounded-lg p-2.5 text-sidebar-foreground/90 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="group flex w-full items-center justify-center rounded-lg p-2.5 text-destructive/70 transition-colors hover:bg-destructive hover:text-destructive-foreground"
                 >
                   <LogOut className="size-4 icon-hover" />
                 </button>
@@ -983,7 +996,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           ) : (
             <button
               onClick={handleLogout}
-              className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-sidebar-foreground/90 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive"
+              className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-destructive/70 transition-all duration-150 hover:bg-destructive hover:text-destructive-foreground"
             >
               <LogOut className="size-4 icon-hover" />
               {t('common.logout')}

@@ -535,7 +535,7 @@
     "createGoal": "Create goal",
     "goalPlanningPrompt": "Break down the goal \"{{title}}\" into concrete tasks, point out the main blocker, necessary dependencies, and a short rollout plan for the current project.",
     "projectPlanningPrompt": "Create an execution plan for project \"{{name}}\" over the next 7 days, prioritizing blockers, dependencies, and the tasks that should be created or updated immediately.",
-    "workspaceOverview": "Workspace overview",
+    "workspaceOverview": "Workspace",
     "expand": "Expand",
     "projectsSection": "Projects",
     "loadingGoals": "Loading...",

@@ -373,8 +373,8 @@ export function TaskCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-2xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-border/60 px-6 py-4">
+      <DialogContent className="flex h-[min(720px,92vh)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
               <AlignLeft className="size-4 text-primary" />
@@ -392,7 +392,7 @@ export function TaskCreateDialog({
         </DialogHeader>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 border-b border-border/60 px-6">
+        <div className="flex shrink-0 gap-1 border-b border-border/60 px-6">
           {[
             { key: 'basic' as const, label: t('task.basicTab') },
             { key: 'schedule' as const, label: t('task.scheduleTab') },
@@ -417,7 +417,7 @@ export function TaskCreateDialog({
           ))}
         </div>
 
-        <ScrollArea className="max-h-[calc(92vh-12rem)]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5">
             {/* ── Tab: Basic Info ── */}
             {activeTab === 'basic' && (
@@ -726,7 +726,7 @@ export function TaskCreateDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-t border-border/60 px-6 py-3">
+        <DialogFooter className="shrink-0 border-t border-border/60 px-6 py-3">
           <div className="flex w-full items-center justify-between">
             <div className="flex gap-1">
               {form.scheduleStart && form.scheduleEnd && (

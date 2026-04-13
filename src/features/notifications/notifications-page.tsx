@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
   Bell, CheckCheck, CheckCircle2, MessageSquare, UserPlus, UserMinus,
-  ListTodo, Target, ArrowRightLeft, CalendarClock, Loader2,
+  ListTodo, Target, ArrowRightLeft, CalendarClock, Loader2, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -73,10 +73,21 @@ export function NotificationsPage() {
         title={t('notification.title')}
         description={t('notification.unreadCount', { count: unreadCount })}
         actions={
-          <Button variant="outline" size="sm" onClick={() => markAllReadMutation.mutate()} disabled={markAllReadMutation.isPending || unreadCount === 0}>
-            {markAllReadMutation.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <CheckCheck className="mr-1.5 size-3.5" />}
-            {t('notification.markAllRead')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => void notificationsQuery.refetch()}
+            >
+              <RefreshCw className={`size-3.5 ${notificationsQuery.isFetching ? 'animate-spin' : ''}`} />
+              {t('common.refresh')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => markAllReadMutation.mutate()} disabled={markAllReadMutation.isPending || unreadCount === 0}>
+              {markAllReadMutation.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <CheckCheck className="mr-1.5 size-3.5" />}
+              {t('notification.markAllRead')}
+            </Button>
+          </div>
         }
       />
 
