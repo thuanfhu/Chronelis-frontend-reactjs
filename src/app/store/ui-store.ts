@@ -4,12 +4,6 @@ import { persist } from 'zustand/middleware'
 export type ThemeMode = 'light' | 'dark'
 export type TaskDrawerMode = 'view' | 'edit' | 'duplicate'
 
-interface OpenAIAssistantOptions {
-  projectId?: number | null
-  workspaceId?: number | null
-  prompt?: string
-}
-
 interface UiState {
   sidebarOpen: boolean
   sidebarCollapsed: boolean
@@ -19,8 +13,6 @@ interface UiState {
   selectedWorkspaceId: number | null
   selectedProjectId: number | null
   commandPaletteOpen: boolean
-  aiAssistantOpen: boolean
-  aiAssistantPromptSeed: string | null
   theme: ThemeMode
   setSidebarOpen: (value: boolean) => void
   setSidebarCollapsed: (value: boolean) => void
@@ -34,9 +26,6 @@ interface UiState {
   setSelectedProjectId: (projectId: number | null) => void
   clearWorkspaceContext: () => void
   setCommandPaletteOpen: (value: boolean) => void
-  openAIAssistant: (options?: OpenAIAssistantOptions) => void
-  closeAIAssistant: () => void
-  clearAIAssistantPromptSeed: () => void
   toggleTheme: () => void
 }
 
@@ -51,8 +40,6 @@ export const useUiStore = create<UiState>()(
       selectedWorkspaceId: null,
       selectedProjectId: null,
       commandPaletteOpen: false,
-      aiAssistantOpen: false,
-      aiAssistantPromptSeed: null,
       theme: 'light',
       setSidebarOpen: (value) => set({ sidebarOpen: value }),
       setSidebarCollapsed: (value) => set({ sidebarCollapsed: value }),
@@ -66,14 +53,6 @@ export const useUiStore = create<UiState>()(
       setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
       clearWorkspaceContext: () => set({ selectedWorkspaceId: null, selectedProjectId: null }),
       setCommandPaletteOpen: (value) => set({ commandPaletteOpen: value }),
-      openAIAssistant: (options) => set((state) => ({
-        aiAssistantOpen: true,
-        aiAssistantPromptSeed: options?.prompt ?? state.aiAssistantPromptSeed,
-        selectedProjectId: options?.projectId ?? state.selectedProjectId,
-        selectedWorkspaceId: options?.workspaceId ?? state.selectedWorkspaceId,
-      })),
-      closeAIAssistant: () => set({ aiAssistantOpen: false }),
-      clearAIAssistantPromptSeed: () => set({ aiAssistantPromptSeed: null }),
       toggleTheme: () => set({ theme: get().theme === 'dark' ? 'light' : 'dark' }),
     }),
     {

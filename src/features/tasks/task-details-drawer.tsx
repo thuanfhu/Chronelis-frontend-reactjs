@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Pencil, Timer, X, NotebookText,
-  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock, Sparkles, Link2,
+  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock, Link2,
 } from 'lucide-react'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -104,7 +104,7 @@ export function TaskDetailsDrawer() {
   const setTaskDrawerMode = useUiStore((state) => state.setTaskDrawerMode)
   const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((state) => state.openTaskDeleteConfirm)
-  const openAIAssistant = useUiStore((state) => state.openAIAssistant)
+
   const currentUser = useAuthStore((state) => state.currentUser)
 
   const queryClient = useQueryClient()
@@ -907,15 +907,7 @@ export function TaskDetailsDrawer() {
     handleCloseDrawer()
   }
 
-  const openTaskPlanningAssistant = () => {
-    if (!task) return
 
-    openAIAssistant({
-      workspaceId: task.workspaceId,
-      projectId: task.projectId,
-      prompt: t('task.aiPlanPrompt', { title: task.title }),
-    })
-  }
 
   const normalizedEditorState = {
     title: (editTitle ?? '').trim(),
@@ -1321,9 +1313,7 @@ export function TaskDetailsDrawer() {
                           <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
                             <NotebookText className="size-3.5" />
                           </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openTaskPlanningAssistant} title={t('task.aiBreakdownButton')}>
-                            <Sparkles className="size-3.5" />
-                          </Button>
+
                         </div>
 
                         <TaskBlockerBadge task={task} className="mt-3" />

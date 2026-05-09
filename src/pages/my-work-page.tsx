@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import {
   AlertTriangle,
   ArrowUpRight,
-  Bot,
   Briefcase,
   CheckCircle2,
   ChevronLeft,
@@ -22,7 +21,6 @@ import {
   Rocket,
   Search,
   ShieldAlert,
-  Sparkles,
   Target,
   TrendingUp,
   Workflow,
@@ -69,7 +67,7 @@ export function MyWorkPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
-  const openAIAssistant = useUiStore((s) => s.openAIAssistant)
+
 
   const [searchValue, setSearchValue] = useState('')
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('ALL')
@@ -142,21 +140,7 @@ export function MyWorkPage() {
 
   const goFocus = (task: Task) => navigate(`/workspaces/${task.workspaceId}/projects/${task.projectId}/focus/${task.id}`)
 
-  const askAI = (task: Task) =>
-    openAIAssistant({
-      workspaceId: task.workspaceId,
-      projectId: task.projectId,
-      prompt: t('myWork.aiTaskPrompt', { title: task.title }),
-    })
 
-  const openSmartAI = () => {
-    if (!primaryTask) return
-    openAIAssistant({
-      workspaceId: primaryTask.workspaceId,
-      projectId: primaryTask.projectId,
-      prompt: t('myWork.aiSmartPrompt', { title: primaryTask.title }),
-    })
-  }
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork })
@@ -196,10 +180,7 @@ export function MyWorkPage() {
             <RefreshCw className={cn('size-3.5', myWorkQuery.isFetching && 'animate-spin')} />
             {myWorkQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
           </Button>
-          <Button size="sm" className="gap-1.5 bg-sky-600 text-white shadow-md shadow-sky-600/25 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600" onClick={openSmartAI} disabled={!primaryTask}>
-            <Bot className="size-4" />
-            {t('myWork.askAI')}
-          </Button>
+
         </div>
       </motion.div>
 
@@ -256,9 +237,8 @@ export function MyWorkPage() {
               </CardContent>
             </Card>
 
-            {/* Right sidebar: AI + Blockers */}
+            {/* Right sidebar: Blockers */}
             <div className="flex flex-col gap-4">
-              <AICard task={primaryTask} projectName={primaryTask ? projectDirQuery.data?.get(primaryTask.projectId) : undefined} onOpen={openSmartAI} />
               <BlockerDigestCard tasks={topBlockers} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
             </div>
           </motion.div>
@@ -306,10 +286,10 @@ export function MyWorkPage() {
           {/* Task queues — adaptive */}
           <div className={cn('grid gap-4', hasBlocked && hasReady && 'xl:grid-cols-2 xl:items-start')}>
             {hasBlocked && (
-              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} />
             )}
             {hasReady && (
-              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} onPlan={askAI} />
+              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} />
             )}
             {!hasBlocked && !hasReady && (
               <motion.div variants={fadeSlide}>
@@ -398,52 +378,7 @@ function SignalCard({ label, icon: Icon, tone, value }: {
   )
 }
 
-/* ── AI Assistant Card ── */
 
-function AICard({ task, projectName, onOpen }: {
-  task: Task | null; projectName?: string; onOpen: () => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <Card className="overflow-hidden border-2 border-sky-200/50 bg-linear-to-br from-sky-50/80 to-indigo-50/50 shadow-lg shadow-sky-500/6 dark:border-sky-700/40 dark:from-sky-950/30 dark:to-indigo-950/25">
-      <CardContent className="relative space-y-4 p-5">
-        {/* Decorative glow */}
-        <div className="pointer-events-none absolute -right-10 -top-10 size-28 rounded-full bg-sky-400/15 blur-2xl" />
-
-        {/* Header */}
-        <div className="relative flex items-center gap-3">
-          <div className="relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-md shadow-sky-500/30">
-            <Bot className="size-5" />
-            <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-gray-900" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">{t('myWork.aiTitle')}</p>
-            <p className="text-[11px] text-muted-foreground">{t('myWork.aiDesc')}</p>
-          </div>
-        </div>
-
-        {/* Project context */}
-        {task ? (
-          <div className="rounded-lg border border-sky-200/50 bg-white/70 p-3 dark:border-sky-800/35 dark:bg-white/5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">{t('myWork.aiPrioritizing')}</p>
-            <p className="mt-1 text-sm font-semibold leading-5 text-foreground">{projectName ?? t('myWork.projectFallback', { id: task.projectId })}</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">↳ {task.title}</p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border/60 bg-white/70 p-3 dark:bg-white/5">
-            <p className="text-sm text-muted-foreground">{t('myWork.aiNoTask')}</p>
-          </div>
-        )}
-
-        {/* CTA */}
-        <Button className="w-full gap-2 bg-sky-600 text-white shadow-md shadow-sky-600/25 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600" onClick={onOpen} disabled={!task}>
-          <Sparkles className="size-4" />
-          {t('myWork.aiOpenBtn')}
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
 
 /* ── Blocker Digest ── */
 
@@ -480,11 +415,11 @@ function BlockerDigestCard({ tasks, names, onOpen }: {
 
 /* ── Task Queue Section ── */
 
-function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, search, onOpen, onFocus, onPlan }: {
+function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, search, onOpen, onFocus }: {
   title: string; tone: 'rose' | 'emerald'; icon: typeof AlertTriangle
   desc: string; empty: string; tasks: Task[]; total: number
   page: number; pages: number; onPage: (p: number) => void
-  names?: Map<number, string>; search?: string; onOpen: (t: Task) => void; onFocus: (t: Task) => void; onPlan: (t: Task) => void
+  names?: Map<number, string>; search?: string; onOpen: (t: Task) => void; onFocus: (t: Task) => void
 }) {
   const s = {
     rose: { ico: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', txt: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
@@ -508,7 +443,7 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
           <AnimatePresence mode="popLayout">
             {tasks.length > 0 ? tasks.map((t) => (
               <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <TaskCard task={t} projectName={names?.get(t.projectId)} search={search} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} onPlan={() => onPlan(t)} />
+                <TaskCard task={t} projectName={names?.get(t.projectId)} search={search} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} />
               </motion.div>
             )) : (
               <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>
@@ -520,8 +455,8 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
   )
 }
 
-function TaskCard({ task, projectName, search, onOpen, onFocus, onPlan }: {
-  task: Task; projectName?: string; search?: string; onOpen: () => void; onFocus: () => void; onPlan: () => void
+function TaskCard({ task, projectName, search, onOpen, onFocus }: {
+  task: Task; projectName?: string; search?: string; onOpen: () => void; onFocus: () => void
 }) {
   const { t } = useTranslation()
   const kw = search ?? ''
@@ -558,7 +493,6 @@ function TaskCard({ task, projectName, search, onOpen, onFocus, onPlan }: {
       <div className="mt-3.5 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={onOpen}><ArrowUpRight className="size-3.5" />{t('myWork.openTask')}</Button>
         <Button size="sm" className="gap-1.5 text-xs" onClick={onFocus}><Target className="size-3.5" />{t('myWork.focusMode')}</Button>
-        <Button size="sm" variant="secondary" className="gap-1.5 text-xs" onClick={onPlan}><Bot className="size-3.5" />{t('myWork.aiSuggest')}</Button>
       </div>
     </div>
   )

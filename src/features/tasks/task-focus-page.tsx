@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Bot, CalendarClock, CheckCircle2, Circle, MessageSquare, NotebookText, Timer } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CheckCircle2, Circle, MessageSquare, NotebookText, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ export function TaskFocusPage() {
   const projectId = Number(params.projectId)
   const taskId = Number(params.taskId)
   const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
-  const openAIAssistant = useUiStore((state) => state.openAIAssistant)
+
   const queryClient = useQueryClient()
 
   useTaskRealtime(
@@ -111,17 +111,7 @@ export function TaskFocusPage() {
     })
   }
 
-  const openPlanning = () => {
-    if (!task) {
-      return
-    }
 
-    openAIAssistant({
-      workspaceId: task.workspaceId,
-      projectId: task.projectId,
-      prompt: t('task.focusPlanningPrompt', { title: task.title }),
-    })
-  }
 
   return (
     <div className="space-y-6">
@@ -185,10 +175,7 @@ export function TaskFocusPage() {
                   <NotebookText className="size-4" />
                   {t('task.openNotesButton')}
                 </Button>
-                <Button variant="outline" className="gap-1.5" onClick={openPlanning}>
-                  <Bot className="size-4" />
-                  {t('task.aiBreakdownButton')}
-                </Button>
+
                 <Button variant="outline" className="gap-1.5" onClick={() => toggleCompletionMutation.mutate()}>
                   {task.isCompleted ? <Circle className="size-4" /> : <CheckCircle2 className="size-4" />}
                   {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}

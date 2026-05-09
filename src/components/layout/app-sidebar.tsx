@@ -1,7 +1,7 @@
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   FolderKanban, ChevronRight, Search, LogOut, Menu,
-  ChevronsLeft, ChevronDown, Target, LayoutGrid, Plus, Loader2, Trash2, Briefcase, Sparkles,
+  ChevronsLeft, ChevronDown, Target, LayoutGrid, Plus, Loader2, Trash2, Briefcase,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -101,7 +101,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
-  const openAIAssistant = useUiStore((s) => s.openAIAssistant)
+
   const clearSession = useAuthStore((s) => s.clearSession)
   const currentUser = useAuthStore((s) => s.currentUser)
 
@@ -1012,31 +1012,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           onClick={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
         >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-foreground/90 transition-colors hover:bg-primary/10"
-            onClick={() => {
-              if (sidebarContextMenu.target.kind === 'goal') {
-                const { goal, project } = sidebarContextMenu.target
-                openAIAssistant({
-                  workspaceId: project.workspaceId,
-                  projectId: project.id,
-                  prompt: t('sidebar.goalPlanningPrompt', { title: goal.title }),
-                })
-              } else {
-                const { project } = sidebarContextMenu.target
-                openAIAssistant({
-                  workspaceId: project.workspaceId,
-                  projectId: project.id,
-                  prompt: t('sidebar.projectPlanningPrompt', { name: project.name }),
-                })
-              }
-              setSidebarContextMenu(null)
-            }}
-          >
-            <Sparkles className="size-3.5" />
-            {t('sidebar.aiPlanning')}
-          </button>
+
           {sidebarContextMenu.target.kind === 'project' && (
             <button
               type="button"
