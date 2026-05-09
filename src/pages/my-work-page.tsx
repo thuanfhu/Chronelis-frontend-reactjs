@@ -118,8 +118,6 @@ export function MyWorkPage() {
 
   const blockedPg = paginate(filtBlocked, blockedPage, TASKS_PER_PAGE)
   const readyPg = paginate(filtReady, readyPage, TASKS_PER_PAGE)
-  const primaryTask = blocked[0] ?? ready[0] ?? null
-
   const topBlockers = useMemo(
     () => blocked.slice().sort((a, b) => cmpTasks(a, b, 'smart')).slice(0, 4),
     [blocked],

@@ -579,7 +579,6 @@ export function TodoPage() {
                 mode="single"
                 selected={selectedDate ?? undefined}
                 onSelect={setTodoDateFilter}
-                initialFocus
               />
             </PopoverContent>
           </Popover>
