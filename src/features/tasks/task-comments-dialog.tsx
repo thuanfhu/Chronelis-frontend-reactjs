@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CornerDownRight,
   Loader2,
@@ -125,6 +126,7 @@ function ThreadCommentItem({
   onUpdateComment,
   onDeleteComment,
 }: ThreadCommentItemProps) {
+  const { t } = useTranslation()
   const replies = repliesByParent.get(comment.id) ?? []
   const hasLongContent = hasLongCommentContent(comment.content)
   const contentExpanded = expandedContentIds.has(comment.id)
@@ -171,20 +173,20 @@ function ThreadCommentItem({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onReply(comment.id)}>
                       <CornerDownRight className="mr-2 size-3.5" />
-                      Trả lời
+                      {t('task.commentReply')}
                     </DropdownMenuItem>
                     {canModifyComment(comment) ? (
                       <>
                         <DropdownMenuItem onClick={() => onStartEditing(comment)}>
                           <Pencil className="mr-2 size-3.5" />
-                          Chỉnh sửa
+                          {t('task.commentEdit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => onDeleteComment(comment.id)}
                         >
                           <Trash2 className="mr-2 size-3.5" />
-                          Xóa
+                          {t('task.commentDelete')}
                         </DropdownMenuItem>
                       </>
                     ) : null}
@@ -204,10 +206,10 @@ function ThreadCommentItem({
                 <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" className="h-8 text-xs" onClick={onUpdateComment} disabled={updateCommentPending || !editingCommentContent.trim()}>
                     {updateCommentPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
-                    Lưu chỉnh sửa
+                    {t('task.commentSave')}
                   </Button>
                   <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onCancelEditing}>
-                    Hủy
+                    {t('task.commentCancelEdit')}
                   </Button>
                 </div>
               </div>
@@ -228,7 +230,7 @@ function ThreadCommentItem({
                     className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
                     onClick={() => onToggleContent(comment.id)}
                   >
-                    {contentExpanded ? 'Thu gọn' : 'Xem thêm'}
+                      {contentExpanded ? t('task.commentsCollapse') : t('task.commentsShowMore')}
                   </button>
                 ) : null}
               </>
@@ -269,7 +271,9 @@ function ThreadCommentItem({
               className="ml-5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => onToggleReplyBranch(comment.id)}
             >
-              {repliesExpanded ? 'Thu gọn nhánh trả lời' : `Xem thêm ${replies.length - INITIAL_VISIBLE_REPLIES} trả lời`}
+                {repliesExpanded
+                  ? t('task.commentsCollapseReplies')
+                  : t('task.commentsShowMoreReplies', { count: replies.length - INITIAL_VISIBLE_REPLIES })}
             </button>
           ) : null}
         </div>
@@ -300,6 +304,7 @@ export function TaskCommentsDialog({
   onUpdateComment,
   onDeleteComment,
 }: TaskCommentsDialogProps) {
+  const { t } = useTranslation()
   const [visibleRootCommentCount, setVisibleRootCommentCount] = useState(INITIAL_VISIBLE_TOP_LEVEL_COMMENTS)
   const [expandedContentIds, setExpandedContentIds] = useState<Set<number>>(new Set())
   const [expandedReplyBranchIds, setExpandedReplyBranchIds] = useState<Set<number>>(new Set())
@@ -334,10 +339,10 @@ export function TaskCommentsDialog({
         <DialogHeader className="border-b px-5 py-4 text-left sm:px-6">
           <DialogTitle className="flex items-center gap-2 text-base">
             <MessageSquare className="size-4 text-primary" />
-            Bình luận task
+            {t('task.commentsDialogTitle')}
           </DialogTitle>
           <DialogDescription className="space-y-2 text-left leading-relaxed [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
-            <p>Thảo luận tập trung cho task này.</p>
+            <p>{t('task.commentsDialogDescription')}</p>
             <div className="rounded-xl border border-border/70 bg-muted/35 px-3 py-2 text-sm font-medium text-foreground">
               <strong>{taskTitle}</strong>
             </div>
@@ -348,7 +353,7 @@ export function TaskCommentsDialog({
           {replyParent ? (
             <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-xs">
               <div className="min-w-0">
-                <p className="font-semibold text-primary">Đang trả lời {replyParent.user.firstName} {replyParent.user.lastName}</p>
+                <p className="font-semibold text-primary">{t('task.commentsReplyingTo', { name: `${replyParent.user.firstName} ${replyParent.user.lastName}` })}</p>
                 <p className="mt-1 line-clamp-2 text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>{replyParent.content}</p>
               </div>
               <Button
@@ -367,8 +372,8 @@ export function TaskCommentsDialog({
               value={newComment}
               onChange={(event) => onNewCommentChange(event.target.value)}
               placeholder={canManageCurrentTask
-                ? (replyParent ? 'Nhập nội dung trả lời...' : 'Nhập bình luận mới...')
-                : 'Bạn không có quyền bình luận task này'}
+                ? (replyParent ? t('task.commentReplyPlaceholder') : t('task.commentPlaceholder'))
+                : t('task.commentNoPermissionPlaceholder')}
               rows={3}
               className="min-h-24 flex-1 text-sm"
               disabled={!canManageCurrentTask}
@@ -379,7 +384,7 @@ export function TaskCommentsDialog({
               disabled={addCommentPending || !newComment.trim() || !canManageCurrentTask}
             >
               {addCommentPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              Gửi
+              {t('task.commentSend')}
             </Button>
           </div>
         </div>
@@ -388,9 +393,9 @@ export function TaskCommentsDialog({
           {topLevelComments.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-4 py-12 text-center">
               <MessageSquare className="size-9 text-muted-foreground/35" />
-              <p className="mt-3 text-sm font-semibold">Chưa có bình luận nào</p>
+              <p className="mt-3 text-sm font-semibold">{t('task.noComments')}</p>
               <p className="mt-1 max-w-sm text-xs leading-6 text-muted-foreground">
-                Bắt đầu một luồng trao đổi gọn gàng để thảo luận, phản hồi và cập nhật tiến độ cho task này.
+                {t('task.commentsEmptyDescription')}
               </p>
             </div>
           ) : (
@@ -432,7 +437,7 @@ export function TaskCommentsDialog({
                     className="h-8 text-xs"
                     onClick={() => setVisibleRootCommentCount((count) => count + INITIAL_VISIBLE_TOP_LEVEL_COMMENTS)}
                   >
-                    Xem thêm bình luận
+                    {t('task.commentsShowMoreList')}
                   </Button>
                 </div>
               ) : topLevelComments.length > INITIAL_VISIBLE_TOP_LEVEL_COMMENTS ? (
@@ -444,7 +449,7 @@ export function TaskCommentsDialog({
                     className="h-8 text-xs text-muted-foreground"
                     onClick={() => setVisibleRootCommentCount(INITIAL_VISIBLE_TOP_LEVEL_COMMENTS)}
                   >
-                    Thu gọn danh sách bình luận
+                    {t('task.commentsCollapseList')}
                   </Button>
                 </div>
               ) : null}

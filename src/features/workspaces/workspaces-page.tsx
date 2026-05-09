@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, PanelsTopLeft, Loader2, Users, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
@@ -33,6 +34,7 @@ import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { PageResult, Workspace } from '@/types/domain'
 
 export function WorkspacesPage() {
+  const { t, i18n } = useTranslation()
   const [name, setName] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -42,6 +44,7 @@ export function WorkspacesPage() {
   const [deleteWorkspace, setDeleteWorkspace] = useState<Workspace | null>(null)
   const queryClient = useQueryClient()
   const currentUser = useAuthStore((state) => state.currentUser)
+  const locale = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
 
   const snapshotWorkspaceListQueries = () =>
     queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
@@ -120,15 +123,15 @@ export function WorkspacesPage() {
       })
 
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success('Tạo workspace thành công')
+      toast.success(t('workspace.toast.workspaceCreated'))
     },
     onError: (error: unknown, _variables, context) => {
       if (context?.snapshot) {
         restoreWorkspaceListQueries(context.snapshot)
       }
 
-      const description = error instanceof Error ? error.message : 'Đã xảy ra lỗi không mong muốn, vui lòng thử lại.'
-      toast.error('Tạo workspace thất bại', { description })
+      const description = error instanceof Error ? error.message : undefined
+      toast.error(t('workspace.toast.workspaceCreateFailed'), { description })
     },
   })
 
@@ -180,7 +183,7 @@ export function WorkspacesPage() {
       queryClient.setQueryData(queryKeys.workspaces.detail(savedWorkspace.id), savedWorkspace)
 
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success('Cập nhật workspace thành công')
+      toast.success(t('workspace.toast.workspaceUpdated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot) {
@@ -190,7 +193,7 @@ export function WorkspacesPage() {
         queryClient.setQueryData(queryKeys.workspaces.detail(editWsId), context.workspaceSnapshot)
       }
 
-      toast.error('Cập nhật workspace thất bại', { description: error.message })
+      toast.error(t('workspace.toast.workspaceUpdateFailed'), { description: error.message })
     },
   })
 
@@ -208,10 +211,10 @@ export function WorkspacesPage() {
     onFinalizeSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
     },
-    pendingMessage: (entry) => `Workspace "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`,
-    successMessage: (entry) => `Đã xóa workspace "${entry.label}"`,
-    alreadyDeletedMessage: (entry) => `Workspace "${entry.label}" đã được xóa trước đó`,
-    errorTitle: 'Xóa workspace thất bại',
+    pendingMessage: (entry) => t('workspace.toast.deleteScheduled', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    successMessage: (entry) => t('workspace.toast.deleteSuccess', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    alreadyDeletedMessage: (entry) => t('workspace.toast.alreadyDeleted', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    errorTitle: t('workspace.toast.deleteFailed'),
   })
 
   const workspaces = listQuery.data?.content ?? []
@@ -221,28 +224,28 @@ export function WorkspacesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Workspaces"
-        description="Không gian làm việc cho đội nhóm và dự án"
+        title={t('workspace.title')}
+        description={t('workspace.list.description')}
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-1.5 size-4" />
-                Tạo workspace
+                {t('workspace.create')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tạo workspace mới</DialogTitle>
-                <DialogDescription>Workspace là không gian chứa các project và thành viên của bạn.</DialogDescription>
+                <DialogTitle>{t('workspace.list.createTitle')}</DialogTitle>
+                <DialogDescription>{t('workspace.list.createDescription')}</DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
-                <Label htmlFor="ws-name">Tên workspace</Label>
+                <Label htmlFor="ws-name">{t('workspace.list.nameLabel')}</Label>
                 <Input
                   id="ws-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ví dụ: Team Product"
+                  placeholder={t('workspace.list.namePlaceholder')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && name.trim()) {
                       createMutation.mutate({ name: name.trim() })
@@ -251,13 +254,13 @@ export function WorkspacesPage() {
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
                 <Button
                   onClick={() => createMutation.mutate({ name: name.trim() })}
                   disabled={createMutation.isPending || !name.trim()}
                 >
                   {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Tạo
+                  {t('common.create')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -275,13 +278,13 @@ export function WorkspacesPage() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <PanelsTopLeft className="mb-4 size-12 text-muted-foreground/30" />
-            <h3 className="text-base font-semibold">Chưa có workspace nào</h3>
+            <h3 className="text-base font-semibold">{t('workspace.list.emptyTitle')}</h3>
             <p className="mt-1 max-w-sm text-center text-sm text-muted-foreground">
-              Tạo workspace đầu tiên để bắt đầu tổ chức dự án và cộng tác với đội nhóm.
+              {t('workspace.list.emptyDescription')}
             </p>
             <Button className="mt-4" onClick={() => setDialogOpen(true)}>
               <Plus className="mr-1.5 size-4" />
-              Tạo workspace
+              {t('workspace.create')}
             </Button>
           </CardContent>
         </Card>
@@ -317,7 +320,7 @@ export function WorkspacesPage() {
                         setEditDialogOpen(true)
                       }}>
                         <Pencil className="mr-2 size-4" />
-                        Chỉnh sửa
+                        {t('common.edit')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -327,7 +330,7 @@ export function WorkspacesPage() {
                         }}
                       >
                         <Trash2 className="mr-2 size-4" />
-                        Xóa workspace
+                        {t('workspace.action.delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -336,7 +339,7 @@ export function WorkspacesPage() {
               <CardContent>
                 <Link to={`/workspaces/${ws.id}`} className="block">
                   <p className="text-xs text-muted-foreground">
-                    Tạo lúc: {new Date(ws.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    {t('workspace.list.createdAt', { date: new Date(ws.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) })}
                   </p>
                 </Link>
               </CardContent>
@@ -357,11 +360,11 @@ export function WorkspacesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa workspace</DialogTitle>
-            <DialogDescription>Đổi tên workspace của bạn.</DialogDescription>
+            <DialogTitle>{t('workspace.dialog.editTitle')}</DialogTitle>
+            <DialogDescription>{t('workspace.dialog.editDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="edit-ws-name">Tên workspace</Label>
+            <Label htmlFor="edit-ws-name">{t('workspace.list.nameLabel')}</Label>
             <Input
               id="edit-ws-name"
               value={editName}
@@ -372,10 +375,10 @@ export function WorkspacesPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}>
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Lưu
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -391,20 +394,20 @@ export function WorkspacesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Xóa workspace</DialogTitle>
+            <DialogTitle>{t('workspace.list.deleteTitle')}</DialogTitle>
             <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
               <p>
                 {deleteWorkspace
-                  ? `Bạn có chắc muốn xóa workspace "${deleteWorkspace.name}" không?`
-                  : 'Bạn có chắc muốn xóa workspace này không?'}
+                  ? t('workspace.list.deleteConfirm', { name: deleteWorkspace.name })
+                  : t('workspace.list.deleteConfirmGeneric')}
               </p>
               <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                Workspace này sẽ được gỡ khỏi danh sách làm việc của bạn sau khi xác nhận.
+                {t('workspace.list.deleteWarning')}
               </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteWorkspace(null)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setDeleteWorkspace(null)}>{t('common.cancel')}</Button>
             <Button
               variant="destructive"
               onClick={() => {
@@ -427,7 +430,7 @@ export function WorkspacesPage() {
               }}
               disabled={Boolean(deleteWorkspace && isWorkspaceDeleteQueued(`workspace-${deleteWorkspace.id}`))}
             >
-              Xóa workspace
+              {t('workspace.action.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -438,7 +441,7 @@ export function WorkspacesPage() {
         clockMs={workspaceDeleteClockMs}
         undoWindowMs={workspaceDeleteUndoWindowMs}
         onUndo={undoWorkspaceDelete}
-        itemTitle={() => 'Đang xóa workspace'}
+        itemTitle={() => t('workspace.toast.deletingWorkspace')}
       />
     </div>
   )

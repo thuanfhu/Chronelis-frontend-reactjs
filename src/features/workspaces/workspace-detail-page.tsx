@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -7,6 +8,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { highlightMatch } from '@/lib/utils/highlight-match'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -43,18 +45,11 @@ import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
 import type { Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
 import type { PageResult } from '@/types/domain'
 
-/** Human-friendly display name for workspace member roles */
-const roleDisplayName: Record<WorkspaceMemberRoleType, string> = {
-  OWNER: 'Chủ sở hữu',
-  ADMIN: 'Quản lý',
-  MEMBER: 'Thành viên',
-}
-
-/** Short description shown in tooltip for each role */
-const roleDescription: Record<WorkspaceMemberRoleType, string> = {
-  OWNER: 'Tạo workspace, có toàn quyền: xóa workspace, quản lý thành viên, phân quyền mọi người.',
-  ADMIN: 'Quản lý workspace ủy quyền: tạo project, tào team, thêm/xóa thành viên. Không thể xóa workspace.',
-  MEMBER: 'Thành viên thường: xem project, làm việc với task được giao. Không tạo hoặc xóa project.',
+/** i18n key suffix for each workspace member role */
+const roleI18nKey: Record<WorkspaceMemberRoleType, string> = {
+  OWNER: 'owner',
+  ADMIN: 'admin',
+  MEMBER: 'member',
 }
 
 const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
@@ -70,7 +65,9 @@ const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
 }
 
 function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
+  const { t } = useTranslation()
   const Icon = roleIcon[role]
+  const key = roleI18nKey[role]
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -78,12 +75,12 @@ function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
           className={`inline-flex h-6 cursor-default items-center gap-1 rounded-md border px-2 text-[11px] font-semibold ${roleBadgeClassName[role]}`}
         >
           <Icon className="size-3 shrink-0" />
-          {roleDisplayName[role]}
+          {t(`workspace.role.${key}`)}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-60 text-xs">
-        <p className="font-semibold">{roleDisplayName[role]}</p>
-        <p className="mt-0.5 text-muted-foreground">{roleDescription[role]}</p>
+        <p className="font-semibold">{t(`workspace.role.${key}`)}</p>
+        <p className="mt-0.5 text-muted-foreground">{t(`workspace.roleDesc.${key}`)}</p>
       </TooltipContent>
     </Tooltip>
   )
@@ -114,6 +111,7 @@ function buildPageNumbers(current: number, total: number): Array<number | '...'>
 }
 
 export function WorkspaceDetailPage() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
@@ -259,13 +257,13 @@ export function WorkspaceDetailPage() {
       setProjectManagerTeamId('')
       setProjectDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Tạo project thành công')
+      toast.success(t('workspace.toast.projectCreated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot !== undefined) {
         queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
       }
-      toast.error('Tạo project thất bại', { description: error.message })
+      toast.error(t('workspace.toast.projectCreateFailed'), { description: error.message })
     },
   })
 
@@ -276,10 +274,10 @@ export function WorkspaceDetailPage() {
       setMemberRole('MEMBER')
       setMemberDialogOpen(false)
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) })
-      toast.success('Thêm thành viên thành công')
+      toast.success(t('workspace.toast.memberAdded'))
     },
     onError: (error: Error) => {
-      toast.error('Thêm thành viên thất bại', { description: error.message })
+      toast.error(t('workspace.toast.memberAddFailed'), { description: error.message })
     },
   })
 
@@ -348,7 +346,7 @@ export function WorkspaceDetailPage() {
       )
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
-      toast.success('Cập nhật workspace thành công')
+      toast.success(t('workspace.toast.workspaceUpdated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.workspaceListSnapshot) {
@@ -360,13 +358,13 @@ export function WorkspaceDetailPage() {
         queryClient.setQueryData(queryKeys.workspaces.detail(workspaceId), context.workspaceDetailSnapshot)
       }
 
-      toast.error('Cập nhật workspace thất bại', { description: error.message })
+      toast.error(t('workspace.toast.workspaceUpdateFailed'), { description: error.message })
     },
   })
 
   const updateProjectMutation = useMutation({
     mutationFn: () => {
-      if (!editProjectId) throw new Error('Project không tồn tại')
+      if (!editProjectId) throw new Error(t('workspace.error.projectNotFound'))
       const payload: {
         name: string
         description?: string
@@ -407,13 +405,13 @@ export function WorkspaceDetailPage() {
       setEditProjectManagerUserId('')
       setEditProjectManagerTeamId('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Cập nhật project thành công')
+      toast.success(t('workspace.toast.projectUpdated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot !== undefined) {
         queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
       }
-      toast.error('Cập nhật project thất bại', { description: error.message })
+      toast.error(t('workspace.toast.projectUpdateFailed'), { description: error.message })
     },
   })
 
@@ -431,13 +429,13 @@ export function WorkspaceDetailPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Cập nhật trạng thái project thành công')
+      toast.success(t('workspace.toast.projectStatusUpdated'))
     },
     onError: (error: Error, _variables, context) => {
       if (context?.snapshot !== undefined) {
         queryClient.setQueryData(queryKeys.projects.byWorkspace(workspaceId, 1, 50), context.snapshot)
       }
-      toast.error('Cập nhật trạng thái thất bại', { description: error.message })
+      toast.error(t('workspace.toast.projectStatusUpdateFailed'), { description: error.message })
     },
   })
 
@@ -490,29 +488,29 @@ export function WorkspaceDetailPage() {
     },
     pendingMessage: (entry) => {
       const entityName = entry.payload.kind === 'project'
-        ? 'Project'
+        ? t('workspace.entity.project')
         : entry.payload.kind === 'workspace'
-          ? 'Workspace'
-          : 'Team'
-      return `${entityName} "${entry.label}" đã được lên lịch xóa. Bạn có 5 giây để hoàn tác.`
+          ? t('workspace.entity.workspace')
+          : t('workspace.entity.team')
+      return t('workspace.toast.deleteScheduled', { entity: entityName, name: entry.label })
     },
     successMessage: (entry) => {
       const entityName = entry.payload.kind === 'project'
-        ? 'project'
+        ? t('workspace.entity.project')
         : entry.payload.kind === 'workspace'
-          ? 'workspace'
-          : 'team'
-      return `Đã xóa ${entityName} "${entry.label}"`
+          ? t('workspace.entity.workspace')
+          : t('workspace.entity.team')
+      return t('workspace.toast.deleteSuccess', { entity: entityName, name: entry.label })
     },
     alreadyDeletedMessage: (entry) => {
       const entityName = entry.payload.kind === 'project'
-        ? 'Project'
+        ? t('workspace.entity.project')
         : entry.payload.kind === 'workspace'
-          ? 'Workspace'
-          : 'Team'
-      return `${entityName} "${entry.label}" đã được xóa trước đó`
+          ? t('workspace.entity.workspace')
+          : t('workspace.entity.team')
+      return t('workspace.toast.alreadyDeleted', { entity: entityName, name: entry.label })
     },
-    errorTitle: 'Xóa dữ liệu thất bại',
+    errorTitle: t('workspace.toast.deleteFailed'),
   })
 
   const createInviteMutation = useMutation({
@@ -525,18 +523,18 @@ export function WorkspaceDetailPage() {
       setInviteDialogOpen(false)
       setInviteMaxUses('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
-      toast.success('Tạo invite link thành công')
+      toast.success(t('workspace.toast.inviteCreated'))
     },
-    onError: (error: Error) => toast.error('Tạo invite thất bại', { description: error.message }),
+    onError: (error: Error) => toast.error(t('workspace.toast.inviteCreateFailed'), { description: error.message }),
   })
 
   const revokeInviteMutation = useMutation({
     mutationFn: (inviteId: number) => workspaceInviteApi.revoke(inviteId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.invites.byWorkspace(workspaceId) })
-      toast.success('Thu hồi invite thành công')
+      toast.success(t('workspace.toast.inviteRevoked'))
     },
-    onError: (error: Error) => toast.error('Thu hồi thất bại', { description: error.message }),
+    onError: (error: Error) => toast.error(t('workspace.toast.inviteRevokeFailed'), { description: error.message }),
   })
 
   const createTeamMutation = useMutation({
@@ -551,9 +549,9 @@ export function WorkspaceDetailPage() {
       setTeamDescription('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
-      toast.success('Tạo team thành công')
+      toast.success(t('workspace.toast.teamCreated'))
     },
-    onError: (error: Error) => toast.error('Tạo team thất bại', { description: error.message }),
+    onError: (error: Error) => toast.error(t('workspace.toast.teamCreateFailed'), { description: error.message }),
   })
 
   const addTeamMemberMutation = useMutation({
@@ -567,9 +565,9 @@ export function WorkspaceDetailPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Thêm thành viên vào team thành công')
+      toast.success(t('workspace.toast.teamMemberAdded'))
     },
-    onError: (error: Error) => toast.error('Thêm thành viên vào team thất bại', { description: error.message }),
+    onError: (error: Error) => toast.error(t('workspace.toast.teamMemberAddFailed'), { description: error.message }),
   })
 
   const removeTeamMemberMutation = useMutation({
@@ -579,9 +577,9 @@ export function WorkspaceDetailPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
-      toast.success('Xóa thành viên khỏi team thành công')
+      toast.success(t('workspace.toast.teamMemberRemoved'))
     },
-    onError: (error: Error) => toast.error('Xóa thành viên khỏi team thất bại', { description: error.message }),
+    onError: (error: Error) => toast.error(t('workspace.toast.teamMemberRemoveFailed'), { description: error.message }),
   })
 
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
@@ -612,6 +610,17 @@ export function WorkspaceDetailPage() {
   const currentRole: WorkspaceMemberRoleType = workspace?.owner.userId === currentUserId
     ? 'OWNER'
     : currentMember?.role ?? 'MEMBER'
+  const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
+  const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
+    OWNER: t('workspace.role.owner'),
+    ADMIN: t('workspace.role.admin'),
+    MEMBER: t('workspace.role.member'),
+  }), [t])
+  const roleDescription = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
+    OWNER: t('workspace.roleDesc.owner'),
+    ADMIN: t('workspace.roleDesc.admin'),
+    MEMBER: t('workspace.roleDesc.member'),
+  }), [t])
   const isOwner = currentRole === 'OWNER'
   const isWorkspaceManager = isOwner || currentRole === 'ADMIN'
   const canManageWorkspace = isOwner
@@ -656,11 +665,11 @@ export function WorkspaceDetailPage() {
     }
     list.sort((a, b) => {
       if (memberSortKey === 'role') return ROLE_SORT_ORDER[a.role] - ROLE_SORT_ORDER[b.role]
-      if (memberSortKey === 'name') return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, 'vi')
+      if (memberSortKey === 'name') return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
       return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
     })
     return list
-  }, [members, memberSearch, memberRoleFilter, memberSortKey])
+  }, [localeTag, memberRoleFilter, memberSearch, memberSortKey, members])
 
   const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBER_PAGE_SIZE))
   const memberCurrentPage = Math.min(memberPage, memberTotalPages)
@@ -683,8 +692,8 @@ export function WorkspaceDetailPage() {
   if (!workspace) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">Workspace không tồn tại.</p>
-        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">Quay lại danh sách</Link>
+        <p className="text-sm text-muted-foreground">{t('workspace.notFound')}</p>
+        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">{t('workspace.backToList')}</Link>
       </div>
     )
   }
@@ -693,13 +702,18 @@ export function WorkspaceDetailPage() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title={workspace.name}
-        description={`Owner: ${workspace.owner.firstName} ${workspace.owner.lastName} · ${members.length} thành viên · ${visibleProjects.length} project · Vai trò của bạn: ${roleDisplayName[currentRole]}`}
+        description={t('workspace.headerDesc', {
+          owner: `${workspace.owner.firstName} ${workspace.owner.lastName}`,
+          memberCount: members.length,
+          projectCount: visibleProjects.length,
+          role: roleDisplayName[currentRole],
+        })}
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
                 <Trash2 className="mr-1.5 size-3.5" />
-                Xóa workspace
+                {t('workspace.action.delete')}
               </Button>
 
               <Dialog
@@ -721,16 +735,16 @@ export function WorkspaceDetailPage() {
                     }}
                   >
                     <Pencil className="mr-1.5 size-3.5" />
-                    Chỉnh sửa
+                    {t('common.edit')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Chỉnh sửa workspace</DialogTitle>
-                    <DialogDescription>Đổi tên workspace.</DialogDescription>
+                    <DialogTitle>{t('workspace.dialog.editTitle')}</DialogTitle>
+                    <DialogDescription>{t('workspace.dialog.editDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-2">
-                    <Label>Tên workspace</Label>
+                    <Label>{t('workspace.field.name')}</Label>
                     <Input
                       value={editWsName}
                       onChange={(e) => setEditWsName(e.target.value)}
@@ -740,10 +754,10 @@ export function WorkspaceDetailPage() {
                     />
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>Hủy</Button>
+                    <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim() || !isWorkspaceEditDirty}>
                       {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Lưu
+                      {t('common.save')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -752,7 +766,7 @@ export function WorkspaceDetailPage() {
           ) : (
             <Badge variant="outline" className="gap-1">
               <User className="size-3" />
-              MEMBER chỉ có quyền đọc trừ project được giao manager
+              {t('workspace.badge.memberReadOnly')}
             </Badge>
           )
         }
@@ -762,19 +776,19 @@ export function WorkspaceDetailPage() {
         <TabsList className="h-auto w-full justify-start">
           <TabsTrigger value="projects" className="shrink-0 gap-1.5">
             <FolderKanban className="size-3.5" />
-            Projects ({visibleProjects.length})
+            {t('workspace.tab.projects')} ({visibleProjects.length})
           </TabsTrigger>
           <TabsTrigger value="members" className="shrink-0 gap-1.5">
             <Users className="size-3.5" />
-            Thành viên ({members.length})
+            {t('workspace.tab.members')} ({members.length})
           </TabsTrigger>
           <TabsTrigger value="invites" className="shrink-0 gap-1.5">
             <Link2 className="size-3.5" />
-            Invites ({invites.length})
+            {t('workspace.tab.invites')} ({invites.length})
           </TabsTrigger>
           <TabsTrigger value="teams" className="shrink-0 gap-1.5">
             <UsersRound className="size-3.5" />
-            Teams ({visibleTeams.length})
+            {t('workspace.tab.teams')} ({visibleTeams.length})
           </TabsTrigger>
         </TabsList>
 
@@ -782,9 +796,9 @@ export function WorkspaceDetailPage() {
         <TabsContent value="projects" className="mt-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">Danh sách project trong workspace</p>
+              <p className="text-sm text-muted-foreground">{t('workspace.projects.description')}</p>
               {!canCreateProject && (
-                <p className="text-xs text-muted-foreground">Bạn đang ở chế độ read-only. Chỉ owner/admin hoặc manager được phân scope mới có thể chỉnh sửa project.</p>
+                <p className="text-xs text-muted-foreground">{t('workspace.projects.readOnlyNotice')}</p>
               )}
             </div>
             {canCreateProject && (
@@ -792,47 +806,47 @@ export function WorkspaceDetailPage() {
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-1.5 size-3.5" />
-                    Tạo project
+                    {t('workspace.action.createProject')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Tạo project mới</DialogTitle>
-                    <DialogDescription>Project sẽ tự động tạo 3 cột trạng thái: To do, In Progress, Done.</DialogDescription>
+                    <DialogTitle>{t('workspace.dialog.createProjectTitle')}</DialogTitle>
+                    <DialogDescription>{t('workspace.dialog.createProjectDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="proj-name">Tên project</Label>
+                      <Label htmlFor="proj-name">{t('workspace.field.projectName')}</Label>
                       <Input
                         id="proj-name"
                         value={projectName}
                         onChange={(e) => setProjectName(e.target.value)}
-                        placeholder="Ví dụ: Sprint 1"
+                        placeholder={t('workspace.placeholder.projectName')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="proj-desc">Mô tả (tùy chọn)</Label>
+                      <Label htmlFor="proj-desc">{t('workspace.field.descriptionOptional')}</Label>
                       <Textarea
                         id="proj-desc"
                         value={projectDescription}
                         onChange={(e) => setProjectDescription(e.target.value)}
-                        placeholder="Mô tả ngắn về project..."
+                        placeholder={t('workspace.placeholder.projectDescription')}
                         rows={3}
                       />
                     </div>
                     {isOwner && (
                       <>
                         <div className="space-y-2">
-                          <Label>Manager user (tùy chọn)</Label>
+                          <Label>{t('workspace.field.managerUserOptional')}</Label>
                           <Select
                             value={projectManagerUserId || 'none'}
                             onValueChange={(value) => setProjectManagerUserId(value === 'none' ? '' : value)}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Không gán manager user" />
+                              <SelectValue placeholder={t('workspace.placeholder.noManagerUser')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Không gán</SelectItem>
+                              <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
                               {members.map((member) => (
                                 <SelectItem key={member.user.userId} value={member.user.userId}>
                                   {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
@@ -842,16 +856,16 @@ export function WorkspaceDetailPage() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Manager team (tùy chọn)</Label>
+                          <Label>{t('workspace.field.managerTeamOptional')}</Label>
                           <Select
                             value={projectManagerTeamId || 'none'}
                             onValueChange={(value) => setProjectManagerTeamId(value === 'none' ? '' : value)}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Không gán manager team" />
+                              <SelectValue placeholder={t('workspace.placeholder.noManagerTeam')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Không gán</SelectItem>
+                              <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
                               {visibleTeams.map((team) => (
                                 <SelectItem key={team.id} value={String(team.id)}>
                                   {team.name}
@@ -864,10 +878,10 @@ export function WorkspaceDetailPage() {
                     )}
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>Hủy</Button>
+                    <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => createProjectMutation.mutate()} disabled={createProjectMutation.isPending || !projectName.trim()}>
                       {createProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Tạo
+                      {t('common.create')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -879,8 +893,8 @@ export function WorkspaceDetailPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <FolderKanban className="mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium">Chưa có project nào</p>
-                <p className="mt-1 text-xs text-muted-foreground">Tạo project đầu tiên để bắt đầu</p>
+                <p className="text-sm font-medium">{t('workspace.projects.empty')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t('workspace.projects.emptyHint')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -902,7 +916,7 @@ export function WorkspaceDetailPage() {
                           )}
                           <div className="mt-2 flex items-center gap-2">
                             <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
-                              {project.status}
+                              {t(`project.status.${project.status}`)}
                             </Badge>
                             <span className="text-[10px] text-muted-foreground">
                               {project.createdBy.firstName} {project.createdBy.lastName}
@@ -912,12 +926,12 @@ export function WorkspaceDetailPage() {
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                               {project.managerUser && (
                                 <Badge variant="secondary" className="text-[10px]">
-                                  Manager user: {project.managerUser.firstName} {project.managerUser.lastName}
+                                  {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
                                 </Badge>
                               )}
                               {project.managerTeamName && (
                                 <Badge variant="outline" className="text-[10px]">
-                                  Manager team: {project.managerTeamName}
+                                  {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
                                 </Badge>
                               )}
                             </div>
@@ -948,25 +962,25 @@ export function WorkspaceDetailPage() {
                               }}
                             >
                               <Pencil className="mr-2 size-3.5" />
-                              Chỉnh sửa
+                              {t('common.edit')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {project.status !== 'ACTIVE' && (
                               <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
                                 <RotateCcw className="mr-2 size-3.5" />
-                                Kích hoạt lại
+                                {t('workspace.action.reactivate')}
                               </DropdownMenuItem>
                             )}
                             {project.status !== 'COMPLETED' && (
                               <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
                                 <CheckCircle2 className="mr-2 size-3.5" />
-                                Hoàn thành
+                                {t('workspace.action.complete')}
                               </DropdownMenuItem>
                             )}
                             {project.status !== 'ARCHIVED' && (
                               <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
                                 <Archive className="mr-2 size-3.5" />
-                                Lưu trữ
+                                {t('workspace.action.archive')}
                               </DropdownMenuItem>
                             )}
                             {isWorkspaceManager && (
@@ -980,7 +994,7 @@ export function WorkspaceDetailPage() {
                                   }}
                                 >
                                   <Trash2 className="mr-2 size-3.5" />
-                                  Xóa project
+                                  {t('workspace.action.deleteProject')}
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -1012,35 +1026,35 @@ export function WorkspaceDetailPage() {
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Chỉnh sửa project</DialogTitle>
+                <DialogTitle>{t('workspace.dialog.editProjectTitle')}</DialogTitle>
                 <DialogDescription>
                   {isOwner
-                    ? 'Cập nhật thông tin và phân công manager cho project.'
-                    : 'Cập nhật thông tin project. Chỉ owner mới được chỉnh manager user/team.'}
+                    ? t('workspace.dialog.editProjectDescOwner')
+                    : t('workspace.dialog.editProjectDescMember')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label>Tên project</Label>
+                  <Label>{t('workspace.field.projectName')}</Label>
                   <Input value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Mô tả</Label>
+                  <Label>{t('workspace.field.description')}</Label>
                   <Textarea value={editProjectDescription} onChange={(e) => setEditProjectDescription(e.target.value)} rows={3} />
                 </div>
                 {isOwner && (
                   <>
                     <div className="space-y-2">
-                      <Label>Manager user</Label>
+                      <Label>{t('workspace.field.managerUser')}</Label>
                       <Select
                         value={editProjectManagerUserId || 'none'}
                         onValueChange={(value) => setEditProjectManagerUserId(value === 'none' ? '' : value)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Không gán manager user" />
+                          <SelectValue placeholder={t('workspace.placeholder.noManagerUser')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Không gán</SelectItem>
+                          <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
                           {members.map((member) => (
                             <SelectItem key={member.user.userId} value={member.user.userId}>
                               {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
@@ -1050,16 +1064,16 @@ export function WorkspaceDetailPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Manager team</Label>
+                      <Label>{t('workspace.field.managerTeam')}</Label>
                       <Select
                         value={editProjectManagerTeamId || 'none'}
                         onValueChange={(value) => setEditProjectManagerTeamId(value === 'none' ? '' : value)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Không gán manager team" />
+                          <SelectValue placeholder={t('workspace.placeholder.noManagerTeam')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Không gán</SelectItem>
+                          <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
                           {visibleTeams.map((team) => (
                             <SelectItem key={team.id} value={String(team.id)}>
                               {team.name}
@@ -1072,10 +1086,10 @@ export function WorkspaceDetailPage() {
                 )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>Hủy</Button>
+                <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>{t('common.cancel')}</Button>
                 <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim() || !isProjectEditDirty}>
                   {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Lưu
+                  {t('common.save')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1092,20 +1106,20 @@ export function WorkspaceDetailPage() {
           >
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Xóa project</DialogTitle>
+                <DialogTitle>{t('workspace.dialog.deleteProjectTitle')}</DialogTitle>
                 <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
                   <p>
                     {deleteProject
-                      ? `Bạn có chắc muốn xóa project "${deleteProject.name}" không?`
-                      : 'Bạn có chắc muốn xóa project này không?'}
+                      ? t('workspace.dialog.deleteProjectConfirm', { name: deleteProject.name })
+                      : t('workspace.dialog.deleteProjectConfirmGeneric')}
                   </p>
                   <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                    Toàn bộ goals, tasks, lịch và comment liên quan của project này sẽ bị xóa cùng lúc.
+                    {t('workspace.dialog.deleteProjectWarning')}
                   </div>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteProjectDialogOpen(false)}>Hủy</Button>
+                <Button variant="outline" onClick={() => setDeleteProjectDialogOpen(false)}>{t('common.cancel')}</Button>
                 <Button
                   variant="destructive"
                   onClick={() => {
@@ -1130,7 +1144,7 @@ export function WorkspaceDetailPage() {
                   }}
                   disabled={Boolean(deleteProject && isWorkspaceDeleteQueued(`project-${deleteProject.id}`))}
                 >
-                  Xóa project
+                  {t('workspace.action.deleteProject')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1167,32 +1181,32 @@ export function WorkspaceDetailPage() {
               <Input
                 value={memberSearch}
                 onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1) }}
-                placeholder="Tìm tên hoặc email..."
+                placeholder={t('workspace.members.searchPlaceholder')}
                 className="h-8 pl-8 text-xs"
               />
             </div>
             <Select value={memberRoleFilter} onValueChange={(v) => { setMemberRoleFilter(v as WorkspaceMemberRoleType | 'ALL'); setMemberPage(1) }}>
               <SelectTrigger className="h-8 w-36 text-xs">
-                <SelectValue placeholder="Tất cả vai trò" />
+                <SelectValue placeholder={t('workspace.members.allRoles')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">Tất cả vai trò</SelectItem>
+                <SelectItem value="ALL">{t('workspace.members.allRoles')}</SelectItem>
                 <SelectItem value="OWNER">
                   <span className="flex items-center gap-1.5">
                     <Crown className="size-3 text-amber-600 dark:text-amber-400" />
-                    Chủ sở hữu
+                    {roleDisplayName.OWNER}
                   </span>
                 </SelectItem>
                 <SelectItem value="ADMIN">
                   <span className="flex items-center gap-1.5">
                     <Shield className="size-3 text-blue-600 dark:text-blue-400" />
-                    Quản lý
+                    {roleDisplayName.ADMIN}
                   </span>
                 </SelectItem>
                 <SelectItem value="MEMBER">
                   <span className="flex items-center gap-1.5">
                     <User className="size-3 text-muted-foreground" />
-                    Thành viên
+                    {roleDisplayName.MEMBER}
                   </span>
                 </SelectItem>
               </SelectContent>
@@ -1203,37 +1217,37 @@ export function WorkspaceDetailPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="role">Theo vai trò</SelectItem>
-                <SelectItem value="name">Theo tên</SelectItem>
-                <SelectItem value="joined">Theo ngày tham gia</SelectItem>
+                <SelectItem value="role">{t('workspace.sort.byRole')}</SelectItem>
+                <SelectItem value="name">{t('workspace.sort.byName')}</SelectItem>
+                <SelectItem value="joined">{t('workspace.sort.byJoinDate')}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="ml-auto text-xs text-muted-foreground">{filteredMembers.length}/{members.length} thành viên</span>
+            <span className="ml-auto text-xs text-muted-foreground">{t('workspace.members.count', { filtered: filteredMembers.length, total: members.length })}</span>
             {canManageWorkspace && (
               <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <UserPlus className="mr-1.5 size-3.5" />
-                    Thêm thành viên
+                    {t('workspace.action.addMember')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Thêm thành viên</DialogTitle>
-                    <DialogDescription>Nhập User ID hoặc email và chọn vai trò cho thành viên mới.</DialogDescription>
+                    <DialogTitle>{t('workspace.dialog.addMemberTitle')}</DialogTitle>
+                    <DialogDescription>{t('workspace.dialog.addMemberDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="member-id">User ID hoặc email</Label>
+                      <Label htmlFor="member-id">{t('workspace.field.userIdOrEmail')}</Label>
                       <Input
                         id="member-id"
                         value={memberUserId}
                         onChange={(e) => setMemberUserId(e.target.value)}
-                        placeholder="Ví dụ: 4f8... hoặc user@example.com"
+                        placeholder={t('workspace.placeholder.userIdOrEmail')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Vai trò</Label>
+                      <Label>{t('workspace.field.role')}</Label>
                       <div className="flex gap-2">
                         {(['ADMIN', 'MEMBER'] as const).map((r) => (
                           <Button
@@ -1251,10 +1265,10 @@ export function WorkspaceDetailPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>Hủy</Button>
+                    <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => addMemberMutation.mutate()} disabled={addMemberMutation.isPending || !memberUserId.trim()}>
                       {addMemberMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Thêm
+                      {t('workspace.action.addMember')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1267,22 +1281,22 @@ export function WorkspaceDetailPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-10">
                 <Users className="mb-3 size-8 text-muted-foreground/30" />
-                <p className="text-sm font-medium">Không tìm thấy thành viên</p>
+                <p className="text-sm font-medium">{t('workspace.members.notFound')}</p>
               </CardContent>
             </Card>
           ) : (
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <div className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span />
-                <span>Thành viên</span>
-                <span>Vai trò</span>
+                <span>{t('workspace.table.member')}</span>
+                <span>{t('workspace.table.role')}</span>
                 {canManageWorkspace && <span />}
               </div>
               <div className="divide-y divide-border/40">
                 {paginatedMembers.map((member) => {
                   const isOwnerMember = member.role === 'OWNER'
                   const isSelf = member.user.userId === currentUserId
-                  const joinedDate = new Date(member.joinedAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  const joinedDate = new Date(member.joinedAt).toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' })
                   return (
                     <div key={member.id} className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
                       <Avatar className="size-9 shrink-0">
@@ -1292,11 +1306,11 @@ export function WorkspaceDetailPage() {
                       </Avatar>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-sm font-medium">{member.user.firstName} {member.user.lastName}</p>
-                          {isSelf && <Badge variant="outline" className="h-4 px-1 text-[9px]">Bạn</Badge>}
+                          <p className="truncate text-sm font-medium">{highlightMatch(`${member.user.firstName} ${member.user.lastName}`, memberSearch.trim())}</p>
+                          {isSelf && <Badge variant="outline" className="h-4 px-1 text-[9px]">{t('workspace.badge.you')}</Badge>}
                         </div>
-                        <p className="truncate text-xs text-muted-foreground">{member.user.email}</p>
-                        <p className="text-[10px] text-muted-foreground/60">Tham gia: {joinedDate}</p>
+                        <p className="truncate text-xs text-muted-foreground">{highlightMatch(member.user.email, memberSearch.trim())}</p>
+                        <p className="text-[10px] text-muted-foreground/60">{t('workspace.members.joinedAt', { date: joinedDate })}</p>
                       </div>
                       <RoleBadge role={member.role} />
                       {canManageWorkspace && !isOwnerMember && !isSelf ? (
@@ -1315,10 +1329,10 @@ export function WorkspaceDetailPage() {
                                   workspaceApi
                                     .updateMemberRole(workspaceId, member.user.userId, r)
                                     .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                                    .catch((err: Error) => toast.error('Cập nhật vai trò thất bại', { description: err.message }))
+                                    .catch((err: Error) => toast.error(t('workspace.toast.roleUpdateFailed'), { description: err.message }))
                                 }}
                               >
-                                Đổi thành {roleDisplayName[r]}
+                                  {t('workspace.action.changeRoleTo', { role: roleDisplayName[r] })}
                               </DropdownMenuItem>
                             ))}
                             <DropdownMenuSeparator />
@@ -1328,11 +1342,11 @@ export function WorkspaceDetailPage() {
                                 workspaceApi
                                   .removeMember(workspaceId, member.user.userId)
                                   .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                                  .catch((err: Error) => toast.error('Xóa thành viên thất bại', { description: err.message }))
+                                  .catch((err: Error) => toast.error(t('workspace.toast.memberRemoveFailed'), { description: err.message }))
                               }}
                             >
                               <Trash2 className="mr-2 size-3.5" />
-                              Xóa khỏi workspace
+                              {t('workspace.action.removeFromWorkspace')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1348,7 +1362,7 @@ export function WorkspaceDetailPage() {
           {memberTotalPages > 1 && (
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
-                Trang {memberCurrentPage}/{memberTotalPages} · {filteredMembers.length} thành viên
+                {t('workspace.pagination.memberInfo', { current: memberCurrentPage, total: memberTotalPages, count: filteredMembers.length })}
               </p>
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
@@ -1373,9 +1387,9 @@ export function WorkspaceDetailPage() {
         <TabsContent value="invites" className="mt-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">Quản lý invite link cho workspace</p>
+              <p className="text-sm text-muted-foreground">{t('workspace.invites.description')}</p>
               {!canManageWorkspace && (
-                <p className="text-xs text-muted-foreground">Chỉ owner có quyền tạo hoặc thu hồi invite.</p>
+                <p className="text-xs text-muted-foreground">{t('workspace.invites.readOnlyNotice')}</p>
               )}
             </div>
             {canManageWorkspace && (
@@ -1383,17 +1397,17 @@ export function WorkspaceDetailPage() {
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-1.5 size-3.5" />
-                    Tạo invite
+                    {t('workspace.action.createInvite')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Tạo invite link</DialogTitle>
-                    <DialogDescription>Chia sẻ link hoặc QR code để mời thành viên tham gia workspace.</DialogDescription>
+                    <DialogTitle>{t('workspace.dialog.createInviteTitle')}</DialogTitle>
+                    <DialogDescription>{t('workspace.dialog.createInviteDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label>Vai trò được gán</Label>
+                      <Label>{t('workspace.field.assignedRole')}</Label>
                       <div className="flex gap-2">
                         {(['ADMIN', 'MEMBER'] as const).map((r) => (
                           <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
@@ -1403,21 +1417,21 @@ export function WorkspaceDetailPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Giới hạn lượt dùng (tùy chọn)</Label>
+                      <Label>{t('workspace.field.maxUsesOptional')}</Label>
                       <Input
                         type="number"
                         min="1"
                         value={inviteMaxUses}
                         onChange={(e) => setInviteMaxUses(e.target.value)}
-                        placeholder="Không giới hạn"
+                        placeholder={t('workspace.placeholder.unlimited')}
                       />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Hủy</Button>
+                    <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => createInviteMutation.mutate()} disabled={createInviteMutation.isPending}>
                       {createInviteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Tạo
+                      {t('common.create')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1429,8 +1443,8 @@ export function WorkspaceDetailPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Link2 className="mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium">Chưa có invite nào</p>
-                <p className="mt-1 text-xs text-muted-foreground">Tạo invite link để mời thành viên</p>
+                <p className="text-sm font-medium">{t('workspace.invites.empty')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t('workspace.invites.emptyHint')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -1443,11 +1457,11 @@ export function WorkspaceDetailPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <code className="text-xs font-mono">{invite.inviteCode}</code>
-                        <Badge variant="outline" className="text-[10px]">{invite.roleToAssign}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{roleDisplayName[invite.roleToAssign]}</Badge>
                       </div>
                       <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        {invite.usedCount}{invite.maxUses ? `/${invite.maxUses}` : ''} lượt dùng
-                        {invite.expiresAt ? ` · Hết hạn: ${invite.expiresAt}` : ''}
+                        {t('workspace.invites.usageCount', { used: invite.usedCount, max: invite.maxUses ? `/${invite.maxUses}` : '' })}
+                        {invite.expiresAt ? t('workspace.invites.expiresAt', { date: invite.expiresAt }) : ''}
                       </p>
                     </div>
                     <Button
@@ -1456,7 +1470,7 @@ export function WorkspaceDetailPage() {
                       className="size-8 shrink-0"
                       onClick={() => {
                         void navigator.clipboard.writeText(inviteUrl)
-                        toast.success('Đã copy invite link')
+                        toast.success(t('workspace.toast.inviteLinkCopied'))
                       }}
                     >
                       <Copy className="size-3.5" />
@@ -1487,39 +1501,39 @@ export function WorkspaceDetailPage() {
               <Input
                 value={teamSearch}
                 onChange={(e) => { setTeamSearch(e.target.value); setTeamPage(1) }}
-                placeholder="Tìm team theo tên..."
+                placeholder={t('workspace.teams.searchPlaceholder')}
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <span className="text-xs text-muted-foreground">{filteredTeams.length}/{visibleTeams.length} teams</span>
+            <span className="text-xs text-muted-foreground">{t('workspace.teams.count', { filtered: filteredTeams.length, total: visibleTeams.length })}</span>
             {canManageWorkspace && (
               <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-1.5 size-3.5" />
-                    Tạo team
+                    {t('workspace.action.createTeam')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Tạo team mới</DialogTitle>
-                    <DialogDescription>Nhóm thành viên lại để phân công hiệu quả hơn.</DialogDescription>
+                    <DialogTitle>{t('workspace.dialog.createTeamTitle')}</DialogTitle>
+                    <DialogDescription>{t('workspace.dialog.createTeamDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label>Tên team</Label>
-                      <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Ví dụ: Frontend Team" />
+                      <Label>{t('workspace.field.teamName')}</Label>
+                      <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder={t('workspace.placeholder.teamName')} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Mô tả (tùy chọn)</Label>
-                      <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder="Mô tả ngắn về team..." />
+                      <Label>{t('workspace.field.descriptionOptional')}</Label>
+                      <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder={t('workspace.placeholder.teamDescription')} />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>Hủy</Button>
+                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending || !teamName.trim()}>
                       {createTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Tạo
+                      {t('common.create')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1531,8 +1545,8 @@ export function WorkspaceDetailPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium">{visibleTeams.length === 0 ? 'Chưa có team nào' : 'Không tìm thấy team'}</p>
-                {visibleTeams.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Tạo team để nhóm thành viên</p>}
+                <p className="text-sm font-medium">{visibleTeams.length === 0 ? t('workspace.teams.empty') : t('workspace.teams.notFound')}</p>
+                {visibleTeams.length === 0 && <p className="mt-1 text-xs text-muted-foreground">{t('workspace.teams.emptyHint')}</p>}
               </CardContent>
             </Card>
           ) : (
@@ -1556,7 +1570,7 @@ export function WorkspaceDetailPage() {
                     const roleB = wsMemberB?.role ?? 'MEMBER'
                     const cmp = ROLE_ORDER[roleA] - ROLE_ORDER[roleB]
                     if (cmp !== 0) return cmp
-                    return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, 'vi')
+                      return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
                   })
 
                   const displayedMembers = isExpanded ? sortedTeamMembers : sortedTeamMembers.slice(0, TEAM_MEMBER_PREVIEW_COUNT)
@@ -1572,9 +1586,9 @@ export function WorkspaceDetailPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-2">
                               <div className="min-w-0 flex-1">
-                                <CardTitle className="text-sm font-semibold leading-tight">{team.name}</CardTitle>
+                                <CardTitle className="text-sm font-semibold leading-tight">{highlightMatch(team.name, teamSearch.trim())}</CardTitle>
                                 {team.description && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{team.description}</p>
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{highlightMatch(team.description, teamSearch.trim())}</p>
                                 )}
                               </div>
                               {canManageWorkspace && (
@@ -1598,7 +1612,7 @@ export function WorkspaceDetailPage() {
                             <div className="mt-1.5">
                               <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-[10px]">
                                 <Users className="size-2.5" />
-                                {team.memberCount} thành viên
+                                {t('workspace.teams.memberCount', { count: team.memberCount })}
                               </Badge>
                             </div>
                           </div>
@@ -1609,7 +1623,7 @@ export function WorkspaceDetailPage() {
                         <div className="space-y-0.5">
                           {teamMembers.length === 0 ? (
                             <p className="rounded-lg bg-muted/30 px-3 py-3 text-center text-xs text-muted-foreground">
-                              Chưa có thành viên trong team này.
+                              {t('workspace.teams.noMembers')}
                             </p>
                           ) : (
                             <>
@@ -1656,7 +1670,7 @@ export function WorkspaceDetailPage() {
                                   className="w-full rounded-md py-1.5 text-center text-xs font-medium text-primary transition-colors hover:bg-primary/5"
                                   onClick={() => setTeamMemberExpanded((prev) => ({ ...prev, [team.id]: !isExpanded }))}
                                 >
-                                  {isExpanded ? 'Thu gọn' : `Xem thêm ${hiddenCount} thành viên`}
+                                  {isExpanded ? t('workspace.teams.collapse') : t('workspace.teams.showMore', { count: hiddenCount })}
                                 </button>
                               )}
                             </>
@@ -1677,10 +1691,10 @@ export function WorkspaceDetailPage() {
                                 }}
                               >
                                 <SelectTrigger className="h-8 flex-1 text-xs">
-                                  <SelectValue placeholder="Thêm thành viên vào team..." />
+                                  <SelectValue placeholder={t('workspace.teams.addMemberPlaceholder')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="none">Chọn thành viên</SelectItem>
+                                  <SelectItem value="none">{t('workspace.teams.selectMember')}</SelectItem>
                                   {availableWorkspaceMembers.map((member) => (
                                     <SelectItem key={member.user.userId} value={member.user.userId}>
                                       {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
@@ -1706,7 +1720,7 @@ export function WorkspaceDetailPage() {
                             </div>
                             {availableWorkspaceMembers.length === 0 && (
                               <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-                                Tất cả thành viên đã thuộc team này.
+                                {t('workspace.teams.allMembersAdded')}
                               </p>
                             )}
                           </div>
@@ -1721,7 +1735,7 @@ export function WorkspaceDetailPage() {
               {teamTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-1">
                   <p className="text-xs text-muted-foreground">
-                    Trang {teamCurrentPage}/{teamTotalPages} · {filteredTeams.length} teams
+                    {t('workspace.pagination.teamInfo', { current: teamCurrentPage, total: teamTotalPages, count: filteredTeams.length })}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="size-7" disabled={teamCurrentPage === 1} onClick={() => setTeamPage((p) => p - 1)}>
@@ -1757,16 +1771,16 @@ export function WorkspaceDetailPage() {
         <Dialog open={deleteWorkspaceDialogOpen} onOpenChange={setDeleteWorkspaceDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Xóa workspace</DialogTitle>
+              <DialogTitle>{t('workspace.dialog.deleteTitle')}</DialogTitle>
               <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
-                <p>{`Bạn có chắc muốn xóa workspace "${workspace.name}" không?`}</p>
+                <p>{t('workspace.dialog.deleteConfirm', { name: workspace.name })}</p>
                 <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                  Toàn bộ project, goals, tasks, comment, team và invite liên quan sẽ bị xóa cùng workspace này.
+                  {t('workspace.dialog.deleteWarning')}
                 </div>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>Hủy</Button>
+              <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>{t('common.cancel')}</Button>
               <Button
                 variant="destructive"
                 onClick={() => {
@@ -1786,7 +1800,7 @@ export function WorkspaceDetailPage() {
                 }}
                 disabled={workspaceDeleteQueued}
               >
-                Xóa workspace
+                {t('workspace.action.delete')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1800,10 +1814,10 @@ export function WorkspaceDetailPage() {
         onUndo={undoWorkspaceDelete}
         itemTitle={(entry) => (
           entry.payload.kind === 'project'
-            ? 'Đang xóa project'
+            ? t('workspace.toast.deletingProject')
             : entry.payload.kind === 'workspace'
-              ? 'Đang xóa workspace'
-              : 'Đang xóa team'
+              ? t('workspace.toast.deletingWorkspace')
+              : t('workspace.toast.deletingTeam')
         )}
       />
     </div>

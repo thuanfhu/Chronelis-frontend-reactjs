@@ -1,4 +1,4 @@
-﻿# Chronelis Frontend (React + Vite)
+# Chronelis Frontend (React + Vite)
 
 Frontend chính của Chronelis, xây dựng bằng React 19 + TypeScript + Vite.
 
@@ -24,31 +24,30 @@ Frontend chính của Chronelis, xây dựng bằng React 19 + TypeScript + Vite
 - Smooth transition từ login -> forgot password
 - Verify-change-email page theo backend email flow
 - Dashboard, workspaces, projects, goals, tasks, calendar, comments, notifications
-- Project Gantt page + AI assistant sheet for preview/apply planning actions
+- My Work page
 - Admin dashboard (tab Users / Roles / Permissions) với guard theo role `ADMIN`
 - Realtime notifications qua WebSocket
 
 ## 3) Environment
 
-Tạo file `.env` ở root frontend:
+Tạo file `.env.development` ở root frontend để cấu hình môi trường dev:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api/v1
-VITE_PROJECT_ASSISTANT_ENABLED=true
+VITE_CLOUD_API_BASE_URL=https://chronelis-ekgadxekd8hhf0fq.eastasia-01.azurewebsites.net/api/v1
+```
+
+Tạo file `.env.production` cho môi trường production:
+
+```env
+VITE_API_BASE_URL=https://chronelis-ekgadxekd8hhf0fq.eastasia-01.azurewebsites.net/api/v1
 ```
 
 Ghi chú:
 
+- Frontend sẽ tự động fallback gọi cloud API trong lúc chạy local nếu backend local không khởi chạy.
 - App tự suy ra WebSocket URL từ `VITE_API_BASE_URL` (`/ws`).
 - Axios được cấu hình `withCredentials=true` để dùng refresh cookie.
-- `VITE_PROJECT_ASSISTANT_ENABLED=false` sẽ ẩn UI assistant ở frontend mà không cần sửa code.
-
-## 3.1) Project AI Assistant
-
-- UI assistant nằm trong trang Gantt của project.
-- Frontend chỉ dùng env để bật/tắt UI (`VITE_PROJECT_ASSISTANT_ENABLED`).
-- Toàn bộ cấu hình model/API key nằm ở backend env, frontend không chứa secret AI.
-- Flow an toàn: AI chỉ tạo preview plan, người dùng chọn action, rồi mới apply.
 
 ## 4) Run Locally
 

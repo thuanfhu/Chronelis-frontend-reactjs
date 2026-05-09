@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryKey } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useUiStore } from '@/app/store/ui-store'
@@ -56,6 +57,7 @@ interface PendingTaskDelete {
 }
 
 export function TaskDeleteConfirmDialog() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const taskDeleteConfirmTaskId = useUiStore((state) => state.taskDeleteConfirmTaskId)
@@ -125,7 +127,7 @@ export function TaskDeleteConfirmDialog() {
 
     restorePendingDelete(pendingDelete)
     removePendingDelete(taskId)
-    toast.success(`Đã hoàn tác xóa task "${pendingDelete.taskTitle}"`)
+    toast.success(t('task.undoDeleteSuccess', { name: pendingDelete.taskTitle }))
   }
 
   const finalizePendingDelete = useCallback(async (taskId: number) => {
@@ -150,18 +152,18 @@ export function TaskDeleteConfirmDialog() {
 
     try {
       await taskApi.remove(taskId)
-      toast.success(`Đã xóa task "${pendingDelete.taskTitle}"`)
+      toast.success(t('task.deleteSuccessWithName', { name: pendingDelete.taskTitle }))
     } catch (error) {
       if (error instanceof Error && isNotFoundError(error)) {
-        toast.success(`Task "${pendingDelete.taskTitle}" đã được xóa trước đó`)
+        toast.success(t('task.deletedBeforeWithName', { name: pendingDelete.taskTitle }))
       } else {
         restorePendingDelete(pendingDelete)
 
         const descriptionText = error instanceof Error
           ? error.message
-          : 'Đã xảy ra lỗi không xác định'
+          : t('task.deleteUnknownError')
 
-        toast.error('Xóa task thất bại', { description: descriptionText })
+        toast.error(t('task.deleteFailed'), { description: descriptionText })
         removePendingDelete(taskId)
         return
       }
@@ -205,7 +207,7 @@ export function TaskDeleteConfirmDialog() {
   const deleteTaskMutation = useMutation({
     mutationFn: async () => {
       if (!hasTargetTask) {
-        throw new Error('Task không tồn tại')
+        throw new Error(t('task.notFound'))
       }
 
       const cachedTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(targetTaskId))
@@ -213,7 +215,7 @@ export function TaskDeleteConfirmDialog() {
 
       const existingPendingDelete = pendingDeletesRef.current.find((item) => item.taskId === task.id)
       if (existingPendingDelete) {
-        throw new Error('Task này đang chờ xóa. Bạn có thể hoàn tác hoặc đợi hoàn tất.')
+        throw new Error(t('task.deleteAlreadyPending'))
       }
 
       if (taskDrawerTaskId === task.id) {
@@ -238,7 +240,7 @@ export function TaskDeleteConfirmDialog() {
       ])
     },
     onError: (error: Error) => {
-      toast.error('Không thể xóa task', { description: error.message })
+      toast.error(t('task.deleteFailed'), { description: error.message })
     },
   })
 
@@ -249,12 +251,12 @@ export function TaskDeleteConfirmDialog() {
           <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-destructive" />
-              Xác nhận xóa task
+              {t('task.deleteConfirm')}
             </DialogTitle>
             <DialogDescription className="space-y-3 text-left leading-relaxed text-muted-foreground">
-              <p>Bạn có chắc muốn xóa task này không?</p>
+              <p>{t('task.deleteDialogDescription')}</p>
               <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                Task này sẽ bị gỡ khỏi danh sách công việc và lịch liên quan ngay sau khi bạn xác nhận.
+                {t('task.deleteImmediateEffect')}
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -265,7 +267,7 @@ export function TaskDeleteConfirmDialog() {
               onClick={() => closeTaskDeleteConfirm()}
               disabled={deleteTaskMutation.isPending}
             >
-              Hủy
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -273,7 +275,7 @@ export function TaskDeleteConfirmDialog() {
               disabled={deleteTaskMutation.isPending || !hasTargetTask}
             >
               {deleteTaskMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              Xóa task
+              {t('task.deleteConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -291,7 +293,7 @@ export function TaskDeleteConfirmDialog() {
         clockMs={clockMs}
         undoWindowMs={TASK_DELETE_UNDO_WINDOW_MS}
         onUndo={(key) => undoPendingDelete(Number(key))}
-        itemTitle={() => 'Đang xóa task'}
+        itemTitle={() => t('task.deletingTask')}
       />
     </>
   )

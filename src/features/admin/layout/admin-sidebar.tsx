@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight, LayoutDashboard, LogOut, Package, ShieldAlert, Users, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -20,27 +21,6 @@ interface AdminNavItem {
   icon: React.ComponentType<{ className?: string }>
 }
 
-const ADMIN_NAV_ITEMS: AdminNavItem[] = [
-  {
-    label: 'Roles',
-    description: 'Vai trò hệ thống',
-    to: '/admin/roles',
-    icon: Package,
-  },
-  {
-    label: 'Permissions',
-    description: 'Quyền truy cập API',
-    to: '/admin/permissions',
-    icon: ShieldAlert,
-  },
-  {
-    label: 'Users',
-    description: 'Quản lý tài khoản',
-    to: '/admin/users',
-    icon: Users,
-  },
-]
-
 function getInitials(fullName: string): string {
   if (!fullName.trim()) {
     return 'AD'
@@ -52,6 +32,7 @@ function getInitials(fullName: string): string {
 }
 
 export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const currentUser = useAuthStore((state) => state.currentUser)
   const clearSession = useAuthStore((state) => state.clearSession)
@@ -60,6 +41,26 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const fullName = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim()
+  const adminNavItems: AdminNavItem[] = [
+    {
+      label: t('admin.sections.roles.label'),
+      description: t('admin.sections.roles.description'),
+      to: '/admin/roles',
+      icon: Package,
+    },
+    {
+      label: t('admin.sections.permissions.label'),
+      description: t('admin.sections.permissions.description'),
+      to: '/admin/permissions',
+      icon: ShieldAlert,
+    },
+    {
+      label: t('admin.sections.users.label'),
+      description: t('admin.sections.users.description'),
+      to: '/admin/users',
+      icon: Users,
+    },
+  ]
 
   const resolveWorkspaceReturnPath = () => {
     if (!selectedWorkspaceId) {
@@ -97,7 +98,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
           </span>
           <span className="leading-tight">
             <span className="block text-sm font-semibold tracking-tight">Chronelis</span>
-            <span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Admin</span>
+            <span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{t('admin.sidebar.brandLabel')}</span>
           </span>
         </Link>
 
@@ -114,7 +115,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
         <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/90">
-          Administration
+          {t('admin.sidebar.sectionLabel')}
         </p>
 
         <Button
@@ -127,11 +128,11 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
           }}
         >
           <LayoutDashboard className="size-4" />
-          Quay lại Workspace
+          {t('admin.sidebar.backToWorkspace')}
         </Button>
 
         <nav className="mt-2 space-y-1">
-          {ADMIN_NAV_ITEMS.map((item) => (
+          {adminNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -172,7 +173,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
               </AvatarFallback>
             </Avatar>
             <span className="min-w-0 text-left">
-              <span className="block truncate text-sm font-medium">{fullName || 'Administrator'}</span>
+              <span className="block truncate text-sm font-medium">{fullName || t('admin.sidebar.defaultName')}</span>
               <span className="block truncate text-xs text-muted-foreground">{currentUser?.email || 'admin@chronelis.local'}</span>
             </span>
           </button>
@@ -184,7 +185,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
             onClick={() => setLogoutConfirmOpen(true)}
           >
             <LogOut className="size-3.5" />
-            Đăng xuất
+            {t('common.logout')}
           </Button>
         </div>
       </div>
@@ -192,9 +193,9 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
       <ConfirmModal
         open={logoutConfirmOpen}
         onOpenChange={setLogoutConfirmOpen}
-        title="Xác nhận đăng xuất"
-        description="Bạn có chắc chắn muốn đăng xuất khỏi Chronelis không?"
-        confirmText="Đăng xuất"
+        title={t('admin.sidebar.logoutTitle')}
+        description={t('admin.sidebar.logoutDescription')}
+        confirmText={t('common.logout')}
         confirmVariant="destructive"
         onConfirm={handleLogout}
       />

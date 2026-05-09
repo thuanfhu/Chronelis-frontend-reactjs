@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react'
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { resolveAuthToken } from '@/features/auth/auth-token'
 
 export function ResetPasswordPage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const tokenFromQuery = useMemo(() => resolveAuthToken(searchParams), [searchParams])
 
@@ -36,26 +38,26 @@ export function ResetPasswordPage() {
   const mutation = useMutation({
     mutationFn: authApi.resetPassword,
     onSuccess: () => {
-      toast.success('Đặt lại mật khẩu thành công')
+      toast.success(t('auth.resetSuccessTitle'))
     },
     onError: (error: Error) => {
-      toast.error('Đặt lại mật khẩu thất bại', { description: error.message })
+      toast.error(t('auth.resetFailTitle'), { description: error.message })
     },
   })
 
   return (
-    <AuthLayout title="Đặt lại mật khẩu" subtitle="Nhập mật khẩu mới cho tài khoản của bạn">
+    <AuthLayout title={t('auth.resetPasswordTitle')} subtitle={t('auth.resetPasswordDescription')}>
       {mutation.isSuccess ? (
         <div className="space-y-4 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
             <CheckCircle2 className="size-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <p className="text-sm font-medium">Mật khẩu đã được cập nhật</p>
-            <p className="mt-1 text-sm text-muted-foreground">Bạn có thể đăng nhập với mật khẩu mới.</p>
+            <p className="text-sm font-medium">{t('auth.passwordUpdated')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('auth.passwordUpdatedDesc')}</p>
           </div>
           <Link to="/login">
-            <Button className="w-full">Đăng nhập ngay</Button>
+            <Button className="w-full">{t('auth.loginNow')}</Button>
           </Link>
         </div>
       ) : (
@@ -64,7 +66,7 @@ export function ResetPasswordPage() {
             <input type="hidden" {...form.register('token')} />
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">Mật khẩu mới</Label>
+              <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
               <div className="relative">
                 <Input id="newPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('newPassword')} />
                 <button
@@ -79,7 +81,7 @@ export function ResetPasswordPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+              <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
               <div className="relative">
                 <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('confirmPassword')} />
                 <button
@@ -95,14 +97,14 @@ export function ResetPasswordPage() {
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Đặt lại mật khẩu
+              {t('auth.resetPassword')}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             <Link className="font-medium text-primary hover:underline" to="/login">
               <ArrowLeft className="mr-1 inline size-3" />
-              Quay lại đăng nhập
+              {t('auth.backToLogin')}
             </Link>
           </p>
         </>

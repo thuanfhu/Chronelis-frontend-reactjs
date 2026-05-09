@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,15 +26,20 @@ interface ConfirmModalProps {
 
 export function ConfirmModal({
   open,
-  title = 'Xác nhận thao tác',
+  title,
   description,
-  confirmText = 'Xác nhận',
-  cancelText = 'Hủy',
+  confirmText,
+  cancelText,
   confirmVariant = 'default',
   loading = false,
   onConfirm,
   onOpenChange,
 }: ConfirmModalProps) {
+  const { t } = useTranslation()
+  const resolvedTitle = title ?? t('confirmModal.title')
+  const resolvedConfirmText = confirmText ?? t('common.confirm')
+  const resolvedCancelText = cancelText ?? t('common.cancel')
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!loading) onOpenChange(nextOpen) }}>
       <DialogContent className="sm:max-w-md" showCloseButton={!loading}>
@@ -49,7 +55,7 @@ export function ConfirmModal({
             >
               <AlertTriangle className="size-4" />
             </span>
-            {title}
+              {resolvedTitle}
           </DialogTitle>
           <DialogDescription className="space-y-2 text-left leading-relaxed [&_mark]:rounded-md [&_mark]:bg-destructive/10 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-foreground [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
             {description}
@@ -58,11 +64,11 @@ export function ConfirmModal({
 
         <DialogFooter>
           <Button type="button" variant="outline" disabled={loading} onClick={() => onOpenChange(false)}>
-            {cancelText}
+            {resolvedCancelText}
           </Button>
           <Button type="button" variant={confirmVariant} disabled={loading} onClick={onConfirm}>
             {loading && <Loader2 className="size-4 animate-spin" />}
-            {confirmText}
+            {resolvedConfirmText}
           </Button>
         </DialogFooter>
       </DialogContent>

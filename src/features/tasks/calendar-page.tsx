@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import FullCalendar from '@fullcalendar/react'
@@ -10,41 +11,29 @@ import viLocale from '@fullcalendar/core/locales/vi'
 import type { EventInput } from '@fullcalendar/core'
 import { motion, useAnimationControls } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Loader2,
+  ChevronLeft, ChevronRight, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskApi } from '@/lib/api/modules/task-api'
-import { taskStatusApi } from '@/lib/api/modules/task-status-api'
-import { goalApi } from '@/lib/api/modules/goal-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import {
   applyScheduleUpdate,
-  patchProjectTaskQueries,
   patchProjectCalendarQueries,
-  restoreProjectTaskQueries,
   patchTaskScheduleQueries,
   restoreProjectCalendarQueries,
   restoreTaskScheduleQueries,
-  snapshotProjectTaskQueries,
   snapshotProjectCalendarQueries,
   snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
-import { useAuthStore } from '@/app/store/auth-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
+import { TaskCreateDialog } from '@/features/tasks/task-create-dialog'
 import { TaskContextMenu } from '@/features/tasks/task-context-menu'
+import { cn } from '@/lib/utils/cn'
 import type { Task, TaskPriorityType, TaskSchedule } from '@/types/domain'
 
 // ─── Date helpers ───
@@ -82,23 +71,29 @@ function roundToQuarter(date: Date): Date {
   return d
 }
 
-function formatMonthYear(date: Date): string {
-  return `Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
+function formatMonthYear(date: Date, localeTag: string): string {
+  return new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(date)
 }
 
-function formatWeekRange(start: Date): string {
+function formatWeekRange(start: Date, localeTag: string): string {
   const end = addDays(start, 6)
   const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
   if (sameMonth) {
-    return `${start.getDate()} – ${end.getDate()} Tháng ${start.getMonth() + 1}, ${start.getFullYear()}`
+    return `${start.getDate()}-${end.getDate()} ${formatMonthYear(start, localeTag)}`
   }
   if (start.getFullYear() === end.getFullYear()) {
-    return `${start.getDate()} Thg ${start.getMonth() + 1} – ${end.getDate()} Thg ${end.getMonth() + 1}, ${start.getFullYear()}`
+    const formatter = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'short' })
+    return `${formatter.format(start)} - ${formatter.format(end)}, ${start.getFullYear()}`
   }
-  return `${start.getDate()}/${start.getMonth() + 1}/${start.getFullYear()} – ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`
+  const formatter = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'numeric', year: 'numeric' })
+  return `${formatter.format(start)} - ${formatter.format(end)}`
 }
 
-function formatWeekdayCompact(date: Date): string {
+function formatWeekdayCompact(date: Date, localeTag: string): string {
+  if (localeTag !== 'vi-VN') {
+    return new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(date).replace(/\./g, '').trim()
+  }
+
   const raw = date.toLocaleDateString('vi-VN', { weekday: 'short' }).replace(/\./g, '').trim()
   const lower = raw.toLowerCase()
   if (lower === 'cn' || lower === 'chủ nhật') {
@@ -186,13 +181,6 @@ function toInputDateTimeValue(date: Date): string {
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
 }
 
-function parseInputDateTimeValue(value: string): Date {
-  const [datePart, timePart = '00:00'] = value.split('T')
-  const [yyyy, mm, dd] = datePart.split('-').map(Number)
-  const [hh, mi, ss = 0] = timePart.split(':').map(Number)
-  return new Date(yyyy, (mm - 1), dd, hh, mi, ss)
-}
-
 function toApiLocalDateTime(date: Date): string {
   const yyyy = date.getFullYear()
   const mm = String(date.getMonth() + 1).padStart(2, '0')
@@ -265,17 +253,18 @@ function normalizeCreateRange(start: Date, end: Date, allDay: boolean): { start:
 // ─── Main Component ───
 
 export function CalendarPage() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const params = useParams()
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
-  const currentUser = useAuthStore((state) => state.currentUser)
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
   const calendarRef = useRef<FullCalendar | null>(null)
   const calendarMotionControls = useAnimationControls()
+  const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
   const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
@@ -286,9 +275,9 @@ export function CalendarPage() {
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
-  const [headerTitle, setHeaderTitle] = useState(() => formatWeekRange(startOfWeek(new Date())))
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
   const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
+  const headerTitle = view === 'week' ? formatWeekRange(startOfWeek(currentDate), localeTag) : formatMonthYear(currentDate, localeTag)
 
   // Context menu for calendar events
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; taskId: number; canManage: boolean } | null>(null)
@@ -306,23 +295,6 @@ export function CalendarPage() {
 
   // Create task+schedule from calendar slot click/select
   const [createDialog, setCreateDialog] = useState<{ open: boolean; start: Date; end: Date } | null>(null)
-  const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriorityType>('MEDIUM')
-  const [newStartDateTime, setNewStartDateTime] = useState('')
-  const [newEndDateTime, setNewEndDateTime] = useState('')
-  const [newTaskGoalId, setNewTaskGoalId] = useState<number | null>(null)
-
-  const statusesQuery = useQuery({
-    queryKey: queryKeys.statuses.byProject(projectId),
-    queryFn: () => taskStatusApi.listByProject(projectId),
-    enabled: Number.isFinite(projectId),
-  })
-
-  const goalsQuery = useQuery({
-    queryKey: queryKeys.goals.byProject(projectId, 1, 50),
-    queryFn: () => goalApi.listByProject(projectId, { page: 1, size: 50 }),
-    enabled: Number.isFinite(projectId),
-  })
 
   const invalidateTaskAndCalendarQueries = async (taskId?: number) => {
     await Promise.all([
@@ -332,159 +304,6 @@ export function CalendarPage() {
       taskId ? queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }) : Promise.resolve(),
     ])
   }
-
-  const createCalendarTaskMutation = useMutation({
-    mutationFn: async () => {
-      if (!canManageProject) {
-        throw new Error('Bạn không có quyền tạo task trong project này')
-      }
-
-      const defaultStatus = statusesQuery.data?.[0]
-      if (!defaultStatus) throw new Error('Chưa có cột trạng thái')
-      if (!createDialog) throw new Error('Thiếu thông tin ngày')
-
-      const start = parseInputDateTimeValue(newStartDateTime)
-      const end = parseInputDateTimeValue(newEndDateTime)
-      if (!(end > start)) {
-        throw new Error('Giờ kết thúc phải sau giờ bắt đầu')
-      }
-
-      const task = await taskApi.create({
-        projectId,
-        title: newTaskTitle.trim(),
-        statusId: defaultStatus.id,
-        priority: newTaskPriority,
-        goalId: newTaskGoalId ?? undefined,
-        sourceView: 'CALENDAR',
-      })
-
-      const schedule = await taskScheduleApi.create({
-        taskId: task.id,
-        scheduledStart: toApiLocalDateTime(start),
-        scheduledEnd: toApiLocalDateTime(end),
-      })
-
-      return {
-        task,
-        schedule,
-      }
-    },
-    onMutate: async () => {
-      if (!canManageProject) {
-        return {}
-      }
-
-      const defaultStatus = statusesQuery.data?.[0]
-      if (!defaultStatus || !createDialog) {
-        return {}
-      }
-
-      const start = parseInputDateTimeValue(newStartDateTime)
-      const end = parseInputDateTimeValue(newEndDateTime)
-      if (!(end > start)) {
-        return {}
-      }
-
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] }),
-        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
-      ])
-
-      const taskSnapshot = snapshotProjectTaskQueries(queryClient, projectId)
-      const calendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
-      const optimisticTaskId = -Date.now()
-      const optimisticScheduleId = optimisticTaskId - 1
-      const nowIso = new Date().toISOString()
-      const scheduledStart = toApiLocalDateTime(start)
-      const scheduledEnd = toApiLocalDateTime(end)
-      const optimisticTask: Task = {
-        id: optimisticTaskId,
-        projectId,
-        goalId: newTaskGoalId ?? undefined,
-        status: defaultStatus,
-        title: newTaskTitle.trim(),
-        priority: newTaskPriority,
-        sourceView: 'CALENDAR',
-        createdBy: {
-          userId: currentUser?.userId ?? '',
-          email: currentUser?.email ?? '',
-          firstName: currentUser?.firstName ?? '',
-          lastName: currentUser?.lastName ?? '',
-        },
-        estimatedMinutes: 0,
-        boardPosition: 9999,
-        isCompleted: false,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      }
-      const optimisticSchedule: TaskSchedule = {
-        id: optimisticScheduleId,
-        taskId: optimisticTaskId,
-        scheduledStart,
-        scheduledEnd,
-        scheduledDate: scheduledStart.slice(0, 10),
-        createdBy: {
-          userId: currentUser?.userId ?? '',
-          email: currentUser?.email ?? '',
-          firstName: currentUser?.firstName ?? '',
-          lastName: currentUser?.lastName ?? '',
-        },
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      }
-
-      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
-      patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
-
-      return {
-        taskSnapshot,
-        calendarSnapshot,
-        optimisticTaskId,
-        optimisticScheduleId,
-      }
-    },
-    onSuccess: ({ task, schedule }, _variables, context) => {
-      setCreateDialog(null)
-      setNewTaskTitle('')
-      setNewTaskPriority('MEDIUM')
-      setNewStartDateTime('')
-      setNewEndDateTime('')
-      setNewTaskGoalId(null)
-
-      patchProjectTaskQueries(queryClient, projectId, (tasks) => {
-        const replacedTasks = tasks.map((item) => (
-          item.id === context?.optimisticTaskId ? task : item
-        ))
-
-        return replacedTasks.some((item) => item.id === task.id)
-          ? replacedTasks
-          : [...replacedTasks, task]
-      })
-      patchProjectCalendarQueries(queryClient, projectId, (schedules) => {
-        const replacedSchedules = schedules.map((item) => (
-          item.id === context?.optimisticScheduleId ? schedule : item
-        ))
-
-        return replacedSchedules.some((item) => item.id === schedule.id)
-          ? replacedSchedules
-          : [...replacedSchedules, schedule]
-      })
-
-      void invalidateTaskAndCalendarQueries(task.id)
-      toast.success('Tạo task thành công')
-      openTaskDrawer(task.id, 'view')
-    },
-    onError: (err: Error, _variables, context) => {
-      if (context?.taskSnapshot) {
-        restoreProjectTaskQueries(queryClient, context.taskSnapshot)
-      }
-      if (context?.calendarSnapshot) {
-        restoreProjectCalendarQueries(queryClient, context.calendarSnapshot)
-      }
-
-      toast.error('Tạo task thất bại', { description: err.message })
-    },
-  })
 
   const updateScheduleMutation = useMutation({
     mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) =>
@@ -531,7 +350,7 @@ export function CalendarPage() {
       if (context?.taskScheduleSnapshot) {
         restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
       }
-      toast.error('Cập nhật lịch thất bại', { description: error.message })
+      toast.error(t('calendar.updateScheduleFailed'), { description: error.message })
     },
     onSettled: async (_data, _error, variables) => {
       await invalidateTaskAndCalendarQueries(variables.taskId)
@@ -653,7 +472,7 @@ export function CalendarPage() {
 
   const openCreateDialog = (start: Date, end: Date, allDay: boolean) => {
     if (!canManageProject) {
-      toast.error('Bạn không có quyền tạo task trong project này')
+      toast.error(t('calendar.permissionCreateTask'))
       return
     }
 
@@ -664,11 +483,6 @@ export function CalendarPage() {
       start: normalizedRange.start,
       end: normalizedRange.end,
     })
-    setNewTaskTitle('')
-    setNewTaskGoalId(null)
-    setNewTaskPriority('MEDIUM')
-    setNewStartDateTime(toInputDateTimeValue(normalizedRange.start))
-    setNewEndDateTime(toInputDateTimeValue(normalizedRange.end))
   }
 
   const navigateToTodoDate = (date: Date) => {
@@ -711,7 +525,7 @@ export function CalendarPage() {
     }
 
     if (!canManageTask(task.goalId)) {
-      toast.error('Bạn không có quyền cập nhật lịch cho task này')
+      toast.error(t('calendar.permissionUpdateTask'))
       arg.revert?.()
       return
     }
@@ -744,7 +558,7 @@ export function CalendarPage() {
     }
 
     if (!canManageTask(task.goalId)) {
-      toast.error('Bạn không có quyền cập nhật lịch cho task này')
+      toast.error(t('calendar.permissionUpdateTask'))
       arg.revert?.()
       return
     }
@@ -772,11 +586,6 @@ export function CalendarPage() {
     )
 
     setCurrentDate(new Date(arg.view.currentStart))
-    if (arg.view.type === 'timeGridWeek') {
-      setHeaderTitle(formatWeekRange(arg.start))
-    } else {
-      setHeaderTitle(formatMonthYear(arg.view.currentStart))
-    }
   }
 
   const goToday = () => {
@@ -824,21 +633,30 @@ export function CalendarPage() {
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
       {!canManageProject && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          <span className="font-medium">Chế độ xem:</span> Bạn chỉ có quyền xem lịch này. Tạo và chỉnh sửa lịch yêu cầu quyền quản lý project.
+          <span className="font-medium">{t('calendar.readOnlyTitle')}</span> {t('calendar.readOnlyDescription')}
         </div>
       )}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">Lịch</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">Lịch biểu task theo tuần hoặc tháng</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{t('calendar.title')}</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('calendar.pageDescription')}</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => void invalidateTaskAndCalendarQueries()}
+        >
+          <RefreshCw className={cn('size-3.5', (schedulesQuery.isFetching || tasksQuery.isFetching) && 'animate-spin')} />
+          {t('common.refresh')}
+        </Button>
       </div>
 
       {/* Calendar toolbar */}
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/70 bg-card/70 px-2.5 py-2 backdrop-blur-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <div className="flex items-center gap-1.5">
           <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-medium" onClick={goToday}>
-            Hôm nay
+            {t('calendar.today')}
           </Button>
           <div className="flex items-center rounded-md border border-border bg-background/80">
             <Button variant="ghost" size="icon" className="size-8 rounded-r-none" onClick={goPrev}>
@@ -855,8 +673,8 @@ export function CalendarPage() {
         <div className="justify-self-start sm:justify-self-end">
           <Tabs value={view} onValueChange={(v) => handleViewChange(v as CalendarView)}>
             <TabsList className="h-8 bg-muted/70">
-              <TabsTrigger value="week" className="px-3 text-xs">Tuần</TabsTrigger>
-              <TabsTrigger value="month" className="px-3 text-xs">Tháng</TabsTrigger>
+              <TabsTrigger value="week" className="px-3 text-xs">{t('calendar.week')}</TabsTrigger>
+              <TabsTrigger value="month" className="px-3 text-xs">{t('calendar.month')}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -876,7 +694,7 @@ export function CalendarPage() {
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
               initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
-              locale={viLocale}
+              locale={i18n.language === 'vi' ? viLocale : undefined}
               firstDay={1}
               initialDate={currentDate}
               headerToolbar={false}
@@ -908,9 +726,9 @@ export function CalendarPage() {
                         event.stopPropagation()
                         navigateToTodoDate(arg.date)
                       }}
-                      title="Xem To Do theo ngày này"
+                      title={t('calendar.openTodoForDay')}
                     >
-                      <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
+                        <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
                       <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
                     </button>
                   )
@@ -925,9 +743,9 @@ export function CalendarPage() {
                       event.stopPropagation()
                       navigateToTodoDate(arg.date)
                     }}
-                    title="Xem To Do theo ngày này"
+                    title={t('calendar.openTodoForDay')}
                   >
-                    <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date)}</span>
+                    <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
                   </button>
                 )
               }}
@@ -977,99 +795,30 @@ export function CalendarPage() {
         </motion.div>
       </div>
 
-      {/* Create task dialog */}
-      <Dialog open={!!createDialog?.open} onOpenChange={(o) => !o && setCreateDialog(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Tạo task từ lịch</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-1">
-            <div className="space-y-1.5">
-              <Label>Tiêu đề task</Label>
-              <Input
-                autoFocus
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newTaskTitle.trim()) createCalendarTaskMutation.mutate() }}
-                placeholder="Tên task..."
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
-                  step={900}
-                  value={newStartDateTime}
-                  onChange={(e) => setNewStartDateTime(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
-                  step={900}
-                  value={newEndDateTime}
-                  onChange={(e) => setNewEndDateTime(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Độ ưu tiên</Label>
-              <div className="flex gap-1.5">
-                {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((p) => (
-                  <Button
-                    key={p}
-                    type="button"
-                    size="sm"
-                    variant={newTaskPriority === p ? 'default' : 'outline'}
-                    className="h-7 flex-1 text-xs"
-                    onClick={() => setNewTaskPriority(p)}
-                  >{p}</Button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Goal (tùy chọn)</Label>
-              <Select value={newTaskGoalId ? String(newTaskGoalId) : '__none'} onValueChange={(v) => setNewTaskGoalId(v === '__none' ? null : Number(v))}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Không chọn goal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">Không chọn goal</SelectItem>
-                  {(goalsQuery.data?.content ?? []).map((g) => (
-                    <SelectItem key={g.id} value={String(g.id)}>
-                      <span className="block max-w-65 truncate" title={g.title}>{g.title}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {createDialog && (
-              <p className="text-xs text-muted-foreground">
-                {createDialog.start.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
-                {' · '}
-                {newStartDateTime ? newStartDateTime.slice(11, 16) : '--:--'}
-                {' – '}
-                {newEndDateTime ? newEndDateTime.slice(11, 16) : '--:--'}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setCreateDialog(null)}>Hủy</Button>
-            <Button
-              size="sm"
-              onClick={() => createCalendarTaskMutation.mutate()}
-              disabled={createCalendarTaskMutation.isPending || !newTaskTitle.trim() || !newStartDateTime || !newEndDateTime || !canManageProject}
-            >
-              {createCalendarTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-              Tạo task
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TaskCreateDialog
+        open={Boolean(createDialog?.open)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setCreateDialog(null)
+          }
+        }}
+        workspaceId={workspaceId}
+        projectId={projectId}
+        title={t('calendar.createTaskTitle')}
+        description={t('calendar.createTaskDesc')}
+        submitLabel={t('calendar.createTaskSubmit')}
+        defaultSourceView="CALENDAR"
+        requireSchedule
+        initialValues={createDialog ? {
+          scheduleStart: toInputDateTimeValue(createDialog.start),
+          scheduleEnd: toInputDateTimeValue(createDialog.end),
+          dueDate: toInputDateTimeValue(createDialog.end),
+        } : undefined}
+        onCreated={async (task) => {
+          await invalidateTaskAndCalendarQueries(task.id)
+          setCreateDialog(null)
+        }}
+      />
 
       <TaskContextMenu
         open={Boolean(taskContextMenu)}
@@ -1080,7 +829,7 @@ export function CalendarPage() {
           const menu = taskContextMenu
           if (!menu) return
           if (!menu.canManage) {
-            toast.error('Bạn không có quyền chỉnh sửa task này')
+            toast.error(t('calendar.permissionEditTask'))
             return
           }
           openTaskDrawer(menu.taskId, 'duplicate')
@@ -1089,10 +838,18 @@ export function CalendarPage() {
           const menu = taskContextMenu
           if (!menu) return
           if (!menu.canManage) {
-            toast.error('Bạn không có quyền chỉnh sửa task này')
+            toast.error(t('calendar.permissionEditTask'))
             return
           }
           openTaskDrawer(menu.taskId, 'edit')
+        }}
+        onFocus={() => {
+          const menu = taskContextMenu
+          if (!menu) {
+            return
+          }
+
+          navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${menu.taskId}`)
         }}
         onDelete={() => {
           const menu = taskContextMenu
@@ -1101,7 +858,7 @@ export function CalendarPage() {
           }
 
           if (!menu.canManage) {
-            toast.error('Bạn không có quyền xóa task này')
+            toast.error(t('calendar.permissionDeleteTask'))
             return
           }
 

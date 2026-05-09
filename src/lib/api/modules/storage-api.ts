@@ -12,7 +12,7 @@ export const storageApi = {
     formData.append('file', file)
     formData.append('folderName', folderName)
 
-    const response = await http.post<ApiResponse<SingleFileResponse>>('/storage/aws-s3/upload/single', formData, {
+    const response = await http.post<ApiResponse<SingleFileResponse>>('/storage/azure-blob/upload/single', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

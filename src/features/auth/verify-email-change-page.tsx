@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, Loader2, XCircle } from 'lucide-react'
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { userApi } from '@/lib/api/modules/user-api'
 
 export function VerifyEmailChangePage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const clearSession = useAuthStore((state) => state.clearSession)
@@ -21,10 +23,10 @@ export function VerifyEmailChangePage() {
     mutationFn: (value: string) => userApi.verifyChangeEmail({ token: value }),
     onSuccess: () => {
       clearSession()
-      toast.success('Cập nhật email thành công', { description: 'Vui lòng đăng nhập lại bằng email mới.' })
+      toast.success(t('auth.emailChangeSuccessTitle'), { description: t('auth.emailChangeSuccessDesc') })
     },
     onError: (error: Error) => {
-      toast.error('Xác thực đổi email thất bại', { description: error.message })
+      toast.error(t('auth.emailChangeFailTitle'), { description: error.message })
     },
   })
 
@@ -38,13 +40,13 @@ export function VerifyEmailChangePage() {
 
   return (
     <AuthLayout
-      title="Xác thực đổi email"
-      subtitle="Xác nhận token trong email để hoàn tất cập nhật địa chỉ đăng nhập"
+      title={t('auth.verifyEmailChangeTitle')}
+      subtitle={t('auth.verifyEmailChangeSubtitle')}
     >
       {mutation.isPending ? (
         <div className="flex flex-col items-center gap-3 py-6">
           <Loader2 className="size-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Đang xác thực đổi email...</p>
+          <p className="text-sm text-muted-foreground">{t('auth.verifyingEmailChange')}</p>
         </div>
       ) : mutation.isSuccess ? (
         <div className="space-y-4 text-center">
@@ -52,11 +54,11 @@ export function VerifyEmailChangePage() {
             <CheckCircle2 className="size-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <p className="text-sm font-medium">Email đã được cập nhật</p>
-            <p className="mt-1 text-sm text-muted-foreground">Vui lòng đăng nhập lại bằng email mới để tiếp tục.</p>
+            <p className="text-sm font-medium">{t('auth.emailUpdated')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('auth.emailUpdatedDesc')}</p>
           </div>
           <Button className="w-full" onClick={() => navigate('/login', { replace: true })}>
-            Đăng nhập lại
+            {t('auth.loginAgain')}
           </Button>
         </div>
       ) : mutation.isError ? (
@@ -65,47 +67,47 @@ export function VerifyEmailChangePage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
               <XCircle className="size-6 text-destructive" />
             </div>
-            <p className="text-sm text-muted-foreground">Token không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.</p>
+            <p className="text-sm text-muted-foreground">{t('auth.tokenInvalidOrExpired')}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="verify-change-token">Token xác thực</Label>
+            <Label htmlFor="verify-change-token">{t('auth.verifyToken')}</Label>
             <Input
               id="verify-change-token"
               value={token}
               onChange={(event) => setToken(event.target.value)}
-              placeholder="Nhập token từ email"
+              placeholder={t('auth.enterTokenPlaceholder')}
             />
           </div>
 
           <Button className="w-full" disabled={!token.trim()} onClick={() => mutation.mutate(token.trim())}>
-            Xác thực lại
+            {t('auth.retryVerify')}
           </Button>
 
           <Link to="/profile" className="block text-center text-sm text-primary hover:underline">
             <ArrowLeft className="mr-1 inline size-3" />
-            Quay lại hồ sơ
+            {t('auth.backToProfile')}
           </Link>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="verify-change-token">Token xác thực</Label>
+            <Label htmlFor="verify-change-token">{t('auth.verifyToken')}</Label>
             <Input
               id="verify-change-token"
               value={token}
               onChange={(event) => setToken(event.target.value)}
-              placeholder="Nhập token từ email"
+              placeholder={t('auth.enterTokenPlaceholder')}
             />
           </div>
 
           <Button className="w-full" disabled={!token.trim()} onClick={() => mutation.mutate(token.trim())}>
-            Xác thực đổi email
+            {t('auth.verifyEmailChange')}
           </Button>
 
           <Link to="/profile" className="block text-center text-sm text-primary hover:underline">
             <ArrowLeft className="mr-1 inline size-3" />
-            Quay lại hồ sơ
+            {t('auth.backToProfile')}
           </Link>
         </div>
       )}

@@ -19,6 +19,7 @@ import {
   User,
   ZoomIn,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -78,6 +79,8 @@ function buildInitials(firstName: string, lastName: string) {
 
 const EMAIL_PATTERN = /^[\w._%+-]+@(gmail\.com|yopmail\.com)$/i
 const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+const AVATAR_CROP_CONTEXT_ERROR = 'AVATAR_CROP_CONTEXT_ERROR'
+const AVATAR_CROP_EMPTY_ERROR = 'AVATAR_CROP_EMPTY_ERROR'
 
 // ─── Image crop helpers ───
 
@@ -95,7 +98,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): P
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas context not available')
+  if (!ctx) throw new Error(AVATAR_CROP_CONTEXT_ERROR)
 
   const maxSize = Math.max(image.width, image.height)
   const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
@@ -119,7 +122,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): P
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
-        if (!blob) { reject(new Error('Canvas is empty')); return }
+        if (!blob) { reject(new Error(AVATAR_CROP_EMPTY_ERROR)); return }
         resolve(blob)
       },
       'image/jpeg',
@@ -157,6 +160,7 @@ async function fetchCities(countryName: string): Promise<string[]> {
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -234,52 +238,52 @@ export function ProfilePage() {
 
   const profileValidationError = useMemo(() => {
     if (profileForm.firstName.trim().length < 2) {
-      return 'Tên phải có tối thiểu 2 ký tự.'
+      return t('profile.validation.firstNameMin')
     }
 
     if (profileForm.lastName.trim().length < 2) {
-      return 'Họ phải có tối thiểu 2 ký tự.'
+      return t('profile.validation.lastNameMin')
     }
 
     if (profileForm.nickname.trim().length === 1) {
-      return 'Nickname phải có tối thiểu 2 ký tự nếu được nhập.'
+      return t('profile.validation.nicknameMin')
     }
 
     return null
-  }, [profileForm.firstName, profileForm.lastName, profileForm.nickname])
+  }, [profileForm.firstName, profileForm.lastName, profileForm.nickname, t])
 
   const emailValidationError = useMemo(() => {
     const trimmed = newEmail.trim()
     if (!trimmed) {
-      return 'Vui lòng nhập email mới.'
+      return t('profile.validation.newEmailRequired')
     }
 
     if (!EMAIL_PATTERN.test(trimmed)) {
-      return 'Email mới chỉ hỗ trợ miền gmail.com hoặc yopmail.com.'
+      return t('profile.validation.newEmailDomain')
     }
 
     if (trimmed.toLowerCase() === profileForm.email.trim().toLowerCase()) {
-      return 'Email mới phải khác email hiện tại.'
+      return t('profile.validation.newEmailDifferent')
     }
 
     return null
-  }, [newEmail, profileForm.email])
+  }, [newEmail, profileForm.email, t])
 
   const passwordValidationError = useMemo(() => {
     if (!passwordForm.currentPassword.trim()) {
-      return 'Vui lòng nhập mật khẩu hiện tại.'
+      return t('profile.validation.currentPasswordRequired')
     }
 
     if (!STRONG_PASSWORD_PATTERN.test(passwordForm.newPassword)) {
-      return 'Mật khẩu mới cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.'
+      return t('profile.validation.newPasswordStrength')
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      return 'Xác nhận mật khẩu chưa khớp.'
+      return t('profile.validation.confirmPasswordMismatch')
     }
 
     return null
-  }, [passwordForm])
+  }, [passwordForm, t])
 
   const updateProfileMutation = useMutation({
     mutationFn: () => userApi.updateProfile({
@@ -299,10 +303,10 @@ export function ProfilePage() {
           currentUser: updatedUser,
         })
       }
-      toast.success('Cập nhật hồ sơ thành công')
+      toast.success(t('profile.toast.updateSuccess'))
     },
     onError: (error: Error) => {
-      toast.error('Cập nhật hồ sơ thất bại', { description: error.message })
+      toast.error(t('profile.toast.updateFailed'), { description: error.message })
     },
   })
 
@@ -313,10 +317,10 @@ export function ProfilePage() {
     onSuccess: (message) => {
       setPendingEmail(newEmail.trim())
       setNewEmail('')
-      toast.success('Yêu cầu đổi email đã được gửi', { description: message })
+      toast.success(t('profile.toast.emailRequestSuccess'), { description: message })
     },
     onError: (error: Error) => {
-      toast.error('Không thể gửi yêu cầu đổi email', { description: error.message })
+      toast.error(t('profile.toast.emailRequestFailed'), { description: error.message })
     },
   })
 
@@ -327,12 +331,12 @@ export function ProfilePage() {
       confirmPassword: passwordForm.confirmPassword,
     }),
     onSuccess: () => {
-      toast.success('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.')
+      toast.success(t('profile.toast.passwordUpdateSuccess'))
       clearSession()
       navigate('/login', { replace: true })
     },
     onError: (error: Error) => {
-      toast.error('Đổi mật khẩu thất bại', { description: error.message })
+      toast.error(t('profile.toast.passwordUpdateFailed'), { description: error.message })
     },
   })
 
@@ -342,12 +346,12 @@ export function ProfilePage() {
     if (!file) return
 
     if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
-      toast.error('Ảnh đại diện phải là PNG, JPG hoặc WEBP')
+      toast.error(t('profile.toast.avatarInvalidType'))
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh đại diện tối đa 5MB')
+      toast.error(t('profile.toast.avatarTooLarge'))
       return
     }
 
@@ -372,10 +376,15 @@ export function ProfilePage() {
       setProfileForm((prev) => ({ ...prev, avatarUrl: uploaded.fileUrl }))
       setCropDialogOpen(false)
       setRawImageSrc(null)
-      toast.success('Đã cập nhật ảnh đại diện')
+      toast.success(t('profile.toast.avatarUpdated'))
     } catch (error) {
-      const description = error instanceof Error ? error.message : 'Upload ảnh thất bại'
-      toast.error('Không thể tải ảnh đại diện', { description })
+      const description = error instanceof Error
+        && error.message
+        && error.message !== AVATAR_CROP_CONTEXT_ERROR
+        && error.message !== AVATAR_CROP_EMPTY_ERROR
+        ? error.message
+        : t('profile.toast.avatarUploadFallback')
+      toast.error(t('profile.toast.avatarUploadFailed'), { description })
     } finally {
       setAvatarUploading(false)
     }
@@ -390,7 +399,7 @@ export function ProfilePage() {
     return (
       <Card className="border-dashed">
         <CardContent className="py-10 text-sm text-muted-foreground">
-          Không tải được thông tin hồ sơ. Vui lòng đăng nhập lại.
+          {t('profile.loadFailed')}
         </CardContent>
       </Card>
     )
@@ -412,9 +421,9 @@ export function ProfilePage() {
             <User className="size-7" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Hồ sơ cá nhân</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Quản lý thông tin cá nhân, email đăng nhập và bảo mật tài khoản.
+              {t('profile.description')}
             </p>
           </div>
         </motion.div>
@@ -432,8 +441,8 @@ export function ProfilePage() {
               <User className="size-4" />
             </div>
             <div>
-              <p className="text-sm font-medium">Thông tin cá nhân</p>
-              <p className="text-xs text-muted-foreground">Tên hiển thị, avatar và hồ sơ công việc.</p>
+              <p className="text-sm font-medium">{t('profile.cards.personalTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('profile.cards.personalDescription')}</p>
             </div>
           </CardContent>
         </Card>
@@ -444,8 +453,8 @@ export function ProfilePage() {
               <Settings2 className="size-4" />
             </div>
             <div>
-              <p className="text-sm font-medium">Quản lý email</p>
-              <p className="text-xs text-muted-foreground">Thay đổi email và xác thực qua địa chỉ mới.</p>
+              <p className="text-sm font-medium">{t('profile.cards.emailTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('profile.cards.emailDescription')}</p>
             </div>
           </CardContent>
         </Card>
@@ -456,8 +465,8 @@ export function ProfilePage() {
               <Shield className="size-4" />
             </div>
             <div>
-              <p className="text-sm font-medium">Bảo mật tài khoản</p>
-              <p className="text-xs text-muted-foreground">Đổi mật khẩu mạnh để bảo vệ tài khoản.</p>
+              <p className="text-sm font-medium">{t('profile.cards.securityTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('profile.cards.securityDescription')}</p>
             </div>
           </CardContent>
         </Card>
@@ -467,23 +476,23 @@ export function ProfilePage() {
         <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
           <TabsTrigger value="profile" className="justify-start gap-1.5 sm:justify-center">
             <User className="size-4" />
-            Cá nhân
+            {t('profile.tabs.profile')}
           </TabsTrigger>
           <TabsTrigger value="email" className="justify-start gap-1.5 sm:justify-center">
             <Mail className="size-4" />
-            Email
+            {t('profile.tabs.email')}
           </TabsTrigger>
           <TabsTrigger value="password" className="justify-start gap-1.5 sm:justify-center">
             <Lock className="size-4" />
-            Mật khẩu
+            {t('profile.tabs.password')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Thông tin cá nhân</CardTitle>
-              <CardDescription>Cập nhật hồ sơ công khai của bạn trong Chronelis.</CardDescription>
+              <CardTitle>{t('profile.sections.profileTitle')}</CardTitle>
+              <CardDescription>{t('profile.sections.profileDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center">
@@ -499,7 +508,7 @@ export function ProfilePage() {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={avatarUploading}
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100 disabled:pointer-events-none"
-                    title="Đổi ảnh đại diện"
+                    title={t('profile.changeAvatar')}
                   >
                     <Camera className="size-5 text-white" />
                   </button>
@@ -508,7 +517,7 @@ export function ProfilePage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{profileForm.firstName} {profileForm.lastName}</p>
                   <p className="truncate text-xs text-muted-foreground">{profileForm.email}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Tối đa 5MB, định dạng PNG/JPG/WEBP. Chỉnh sửa trước khi lưu.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('profile.labels.avatarHelp')}</p>
                 </div>
 
                 <Button
@@ -518,7 +527,7 @@ export function ProfilePage() {
                   disabled={avatarUploading}
                 >
                   {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-                  Đổi avatar
+                  {t('profile.changeAvatar')}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -531,7 +540,7 @@ export function ProfilePage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-first-name">Tên</Label>
+                  <Label htmlFor="profile-first-name">{t('profile.labels.firstName')}</Label>
                   <Input
                     id="profile-first-name"
                     value={profileForm.firstName}
@@ -540,7 +549,7 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-last-name">Họ</Label>
+                  <Label htmlFor="profile-last-name">{t('profile.labels.lastName')}</Label>
                   <Input
                     id="profile-last-name"
                     value={profileForm.lastName}
@@ -549,22 +558,22 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-nickname">Nickname</Label>
+                  <Label htmlFor="profile-nickname">{t('profile.labels.nickname')}</Label>
                   <Input
                     id="profile-nickname"
                     value={profileForm.nickname}
                     onChange={(event) => setProfileForm((prev) => ({ ...prev, nickname: event.target.value }))}
-                    placeholder="Ví dụ: phuong.pm"
+                    placeholder={t('profile.placeholders.nickname')}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-phone">Số điện thoại</Label>
+                  <Label htmlFor="profile-phone">{t('profile.labels.phoneNumber')}</Label>
                   <Input id="profile-phone" value={profileForm.phoneNumber} disabled readOnly />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-nationality">Quốc tịch</Label>
+                  <Label htmlFor="profile-nationality">{t('profile.labels.nationality')}</Label>
                   <SearchableSelectPopover
                     value={profileForm.nationality || undefined}
                     options={(countriesQuery.data ?? []).map((country) => ({
@@ -574,18 +583,18 @@ export function ProfilePage() {
                         ? <img src={country.flag} alt="" className="size-4 rounded-xs object-cover" loading="lazy" />
                         : null,
                     }))}
-                    placeholder={countriesQuery.isLoading ? 'Đang tải...' : 'Chọn quốc tịch'}
-                    searchPlaceholder="Tìm quốc tịch..."
-                    emptyLabel="Không tìm thấy quốc tịch phù hợp."
+                    placeholder={countriesQuery.isLoading ? t('common.loading') : t('profile.placeholders.nationality')}
+                    searchPlaceholder={t('profile.placeholders.nationalitySearch')}
+                    emptyLabel={t('profile.placeholders.nationalityEmpty')}
                     onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, nationality: nextValue, city: '' }))}
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="profile-city">
-                    Thành phố
+                    {t('profile.labels.city')}
                     {!profileForm.nationality && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">(chọn quốc tịch trước)</span>
+                      <span className="ml-1 text-[10px] text-muted-foreground">({t('profile.labels.selectNationalityFirst')})</span>
                     )}
                   </Label>
                   <SearchableSelectPopover
@@ -595,9 +604,9 @@ export function ProfilePage() {
                       label: city,
                       description: profileForm.nationality || undefined,
                     }))}
-                    placeholder={citiesQuery.isLoading ? 'Đang tải thành phố...' : 'Chọn thành phố'}
-                    searchPlaceholder="Tìm thành phố..."
-                    emptyLabel={profileForm.nationality ? 'Không tìm thấy thành phố phù hợp.' : 'Chọn quốc tịch trước.'}
+                    placeholder={citiesQuery.isLoading ? t('profile.placeholders.cityLoading') : t('profile.placeholders.city')}
+                    searchPlaceholder={t('profile.placeholders.citySearch')}
+                    emptyLabel={profileForm.nationality ? t('profile.placeholders.cityEmpty') : t('profile.placeholders.citySelectNationality')}
                     disabled={!profileForm.nationality}
                     onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, city: nextValue }))}
                   />
@@ -605,13 +614,13 @@ export function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="profile-biography">Giới thiệu</Label>
+                <Label htmlFor="profile-biography">{t('profile.labels.biography')}</Label>
                 <Textarea
                   id="profile-biography"
                   value={profileForm.biography}
                   onChange={(event) => setProfileForm((prev) => ({ ...prev, biography: event.target.value }))}
                   rows={4}
-                  placeholder="Mô tả ngắn về chuyên môn và sở thích làm việc của bạn..."
+                  placeholder={t('profile.placeholders.biography')}
                 />
               </div>
 
@@ -625,7 +634,7 @@ export function ProfilePage() {
                   disabled={updateProfileMutation.isPending || avatarUploading || Boolean(profileValidationError)}
                 >
                   {updateProfileMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                  Lưu hồ sơ
+                  {t('profile.actions.saveProfile')}
                 </Button>
               </div>
             </CardContent>
@@ -635,25 +644,25 @@ export function ProfilePage() {
         <TabsContent value="email">
           <Card>
             <CardHeader>
-              <CardTitle>Cập nhật email</CardTitle>
+              <CardTitle>{t('profile.sections.emailTitle')}</CardTitle>
               <CardDescription>
-                Yêu cầu đổi email sẽ gửi liên kết xác thực về địa chỉ email mới.
+                {t('profile.sections.emailDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-lg border bg-muted/20 p-4">
-                <p className="text-xs text-muted-foreground">Email hiện tại</p>
+                <p className="text-xs text-muted-foreground">{t('profile.labels.currentEmail')}</p>
                 <p className="text-sm font-medium">{profileForm.email}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="profile-new-email">Email mới</Label>
+                <Label htmlFor="profile-new-email">{t('profile.labels.newEmail')}</Label>
                 <Input
                   id="profile-new-email"
                   type="email"
                   value={newEmail}
                   onChange={(event) => setNewEmail(event.target.value)}
-                  placeholder="you@gmail.com"
+                  placeholder={t('profile.placeholders.newEmail')}
                 />
                 {emailValidationError && <p className="text-sm text-destructive">{emailValidationError}</p>}
               </div>
@@ -661,7 +670,7 @@ export function ProfilePage() {
               {pendingEmail && (
                 <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-sm text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200">
                   <CheckCircle2 className="mt-0.5 size-4" />
-                  Đang chờ xác thực email mới: <strong className="ml-1">{pendingEmail}</strong>
+                  {t('profile.labels.pendingEmail')} <strong className="ml-1">{pendingEmail}</strong>
                 </div>
               )}
 
@@ -671,7 +680,7 @@ export function ProfilePage() {
                   disabled={updateEmailMutation.isPending || Boolean(emailValidationError)}
                 >
                   {updateEmailMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
-                  Gửi yêu cầu đổi email
+                  {t('profile.actions.sendEmailChange')}
                 </Button>
               </div>
             </CardContent>
@@ -681,14 +690,14 @@ export function ProfilePage() {
         <TabsContent value="password">
           <Card>
             <CardHeader>
-              <CardTitle>Đổi mật khẩu</CardTitle>
+              <CardTitle>{t('profile.changePassword')}</CardTitle>
               <CardDescription>
-                Sau khi đổi mật khẩu thành công, bạn sẽ được đăng xuất để đăng nhập lại.
+                {t('profile.sections.passwordDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="profile-current-password">Mật khẩu hiện tại</Label>
+                <Label htmlFor="profile-current-password">{t('profile.currentPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="profile-current-password"
@@ -700,6 +709,7 @@ export function ProfilePage() {
                     type="button"
                     className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
                     onClick={() => setShowPassword((prev) => ({ ...prev, currentPassword: !prev.currentPassword }))}
+                    aria-label={showPassword.currentPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   >
                     {showPassword.currentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -707,7 +717,7 @@ export function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="profile-new-password">Mật khẩu mới</Label>
+                <Label htmlFor="profile-new-password">{t('profile.newPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="profile-new-password"
@@ -719,6 +729,7 @@ export function ProfilePage() {
                     type="button"
                     className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
                     onClick={() => setShowPassword((prev) => ({ ...prev, newPassword: !prev.newPassword }))}
+                    aria-label={showPassword.newPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   >
                     {showPassword.newPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -726,7 +737,7 @@ export function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="profile-confirm-password">Xác nhận mật khẩu mới</Label>
+                <Label htmlFor="profile-confirm-password">{t('profile.labels.confirmPassword')}</Label>
                 <div className="relative">
                   <Input
                     id="profile-confirm-password"
@@ -738,6 +749,7 @@ export function ProfilePage() {
                     type="button"
                     className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
                     onClick={() => setShowPassword((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
+                    aria-label={showPassword.confirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                   >
                     {showPassword.confirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -754,7 +766,7 @@ export function ProfilePage() {
                   disabled={updatePasswordMutation.isPending || Boolean(passwordValidationError)}
                 >
                   {updatePasswordMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
-                  Cập nhật mật khẩu
+                  {t('profile.actions.updatePassword')}
                 </Button>
               </div>
             </CardContent>
@@ -768,7 +780,7 @@ export function ProfilePage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Crop className="size-4" />
-              Chỉnh sửa ảnh đại diện
+              {t('profile.crop.title')}
             </DialogTitle>
           </DialogHeader>
 
@@ -794,7 +806,7 @@ export function ProfilePage() {
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-1.5 text-xs">
                   <ZoomIn className="size-3.5" />
-                  Phóng to
+                  {t('profile.crop.zoom')}
                 </Label>
                 <span className="text-xs tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
               </div>
@@ -813,7 +825,7 @@ export function ProfilePage() {
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-1.5 text-xs">
                   <RotateCcw className="size-3.5" />
-                  Xoay
+                  {t('profile.crop.rotate')}
                 </Label>
                 <span className="text-xs tabular-nums text-muted-foreground">{rotation}°</span>
               </div>
@@ -835,11 +847,11 @@ export function ProfilePage() {
               onClick={() => { setCropDialogOpen(false); setRawImageSrc(null) }}
               disabled={avatarUploading}
             >
-              Huỷ
+              {t('common.cancel')}
             </Button>
             <Button onClick={() => { void handleCropConfirm() }} disabled={avatarUploading}>
               {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Crop className="size-4" />}
-              Áp dụng
+              {t('profile.actions.applyAvatar')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { DeferredDeleteEntry } from '@/lib/delete/use-deferred-delete'
 
@@ -11,6 +12,7 @@ interface CircularCountdownUndoProps {
 }
 
 function CircularCountdownUndo({ progress, remainingSeconds, onUndo, disabled }: CircularCountdownUndoProps) {
+  const { t } = useTranslation()
   const radius = 18
   const strokeWidth = 3
   const circumference = 2 * Math.PI * radius
@@ -47,7 +49,7 @@ function CircularCountdownUndo({ progress, remainingSeconds, onUndo, disabled }:
         className="size-7 rounded-full"
         onClick={onUndo}
         disabled={disabled}
-        aria-label="Hoàn tác xóa"
+        aria-label={t('deferredDelete.undo')}
       >
         <X className="size-3.5" />
       </Button>
@@ -71,12 +73,16 @@ export function DeferredDeleteStack<TPayload>({
   undoWindowMs,
   onUndo,
   itemTitle,
-  finalizingText = 'Đang xóa vĩnh viễn...',
+  finalizingText,
   countdownText,
 }: DeferredDeleteStackProps<TPayload>) {
+  const { t } = useTranslation()
+
   if (pendingDeletes.length === 0) {
     return null
   }
+
+  const resolvedFinalizingText = finalizingText ?? t('deferredDelete.finalizing')
 
   return (
     <div className="pointer-events-none fixed right-4 bottom-4 z-70 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
@@ -101,7 +107,7 @@ export function DeferredDeleteStack<TPayload>({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">{itemTitle ? itemTitle(entry) : 'Đang chờ xóa'}</p>
+                  <p className="text-sm font-semibold">{itemTitle ? itemTitle(entry) : t('deferredDelete.pending')}</p>
                   <p className="break-all text-xs text-muted-foreground">{entry.label}</p>
                 </div>
 
@@ -115,8 +121,8 @@ export function DeferredDeleteStack<TPayload>({
 
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {entry.status === 'finalizing'
-                  ? finalizingText
-                  : (countdownText ? countdownText(remainingSeconds) : `Tự động xóa sau ${remainingSeconds}s`)}
+                  ? resolvedFinalizingText
+                  : (countdownText ? countdownText(remainingSeconds) : t('deferredDelete.countdown', { seconds: remainingSeconds }))}
               </p>
             </motion.div>
           )

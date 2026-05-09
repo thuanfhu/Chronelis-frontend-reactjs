@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   PanelsTopLeft,
@@ -23,6 +24,7 @@ import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
 
 export function CommandPalette() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const open = useUiStore((state) => state.commandPaletteOpen)
   const setOpen = useUiStore((state) => state.setCommandPaletteOpen)
@@ -55,29 +57,29 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Nhập lệnh hoặc tìm kiếm..." />
+      <CommandInput placeholder={t('command.inputPlaceholder')} />
       <CommandList>
-        <CommandEmpty>Không tìm thấy kết quả.</CommandEmpty>
+        <CommandEmpty>{t('command.empty')}</CommandEmpty>
 
-        <CommandGroup heading="Điều hướng">
+        <CommandGroup heading={t('command.navigationGroup')}>
           <CommandItem onSelect={() => runCommand(() => navigate('/dashboard'))}>
             <LayoutDashboard className="mr-2 size-4" />
-            Dashboard
+            {t('dashboard.title')}
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => navigate('/workspaces'))}>
             <PanelsTopLeft className="mr-2 size-4" />
-            Workspaces
+            {t('workspace.title')}
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => navigate('/notifications'))}>
             <Bell className="mr-2 size-4" />
-            Thông báo
+            {t('notification.title')}
           </CommandItem>
         </CommandGroup>
 
         {workspaces.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Workspaces">
+            <CommandGroup heading={t('command.workspacesGroup')}>
               {workspaces.map((ws) => (
                 <CommandItem key={ws.id} onSelect={() => runCommand(() => navigate(`/workspaces/${ws.id}`))}>
                   <FolderKanban className="mr-2 size-4" />
@@ -89,10 +91,10 @@ export function CommandPalette() {
         )}
 
         <CommandSeparator />
-        <CommandGroup heading="Cài đặt">
+        <CommandGroup heading={t('command.settingsGroup')}>
           <CommandItem onSelect={() => runCommand(toggleTheme)}>
             {theme === 'dark' ? <Sun className="mr-2 size-4" /> : <Moon className="mr-2 size-4" />}
-            {theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+            {theme === 'dark' ? t('command.themeLight') : t('command.themeDark')}
           </CommandItem>
         </CommandGroup>
       </CommandList>

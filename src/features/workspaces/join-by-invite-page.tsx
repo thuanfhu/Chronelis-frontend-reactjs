@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
 
 export function JoinByInvitePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const code = searchParams.get('code') ?? ''
@@ -22,11 +24,11 @@ export function JoinByInvitePage() {
   const joinMutation = useMutation({
     mutationFn: () => workspaceInviteApi.join({ inviteCode: code }),
     onSuccess: () => {
-      toast.success('Tham gia workspace thành công!')
+      toast.success(t('workspace.join.success'))
       navigate('/workspaces')
     },
     onError: (error: Error) => {
-      toast.error('Tham gia thất bại', { description: error.message })
+      toast.error(t('workspace.join.action'), { description: error.message })
     },
   })
 
@@ -36,9 +38,9 @@ export function JoinByInvitePage() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <XCircle className="mb-3 size-10 text-destructive" />
-            <p className="text-sm font-medium">Invite code không hợp lệ</p>
+            <p className="text-sm font-medium">{t('workspace.join.invalidCode')}</p>
             <Button variant="link" className="mt-2" onClick={() => navigate('/dashboard')}>
-              Về trang chủ
+              {t('workspace.join.backHome')}
             </Button>
           </CardContent>
         </Card>
@@ -52,22 +54,22 @@ export function JoinByInvitePage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>Tham gia Workspace</CardTitle>
+          <CardTitle>{t('workspace.join.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {validateQuery.isLoading && (
             <div className="flex flex-col items-center py-8">
               <Loader2 className="size-8 animate-spin text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">Đang xác thực invite...</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t('workspace.join.loading')}</p>
             </div>
           )}
 
           {validateQuery.isError && (
             <div className="flex flex-col items-center py-8">
               <XCircle className="mb-3 size-10 text-destructive" />
-              <p className="text-sm font-medium">Invite không hợp lệ hoặc đã hết hạn</p>
+              <p className="text-sm font-medium">{t('workspace.join.invalidInvite')}</p>
               <Button variant="link" className="mt-2" onClick={() => navigate('/dashboard')}>
-                Về trang chủ
+                {t('workspace.join.backHome')}
               </Button>
             </div>
           )}
@@ -92,7 +94,7 @@ export function JoinByInvitePage() {
                 ) : (
                   <CheckCircle2 className="mr-2 size-4" />
                 )}
-                Tham gia workspace
+                {t('workspace.join.action')}
               </Button>
             </div>
           )}

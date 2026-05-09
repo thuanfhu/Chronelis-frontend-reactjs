@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronLeft,
   CornerDownRight,
@@ -60,6 +61,7 @@ export function TaskCommentsPanel({
   onUpdateComment,
   onDeleteComment,
 }: TaskCommentsPanelProps) {
+  const { t } = useTranslation()
   const orderedComments = useMemo(
     () => [...comments].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()),
     [comments],
@@ -74,23 +76,23 @@ export function TaskCommentsPanel({
   const replyParent = replyParentCommentId != null ? commentById.get(replyParentCommentId) : null
 
   return (
-    <div className="min-h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] dark:bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.18),_transparent_32%),linear-gradient(180deg,rgba(9,14,25,0.98),rgba(9,14,25,0.94))]">
+    <div className="min-h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] dark:bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.18),transparent_32%),linear-gradient(180deg,rgba(9,14,25,0.98),rgba(9,14,25,0.94))]">
       <div className="border-b border-border/70 bg-background/80 px-6 py-5 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               <MessageSquare className="size-3.5" />
-              Bình luận
+              {t('task.comments')}
             </div>
             <h3 className="mt-3 text-sm font-semibold" style={{ overflowWrap: 'anywhere' }}>{taskTitle}</h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Theo dõi trao đổi, phản hồi nhanh và giữ toàn bộ ngữ cảnh cộng tác ngay trong task.
+              {t('task.commentsDialogDescription')}
             </p>
           </div>
 
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onBack}>
             <ChevronLeft className="size-3.5" />
-            Chi tiết
+            {t('task.commentDetails')}
           </Button>
         </div>
 
@@ -102,13 +104,13 @@ export function TaskCommentsPanel({
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold">Luồng trao đổi trực tiếp</p>
+                <p className="text-sm font-semibold">{t('task.commentsFeedTitle')}</p>
                 <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/70 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
-                  {comments.length} bình luận
+                  {t('task.commentsCount', { count: comments.length })}
                 </span>
               </div>
               <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                Bố cục được tối ưu cho phản hồi nhanh, theo dõi cập nhật mới và giữ quyết định quan trọng gắn liền với task.
+                {t('task.commentsFeedDescription')}
               </p>
 
               {featuredComments.length > 0 ? (
@@ -133,10 +135,10 @@ export function TaskCommentsPanel({
         </div>
 
         {replyParent ? (
-          <div className="mt-4 flex items-start justify-between gap-3 rounded-[24px] border border-primary/20 bg-primary/5 px-4 py-3 text-xs shadow-sm">
+          <div className="mt-4 flex items-start justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs shadow-sm">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-primary">
-                Đang trả lời {replyParent.user.firstName} {replyParent.user.lastName}
+                {t('task.commentsReplyingTo', { name: `${replyParent.user.firstName} ${replyParent.user.lastName}` })}
               </p>
               <p className="mt-1 line-clamp-2 text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>
                 {replyParent.content}
@@ -158,14 +160,14 @@ export function TaskCommentsPanel({
             <Textarea
               value={newComment}
               onChange={(event) => onNewCommentChange(event.target.value)}
-              placeholder={replyParent ? 'Viết câu trả lời của bạn...' : 'Viết bình luận của bạn...'}
+              placeholder={replyParent ? t('task.commentReplyPlaceholder') : t('task.commentPlaceholder')}
               rows={4}
               className="min-h-28 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
             />
 
             <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-5 text-muted-foreground">
-                {comments.length === 0 ? 'Bắt đầu cuộc trao đổi đầu tiên để lưu lại quyết định ngay trong task.' : `${comments.length} bình luận đang hiển thị trong cùng một luồng thảo luận.`}
+                {comments.length === 0 ? t('task.commentsFirstThreadHint') : t('task.commentsVisibleCount', { count: comments.length })}
               </p>
               <Button
                 className="gap-1.5 sm:h-9"
@@ -173,7 +175,7 @@ export function TaskCommentsPanel({
                 disabled={addCommentPending || !newComment.trim()}
               >
                 {addCommentPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                Gửi bình luận
+                {t('task.commentSend')}
               </Button>
             </div>
           </div>
@@ -184,9 +186,9 @@ export function TaskCommentsPanel({
                 <Lock className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">Bạn đang xem luồng thảo luận ở chế độ chỉ đọc</p>
+                <p className="text-sm font-semibold">{t('task.commentsReadOnlyTitle')}</p>
                 <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                  Bạn vẫn có thể theo dõi toàn bộ phản hồi ở đây. Cần quyền quản lý task để gửi bình luận hoặc trả lời trực tiếp.
+                  {t('task.commentsReadOnlyDescription')}
                 </p>
               </div>
             </div>
@@ -198,9 +200,9 @@ export function TaskCommentsPanel({
         {orderedComments.length === 0 ? (
           <div className="rounded-[30px] border border-dashed bg-muted/15 px-5 py-10 text-center">
             <MessageSquare className="mx-auto size-10 text-muted-foreground/30" />
-            <p className="mt-3 text-sm font-semibold">Chưa có bình luận nào</p>
+            <p className="mt-3 text-sm font-semibold">{t('task.noComments')}</p>
             <p className="mt-1 text-xs leading-6 text-muted-foreground">
-              Khi có trao đổi mới, mọi phản hồi sẽ xuất hiện ngay tại đây theo kiểu feed gọn gàng.
+              {t('task.commentsEmptyDescription')}
             </p>
           </div>
         ) : (
@@ -212,7 +214,7 @@ export function TaskCommentsPanel({
             return (
               <div key={comment.id} className="relative pl-14">
                 {index < orderedComments.length - 1 ? (
-                  <span className="absolute left-[1.2rem] top-11 bottom-[-1.25rem] w-px rounded-full bg-[linear-gradient(180deg,rgba(148,163,184,0.45),rgba(148,163,184,0.08))]" />
+                  <span className="absolute left-[1.2rem] top-11 -bottom-5 w-px rounded-full bg-[linear-gradient(180deg,rgba(148,163,184,0.45),rgba(148,163,184,0.08))]" />
                 ) : null}
 
                 <Avatar className="absolute left-0 top-0 size-10 shrink-0 border border-border/70 shadow-sm">
@@ -232,7 +234,7 @@ export function TaskCommentsPanel({
                         {replyTarget ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
                             <CornerDownRight className="size-3" />
-                            Trả lời {replyTarget.user.firstName}
+                            {t('task.commentReplyTo', { name: replyTarget.user.firstName })}
                           </span>
                         ) : null}
                       </div>
@@ -261,10 +263,10 @@ export function TaskCommentsPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <Button size="sm" className="h-8 rounded-full px-3 text-xs" onClick={onUpdateComment} disabled={updateCommentPending || !editingCommentContent.trim()}>
                           {updateCommentPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
-                          Lưu chỉnh sửa
+                          {t('task.commentSave')}
                         </Button>
                         <Button variant="outline" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={onCancelEditing}>
-                          Hủy
+                          {t('task.commentCancelEdit')}
                         </Button>
                       </div>
                     </div>
@@ -286,7 +288,7 @@ export function TaskCommentsPanel({
                             }}
                           >
                             <CornerDownRight className="mr-1.5 size-3.5" />
-                            Trả lời
+                            {t('task.commentReply')}
                           </Button>
                         ) : null}
 
@@ -298,7 +300,7 @@ export function TaskCommentsPanel({
                             onClick={() => onStartEditing(comment)}
                           >
                             <Pencil className="mr-1.5 size-3.5" />
-                            Chỉnh sửa
+                            {t('task.commentEdit')}
                           </Button>
                         ) : null}
 
@@ -310,7 +312,7 @@ export function TaskCommentsPanel({
                             onClick={() => onDeleteComment(comment.id)}
                           >
                             <Trash2 className="mr-1.5 size-3.5" />
-                            Xóa
+                            {t('task.commentDelete')}
                           </Button>
                         ) : null}
                       </div>

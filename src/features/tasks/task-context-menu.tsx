@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Copy, Edit3, Trash2 } from 'lucide-react'
+import { Copy, Edit3, Trash2, Target } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface TaskContextMenuProps {
   open: boolean
@@ -8,6 +9,7 @@ interface TaskContextMenuProps {
   onClose: () => void
   onDuplicate: () => void
   onEdit: () => void
+  onFocus: () => void
   onDelete: () => void
 }
 
@@ -18,8 +20,10 @@ export function TaskContextMenu({
   onClose,
   onDuplicate,
   onEdit,
+  onFocus,
   onDelete,
 }: TaskContextMenuProps) {
+  const { t } = useTranslation()
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -81,7 +85,7 @@ export function TaskContextMenu({
         }}
       >
         <Copy className="size-3.5" />
-        Duplicate
+        {t('task.duplicateAction')}
       </button>
       <button
         type="button"
@@ -92,7 +96,18 @@ export function TaskContextMenu({
         }}
       >
         <Edit3 className="size-3.5" />
-        Edit
+        {t('common.edit')}
+      </button>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-primary/10"
+        onClick={() => {
+          onFocus()
+          onClose()
+        }}
+      >
+        <Target className="size-3.5" />
+        {t('task.focusMode')}
       </button>
       <button
         type="button"
@@ -103,7 +118,7 @@ export function TaskContextMenu({
         }}
       >
         <Trash2 className="size-3.5" />
-        Delete
+        {t('common.delete')}
       </button>
     </div>
   )

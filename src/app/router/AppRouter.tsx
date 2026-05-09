@@ -10,7 +10,7 @@ import { VerifyEmailChangePage } from '@/features/auth/verify-email-change-page'
 import { ForbiddenPage } from '@/pages/forbidden-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { DashboardPage } from '@/pages/dashboard-page'
-import { LandingPage } from '@/pages/landing-page'
+
 import { WorkspacesPage } from '@/features/workspaces/workspaces-page'
 import { WorkspaceDetailPage } from '@/features/workspaces/workspace-detail-page'
 import { TasksLayout } from '@/features/tasks/tasks-layout'
@@ -22,12 +22,14 @@ import { ProfilePage } from '@/features/profile/profile-page'
 import { GoalTasksPage } from '@/features/goals/goal-tasks-page'
 import { AdminDashboardPage } from '@/features/admin/admin-dashboard-page'
 import { AdminShell } from '@/features/admin/layout/admin-shell'
+import { MyWorkPage } from '@/pages/my-work-page'
+import { TaskFocusPage } from '@/features/tasks/task-focus-page'
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route
           path="/login"
@@ -114,11 +116,13 @@ export function AppRouter() {
         >
           <Route path="/app" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/my-work" element={<MyWorkPage />} />
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/goals/:goalId/tasks" element={<GoalTasksPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />
+          <Route path="/workspaces/:workspaceId/projects/:projectId/focus/:taskId" element={<TaskFocusPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
