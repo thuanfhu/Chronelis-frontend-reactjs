@@ -25,11 +25,13 @@ import { AdminShell } from '@/features/admin/layout/admin-shell'
 import { MyWorkPage } from '@/pages/my-work-page'
 import { TaskFocusPage } from '@/features/tasks/task-focus-page'
 
+import { LandingPage } from '@/pages/landing-page'
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingPage />} />
 
         <Route
           path="/login"
