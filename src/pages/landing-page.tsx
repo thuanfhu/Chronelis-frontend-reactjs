@@ -4,9 +4,10 @@ import ColorBends from '@/components/ColorBends';
 import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star } from 'lucide-react';
 import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle';
 import { useTranslation } from 'react-i18next';
+import TrueFocus from '@/components/TrueFocus';
 
 export function LandingPage() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isVi = i18n.language === 'vi';
 
   return (
@@ -29,7 +30,6 @@ export function LandingPage() {
             bandWidth={6}
             transparent
             autoRotate={0}
-            color="#A855F7"
           />
         </div>
         {/* Dynamic overlay to ensure text is always readable without completely hiding the background */}
@@ -115,11 +115,18 @@ export function LandingPage() {
         {/* Features Section */}
         <section id="features" className="py-32 px-6 bg-background border-t border-border/40">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-                {isVi ? "Mọi thứ bạn cần để mở rộng" : "Everything you need to scale"}
-              </h2>
-              <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
+            <div className="text-center mb-20 flex flex-col items-center">
+              <div className="text-3xl md:text-5xl font-bold tracking-tight mb-6 max-w-[90vw]">
+                <TrueFocus 
+                  sentence={isVi ? "Tập trung vào điều quan trọng nhất" : "True focus on what matters"}
+                  manualMode={false}
+                  blurAmount={5}
+                  borderColor="var(--primary)"
+                  animationDuration={0.5}
+                  pauseBetweenAnimations={1}
+                />
+              </div>
+              <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mt-4">
                 {isVi ? "Chronelis mang tất cả luồng công việc, nhiệm vụ và giao tiếp nhóm vào một không gian thống nhất, đẹp mắt." : "Chronelis brings all your workflows, tasks, and team communications into one unified, beautiful workspace."}
               </p>
             </div>
@@ -286,29 +293,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-32 px-6 relative overflow-hidden bg-background">
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent"></div>
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              {isVi ? "Sẵn sàng làm việc hiệu quả nhất?" : "Ready to do your best work?"}
-            </h2>
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              {isVi 
-                ? "Tham gia cùng hàng ngàn đội ngũ đã nâng cấp quy trình làm việc với Chronelis." 
-                : "Join thousands of teams who have already upgraded their workflow with Chronelis."}
-            </p>
-            <Button 
-              size="lg" 
-              asChild 
-              className="rounded-full shadow-xl shadow-primary/20 transition-all hover:scale-105 px-10 h-14 text-lg font-bold"
-            >
-              <Link to="/register">
-                {isVi ? "Bắt đầu miễn phí" : "Get Started for Free"}
-              </Link>
-            </Button>
-          </div>
-        </section>
 
         {/* Footer */}
         <footer className="border-t border-border/40 bg-card pt-20 pb-10 px-6">
