@@ -60,6 +60,7 @@ export const useUiStore = create<UiState>()(
       partialize: (state) => ({
         selectedWorkspaceId: state.selectedWorkspaceId,
         selectedProjectId: state.selectedProjectId,
+        theme: state.theme,
       }),
     },
   ),

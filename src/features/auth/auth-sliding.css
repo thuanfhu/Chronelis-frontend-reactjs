@@ -10,10 +10,7 @@
   width: 100%;
   min-height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 8% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 38%),
-    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 42%),
-    linear-gradient(180deg, var(--background), color-mix(in oklab, var(--background) 94%, var(--primary) 6%));
+  background: var(--background);
 }
 
 .chronelis-auth-page::before {
@@ -25,9 +22,12 @@
   right: 50%;
   transform: translate3d(0, -50%, 0);
   border-radius: 50%;
-  background: linear-gradient(-35deg,
-    color-mix(in oklab, var(--primary) 88%, white 12%) 0%,
-    color-mix(in oklab, var(--accent) 84%, white 16%) 100%);
+  background: linear-gradient(135deg,
+      color-mix(in oklab, var(--primary) 90%, transparent) 0%,
+      color-mix(in oklab, var(--accent) 80%, transparent) 100%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.1);
+  border: 1px solid color-mix(in oklab, var(--background) 20%, transparent);
   transition: transform var(--auth-slide-duration) var(--auth-ease);
   will-change: transform;
   z-index: 3;
@@ -42,9 +42,9 @@
   height: min(82vw, 520px);
   border-radius: 50%;
   background: radial-gradient(circle,
-    color-mix(in oklab, var(--primary) 24%, transparent) 0%,
-    color-mix(in oklab, var(--accent) 20%, transparent) 52%,
-    transparent 74%);
+      color-mix(in oklab, var(--primary) 24%, transparent) 0%,
+      color-mix(in oklab, var(--accent) 20%, transparent) 52%,
+      transparent 74%);
   filter: blur(6px);
   opacity: 0;
   pointer-events: none;
@@ -62,7 +62,7 @@
   position: absolute;
   top: 50%;
   left: 75%;
-  width: min(52%, 760px);
+  width: min(45%, 650px);
   height: clamp(35.5rem, 74vh, 40rem);
   min-height: clamp(35.5rem, 74vh, 40rem);
   transform: translate3d(-50%, -50%, 0);
@@ -74,6 +74,13 @@
     transform var(--auth-slide-duration) var(--auth-ease);
   will-change: left, transform;
   z-index: 7;
+
+  /* Glassmorphism for text readability */
+  background: color-mix(in oklab, var(--background) 50%, transparent);
+  backdrop-filter: blur(24px);
+  border-radius: 2rem;
+  border: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
 .chronelis-auth-form {
@@ -245,11 +252,25 @@
   transition: background 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.chronelis-auth-strength-bar[data-level="weak"]        .chronelis-auth-strength-seg.active { background: #ef4444; }
-.chronelis-auth-strength-bar[data-level="fair"]        .chronelis-auth-strength-seg.active { background: #f97316; }
-.chronelis-auth-strength-bar[data-level="good"]        .chronelis-auth-strength-seg.active { background: #eab308; }
-.chronelis-auth-strength-bar[data-level="strong"]      .chronelis-auth-strength-seg.active { background: #22c55e; }
-.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-seg.active { background: #16a34a; }
+.chronelis-auth-strength-bar[data-level="weak"] .chronelis-auth-strength-seg.active {
+  background: #ef4444;
+}
+
+.chronelis-auth-strength-bar[data-level="fair"] .chronelis-auth-strength-seg.active {
+  background: #f97316;
+}
+
+.chronelis-auth-strength-bar[data-level="good"] .chronelis-auth-strength-seg.active {
+  background: #eab308;
+}
+
+.chronelis-auth-strength-bar[data-level="strong"] .chronelis-auth-strength-seg.active {
+  background: #22c55e;
+}
+
+.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-seg.active {
+  background: #16a34a;
+}
 
 .chronelis-auth-strength-lbl {
   font-size: 0.68rem;
@@ -257,11 +278,25 @@
   flex-shrink: 0;
 }
 
-.chronelis-auth-strength-bar[data-level="weak"]        .chronelis-auth-strength-lbl { color: #ef4444; }
-.chronelis-auth-strength-bar[data-level="fair"]        .chronelis-auth-strength-lbl { color: #f97316; }
-.chronelis-auth-strength-bar[data-level="good"]        .chronelis-auth-strength-lbl { color: #ca8a04; }
-.chronelis-auth-strength-bar[data-level="strong"]      .chronelis-auth-strength-lbl { color: #16a34a; }
-.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-lbl { color: #15803d; }
+.chronelis-auth-strength-bar[data-level="weak"] .chronelis-auth-strength-lbl {
+  color: #ef4444;
+}
+
+.chronelis-auth-strength-bar[data-level="fair"] .chronelis-auth-strength-lbl {
+  color: #f97316;
+}
+
+.chronelis-auth-strength-bar[data-level="good"] .chronelis-auth-strength-lbl {
+  color: #ca8a04;
+}
+
+.chronelis-auth-strength-bar[data-level="strong"] .chronelis-auth-strength-lbl {
+  color: #16a34a;
+}
+
+.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-lbl {
+  color: #15803d;
+}
 
 .chronelis-auth-strength-hint {
   font-size: 0.65rem;
@@ -278,6 +313,7 @@
     opacity: 0;
     transform: translateY(-2px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -380,8 +416,8 @@
 .chronelis-auth-btn--solid {
   color: #fff;
   background: linear-gradient(135deg,
-    color-mix(in oklab, var(--primary) 88%, white 12%),
-    color-mix(in oklab, var(--accent) 88%, white 12%));
+      color-mix(in oklab, var(--primary) 88%, white 12%),
+      color-mix(in oklab, var(--accent) 88%, white 12%));
 }
 
 .chronelis-auth-btn--solid:disabled {
@@ -564,8 +600,8 @@
 
 .dark .chronelis-auth-page::before {
   background: linear-gradient(-35deg,
-    color-mix(in oklab, var(--primary) 74%, black 26%) 0%,
-    color-mix(in oklab, var(--accent) 68%, black 32%) 100%);
+      color-mix(in oklab, var(--primary) 74%, black 26%) 0%,
+      color-mix(in oklab, var(--accent) 68%, black 32%) 100%);
 }
 
 .dark .chronelis-auth-input-field {
@@ -687,6 +723,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .chronelis-auth-page::before,
   .chronelis-auth-signin-signup,
   .chronelis-auth-form,
