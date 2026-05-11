@@ -90,15 +90,18 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         <Link
           to="/admin/users"
-          className="inline-flex items-center gap-2.5"
+          className="inline-flex items-center gap-2.5 relative"
           onClick={onCloseMobile}
         >
-          <span className="inline-flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
-            C
-          </span>
-          <span className="leading-tight">
-            <span className="block text-sm font-semibold tracking-tight">Chronelis</span>
-            <span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{t('admin.sidebar.brandLabel')}</span>
+          <div className="relative h-7 w-32 flex items-center">
+            <img
+              src="/favicon/chronelis-logo.png"
+              alt="Chronelis"
+              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+            />
+          </div>
+          <span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            {t('admin.sidebar.brandLabel')}
           </span>
         </Link>
 

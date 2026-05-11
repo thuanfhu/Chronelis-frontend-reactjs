@@ -752,27 +752,15 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               : 'justify-between border-sidebar-border bg-sidebar px-3',
           )}
         >
-          <Link to="/dashboard" className={cn('flex items-center overflow-hidden', !collapsed && 'gap-2.5')}>
-            <div
+          <Link to="/dashboard" className={cn('flex items-center overflow-visible relative h-7', !collapsed ? 'gap-2.5 w-32' : 'w-10 justify-center')}>
+            <img
+              src="/favicon/chronelis-logo.png"
+              alt="Chronelis"
               className={cn(
-                'flex shrink-0 items-center justify-center transition-all',
-                collapsed
-                  ? 'size-9 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/70 shadow-none'
-                  : 'size-8 rounded-lg bg-linear-to-br from-primary to-primary/80 shadow-sm',
+                'absolute top-1/2 -translate-y-1/2 pointer-events-none max-w-none h-28 w-auto transition-all',
+                collapsed ? 'left-1/2 -translate-x-1/2' : 'left-0'
               )}
-            >
-              <span className="text-xs font-bold text-primary-foreground">C</span>
-            </div>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="text-sm font-bold tracking-tight"
-              >
-                Chronelis
-              </motion.span>
-            )}
+            />
           </Link>
 
           {!collapsed && (

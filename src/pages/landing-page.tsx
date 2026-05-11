@@ -39,11 +39,12 @@ export function LandingPage() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 transition-all duration-300 bg-background/50 backdrop-blur-md border-b border-border/40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20">
-              C
-            </div>
-            <span className="text-xl font-bold tracking-tight">Chronelis</span>
+          <div className="flex items-center relative h-10 w-32">
+            <img
+              src="/favicon/chronelis-logo.png"
+              alt="Chronelis"
+              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 drop-shadow-sm pointer-events-none max-w-none"
+            />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">{isVi ? "Tính năng" : "Features"}</a>
@@ -298,11 +299,12 @@ export function LandingPage() {
         <footer className="border-t border-border/40 bg-card pt-20 pb-10 px-6">
           <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-16">
             <div className="col-span-2 lg:col-span-2">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                  C
-                </div>
-                <span className="text-xl font-bold tracking-tight">Chronelis</span>
+              <div className="flex items-center mb-6 relative h-9 w-32">
+                <img
+                  src="/favicon/chronelis-logo.png"
+                  alt="Chronelis"
+                  className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+                />
               </div>
               <p className="text-muted-foreground max-w-xs mb-6">
                 {isVi 
