@@ -3,6 +3,7 @@
     "appName": "Chronelis",
     "loading": "Đang tải...",
     "save": "Lưu",
+    "create": "Tạo",
     "cancel": "Hủy",
     "delete": "Xóa",
     "edit": "Sửa",
@@ -42,7 +43,8 @@
       "currentEmail": "Email hiện tại",
       "newEmail": "Email mới",
       "confirmPassword": "Xác nhận mật khẩu mới",
-      "pendingEmail": "Đang chờ xác thực email mới:"
+      "pendingEmail": "Đang chờ xác thực email mới:",
+      "userId": "ID người dùng"
     },
     "placeholders": {
       "nickname": "Ví dụ: phuong.pm",
@@ -61,7 +63,8 @@
       "saveProfile": "Lưu hồ sơ",
       "sendEmailChange": "Gửi yêu cầu đổi email",
       "updatePassword": "Cập nhật mật khẩu",
-      "applyAvatar": "Áp dụng"
+      "applyAvatar": "Áp dụng",
+      "copyUserId": "Sao chép ID"
     },
     "crop": {
       "title": "Chỉnh sửa ảnh đại diện",
@@ -1364,7 +1367,8 @@
       "currentEmail": "Email hiện tại",
       "newEmail": "Email mới",
       "confirmPassword": "Xác nhận mật khẩu mới",
-      "pendingEmail": "Đang chờ xác thực email mới:"
+      "pendingEmail": "Đang chờ xác thực email mới:",
+      "userId": "ID người dùng"
     },
     "placeholders": {
       "nickname": "Ví dụ: phuong.pm",
@@ -1383,7 +1387,8 @@
       "saveProfile": "Lưu hồ sơ",
       "sendEmailChange": "Gửi yêu cầu đổi email",
       "updatePassword": "Cập nhật mật khẩu",
-      "applyAvatar": "Áp dụng"
+      "applyAvatar": "Áp dụng",
+      "copyUserId": "Sao chép ID"
     },
     "crop": {
       "title": "Chỉnh sửa ảnh đại diện",
@@ -1412,7 +1417,8 @@
       "avatarTooLarge": "Ảnh đại diện tối đa 5MB",
       "avatarUpdated": "Đã cập nhật ảnh đại diện",
       "avatarUploadFailed": "Không thể tải ảnh đại diện",
-      "avatarUploadFallback": "Upload ảnh thất bại"
+      "avatarUploadFallback": "Upload ảnh thất bại",
+      "userIdCopied": "Đã sao chép ID người dùng"
     }
   },
   "activity": {

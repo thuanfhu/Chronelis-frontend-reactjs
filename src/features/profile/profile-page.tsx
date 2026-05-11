@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import {
   Camera,
   CheckCircle2,
+  Copy,
   Crop,
   Eye,
   EyeOff,
@@ -391,6 +392,11 @@ export function ProfilePage() {
   }
 
   const loadedUser = profileQuery.data ?? currentUser
+  const handleCopyUserId = useCallback(() => {
+    if (!loadedUser?.userId) return
+    void navigator.clipboard.writeText(loadedUser.userId)
+    toast.success(t('profile.toast.userIdCopied'))
+  }, [loadedUser?.userId, t])
   if (!loadedUser && profileQuery.isLoading) {
     return <LoadingPanel />
   }
@@ -536,6 +542,17 @@ export function ProfilePage() {
                   accept="image/png,image/jpeg,image/jpg,image/webp"
                   onChange={handleAvatarFileChange}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{t('profile.labels.userId')}</p>
+                  <p className="truncate text-sm font-medium">{loadedUser.userId}</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleCopyUserId}>
+                  <Copy className="size-3.5" />
+                  {t('profile.actions.copyUserId')}
+                </Button>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

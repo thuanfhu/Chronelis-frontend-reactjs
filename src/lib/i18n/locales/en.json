@@ -3,6 +3,7 @@
     "appName": "Chronelis",
     "loading": "Loading...",
     "save": "Save",
+    "create": "Create",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -42,7 +43,8 @@
       "currentEmail": "Current email",
       "newEmail": "New email",
       "confirmPassword": "Confirm new password",
-      "pendingEmail": "Pending verification for the new email:"
+      "pendingEmail": "Pending verification for the new email:",
+      "userId": "User ID"
     },
     "placeholders": {
       "nickname": "e.g. phuong.pm",
@@ -61,7 +63,8 @@
       "saveProfile": "Save profile",
       "sendEmailChange": "Send email change request",
       "updatePassword": "Update password",
-      "applyAvatar": "Apply"
+      "applyAvatar": "Apply",
+      "copyUserId": "Copy ID"
     },
     "crop": {
       "title": "Edit avatar",
@@ -1395,7 +1398,8 @@
       "currentEmail": "Current email",
       "newEmail": "New email",
       "confirmPassword": "Confirm new password",
-      "pendingEmail": "Pending verification for the new email:"
+      "pendingEmail": "Pending verification for the new email:",
+      "userId": "User ID"
     },
     "placeholders": {
       "nickname": "e.g. phuong.pm",
@@ -1414,7 +1418,8 @@
       "saveProfile": "Save profile",
       "sendEmailChange": "Send email change request",
       "updatePassword": "Update password",
-      "applyAvatar": "Apply"
+      "applyAvatar": "Apply",
+      "copyUserId": "Copy ID"
     },
     "crop": {
       "title": "Edit avatar",
@@ -1443,7 +1448,8 @@
       "avatarTooLarge": "Avatar must be 5MB or smaller",
       "avatarUpdated": "Avatar updated",
       "avatarUploadFailed": "Unable to upload avatar",
-      "avatarUploadFallback": "Avatar upload failed"
+      "avatarUploadFallback": "Avatar upload failed",
+      "userIdCopied": "User ID copied"
     }
   },
   "activity": {

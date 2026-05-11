@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, Shield, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ProjectFormFields } from '@/components/shared/project-form-fields'
 import {
   Dialog,
   DialogContent,
@@ -48,19 +49,16 @@ import type { PageResult } from '@/types/domain'
 /** i18n key suffix for each workspace member role */
 const roleI18nKey: Record<WorkspaceMemberRoleType, string> = {
   OWNER: 'owner',
-  ADMIN: 'admin',
   MEMBER: 'member',
 }
 
 const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
   OWNER: Crown,
-  ADMIN: Shield,
   MEMBER: User,
 }
 
 const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
   OWNER: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
-  ADMIN: 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-200',
   MEMBER: 'border-border bg-muted text-muted-foreground',
 }
 
@@ -613,18 +611,15 @@ export function WorkspaceDetailPage() {
   const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
   const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
     OWNER: t('workspace.role.owner'),
-    ADMIN: t('workspace.role.admin'),
     MEMBER: t('workspace.role.member'),
   }), [t])
   const roleDescription = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
     OWNER: t('workspace.roleDesc.owner'),
-    ADMIN: t('workspace.roleDesc.admin'),
     MEMBER: t('workspace.roleDesc.member'),
   }), [t])
   const isOwner = currentRole === 'OWNER'
-  const isWorkspaceManager = isOwner || currentRole === 'ADMIN'
   const canManageWorkspace = isOwner
-  const canCreateProject = isWorkspaceManager
+  const canCreateProject = isOwner
   const teamMembersByTeamId = teamMembershipQuery.data ?? new Map<number, WorkspaceTeamMember[]>()
   const teamMembershipMap = new Map<number, Set<string>>()
   teamMembersByTeamId.forEach((teamMembers, teamId) => {
@@ -638,7 +633,7 @@ export function WorkspaceDetailPage() {
       && teamMembershipMap.get(project.managerTeamId)?.has(currentUserId),
     )
 
-    return isWorkspaceManager || isProjectManagerByUser || isProjectManagerByTeam
+    return isOwner || isProjectManagerByUser || isProjectManagerByTeam
   }
 
   const isWorkspaceEditDirty = editWsName.trim() !== editWsInitialName
@@ -649,7 +644,7 @@ export function WorkspaceDetailPage() {
     || editProjectManagerTeamId !== editProjectInitialManagerTeamId
   )
 
-  const ROLE_SORT_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, ADMIN: 1, MEMBER: 2 }
+  const ROLE_SORT_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, MEMBER: 1 }
 
   const filteredMembers = useMemo(() => {
     let list = members.slice()
@@ -814,69 +809,19 @@ export function WorkspaceDetailPage() {
                     <DialogTitle>{t('workspace.dialog.createProjectTitle')}</DialogTitle>
                     <DialogDescription>{t('workspace.dialog.createProjectDescription')}</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-name">{t('workspace.field.projectName')}</Label>
-                      <Input
-                        id="proj-name"
-                        value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
-                        placeholder={t('workspace.placeholder.projectName')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="proj-desc">{t('workspace.field.descriptionOptional')}</Label>
-                      <Textarea
-                        id="proj-desc"
-                        value={projectDescription}
-                        onChange={(e) => setProjectDescription(e.target.value)}
-                        placeholder={t('workspace.placeholder.projectDescription')}
-                        rows={3}
-                      />
-                    </div>
-                    {isOwner && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>{t('workspace.field.managerUserOptional')}</Label>
-                          <Select
-                            value={projectManagerUserId || 'none'}
-                            onValueChange={(value) => setProjectManagerUserId(value === 'none' ? '' : value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('workspace.placeholder.noManagerUser')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
-                              {members.map((member) => (
-                                <SelectItem key={member.user.userId} value={member.user.userId}>
-                                  {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{t('workspace.field.managerTeamOptional')}</Label>
-                          <Select
-                            value={projectManagerTeamId || 'none'}
-                            onValueChange={(value) => setProjectManagerTeamId(value === 'none' ? '' : value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('workspace.placeholder.noManagerTeam')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
-                              {visibleTeams.map((team) => (
-                                <SelectItem key={team.id} value={String(team.id)}>
-                                  {team.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <ProjectFormFields
+                    name={projectName}
+                    description={projectDescription}
+                    managerUserId={projectManagerUserId}
+                    managerTeamId={projectManagerTeamId}
+                    onNameChange={setProjectName}
+                    onDescriptionChange={setProjectDescription}
+                    onManagerUserChange={setProjectManagerUserId}
+                    onManagerTeamChange={setProjectManagerTeamId}
+                    members={members}
+                    teams={visibleTeams}
+                    isOwner={isOwner}
+                  />
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>{t('common.cancel')}</Button>
                     <Button onClick={() => createProjectMutation.mutate()} disabled={createProjectMutation.isPending || !projectName.trim()}>
@@ -983,7 +928,7 @@ export function WorkspaceDetailPage() {
                                 {t('workspace.action.archive')}
                               </DropdownMenuItem>
                             )}
-                            {isWorkspaceManager && (
+                            {isOwner && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -1154,12 +1099,11 @@ export function WorkspaceDetailPage() {
         {/* Members tab */}
         <TabsContent value="members" className="mt-4 space-y-4">
           {/* Role legend */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {(['OWNER', 'ADMIN', 'MEMBER'] as const).map((r) => {
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {(['OWNER', 'MEMBER'] as const).map((r) => {
               const Icon = roleIcon[r]
               const accentClass = {
                 OWNER: 'border-l-amber-400',
-                ADMIN: 'border-l-blue-400',
                 MEMBER: 'border-l-slate-300 dark:border-l-slate-600',
               }[r]
               return (
@@ -1195,12 +1139,6 @@ export function WorkspaceDetailPage() {
                   <span className="flex items-center gap-1.5">
                     <Crown className="size-3 text-amber-600 dark:text-amber-400" />
                     {roleDisplayName.OWNER}
-                  </span>
-                </SelectItem>
-                <SelectItem value="ADMIN">
-                  <span className="flex items-center gap-1.5">
-                    <Shield className="size-3 text-blue-600 dark:text-blue-400" />
-                    {roleDisplayName.ADMIN}
                   </span>
                 </SelectItem>
                 <SelectItem value="MEMBER">
@@ -1249,7 +1187,7 @@ export function WorkspaceDetailPage() {
                     <div className="space-y-2">
                       <Label>{t('workspace.field.role')}</Label>
                       <div className="flex gap-2">
-                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                        {(['MEMBER'] as const).map((r) => (
                           <Button
                             key={r}
                             type="button"
@@ -1321,7 +1259,7 @@ export function WorkspaceDetailPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                            {(['MEMBER'] as const).map((r) => (
                               <DropdownMenuItem
                                 key={r}
                                 disabled={member.role === r}
@@ -1332,7 +1270,7 @@ export function WorkspaceDetailPage() {
                                     .catch((err: Error) => toast.error(t('workspace.toast.roleUpdateFailed'), { description: err.message }))
                                 }}
                               >
-                                  {t('workspace.action.changeRoleTo', { role: roleDisplayName[r] })}
+                                {t('workspace.action.changeRoleTo', { role: roleDisplayName[r] })}
                               </DropdownMenuItem>
                             ))}
                             <DropdownMenuSeparator />
@@ -1409,7 +1347,7 @@ export function WorkspaceDetailPage() {
                     <div className="space-y-2">
                       <Label>{t('workspace.field.assignedRole')}</Label>
                       <div className="flex gap-2">
-                        {(['ADMIN', 'MEMBER'] as const).map((r) => (
+                        {(['MEMBER'] as const).map((r) => (
                           <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
                             {roleDisplayName[r]}
                           </Button>
@@ -1561,8 +1499,7 @@ export function WorkspaceDetailPage() {
                   const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
                   const isExpanded = teamMemberExpanded[team.id] ?? false
 
-                  // Sort: OWNER → ADMIN → MEMBER, then a-z within each group
-                  const ROLE_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, ADMIN: 1, MEMBER: 2 }
+                  const ROLE_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, MEMBER: 1 }
                   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
                     const wsMemberA = members.find((m) => m.user.userId === a.user.userId)
                     const wsMemberB = members.find((m) => m.user.userId === b.user.userId)
@@ -1570,7 +1507,7 @@ export function WorkspaceDetailPage() {
                     const roleB = wsMemberB?.role ?? 'MEMBER'
                     const cmp = ROLE_ORDER[roleA] - ROLE_ORDER[roleB]
                     if (cmp !== 0) return cmp
-                      return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
+                    return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
                   })
 
                   const displayedMembers = isExpanded ? sortedTeamMembers : sortedTeamMembers.slice(0, TEAM_MEMBER_PREVIEW_COUNT)

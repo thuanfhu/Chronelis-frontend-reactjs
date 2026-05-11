@@ -370,8 +370,8 @@ export function AppTopbar() {
     <ConfirmModal
       open={logoutConfirmOpen}
       onOpenChange={setLogoutConfirmOpen}
-      title={t('common.confirm')}
-      description={t('common.confirm')}
+      title={t('admin.sidebar.logoutTitle')}
+      description={t('admin.sidebar.logoutDescription')}
       confirmText={t('common.logout')}
       confirmVariant="destructive"
       onConfirm={handleLogout}
