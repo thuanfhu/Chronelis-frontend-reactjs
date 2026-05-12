@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react'
+﻿import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,10 +9,12 @@ import type { WorkspaceMember, WorkspaceMemberRoleType, WorkspaceTeam } from '@/
 interface ProjectFormFieldsProps {
   name: string
   description: string
+  visibility: 'PUBLIC' | 'PRIVATE'
   managerUserId: string
   managerTeamId: string
   onNameChange: (value: string) => void
   onDescriptionChange: (value: string) => void
+  onVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
   onManagerUserChange: (value: string) => void
   onManagerTeamChange: (value: string) => void
   members: WorkspaceMember[]
@@ -23,10 +25,12 @@ interface ProjectFormFieldsProps {
 export function ProjectFormFields({
   name,
   description,
+  visibility,
   managerUserId,
   managerTeamId,
   onNameChange,
   onDescriptionChange,
+  onVisibilityChange,
   onManagerUserChange,
   onManagerTeamChange,
   members,
@@ -36,11 +40,10 @@ export function ProjectFormFields({
   const { t } = useTranslation()
   const baseId = useId()
   const nameId = `${baseId}-project-name`
-  const descriptionId = `${baseId}-project-description`
+  const descriptionId = `${baseId}-description`
 
   const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
     OWNER: t('workspace.role.owner'),
-    ADMIN: t('workspace.role.admin'),
     MEMBER: t('workspace.role.member'),
   }), [t])
 
@@ -65,6 +68,26 @@ export function ProjectFormFields({
           rows={3}
         />
       </div>
+      {isOwner ? (
+        <div className="space-y-2">
+          <Label>{t('workspace.field.visibility')}</Label>
+          <Select
+            value={visibility}
+            onValueChange={(value: 'PUBLIC' | 'PRIVATE') => onVisibilityChange(value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PUBLIC">{t('workspace.visibility.public')}</SelectItem>
+              <SelectItem value="PRIVATE">{t('workspace.visibility.private')}</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {visibility === 'PUBLIC' ? t('workspace.visibility.publicDescription') : t('workspace.visibility.privateDescription')}
+          </p>
+        </div>
+      ) : null}
       {isOwner ? (
         <>
           <div className="space-y-2">

@@ -477,7 +477,7 @@ export function TodoPage() {
   }
 
   const handleToggleCompletion = (task: Task, isCompleted: boolean) => {
-    if (!canManageTask(task.goalId)) {
+    if (!canManageTask()) {
       toast.error(t('todo.noManagePermission'))
       return
     }
@@ -486,7 +486,7 @@ export function TodoPage() {
   }
 
   const openDeleteConfirmIfPermitted = (task: Task) => {
-    if (canManageTask(task.goalId)) {
+    if (canManageTask()) {
       openTaskDeleteConfirm(task.id)
     }
   }
@@ -855,7 +855,7 @@ export function TodoPage() {
             return
           }
 
-          if (!canManageTask(selectedTask.goalId)) {
+          if (!canManageTask()) {
             toast.error(t('todo.noManagePermission'))
             return
           }
@@ -868,7 +868,7 @@ export function TodoPage() {
             return
           }
 
-          if (!canManageTask(selectedTask.goalId)) {
+          if (!canManageTask()) {
             toast.error(t('todo.noManagePermission'))
             return
           }

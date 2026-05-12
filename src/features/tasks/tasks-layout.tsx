@@ -1,13 +1,14 @@
 import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, FolderKanban, ListTodo, Activity, Target } from 'lucide-react'
+import { CalendarDays, FolderKanban, ListTodo, Activity, Target, Settings } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KanbanPage } from '@/features/tasks/kanban-page'
 import { TodoPage } from '@/features/tasks/todo-page'
 import { CalendarPage } from '@/features/tasks/calendar-page'
 import { ActivityLogPage } from '@/features/activity/activity-log-page'
 import { GoalsPage } from '@/features/goals/goals-page'
+import { ProjectSettingsPage } from '@/features/projects/project-settings-page'
 
-export type TaskViewTab = 'calendar' | 'kanban' | 'todo' | 'goals' | 'activity'
+export type TaskViewTab = 'calendar' | 'kanban' | 'todo' | 'goals' | 'activity' | 'settings'
 
 const TASK_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
   { value: 'calendar', label: 'Lịch', icon: CalendarDays },
@@ -18,6 +19,7 @@ const TASK_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays 
 const PROJECT_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
   { value: 'goals', label: 'Goals', icon: Target },
   { value: 'activity', label: 'Hoạt động', icon: Activity },
+  { value: 'settings', label: 'Settings', icon: Settings },
 ]
 
 export function TasksLayout() {
@@ -78,11 +80,12 @@ export function TasksLayout() {
         {activeTab === 'todo' && <TodoPage />}
         {activeTab === 'goals' && <GoalsPage />}
         {activeTab === 'activity' && <ActivityLogPage />}
+        {activeTab === 'settings' && <ProjectSettingsPage />}
       </div>
     </div>
   )
 }
 
 function isTaskViewTab(value: string | null): value is TaskViewTab {
-  return value === 'calendar' || value === 'kanban' || value === 'todo' || value === 'goals' || value === 'activity'
+  return value === 'calendar' || value === 'kanban' || value === 'todo' || value === 'goals' || value === 'activity' || value === 'settings'
 }

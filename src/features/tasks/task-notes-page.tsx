@@ -291,7 +291,7 @@ export function TaskNotesPage() {
     ))
   }, [editor])
 
-  const canEditNotes = permissionsReady && canManageTask(taskQuery.data?.goalId ?? null)
+  const canEditNotes = permissionsReady && canManageTask()
 
   if (!Number.isFinite(taskId) || taskId <= 0) {
     return (

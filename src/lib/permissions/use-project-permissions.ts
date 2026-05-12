@@ -45,29 +45,42 @@ export function useProjectPermissions({ workspaceId, projectId, enabled = true }
     && !effectiveAccessQuery.isLoading
 
   const canManageProject = Boolean(permissionsReady && effectiveAccess?.canManageProjectWork)
+  const canViewProject = Boolean(permissionsReady && effectiveAccess?.canViewProject)
   const canContribute = Boolean(permissionsReady && effectiveAccess?.canContribute)
   const canComment = Boolean(permissionsReady && effectiveAccess?.canComment)
   const isWorkspaceManager = canManageProject
   const canManageGoal = () => canManageProject
   const canManageGoalById = () => canManageProject
   const canManageTask = () => canContribute
+  const canDeleteTask = () => canManageProject
+  const canScheduleTask = () => canManageProject
 
   return {
     currentUserId,
     currentRole,
     isOwner,
     isWorkspaceManager,
+    canViewProject,
     canManageProject,
+    canManageProjectWork: canManageProject,
     canContribute,
     canComment,
     canManageProjectAccess: Boolean(permissionsReady && effectiveAccess?.canManageProjectAccess),
-    canManageManagerAccess: Boolean(permissionsReady && effectiveAccess?.canManageManagerAccess),
+    canGrantManager: Boolean(permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess)),
+    canRevokeManager: Boolean(permissionsReady && (effectiveAccess?.canRevokeManager ?? effectiveAccess?.canManageManagerAccess)),
+    canManageManagerAccess: Boolean(permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess)),
     canChangeVisibility: Boolean(permissionsReady && effectiveAccess?.canChangeVisibility),
     canDeleteProject: Boolean(permissionsReady && effectiveAccess?.canDeleteProject),
     canAssignOthers: Boolean(permissionsReady && effectiveAccess?.canAssignOthers),
+    canManageWorkspaceMembers: Boolean(permissionsReady && effectiveAccess?.canManageWorkspaceMembers),
+    canManageWorkspaceTeams: Boolean(permissionsReady && effectiveAccess?.canManageWorkspaceTeams),
+    canManageWorkspaceInvites: Boolean(permissionsReady && effectiveAccess?.canManageWorkspaceInvites),
+    canManageWorkspaceSettings: Boolean(permissionsReady && effectiveAccess?.canManageWorkspaceSettings),
     canManageGoal,
     canManageGoalById,
     canManageTask,
+    canDeleteTask,
+    canScheduleTask,
     permissionsReady,
     effectiveAccess,
     workspace: null,

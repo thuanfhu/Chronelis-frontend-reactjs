@@ -198,68 +198,68 @@
     "notesSaveAction": "Save notes",
     "notesTaskFallback": "Task",
     "forgotPasswordDescription": "Enter your email and we'll send you a reset link.",
-  "pomodoro": {
-    "pageTitle": "Task Pomodoro",
-    "pageDescription": "Stay in rhythm with focus and break cycles tied to the current task.",
-    "invalidTaskDescription": "Unable to find a valid task.",
-    "openTaskDetail": "Open task details",
-    "currentTaskTitle": "Current task",
-    "currentTaskDescription": "Pomodoro stays attached to this task so you keep the right work context.",
-    "loadingTask": "Loading task...",
-    "loadTaskFailed": "Unable to load task information.",
-    "completedBadge": "Completed",
-    "focusSessionsCompleted": "{{count}} focus sessions completed",
-    "modes": {
-      "focus": {
-        "label": "Focus session",
-        "hint": "Concentrate on the main task and avoid multitasking."
+    "pomodoro": {
+      "pageTitle": "Task Pomodoro",
+      "pageDescription": "Stay in rhythm with focus and break cycles tied to the current task.",
+      "invalidTaskDescription": "Unable to find a valid task.",
+      "openTaskDetail": "Open task details",
+      "currentTaskTitle": "Current task",
+      "currentTaskDescription": "Pomodoro stays attached to this task so you keep the right work context.",
+      "loadingTask": "Loading task...",
+      "loadTaskFailed": "Unable to load task information.",
+      "completedBadge": "Completed",
+      "focusSessionsCompleted": "{{count}} focus sessions completed",
+      "modes": {
+        "focus": {
+          "label": "Focus session",
+          "hint": "Concentrate on the main task and avoid multitasking."
+        },
+        "shortBreak": {
+          "label": "Short break",
+          "hint": "Take a brief break, stand up and relax your shoulders."
+        },
+        "longBreak": {
+          "label": "Long break",
+          "hint": "Take a longer break to recharge for the next cycle."
+        }
       },
-      "shortBreak": {
-        "label": "Short break",
-        "hint": "Take a brief break, stand up and relax your shoulders."
+      "actions": {
+        "focus": "Focus",
+        "shortBreak": "Short break",
+        "longBreak": "Long break",
+        "start": "Start",
+        "pause": "Pause",
+        "reset": "Reset",
+        "skip": "Skip",
+        "previewSound": "Preview"
       },
-      "longBreak": {
-        "label": "Long break",
-        "hint": "Take a longer break to recharge for the next cycle."
+      "alarmTitle": "Transition alarm sound",
+      "internalSoundsNote": "Uses internal royalty-free audio files.",
+      "focusDurationTitle": "Focus duration for this task",
+      "estimatedDuration": "Task estimate: {{minutes}} minutes",
+      "alarms": {
+        "crystalBell": {
+          "label": "Crystal Bell",
+          "description": "Bright and clear resonance for focus/break transitions."
+        },
+        "digitalChime": {
+          "label": "Digital Chime",
+          "description": "Compact digital tone that stands out when you wear headphones."
+        },
+        "softBloom": {
+          "label": "Soft Bloom",
+          "description": "Softer tone when you want a less jarring cue."
+        },
+        "deepGong": {
+          "label": "Deep Gong",
+          "description": "Deep, full tone for a more distinct rhythm change."
+        },
+        "woodBlock": {
+          "label": "Wood Block",
+          "description": "Short wooden hit for a quick, clean signal."
+        }
       }
     },
-    "actions": {
-      "focus": "Focus",
-      "shortBreak": "Short break",
-      "longBreak": "Long break",
-      "start": "Start",
-      "pause": "Pause",
-      "reset": "Reset",
-      "skip": "Skip",
-      "previewSound": "Preview"
-    },
-    "alarmTitle": "Transition alarm sound",
-    "internalSoundsNote": "Uses internal royalty-free audio files.",
-    "focusDurationTitle": "Focus duration for this task",
-    "estimatedDuration": "Task estimate: {{minutes}} minutes",
-    "alarms": {
-      "crystalBell": {
-        "label": "Crystal Bell",
-        "description": "Bright and clear resonance for focus/break transitions."
-      },
-      "digitalChime": {
-        "label": "Digital Chime",
-        "description": "Compact digital tone that stands out when you wear headphones."
-      },
-      "softBloom": {
-        "label": "Soft Bloom",
-        "description": "Softer tone when you want a less jarring cue."
-      },
-      "deepGong": {
-        "label": "Deep Gong",
-        "description": "Deep, full tone for a more distinct rhythm change."
-      },
-      "woodBlock": {
-        "label": "Wood Block",
-        "description": "Short wooden hit for a quick, clean signal."
-      }
-    }
-  },
     "resetPasswordTitle": "Reset your password",
     "resetPasswordDescription": "Enter a new password for your account.",
     "noAccount": "Don't have an account?",
@@ -631,14 +631,14 @@
     "dueTomorrow": "Due tomorrow",
     "dueInDays": "{{count}} days left",
     "noDeadlineSet": "No deadline set",
-    "pageOf": "Page {{current}}/{{total}}"
-    ,"priorityPlaceholder": "Priority"
-    ,"sortPlaceholder": "Sort"
-    ,"emptyAllTitle": "No tasks match the current filters."
-    ,"emptyAllDescription": "Try clearing filters or refresh to pull your latest assigned work."
-    ,"projectFallback": "Project #{{id}}"
-    ,"aiTaskPrompt": "Summarize the next step for task \"{{title}}\" in plain language, highlight current blockers, and suggest the most immediate action in the current project."
-    ,"aiSmartPrompt": "Based on the current priority task \"{{title}}\", propose the order to resolve blockers, the next action to take, and how to keep momentum across the remaining work in this project."
+    "pageOf": "Page {{current}}/{{total}}",
+    "priorityPlaceholder": "Priority",
+    "sortPlaceholder": "Sort",
+    "emptyAllTitle": "No tasks match the current filters.",
+    "emptyAllDescription": "Try clearing filters or refresh to pull your latest assigned work.",
+    "projectFallback": "Project #{{id}}",
+    "aiTaskPrompt": "Summarize the next step for task \"{{title}}\" in plain language, highlight current blockers, and suggest the most immediate action in the current project.",
+    "aiSmartPrompt": "Based on the current priority task \"{{title}}\", propose the order to resolve blockers, the next action to take, and how to keep momentum across the remaining work in this project."
   },
   "kanban": {
     "title": "Kanban Board",
@@ -1220,11 +1220,21 @@
     "invite": "Invite members",
     "role": "Role",
     "owner": "Owner",
-    "admin": "Admin",
     "member": "Member",
     "joinByInvite": "Join workspace",
     "joinSuccess": "Successfully joined workspace",
-    "leaveConfirm": "Are you sure you want to leave this workspace?"
+    "leaveConfirm": "Are you sure you want to leave this workspace?",
+    "field": {
+      "visibility": "Visibility",
+      "managerUser": "Project Manager",
+      "managerTeam": "Manager Team"
+    },
+    "visibility": {
+      "public": "Public",
+      "private": "Private",
+      "publicDescription": "Visible to all workspace members",
+      "privateDescription": "Visible only to workspace owner and users/teams with access grants"
+    }
   },
   "project": {
     "title": "Project",
@@ -1233,7 +1243,53 @@
     "totalTasks": "Total tasks",
     "completedTasks": "Completed tasks",
     "openTasks": "Open tasks",
-    "members": "Members"
+    "members": "Members",
+    "settings": {
+      "title": "Project Settings",
+      "description": "Manage project access and visibility",
+      "currentAccess": "Current Access",
+      "currentAccessDescription": "Information about your permissions in this project",
+      "visibility": "Visibility",
+      "yourRole": "Your Role",
+      "roleManagerDescription": "You have full management rights for this project",
+      "roleContributorDescription": "You can create and edit tasks, comments",
+      "roleViewerDescription": "You only have read-only access to this project",
+      "roleNoAccessDescription": "You do not have access to this project",
+      "roleExplanationTitle": "Role Explanation",
+      "roleExplanationDescription": "Project roles and their corresponding permissions",
+      "roleManagerFullDescription": "Full project management. Can manage work and grant CONTRIBUTOR/VIEWER access. Cannot change visibility, delete project, or grant MANAGER access.",
+      "roleContributorFullDescription": "Can create and edit tasks, goals, and comments. Cannot manage project access or change settings.",
+      "roleViewerFullDescription": "Read-only access to tasks and goals. Can view comments but cannot create them.",
+      "accessManagement": "Access Management",
+      "accessManagementDescription": "Grant and manage permissions for users and teams",
+      "managerRestricted": "Restricted",
+      "addAccess": "Add Access",
+      "addAccessTitle": "Add New Access",
+      "addAccessDescription": "Grant access to a user or team for this project",
+      "subjectType": "Subject Type",
+      "user": "User",
+      "team": "Team",
+      "selectUser": "Select User",
+      "selectUserPlaceholder": "Select user from workspace",
+      "selectTeam": "Select Team",
+      "selectTeamPlaceholder": "Select team from workspace",
+      "role": "Role",
+      "managerRestrictedHint": "Only workspace owner can grant MANAGER access",
+      "noAccessGrants": "No access grants have been added",
+      "grantedBy": "Granted by {{name}}"
+    },
+    "visibility": {
+      "public": "Public",
+      "private": "Private",
+      "publicDescription": "Visible to all workspace members. Default CONTRIBUTOR access for everyone.",
+      "privateDescription": "Visible only to workspace owner and users/teams with explicit access grants."
+    },
+    "role": {
+      "manager": "Project manager",
+      "contributor": "Contributor",
+      "viewer": "Viewer",
+      "no_access": "No Access"
+    }
   },
   "ai": {
     "title": "AI Assistant",
@@ -1469,19 +1525,17 @@
   "workspace": {
     "role": {
       "owner": "Owner",
-      "admin": "Admin",
       "member": "Member"
     },
     "roleDesc": {
       "owner": "Created the workspace. Has full control: delete workspace, manage members, assign roles.",
-      "admin": "Delegated workspace manager: create projects, create teams, add/remove members. Cannot delete workspace.",
-      "member": "Regular member: view projects, work on assigned tasks. Cannot create or delete projects."
+      "member": "Workspace member: can see public projects and private projects only when project access is granted."
     },
     "notFound": "Workspace not found.",
     "backToList": "Back to list",
     "headerDesc": "Owner: {{owner}} · {{memberCount}} members · {{projectCount}} projects · Your role: {{role}}",
     "badge": {
-      "memberReadOnly": "MEMBER has read-only access except for assigned manager projects",
+      "memberReadOnly": "MEMBER can work only in projects allowed by project access",
       "you": "You",
       "managerUser": "Manager user: {{name}}",
       "managerTeam": "Manager team: {{name}}"
@@ -1595,7 +1649,7 @@
     },
     "projects": {
       "description": "List of projects in the workspace",
-      "readOnlyNotice": "You are in read-only mode. Only owner/admin or assigned scope managers can edit projects.",
+      "readOnlyNotice": "Only the workspace owner can create, delete, or change visibility for projects.",
       "empty": "No projects yet",
       "emptyHint": "Create your first project to get started"
     },

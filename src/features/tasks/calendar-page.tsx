@@ -408,7 +408,7 @@ export function CalendarPage() {
           scheduleId: schedule.id,
           taskId: schedule.taskId,
           priority,
-          canDelete: canManageTask(schedule.task.goalId),
+          canDelete: canManageTask(),
           task: schedule.task,
           isDueDateOnly: false,
         },
@@ -433,7 +433,7 @@ export function CalendarPage() {
           scheduleId: null,
           taskId: task.id,
           priority: task.priority,
-          canDelete: canManageTask(task.goalId),
+          canDelete: canManageTask(),
           task,
           isDueDateOnly: true,
         },
@@ -524,7 +524,7 @@ export function CalendarPage() {
       return
     }
 
-    if (!canManageTask(task.goalId)) {
+    if (!canManageTask()) {
       toast.error(t('calendar.permissionUpdateTask'))
       arg.revert?.()
       return
@@ -557,7 +557,7 @@ export function CalendarPage() {
       return
     }
 
-    if (!canManageTask(task.goalId)) {
+    if (!canManageTask()) {
       toast.error(t('calendar.permissionUpdateTask'))
       arg.revert?.()
       return
@@ -691,36 +691,53 @@ export function CalendarPage() {
           <div className="flex min-h-0 flex-1 overflow-x-auto">
             <div className="chronelis-calendar-frame flex h-full min-h-0 min-w-190 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm sm:min-w-0">
               <FullCalendar
-              ref={calendarRef}
-              plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-              initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
-              locale={i18n.language === 'vi' ? viLocale : undefined}
-              firstDay={1}
-              initialDate={currentDate}
-              headerToolbar={false}
-              height="100%"
-              nowIndicator={view === 'week'}
-              allDaySlot={false}
-              slotDuration="00:15:00"
-              slotLabelInterval="01:00:00"
-              snapDuration="00:15:00"
-              scrollTime="08:00:00"
-              selectable={canManageProject}
-              selectMirror={canManageProject}
-              editable={canManageProject}
-              eventStartEditable={canManageProject}
-              eventDurationEditable={canManageProject}
-              eventResizableFromStart={canManageProject}
-              expandRows
-              dayMaxEvents={3}
-              events={calendarEvents}
-              datesSet={handleDatesSet}
-              dayHeaderContent={(arg) => {
-                if (arg.view.type === 'timeGridWeek') {
+                ref={calendarRef}
+                plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                initialView={view === 'week' ? 'timeGridWeek' : 'dayGridMonth'}
+                locale={i18n.language === 'vi' ? viLocale : undefined}
+                firstDay={1}
+                initialDate={currentDate}
+                headerToolbar={false}
+                height="100%"
+                nowIndicator={view === 'week'}
+                allDaySlot={false}
+                slotDuration="00:15:00"
+                slotLabelInterval="01:00:00"
+                snapDuration="00:15:00"
+                scrollTime="08:00:00"
+                selectable={canManageProject}
+                selectMirror={canManageProject}
+                editable={canManageProject}
+                eventStartEditable={canManageProject}
+                eventDurationEditable={canManageProject}
+                eventResizableFromStart={canManageProject}
+                expandRows
+                dayMaxEvents={3}
+                events={calendarEvents}
+                datesSet={handleDatesSet}
+                dayHeaderContent={(arg) => {
+                  if (arg.view.type === 'timeGridWeek') {
+                    return (
+                      <button
+                        type="button"
+                        className={`chronelis-day-header chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          navigateToTodoDate(arg.date)
+                        }}
+                        title={t('calendar.openTodoForDay')}
+                      >
+                        <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
+                        <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
+                      </button>
+                    )
+                  }
+
                   return (
                     <button
                       type="button"
-                      className={`chronelis-day-header chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
+                      className={`chronelis-day-header chronelis-day-header--month chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
                       onClick={(event) => {
                         event.preventDefault()
                         event.stopPropagation()
@@ -728,67 +745,50 @@ export function CalendarPage() {
                       }}
                       title={t('calendar.openTodoForDay')}
                     >
-                        <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
-                      <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
+                      <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
                     </button>
                   )
-                }
-
-                return (
-                  <button
-                    type="button"
-                    className={`chronelis-day-header chronelis-day-header--month chronelis-day-header--clickable ${arg.isToday ? 'is-today' : ''}`}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      navigateToTodoDate(arg.date)
-                    }}
-                    title={t('calendar.openTodoForDay')}
-                  >
-                    <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
-                  </button>
-                )
-              }}
-              dateClick={handleDateClick}
-              select={handleSelect}
-              eventClick={handleEventClick}
-              eventDrop={handleEventDrop}
-              eventResize={handleEventResize}
-              eventDidMount={(arg: CalendarEventMountArg) => {
-                arg.el.oncontextmenu = (event) => {
-                  const taskId = Number(arg.event.extendedProps.taskId)
-                  const canManage = Boolean(arg.event.extendedProps.canDelete)
-                  if (Number.isFinite(taskId)) {
-                    openCalendarTaskContextMenu(event as MouseEvent, taskId, canManage)
-                  }
-                }
-              }}
-              viewDidMount={() => {
-                requestAnimationFrame(() => calendarRef.current?.getApi().updateSize())
-              }}
-              eventClassNames={(arg) => {
-                const priority = String(arg.event.extendedProps.priority ?? 'MEDIUM') as TaskPriorityType
-                return PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM
-              }}
-              slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
-              eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
-              eventContent={(arg) => (
-                <div
-                  className="flex min-w-0 flex-col px-1 py-0.5"
-                  onContextMenu={(event) => {
+                }}
+                dateClick={handleDateClick}
+                select={handleSelect}
+                eventClick={handleEventClick}
+                eventDrop={handleEventDrop}
+                eventResize={handleEventResize}
+                eventDidMount={(arg: CalendarEventMountArg) => {
+                  arg.el.oncontextmenu = (event) => {
                     const taskId = Number(arg.event.extendedProps.taskId)
                     const canManage = Boolean(arg.event.extendedProps.canDelete)
                     if (Number.isFinite(taskId)) {
-                      openCalendarTaskContextMenu(event.nativeEvent, taskId, canManage)
+                      openCalendarTaskContextMenu(event as MouseEvent, taskId, canManage)
                     }
-                  }}
-                >
-                  <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
-                  {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
-                    <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
-                  ) : null}
-                </div>
-              )}
+                  }
+                }}
+                viewDidMount={() => {
+                  requestAnimationFrame(() => calendarRef.current?.getApi().updateSize())
+                }}
+                eventClassNames={(arg) => {
+                  const priority = String(arg.event.extendedProps.priority ?? 'MEDIUM') as TaskPriorityType
+                  return PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM
+                }}
+                slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
+                eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
+                eventContent={(arg) => (
+                  <div
+                    className="flex min-w-0 flex-col px-1 py-0.5"
+                    onContextMenu={(event) => {
+                      const taskId = Number(arg.event.extendedProps.taskId)
+                      const canManage = Boolean(arg.event.extendedProps.canDelete)
+                      if (Number.isFinite(taskId)) {
+                        openCalendarTaskContextMenu(event.nativeEvent, taskId, canManage)
+                      }
+                    }}
+                  >
+                    <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
+                    {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
+                      <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
+                    ) : null}
+                  </div>
+                )}
               />
             </div>
           </div>

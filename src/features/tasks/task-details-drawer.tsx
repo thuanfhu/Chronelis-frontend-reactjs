@@ -134,8 +134,8 @@ export function TaskDetailsDrawer() {
     dueDate: string
     scheduleStart: string
     scheduleEnd: string
-      dependencyTaskIds: number[]
-      blockerNote: string
+    dependencyTaskIds: number[]
+    blockerNote: string
   } | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
@@ -161,7 +161,7 @@ export function TaskDetailsDrawer() {
   const {
     currentUserId,
     isWorkspaceManager,
-    canManageTask: canManageTaskByGoal,
+    canManageTask,
     permissionsReady,
   } = useProjectPermissions({
     workspaceId: resolvedWorkspaceId,
@@ -762,7 +762,7 @@ export function TaskDetailsDrawer() {
     [dependencyTaskLookup, editDependencyTaskIds],
   )
 
-  const canManageCurrentTask = Boolean(task && permissionsReady && canManageTaskByGoal(task.goalId))
+  const canManageCurrentTask = Boolean(task && permissionsReady && canManageTask())
   const isDuplicateMode = taskDrawerMode === 'duplicate' && canManageCurrentTask
   const isEditingTask = (taskDrawerMode === 'edit' || taskDrawerMode === 'duplicate') && canManageCurrentTask
   const canModifyComment = (comment: TaskComment) => Boolean(
@@ -926,7 +926,7 @@ export function TaskDetailsDrawer() {
     ? Boolean(normalizedEditorState.title)
     : Boolean(
       editorSnapshot
-      && normalizedEditorState.title === ''
+        && normalizedEditorState.title === ''
         ? false
         : editorSnapshot
           ? (
@@ -951,629 +951,629 @@ export function TaskDetailsDrawer() {
   return (
     <>
       <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
-      <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <SheetHeader className="border-b px-6 py-4">
-          <div className="flex items-center gap-2">
-            <SheetTitle className="text-base">{isDuplicateMode ? t('task.duplicateTitle') : t('task.detailTitle')}</SheetTitle>
-            <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
+        <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+          <SheetHeader className="border-b px-6 py-4">
+            <div className="flex items-center gap-2">
+              <SheetTitle className="text-base">{isDuplicateMode ? t('task.duplicateTitle') : t('task.detailTitle')}</SheetTitle>
+              <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
 
-            <div className="ml-auto flex items-center gap-1">
-              {task && !isEditingTask && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`size-7 ${activeDrawerPanel === 'comments' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  onClick={() => setActiveDrawerPanel((currentPanel) => currentPanel === 'comments' ? 'details' : 'comments')}
-                  title={activeDrawerPanel === 'comments' ? t('task.backToDetail') : t('task.viewComments')}
-                >
-                  <MessageSquare className="size-3.5" />
-                </Button>
-              )}
-              {task && canManageCurrentTask && !isEditingTask && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  onClick={enterEditMode}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              )}
-              {task && canManageCurrentTask && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-destructive hover:text-destructive"
-                  onClick={() => openTaskDeleteConfirm(task.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
-              <SheetClose asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-muted-foreground hover:text-foreground"
-                  onClick={handleCloseDrawer}
-                >
-                  <X className="size-4" />
-                </Button>
-              </SheetClose>
+              <div className="ml-auto flex items-center gap-1">
+                {task && !isEditingTask && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`size-7 ${activeDrawerPanel === 'comments' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setActiveDrawerPanel((currentPanel) => currentPanel === 'comments' ? 'details' : 'comments')}
+                    title={activeDrawerPanel === 'comments' ? t('task.backToDetail') : t('task.viewComments')}
+                  >
+                    <MessageSquare className="size-3.5" />
+                  </Button>
+                )}
+                {task && canManageCurrentTask && !isEditingTask && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={enterEditMode}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                )}
+                {task && canManageCurrentTask && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-destructive hover:text-destructive"
+                    onClick={() => openTaskDeleteConfirm(task.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                )}
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground hover:text-foreground"
+                    onClick={handleCloseDrawer}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </SheetClose>
+              </div>
             </div>
-          </div>
-          <SheetDescription className="sr-only">{t('task.detailDescription')}</SheetDescription>
-        </SheetHeader>
+            <SheetDescription className="sr-only">{t('task.detailDescription')}</SheetDescription>
+          </SheetHeader>
 
-        {taskQuery.isLoading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : task ? (
-          <>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              {isEditingTask ? (
-                /* ─── EDIT / DUPLICATE FORM ─── */
-                <ScrollArea className="h-full">
-                <div className="space-y-5 px-6 py-5">
-                  {isDuplicateMode && (
-                    <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
-                      <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t('task.draftBadge')}</span>
-                      {t('task.duplicateBanner')}
-                    </div>
-                  )}
-
-                  {/* Tiêu đề */}
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <AlignLeft className="size-3" /> {t('task.titleLabel')} <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      value={editTitle ?? task.title}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      placeholder={t('task.titlePlaceholderShort')}
-                      className="text-sm font-medium"
-                    />
-                  </div>
-
-                  {/* Mô tả */}
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <AlignLeft className="size-3" /> {t('task.descriptionLabel')}
-                    </Label>
-                    <Textarea
-                      value={editDescription ?? task.description ?? ''}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder={t('task.descriptionPlaceholderShort')}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                  </div>
-
-                  {/* Ưu tiên */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Flag className="size-3" /> {t('task.priorityLabel')}
-                    </Label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {([
-                        { value: 'LOW', label: t('task.priorityLow'), cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
-                        { value: 'MEDIUM', label: t('task.priorityMedium'), cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
-                        { value: 'HIGH', label: t('task.priorityHigh'), cls: 'border-amber-300 text-amber-600 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500' },
-                        { value: 'URGENT', label: t('task.priorityUrgent'), cls: 'border-red-300 text-red-600 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500' },
-                      ] as const).map(({ value, label, cls }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          data-active={(editPriority ?? task.priority) === value}
-                          className={`h-8 rounded-md border text-xs font-semibold transition-colors ${cls}`}
-                          onClick={() => setEditPriority(value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Goal */}
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <Target className="size-3" /> {t('task.goalOptional')}
-                    </Label>
-                    <Select
-                      value={editGoalId != null ? String(editGoalId) : '__none'}
-                      onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
-                    >
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder={t('task.goalNonePlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">
-                          <span className="text-muted-foreground">{t('task.goalNoneOption')}</span>
-                        </SelectItem>
-                        {goals.map((goal) => (
-                          <SelectItem key={goal.id} value={String(goal.id)}>
-                            <span className="block max-w-70 truncate" title={goal.title}>{goal.title}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <User className="size-3" /> {t('task.assigneeLabel')}
-                      </Label>
-                      <SearchableSelectPopover
-                        value={editAssigneeId ?? '__unassigned'}
-                        options={assigneeOptions}
-                        placeholder={membersQuery.isLoading ? t('task.loadingMembers') : t('task.selectAssignee')}
-                        searchPlaceholder={t('task.searchAssignee')}
-                        emptyLabel={t('task.noMemberFound')}
-                        disabled={membersQuery.isLoading || membersQuery.isError}
-                        triggerClassName="h-9"
-                        onValueChange={(value) => setEditAssigneeId(value === '__unassigned' ? null : value)}
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <Calendar className="size-3" /> {t('task.deadline')}
-                      </Label>
-                      <Input
-                        type="datetime-local"
-                        step={900}
-                        value={editDueDate}
-                        onChange={(event) => setEditDueDate(event.target.value)}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Lịch hẹn */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <CalendarClock className="size-3" /> {t('task.scheduleOptionalLabel')}
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">{t('task.scheduleStartLabel')}</p>
-                        <Input
-                          type="datetime-local"
-                          step={900}
-                          value={editScheduleStart}
-                          onChange={(event) => setEditScheduleStart(event.target.value)}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">{t('task.scheduleEndLabel')}</p>
-                        <Input
-                          type="datetime-local"
-                          step={900}
-                          value={editScheduleEnd}
-                          onChange={(event) => setEditScheduleEnd(event.target.value)}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                    </div>
-                    {editScheduleStart && editScheduleEnd && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {t('task.scheduleEndValidation')}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 p-4">
-                    <div className="space-y-1">
-                      <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        <Link2 className="size-3" /> {t('task.dependenciesBlockers')}
-                      </Label>
-                      <p className="text-[11px] leading-5 text-muted-foreground">
-                        {t('task.dependenciesHelp')}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <SearchableSelectPopover
-                        value={dependencyCandidateId}
-                        options={dependencyTaskOptions}
-                        placeholder={projectTasksQuery.isLoading ? t('task.loadingTasks') : t('task.searchDependency')}
-                        searchPlaceholder={t('task.searchDependencyPlaceholder')}
-                        emptyLabel={t('task.noTaskFound')}
-                        disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
-                        triggerClassName="h-9"
-                        onValueChange={setDependencyCandidateId}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 shrink-0"
-                        disabled={!dependencyCandidateId}
-                        onClick={() => {
-                          const nextDependencyId = Number(dependencyCandidateId)
-                          if (!Number.isFinite(nextDependencyId)) {
-                            return
-                          }
-
-                          setEditDependencyTaskIds((current) => current.includes(nextDependencyId)
-                            ? current
-                            : [...current, nextDependencyId])
-                          setDependencyCandidateId(undefined)
-                        }}
-                      >
-                        {t('task.addDependency')}
-                      </Button>
-                    </div>
-
-                    {selectedDependencyTasks.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedDependencyTasks.map((dependencyTask) => (
-                          <button
-                            key={dependencyTask.id}
-                            type="button"
-                            className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-400/35 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30"
-                            onClick={() => setEditDependencyTaskIds((current) => current.filter((id) => id !== dependencyTask.id))}
-                          >
-                            <Link2 className="size-3" />
-                            <span className="truncate">{dependencyTask.title}</span>
-                            <span className="text-[10px] opacity-70">{t('task.removeDependency')}</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">{t('task.noDependency')}</p>
-                    )}
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-medium text-muted-foreground">{t('task.blockerNoteLabel')}</Label>
-                      <Textarea
-                        value={editBlockerNote}
-                        onChange={(event) => setEditBlockerNote(event.target.value)}
-                        placeholder={t('task.blockerNotePlaceholderLong')}
-                        rows={3}
-                        className="resize-none text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-                </ScrollArea>
-              ) : (
-                /* ─── VIEW MODE ─── */
-                <div className="relative h-full overflow-hidden bg-background">
-                  <AnimatePresence initial={false} mode="wait">
-                    {activeDrawerPanel === 'details' ? (
-                      <motion.div
-                        key="details"
-                        initial={{ x: -36, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 36, opacity: 0 }}
-                        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute inset-0"
-                      >
-                        <ScrollArea className="h-full">
-                    <div className="divide-y divide-border/50 pb-6">
-                      {/* Title + description + quick actions */}
-                      <div className="px-6 py-5">
-                        <h2
-                          className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
-                          style={{ overflowWrap: 'anywhere' }}
-                        >
-                          {task.title}
-                        </h2>
-                        {task.description && (
-                          <div className="mt-2">
-                            <p
-                              className={`whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${hasLongDescription && !descriptionExpanded ? 'line-clamp-4' : ''}`}
-                              style={{ overflowWrap: 'anywhere' }}
-                            >
-                              {task.description}
-                            </p>
-                            {hasLongDescription && (
-                              <button
-                                type="button"
-                                className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-                                onClick={() => setDescriptionExpanded((value) => !value)}
-                              >
-                                {descriptionExpanded ? t('common.showLess') : t('common.showMore')}
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant={task.isCompleted ? 'secondary' : 'default'}
-                            className="h-8 gap-1.5 text-xs"
-                            onClick={() => {
-                              if (!canManageCurrentTask) {
-                                toast.error(t('task.noPermission'))
-                                return
-                              }
-                              toggleCompletionMutation.mutate()
-                            }}
-                            disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
-                          >
-                            {toggleCompletionMutation.isPending ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : task.isCompleted ? (
-                              <CheckCircle2 className="size-3.5" />
-                            ) : (
-                              <Circle className="size-3.5" />
-                            )}
-                            {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
-                          </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title={t('task.pomodoroTitle')}>
-                            <Timer className="size-3.5" />
-                          </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title={t('task.focusMode')}>
-                            <Target className="size-3.5" />
-                          </Button>
-                          <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
-                            <NotebookText className="size-3.5" />
-                          </Button>
-
-                        </div>
-
-                        <TaskBlockerBadge task={task} className="mt-3" />
-
-                        <div className="mt-5 rounded-[28px] border border-border/70 bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(14,165,233,0.02)_58%,rgba(255,255,255,0.9))] p-4 shadow-[0_22px_50px_-34px_rgba(15,23,42,0.24)] dark:bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(14,165,233,0.05)_55%,rgba(15,23,42,0.72))]">
-                          <div className="flex items-start gap-3">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner shadow-primary/10">
-                              <MessageSquare className="size-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="text-sm font-semibold">{t('common.commentSection')}</p>
-                                    <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
-                                      {t('common.commentCount', { count: comments.length })}
-                                    </span>
-                                  </div>
-                                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                    {t('common.commentSectionDesc')}
-                                  </p>
-                                </div>
-
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs"
-                                  onClick={() => setActiveDrawerPanel('comments')}
-                                >
-                                  <MessageSquare className="size-3.5" />
-                                  {comments.length > 0 ? t('task.openCommentsAction') : t('task.startConversationAction')}
-                                </Button>
-                              </div>
-
-                              {latestCommentPreview ? (
-                                <div className="mt-3 rounded-[22px] border border-border/70 bg-background/75 px-3.5 py-3 dark:bg-background/15">
-                                  <p className="text-[11px] font-medium text-muted-foreground">
-                                    {t('task.latestCommentBy', { name: `${latestCommentPreview.user.firstName} ${latestCommentPreview.user.lastName}` })}
-                                  </p>
-                                  <p className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80" style={{ overflowWrap: 'anywhere' }}>
-                                    {latestCommentPreview.content}
-                                  </p>
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Properties */}
-                      <div className="px-6 py-4">
-                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.info')}</p>
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-3">
-                            <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.priorityLabel')}</p>
-                              <TaskPriorityBadge priority={task.priority} />
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.statusLabel')}</p>
-                              <Badge
-                                variant={task.status.isClosed ? 'secondary' : 'outline'}
-                                className="text-xs"
-                              >
-                                {task.status.name}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.assigneeInfo')}</p>
-                              {task.assignee ? (
-                                <div className="flex items-center gap-1.5">
-                                  <Avatar className="size-5">
-                                    <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
-                                      {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">{t('task.notAssigned')}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.dueDate')}</p>
-                              {task.dueDate ? (
-                                <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
-                                  {formatDateTime(task.dueDate)}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">{t('task.noDueDate')}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <p className="mb-1 text-[11px] text-muted-foreground">{t('task.goalLabel')}</p>
-                              {task.goalId ? (
-                                <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                                  <Target className="size-3 shrink-0" />
-                                  <span className="truncate">{goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })}</span>
-                                </span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">{t('task.noGoal')}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          {task.taskType && (
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
-                              <div className="min-w-0 flex-1">
-                                <p className="mb-1 text-[11px] text-muted-foreground">{t('task.taskTypeLabel')}</p>
-                                <Badge
-                                  variant="secondary"
-                                  className="gap-1 text-[11px]"
-                                  style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
-                                >
-                                  {task.taskType.icon && <span>{task.taskType.icon}</span>}
-                                  {task.taskType.name}
-                                </Badge>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="px-6 py-4">
-                        <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.dependenciesBlockers')}</p>
-                        <div className="space-y-3">
-                          {dependencyDetails?.blockerNote ? (
-                            <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">{t('task.blockerNoteLabel')}</p>
-                              <p className="mt-1 whitespace-pre-wrap leading-6">{dependencyDetails.blockerNote}</p>
-                            </div>
-                          ) : null}
-
-                          <DependencyTaskList
-                            title={t('task.blockedBy')}
-                            emptyLabel={t('task.noBlockedBy')}
-                            tasks={dependencyDetails?.blockedByTasks ?? []}
-                            onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
-                          />
-
-                          <DependencyTaskList
-                            title={t('task.blocking')}
-                            emptyLabel={t('task.noBlocking')}
-                            tasks={dependencyDetails?.blockingTasks ?? []}
-                            onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Schedule */}
-                      {primarySchedule && (
-                        <div className="px-6 py-4">
-                          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.scheduleLabel')}</p>
-                          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
-                            <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="size-3 text-muted-foreground" />
-                                  <span className="text-[11px] text-muted-foreground">{t('task.scheduleStartView')}</span>
-                                  <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="size-3 text-muted-foreground" />
-                                  <span className="text-[11px] text-muted-foreground">{t('task.scheduleEndView')}</span>
-                                  <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+          {taskQuery.isLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : task ? (
+            <>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {isEditingTask ? (
+                  /* ─── EDIT / DUPLICATE FORM ─── */
+                  <ScrollArea className="h-full">
+                    <div className="space-y-5 px-6 py-5">
+                      {isDuplicateMode && (
+                        <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
+                          <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t('task.draftBadge')}</span>
+                          {t('task.duplicateBanner')}
                         </div>
                       )}
-                    </div>
-                        </ScrollArea>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="comments"
-                        initial={{ x: 36, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: -36, opacity: 0 }}
-                        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute inset-0"
-                      >
-                        <ScrollArea className="h-full">
-                          <TaskCommentsPanel
-                            taskTitle={task.title}
-                            comments={comments}
-                            canManageCurrentTask={canManageCurrentTask}
-                            canModifyComment={canModifyComment}
-                            newComment={newComment}
-                            replyParentCommentId={replyParentCommentId}
-                            editingCommentId={editingCommentId}
-                            editingCommentContent={editingCommentContent}
-                            addCommentPending={addCommentMutation.isPending}
-                            updateCommentPending={updateCommentMutation.isPending}
-                            onBack={() => setActiveDrawerPanel('details')}
-                            onNewCommentChange={setNewComment}
-                            onReplyParentCommentChange={setReplyParentCommentId}
-                            onEditingCommentContentChange={setEditingCommentContent}
-                            onStartEditing={(comment) => {
-                              setEditingCommentId(comment.id)
-                              setEditingCommentContent(comment.content)
-                            }}
-                            onCancelEditing={() => {
-                              setEditingCommentId(null)
-                              setEditingCommentContent('')
-                            }}
-                            onAddComment={() => addCommentMutation.mutate()}
-                            onUpdateComment={() => updateCommentMutation.mutate()}
-                            onDeleteComment={(commentId) => deleteCommentMutation.mutate(commentId)}
+
+                      {/* Tiêu đề */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <AlignLeft className="size-3" /> {t('task.titleLabel')} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          value={editTitle ?? task.title}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder={t('task.titlePlaceholderShort')}
+                          className="text-sm font-medium"
+                        />
+                      </div>
+
+                      {/* Mô tả */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <AlignLeft className="size-3" /> {t('task.descriptionLabel')}
+                        </Label>
+                        <Textarea
+                          value={editDescription ?? task.description ?? ''}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder={t('task.descriptionPlaceholderShort')}
+                          rows={3}
+                          className="resize-none text-sm"
+                        />
+                      </div>
+
+                      {/* Ưu tiên */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <Flag className="size-3" /> {t('task.priorityLabel')}
+                        </Label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {([
+                            { value: 'LOW', label: t('task.priorityLow'), cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
+                            { value: 'MEDIUM', label: t('task.priorityMedium'), cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
+                            { value: 'HIGH', label: t('task.priorityHigh'), cls: 'border-amber-300 text-amber-600 data-[active=true]:bg-amber-500 data-[active=true]:text-white data-[active=true]:border-amber-500' },
+                            { value: 'URGENT', label: t('task.priorityUrgent'), cls: 'border-red-300 text-red-600 data-[active=true]:bg-red-500 data-[active=true]:text-white data-[active=true]:border-red-500' },
+                          ] as const).map(({ value, label, cls }) => (
+                            <button
+                              key={value}
+                              type="button"
+                              data-active={(editPriority ?? task.priority) === value}
+                              className={`h-8 rounded-md border text-xs font-semibold transition-colors ${cls}`}
+                              onClick={() => setEditPriority(value)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Goal */}
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <Target className="size-3" /> {t('task.goalOptional')}
+                        </Label>
+                        <Select
+                          value={editGoalId != null ? String(editGoalId) : '__none'}
+                          onValueChange={(value) => setEditGoalId(value === '__none' ? null : Number(value))}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder={t('task.goalNonePlaceholder')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">
+                              <span className="text-muted-foreground">{t('task.goalNoneOption')}</span>
+                            </SelectItem>
+                            {goals.map((goal) => (
+                              <SelectItem key={goal.id} value={String(goal.id)}>
+                                <span className="block max-w-70 truncate" title={goal.title}>{goal.title}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <User className="size-3" /> {t('task.assigneeLabel')}
+                          </Label>
+                          <SearchableSelectPopover
+                            value={editAssigneeId ?? '__unassigned'}
+                            options={assigneeOptions}
+                            placeholder={membersQuery.isLoading ? t('task.loadingMembers') : t('task.selectAssignee')}
+                            searchPlaceholder={t('task.searchAssignee')}
+                            emptyLabel={t('task.noMemberFound')}
+                            disabled={membersQuery.isLoading || membersQuery.isError}
+                            triggerClassName="h-9"
+                            onValueChange={(value) => setEditAssigneeId(value === '__unassigned' ? null : value)}
                           />
-                        </ScrollArea>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <Calendar className="size-3" /> {t('task.deadline')}
+                          </Label>
+                          <Input
+                            type="datetime-local"
+                            step={900}
+                            value={editDueDate}
+                            onChange={(event) => setEditDueDate(event.target.value)}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Lịch hẹn */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <CalendarClock className="size-3" /> {t('task.scheduleOptionalLabel')}
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <p className="text-[11px] text-muted-foreground">{t('task.scheduleStartLabel')}</p>
+                            <Input
+                              type="datetime-local"
+                              step={900}
+                              value={editScheduleStart}
+                              onChange={(event) => setEditScheduleStart(event.target.value)}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[11px] text-muted-foreground">{t('task.scheduleEndLabel')}</p>
+                            <Input
+                              type="datetime-local"
+                              step={900}
+                              value={editScheduleEnd}
+                              onChange={(event) => setEditScheduleEnd(event.target.value)}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                        </div>
+                        {editScheduleStart && editScheduleEnd && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {t('task.scheduleEndValidation')}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 p-4">
+                        <div className="space-y-1">
+                          <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <Link2 className="size-3" /> {t('task.dependenciesBlockers')}
+                          </Label>
+                          <p className="text-[11px] leading-5 text-muted-foreground">
+                            {t('task.dependenciesHelp')}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <SearchableSelectPopover
+                            value={dependencyCandidateId}
+                            options={dependencyTaskOptions}
+                            placeholder={projectTasksQuery.isLoading ? t('task.loadingTasks') : t('task.searchDependency')}
+                            searchPlaceholder={t('task.searchDependencyPlaceholder')}
+                            emptyLabel={t('task.noTaskFound')}
+                            disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
+                            triggerClassName="h-9"
+                            onValueChange={setDependencyCandidateId}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 shrink-0"
+                            disabled={!dependencyCandidateId}
+                            onClick={() => {
+                              const nextDependencyId = Number(dependencyCandidateId)
+                              if (!Number.isFinite(nextDependencyId)) {
+                                return
+                              }
+
+                              setEditDependencyTaskIds((current) => current.includes(nextDependencyId)
+                                ? current
+                                : [...current, nextDependencyId])
+                              setDependencyCandidateId(undefined)
+                            }}
+                          >
+                            {t('task.addDependency')}
+                          </Button>
+                        </div>
+
+                        {selectedDependencyTasks.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedDependencyTasks.map((dependencyTask) => (
+                              <button
+                                key={dependencyTask.id}
+                                type="button"
+                                className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-400/35 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30"
+                                onClick={() => setEditDependencyTaskIds((current) => current.filter((id) => id !== dependencyTask.id))}
+                              >
+                                <Link2 className="size-3" />
+                                <span className="truncate">{dependencyTask.title}</span>
+                                <span className="text-[10px] opacity-70">{t('task.removeDependency')}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{t('task.noDependency')}</p>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-medium text-muted-foreground">{t('task.blockerNoteLabel')}</Label>
+                          <Textarea
+                            value={editBlockerNote}
+                            onChange={(event) => setEditBlockerNote(event.target.value)}
+                            placeholder={t('task.blockerNotePlaceholderLong')}
+                            rows={3}
+                            className="resize-none text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  /* ─── VIEW MODE ─── */
+                  <div className="relative h-full overflow-hidden bg-background">
+                    <AnimatePresence initial={false} mode="wait">
+                      {activeDrawerPanel === 'details' ? (
+                        <motion.div
+                          key="details"
+                          initial={{ x: -36, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          exit={{ x: 36, opacity: 0 }}
+                          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                          className="absolute inset-0"
+                        >
+                          <ScrollArea className="h-full">
+                            <div className="divide-y divide-border/50 pb-6">
+                              {/* Title + description + quick actions */}
+                              <div className="px-6 py-5">
+                                <h2
+                                  className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
+                                  style={{ overflowWrap: 'anywhere' }}
+                                >
+                                  {task.title}
+                                </h2>
+                                {task.description && (
+                                  <div className="mt-2">
+                                    <p
+                                      className={`whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground ${hasLongDescription && !descriptionExpanded ? 'line-clamp-4' : ''}`}
+                                      style={{ overflowWrap: 'anywhere' }}
+                                    >
+                                      {task.description}
+                                    </p>
+                                    {hasLongDescription && (
+                                      <button
+                                        type="button"
+                                        className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                                        onClick={() => setDescriptionExpanded((value) => !value)}
+                                      >
+                                        {descriptionExpanded ? t('common.showLess') : t('common.showMore')}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant={task.isCompleted ? 'secondary' : 'default'}
+                                    className="h-8 gap-1.5 text-xs"
+                                    onClick={() => {
+                                      if (!canManageCurrentTask) {
+                                        toast.error(t('task.noPermission'))
+                                        return
+                                      }
+                                      toggleCompletionMutation.mutate()
+                                    }}
+                                    disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
+                                  >
+                                    {toggleCompletionMutation.isPending ? (
+                                      <Loader2 className="size-3.5 animate-spin" />
+                                    ) : task.isCompleted ? (
+                                      <CheckCircle2 className="size-3.5" />
+                                    ) : (
+                                      <Circle className="size-3.5" />
+                                    )}
+                                    {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
+                                  </Button>
+                                  <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title={t('task.pomodoroTitle')}>
+                                    <Timer className="size-3.5" />
+                                  </Button>
+                                  <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title={t('task.focusMode')}>
+                                    <Target className="size-3.5" />
+                                  </Button>
+                                  <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
+                                    <NotebookText className="size-3.5" />
+                                  </Button>
+
+                                </div>
+
+                                <TaskBlockerBadge task={task} className="mt-3" />
+
+                                <div className="mt-5 rounded-[28px] border border-border/70 bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(14,165,233,0.02)_58%,rgba(255,255,255,0.9))] p-4 shadow-[0_22px_50px_-34px_rgba(15,23,42,0.24)] dark:bg-[linear-gradient(135deg,rgba(59,130,246,0.16),rgba(14,165,233,0.05)_55%,rgba(15,23,42,0.72))]">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                                      <MessageSquare className="size-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <p className="text-sm font-semibold">{t('common.commentSection')}</p>
+                                            <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
+                                              {t('common.commentCount', { count: comments.length })}
+                                            </span>
+                                          </div>
+                                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                            {t('common.commentSectionDesc')}
+                                          </p>
+                                        </div>
+
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs"
+                                          onClick={() => setActiveDrawerPanel('comments')}
+                                        >
+                                          <MessageSquare className="size-3.5" />
+                                          {comments.length > 0 ? t('task.openCommentsAction') : t('task.startConversationAction')}
+                                        </Button>
+                                      </div>
+
+                                      {latestCommentPreview ? (
+                                        <div className="mt-3 rounded-[22px] border border-border/70 bg-background/75 px-3.5 py-3 dark:bg-background/15">
+                                          <p className="text-[11px] font-medium text-muted-foreground">
+                                            {t('task.latestCommentBy', { name: `${latestCommentPreview.user.firstName} ${latestCommentPreview.user.lastName}` })}
+                                          </p>
+                                          <p className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80" style={{ overflowWrap: 'anywhere' }}>
+                                            {latestCommentPreview.content}
+                                          </p>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Properties */}
+                              <div className="px-6 py-4">
+                                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.info')}</p>
+                                <div className="space-y-3">
+                                  <div className="flex items-start gap-3">
+                                    <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.priorityLabel')}</p>
+                                      <TaskPriorityBadge priority={task.priority} />
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.statusLabel')}</p>
+                                      <Badge
+                                        variant={task.status.isClosed ? 'secondary' : 'outline'}
+                                        className="text-xs"
+                                      >
+                                        {task.status.name}
+                                      </Badge>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
+                                    <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.assigneeInfo')}</p>
+                                      {task.assignee ? (
+                                        <div className="flex items-center gap-1.5">
+                                          <Avatar className="size-5">
+                                            <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
+                                              {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-sm">{task.assignee.firstName} {task.assignee.lastName}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground/50">{t('task.notAssigned')}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
+                                    <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.dueDate')}</p>
+                                      {task.dueDate ? (
+                                        <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
+                                          {formatDateTime(task.dueDate)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground/50">{t('task.noDueDate')}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
+                                    <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.goalLabel')}</p>
+                                      {task.goalId ? (
+                                        <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                                          <Target className="size-3 shrink-0" />
+                                          <span className="truncate">{goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })}</span>
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground/50">{t('task.noGoal')}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {task.taskType && (
+                                    <div className="flex items-start gap-3">
+                                      <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="mb-1 text-[11px] text-muted-foreground">{t('task.taskTypeLabel')}</p>
+                                        <Badge
+                                          variant="secondary"
+                                          className="gap-1 text-[11px]"
+                                          style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
+                                        >
+                                          {task.taskType.icon && <span>{task.taskType.icon}</span>}
+                                          {task.taskType.name}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="px-6 py-4">
+                                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.dependenciesBlockers')}</p>
+                                <div className="space-y-3">
+                                  {dependencyDetails?.blockerNote ? (
+                                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
+                                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">{t('task.blockerNoteLabel')}</p>
+                                      <p className="mt-1 whitespace-pre-wrap leading-6">{dependencyDetails.blockerNote}</p>
+                                    </div>
+                                  ) : null}
+
+                                  <DependencyTaskList
+                                    title={t('task.blockedBy')}
+                                    emptyLabel={t('task.noBlockedBy')}
+                                    tasks={dependencyDetails?.blockedByTasks ?? []}
+                                    onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
+                                  />
+
+                                  <DependencyTaskList
+                                    title={t('task.blocking')}
+                                    emptyLabel={t('task.noBlocking')}
+                                    tasks={dependencyDetails?.blockingTasks ?? []}
+                                    onOpenTask={(dependencyTaskId) => openTaskDrawer(dependencyTaskId, 'view')}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Schedule */}
+                              {primarySchedule && (
+                                <div className="px-6 py-4">
+                                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.scheduleLabel')}</p>
+                                  <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
+                                    <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <Clock className="size-3 text-muted-foreground" />
+                                          <span className="text-[11px] text-muted-foreground">{t('task.scheduleStartView')}</span>
+                                          <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <Clock className="size-3 text-muted-foreground" />
+                                          <span className="text-[11px] text-muted-foreground">{t('task.scheduleEndView')}</span>
+                                          <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="comments"
+                          initial={{ x: 36, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          exit={{ x: -36, opacity: 0 }}
+                          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                          className="absolute inset-0"
+                        >
+                          <ScrollArea className="h-full">
+                            <TaskCommentsPanel
+                              taskTitle={task.title}
+                              comments={comments}
+                              canManageCurrentTask={canManageCurrentTask}
+                              canModifyComment={canModifyComment}
+                              newComment={newComment}
+                              replyParentCommentId={replyParentCommentId}
+                              editingCommentId={editingCommentId}
+                              editingCommentContent={editingCommentContent}
+                              addCommentPending={addCommentMutation.isPending}
+                              updateCommentPending={updateCommentMutation.isPending}
+                              onBack={() => setActiveDrawerPanel('details')}
+                              onNewCommentChange={setNewComment}
+                              onReplyParentCommentChange={setReplyParentCommentId}
+                              onEditingCommentContentChange={setEditingCommentContent}
+                              onStartEditing={(comment) => {
+                                setEditingCommentId(comment.id)
+                                setEditingCommentContent(comment.content)
+                              }}
+                              onCancelEditing={() => {
+                                setEditingCommentId(null)
+                                setEditingCommentContent('')
+                              }}
+                              onAddComment={() => addCommentMutation.mutate()}
+                              onUpdateComment={() => updateCommentMutation.mutate()}
+                              onDeleteComment={(commentId) => deleteCommentMutation.mutate(commentId)}
+                            />
+                          </ScrollArea>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+
+              {isEditingTask && (
+                <div className="border-t bg-background/95 px-6 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={leaveEditMode}>{t('task.cancel')}</Button>
+                    <Button
+                      size="sm"
+                      onClick={() => saveTaskMutation.mutate()}
+                      disabled={saveTaskMutation.isPending || !hasEditorChanges}
+                    >
+                      {saveTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                      {t('task.saveChanges')}
+                    </Button>
+                  </div>
                 </div>
               )}
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-sm text-muted-foreground">{t('task.notFoundPage')}</p>
             </div>
-
-            {isEditingTask && (
-              <div className="border-t bg-background/95 px-6 py-3">
-                <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={leaveEditMode}>{t('task.cancel')}</Button>
-                  <Button
-                    size="sm"
-                    onClick={() => saveTaskMutation.mutate()}
-                    disabled={saveTaskMutation.isPending || !hasEditorChanges}
-                  >
-                    {saveTaskMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-                    {t('task.saveChanges')}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-muted-foreground">{t('task.notFoundPage')}</p>
-          </div>
-        )}
-      </SheetContent>
+          )}
+        </SheetContent>
       </Sheet>
 
     </>

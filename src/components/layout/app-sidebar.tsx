@@ -124,10 +124,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const [projectDialogTargetId, setProjectDialogTargetId] = useState<number | null>(null)
   const [projectFormName, setProjectFormName] = useState('')
   const [projectFormDescription, setProjectFormDescription] = useState('')
+  const [projectFormVisibility, setProjectFormVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [projectFormManagerUserId, setProjectFormManagerUserId] = useState('')
   const [projectFormManagerTeamId, setProjectFormManagerTeamId] = useState('')
   const [projectInitialName, setProjectInitialName] = useState('')
   const [projectInitialDescription, setProjectInitialDescription] = useState('')
+  const [projectInitialVisibility, setProjectInitialVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [projectInitialManagerUserId, setProjectInitialManagerUserId] = useState('')
   const [projectInitialManagerTeamId, setProjectInitialManagerTeamId] = useState('')
 
@@ -186,6 +188,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     : (
       projectFormName.trim() !== projectInitialName
       || projectFormDescription.trim() !== projectInitialDescription
+      || (isOwner && projectFormVisibility !== projectInitialVisibility)
       || (isOwner && projectFormManagerUserId !== projectInitialManagerUserId)
       || (isOwner && projectFormManagerTeamId !== projectInitialManagerTeamId)
     )
@@ -203,10 +206,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     setProjectDialogTargetId(null)
     setProjectFormName('')
     setProjectFormDescription('')
+    setProjectFormVisibility('PUBLIC')
     setProjectFormManagerUserId('')
     setProjectFormManagerTeamId('')
     setProjectInitialName('')
     setProjectInitialDescription('')
+    setProjectInitialVisibility('PUBLIC')
     setProjectInitialManagerUserId('')
     setProjectInitialManagerTeamId('')
     setProjectDialogOpen(true)
@@ -217,10 +222,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     setProjectDialogTargetId(project.id)
     setProjectFormName(project.name)
     setProjectFormDescription(project.description ?? '')
+    setProjectFormVisibility(project.visibility ?? 'PUBLIC')
     setProjectFormManagerUserId(project.managerUser?.userId ?? '')
     setProjectFormManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
     setProjectInitialName(project.name.trim())
     setProjectInitialDescription((project.description ?? '').trim())
+    setProjectInitialVisibility(project.visibility ?? 'PUBLIC')
     setProjectInitialManagerUserId(project.managerUser?.userId ?? '')
     setProjectInitialManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
     setProjectDialogOpen(true)
@@ -255,6 +262,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const openContextMenu = (event: MouseEvent<HTMLElement>, target: SidebarContextTarget) => {
     event.preventDefault()
     event.stopPropagation()
+    if (!isOwner) {
+      return
+    }
 
     const clampedX = Math.min(event.clientX, window.innerWidth - 228)
     const clampedY = Math.min(event.clientY, window.innerHeight - 228)
@@ -299,12 +309,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         workspaceId: number
         name: string
         description?: string
+        visibility: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
         managerTeamId?: number
       } = {
         workspaceId,
         name: projectFormName.trim(),
         description: projectFormDescription.trim() || undefined,
+        visibility: projectFormVisibility,
       }
 
       if (isOwner) {
@@ -330,6 +342,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         name: projectFormName.trim(),
         description: projectFormDescription.trim() || undefined,
         status: 'ACTIVE',
+        visibility: projectFormVisibility,
         createdBy: {
           userId: currentUser?.userId ?? '',
           email: currentUser?.email ?? '',
@@ -414,6 +427,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       const payload: {
         name: string
         description?: string
+        visibility?: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
         managerTeamId?: number
       } = {
@@ -422,6 +436,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       }
 
       if (isOwner) {
+        payload.visibility = projectFormVisibility
         payload.managerUserId = projectFormManagerUserId || undefined
         payload.managerTeamId = projectFormManagerTeamId ? Number(projectFormManagerTeamId) : undefined
       }
@@ -890,10 +905,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   to={`/workspaces/${workspaceId}`}
                   end
                   className={({ isActive }) =>
-                    `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
-                      isActive
-                        ? 'border-primary/30 bg-primary/10 text-primary'
-                        : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${isActive
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                     }`
                   }
                   title={t('sidebar.workspaceOverview')}
@@ -906,10 +920,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               <NavLink
                 to="/my-work"
                 className={({ isActive }) =>
-                  `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
-                    isActive
-                      ? 'border-primary/30 bg-primary/10 text-primary'
-                      : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${isActive
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`
                 }
                 title={t('nav.myWork')}
@@ -963,17 +976,19 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   {t('sidebar.projectsSection')}
                 </button>
 
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-muted-foreground hover:text-foreground"
-                    onClick={openProjectCreateDialog}
-                    title={t('common.create')}
-                  >
-                    <Plus className="size-3.5" />
-                  </Button>
-                </div>
+                {isOwner && (
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 text-muted-foreground hover:text-foreground"
+                      onClick={openProjectCreateDialog}
+                      title={t('common.create')}
+                    >
+                      <Plus className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <AnimatePresence initial={false}>
@@ -1145,10 +1160,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           <ProjectFormFields
             name={projectFormName}
             description={projectFormDescription}
+            visibility={projectFormVisibility}
             managerUserId={projectFormManagerUserId}
             managerTeamId={projectFormManagerTeamId}
             onNameChange={setProjectFormName}
             onDescriptionChange={setProjectFormDescription}
+            onVisibilityChange={setProjectFormVisibility}
             onManagerUserChange={setProjectFormManagerUserId}
             onManagerTeamChange={setProjectFormManagerTeamId}
             members={members}
@@ -1414,12 +1431,12 @@ function ProjectItem({
                   <NavLink
                     key={goal.id}
                     to={`/workspaces/${workspaceId}/projects/${project.id}/goals/${goal.id}/tasks`}
-                      className={({ isActive }) => cn(
-                        'group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] transition-colors',
-                        isActive
-                          ? 'bg-sidebar-primary/14 font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-primary/20'
-                          : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
-                      )}
+                    className={({ isActive }) => cn(
+                      'group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] transition-colors',
+                      isActive
+                        ? 'bg-sidebar-primary/14 font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-primary/20'
+                        : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
+                    )}
                     onContextMenu={(event) => onOpenContextMenu(event, { kind: 'goal', goal, project })}
                   >
                     <Target className="size-3 shrink-0 text-muted-foreground/80" />
