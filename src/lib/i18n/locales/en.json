@@ -7,6 +7,8 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
+    "general": "General",
+    "manager": "Manager",
     "saveChanges": "Save changes",
     "description": "Manage your personal information, login email, and account security.",
     "loadFailed": "Unable to load profile information. Please sign in again.",

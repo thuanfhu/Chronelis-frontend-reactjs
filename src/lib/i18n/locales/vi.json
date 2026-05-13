@@ -7,6 +7,8 @@
     "cancel": "Hủy",
     "delete": "Xóa",
     "edit": "Sửa",
+    "general": "Chung",
+    "manager": "Người quản lý",
     "saveChanges": "Lưu thay đổi",
     "description": "Quản lý thông tin cá nhân, email đăng nhập và bảo mật tài khoản.",
     "loadFailed": "Không tải được thông tin hồ sơ. Vui lòng đăng nhập lại.",
