@@ -148,9 +148,12 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
         className="chronelis-auth-panel-copy"
       >
         {content.showBrand ? (
-          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop">
-            <span className="chronelis-auth-brand-badge">C</span>
-            <span className="chronelis-auth-brand-text">Chronelis</span>
+          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop relative h-8 w-32 flex items-center justify-center">
+            <img
+              src="/favicon/chronelis-logo.png"
+              alt="Chronelis"
+              className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+            />
           </Link>
         ) : null}
 
@@ -330,7 +333,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const leftPanelCopy: PanelCopy = mode === 'forgot-password'
     ? {
         key: 'forgot-left',
-        showBrand: true,
+        showBrand: false,
         title: t('auth.panelForgotLeftTitle'),
         description: t('auth.panelForgotLeftDesc'),
         actionLabel: t('auth.switchSignUp'),
@@ -338,7 +341,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       }
     : {
         key: 'welcome-left',
-        showBrand: true,
+        showBrand: false,
         title: t('auth.panelWelcomeTitle'),
         description: t('auth.panelWelcomeDesc'),
         actionLabel: t('auth.switchSignUp'),
@@ -378,9 +381,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: 10 }}
             transition={FORM_TRANSITION}
           >
-            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
-              <span className="chronelis-auth-brand-badge">C</span>
-              <span className="chronelis-auth-brand-text">Chronelis</span>
+            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
+              <img
+                src="/favicon/chronelis-logo.png"
+                alt="Chronelis"
+                className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+              />
             </Link>
 
             <h2 className="chronelis-auth-title">{t('auth.login')}</h2>
@@ -604,9 +610,12 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: -10 }}
             transition={FORM_TRANSITION}
           >
-            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile">
-              <span className="chronelis-auth-brand-badge">C</span>
-              <span className="chronelis-auth-brand-text">Chronelis</span>
+            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
+              <img
+                src="/favicon/chronelis-logo.png"
+                alt="Chronelis"
+                className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+              />
             </Link>
 
             <h2 className="chronelis-auth-title">{t('auth.forgotPassword')}</h2>

@@ -511,6 +511,12 @@
   text-decoration: none;
 }
 
+.chronelis-auth-brand-logo {
+  display: block;
+  height: 2rem;
+  width: auto;
+}
+
 .chronelis-auth-brand-badge {
   display: inline-flex;
   align-items: center;

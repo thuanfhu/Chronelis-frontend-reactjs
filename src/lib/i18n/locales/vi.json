@@ -1,8 +1,9 @@
-{
+﻿{
   "common": {
     "appName": "Chronelis",
     "loading": "Đang tải...",
     "save": "Lưu",
+    "create": "Tạo",
     "cancel": "Hủy",
     "delete": "Xóa",
     "edit": "Sửa",
@@ -42,7 +43,8 @@
       "currentEmail": "Email hiện tại",
       "newEmail": "Email mới",
       "confirmPassword": "Xác nhận mật khẩu mới",
-      "pendingEmail": "Đang chờ xác thực email mới:"
+      "pendingEmail": "Đang chờ xác thực email mới:",
+      "userId": "ID người dùng"
     },
     "placeholders": {
       "nickname": "Ví dụ: phuong.pm",
@@ -61,7 +63,8 @@
       "saveProfile": "Lưu hồ sơ",
       "sendEmailChange": "Gửi yêu cầu đổi email",
       "updatePassword": "Cập nhật mật khẩu",
-      "applyAvatar": "Áp dụng"
+      "applyAvatar": "Áp dụng",
+      "copyUserId": "Sao chép ID"
     },
     "crop": {
       "title": "Chỉnh sửa ảnh đại diện",
@@ -487,14 +490,14 @@
     "dueTomorrow": "Hạn ngày mai",
     "dueInDays": "{{count}} ngày nữa",
     "noDeadlineSet": "Chưa đặt deadline",
-    "pageOf": "Trang {{current}}/{{total}}"
-    ,"priorityPlaceholder": "Mức ưu tiên"
-    ,"sortPlaceholder": "Sắp xếp"
-    ,"emptyAllTitle": "Không có task nào khớp bộ lọc hiện tại."
-    ,"emptyAllDescription": "Hãy thử bỏ bớt bộ lọc hoặc tải lại để lấy danh sách việc mới nhất được giao cho bạn."
-    ,"projectFallback": "Dự án #{{id}}"
-    ,"aiTaskPrompt": "Hãy tóm tắt bước tiếp theo cho task \"{{title}}\" bằng ngôn ngữ dễ hiểu, chỉ ra blocker hiện tại và đề xuất việc nên làm ngay trong project hiện tại."
-    ,"aiSmartPrompt": "Dựa trên task ưu tiên hiện tại là \"{{title}}\", hãy đề xuất thứ tự xử lý blocker, việc nên làm ngay và cách giữ nhịp cho phần việc còn lại trong project này."
+    "pageOf": "Trang {{current}}/{{total}}",
+    "priorityPlaceholder": "Mức ưu tiên",
+    "sortPlaceholder": "Sắp xếp",
+    "emptyAllTitle": "Không có task nào khớp bộ lọc hiện tại.",
+    "emptyAllDescription": "Hãy thử bỏ bớt bộ lọc hoặc tải lại để lấy danh sách việc mới nhất được giao cho bạn.",
+    "projectFallback": "Dự án #{{id}}",
+    "aiTaskPrompt": "Hãy tóm tắt bước tiếp theo cho task \"{{title}}\" bằng ngôn ngữ dễ hiểu, chỉ ra blocker hiện tại và đề xuất việc nên làm ngay trong project hiện tại.",
+    "aiSmartPrompt": "Dựa trên task ưu tiên hiện tại là \"{{title}}\", hãy đề xuất thứ tự xử lý blocker, việc nên làm ngay và cách giữ nhịp cho phần việc còn lại trong project này."
   },
   "kanban": {
     "title": "Kanban Board",
@@ -1152,11 +1155,21 @@
     "invite": "Mời thành viên",
     "role": "Vai trò",
     "owner": "Chủ sở hữu",
-    "admin": "Quản trị viên",
     "member": "Thành viên",
     "joinByInvite": "Tham gia workspace",
     "joinSuccess": "Đã tham gia workspace thành công",
-    "leaveConfirm": "Bạn có chắc muốn rời khỏi workspace này?"
+    "leaveConfirm": "Bạn có chắc muốn rời khỏi workspace này?",
+    "field": {
+      "visibility": "Visibility",
+      "managerUser": "Quản lý project",
+      "managerTeam": "Team quản lý"
+    },
+    "visibility": {
+      "public": "Công khai",
+      "private": "Riêng tư",
+      "publicDescription": "Hiển thị với tất cả thành viên workspace",
+      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập"
+    }
   },
   "project": {
     "title": "Project",
@@ -1183,6 +1196,52 @@
       "ACTIVE": "Đang hoạt động",
       "COMPLETED": "Hoàn thành",
       "ARCHIVED": "Lưu trữ"
+    },
+    "settings": {
+      "title": "Cài đặt Project",
+      "description": "Quản lý quyền truy cập và visibility của project",
+      "currentAccess": "Quyền truy cập hiện tại",
+      "currentAccessDescription": "Thông tin về quyền của bạn trong project này",
+      "visibility": "Visibility",
+      "yourRole": "Vai trò của bạn",
+      "roleManagerDescription": "Bạn có toàn quyền quản lý project này",
+      "roleContributorDescription": "Bạn có thể tạo và chỉnh sửa task, comment",
+      "roleViewerDescription": "Bạn chỉ có quyền xem thông tin project",
+      "roleNoAccessDescription": "Bạn không có quyền truy cập project này",
+      "roleExplanationTitle": "Giải thích vai trò",
+      "roleExplanationDescription": "Các vai trò trong project và quyền tương ứng",
+      "roleManagerFullDescription": "Quản lý toàn bộ project. Có thể quản lý công việc và cấp quyền CONTRIBUTOR/VIEWER. Không thể thay đổi visibility, xóa project, hoặc cấp quyền MANAGER.",
+      "roleContributorFullDescription": "Có thể tạo và chỉnh sửa task, goals, và comment. Không thể quản lý quyền truy cập hoặc thay đổi cài đặt.",
+      "roleViewerFullDescription": "Chỉ có quyền xem task và goals. Có thể xem comment nhưng không thể tạo.",
+      "accessManagement": "Quản lý quyền truy cập",
+      "accessManagementDescription": "Cấp và quản lý quyền cho người dùng và team",
+      "managerRestricted": "Được hạn chế",
+      "addAccess": "Thêm quyền truy cập",
+      "addAccessTitle": "Thêm quyền truy cập mới",
+      "addAccessDescription": "Cấp quyền truy cập cho người dùng hoặc team vào project này",
+      "subjectType": "Loại đối tượng",
+      "user": "Người dùng",
+      "team": "Team",
+      "selectUser": "Chọn người dùng",
+      "selectUserPlaceholder": "Chọn người dùng từ workspace",
+      "selectTeam": "Chọn team",
+      "selectTeamPlaceholder": "Chọn team từ workspace",
+      "role": "Vai trò",
+      "managerRestrictedHint": "Chỉ workspace owner mới có thể cấp quyền MANAGER",
+      "noAccessGrants": "Chưa có quyền truy cập nào được cấp",
+      "grantedBy": "Cấp bởi {{name}}"
+    },
+    "visibility": {
+      "public": "Công khai",
+      "private": "Riêng tư",
+      "publicDescription": "Hiển thị với tất cả thành viên workspace. Mặc định CONTRIBUTOR cho mọi người.",
+      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập."
+    },
+    "role": {
+      "manager": "Quản lý dự án",
+      "contributor": "Thành viên thực hiện",
+      "viewer": "Chỉ xem",
+      "no_access": "Không có quyền"
     }
   },
   "ai": {
@@ -1364,7 +1423,8 @@
       "currentEmail": "Email hiện tại",
       "newEmail": "Email mới",
       "confirmPassword": "Xác nhận mật khẩu mới",
-      "pendingEmail": "Đang chờ xác thực email mới:"
+      "pendingEmail": "Đang chờ xác thực email mới:",
+      "userId": "ID người dùng"
     },
     "placeholders": {
       "nickname": "Ví dụ: phuong.pm",
@@ -1383,7 +1443,8 @@
       "saveProfile": "Lưu hồ sơ",
       "sendEmailChange": "Gửi yêu cầu đổi email",
       "updatePassword": "Cập nhật mật khẩu",
-      "applyAvatar": "Áp dụng"
+      "applyAvatar": "Áp dụng",
+      "copyUserId": "Sao chép ID"
     },
     "crop": {
       "title": "Chỉnh sửa ảnh đại diện",
@@ -1412,7 +1473,8 @@
       "avatarTooLarge": "Ảnh đại diện tối đa 5MB",
       "avatarUpdated": "Đã cập nhật ảnh đại diện",
       "avatarUploadFailed": "Không thể tải ảnh đại diện",
-      "avatarUploadFallback": "Upload ảnh thất bại"
+      "avatarUploadFallback": "Upload ảnh thất bại",
+      "userIdCopied": "Đã sao chép ID người dùng"
     }
   },
   "activity": {
@@ -1435,7 +1497,6 @@
     "noWorkspaces": "Chưa có workspace nào.",
     "role": {
       "owner": "Chủ sở hữu",
-      "admin": "Quản lý",
       "member": "Thành viên"
     },
     "entity": {
@@ -1468,14 +1529,13 @@
     },
     "roleDesc": {
       "owner": "Tạo workspace, có toàn quyền: xóa workspace, quản lý thành viên, phân quyền mọi người.",
-      "admin": "Quản lý workspace ủy quyền: tạo project, tạo team, thêm/xóa thành viên. Không thể xóa workspace.",
-      "member": "Thành viên thường: xem project, làm việc với task được giao. Không tạo hoặc xóa project."
+      "member": "Thành viên workspace: xem project công khai và project riêng tư khi được cấp quyền dự án."
     },
     "notFound": "Workspace không tồn tại.",
     "backToList": "Quay lại danh sách",
     "headerDesc": "Chủ sở hữu: {{owner}} · {{memberCount}} thành viên · {{projectCount}} dự án · Vai trò của bạn: {{role}}",
     "badge": {
-      "memberReadOnly": "MEMBER chỉ có quyền đọc trừ project được giao manager",
+      "memberReadOnly": "MEMBER chỉ làm việc trong các project được quyền truy cập",
       "you": "Bạn",
       "managerUser": "Người quản lý: {{name}}",
       "managerTeam": "Nhóm quản lý: {{name}}"
@@ -1589,7 +1649,7 @@
     },
     "projects": {
       "description": "Danh sách project trong workspace",
-      "readOnlyNotice": "Bạn đang ở chế độ read-only. Chỉ owner/admin hoặc manager được phân scope mới có thể chỉnh sửa project.",
+      "readOnlyNotice": "Chỉ owner workspace được tạo, xóa hoặc đổi visibility của project.",
       "empty": "Chưa có project nào",
       "emptyHint": "Tạo project đầu tiên để bắt đầu"
     },

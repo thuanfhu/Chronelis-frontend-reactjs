@@ -35,8 +35,14 @@ export function AdminShell() {
             <Menu className="size-4" />
           </Button>
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Chronelis</p>
+          <div className="flex flex-col gap-1">
+            <div className="relative h-4 w-32">
+              <img
+                src="/favicon/chronelis-logo.png"
+                alt="Chronelis"
+                className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+              />
+            </div>
             <p className="text-sm font-semibold leading-none">Admin Console</p>
           </div>
         </header>

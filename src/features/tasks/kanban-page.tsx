@@ -558,7 +558,7 @@ export function KanbanPage() {
                   tasks={columnTasks}
                   onTaskClick={(taskId) => openTaskDrawer(taskId, 'view')}
                   onTaskContextMenu={(event, task) => {
-                    if (canManageTask(task.goalId)) {
+                    if (canManageTask()) {
                       openTaskContextMenu(event, task)
                     }
                   }}

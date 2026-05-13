@@ -8,11 +8,12 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
     <div className="flex min-h-dvh">
       {/* Left panel — brand */}
       <div className="hidden flex-1 flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
-        <Link to="/login" className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-white/20">
-            <span className="text-sm font-bold">C</span>
-          </div>
-          <span className="text-sm font-bold tracking-tight">Chronelis</span>
+        <Link to="/login" className="flex items-center relative h-8 w-32">
+          <img
+            src="/favicon/chronelis-logo.png"
+            alt="Chronelis"
+            className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+          />
         </Link>
 
         <div className="max-w-md">
@@ -30,11 +31,12 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
       {/* Right panel — form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-[420px]">
-          <Link to="/login" className="mb-6 flex items-center gap-2.5 lg:hidden">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-primary">
-              <span className="text-xs font-bold text-primary-foreground">C</span>
-            </div>
-            <span className="text-sm font-bold tracking-tight">Chronelis</span>
+          <Link to="/login" className="mb-6 flex items-center lg:hidden relative h-7 w-32">
+            <img
+              src="/favicon/chronelis-logo.png"
+              alt="Chronelis"
+              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+            />
           </Link>
 
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>

@@ -1,7 +1,11 @@
 import type { PaginationMeta } from '@/types/api'
 
-export type WorkspaceMemberRoleType = 'OWNER' | 'ADMIN' | 'MEMBER'
+export type WorkspaceMemberRoleType = 'OWNER' | 'MEMBER'
 export type ProjectStatusType = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
+export type ProjectVisibilityType = 'PUBLIC' | 'PRIVATE'
+export type ProjectAccessRoleType = 'MANAGER' | 'CONTRIBUTOR' | 'VIEWER'
+export type ProjectAccessSubjectType = 'USER' | 'TEAM'
+export type EffectiveProjectAccessRoleType = ProjectAccessRoleType | 'NO_ACCESS'
 export type GoalType = 'SHORT_TERM' | 'MEDIUM_TERM' | 'LONG_TERM'
 export type GoalStatusType = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD'
 export type TaskPriorityType = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
@@ -117,6 +121,7 @@ export interface Project {
   name: string
   description?: string
   status: ProjectStatusType
+  visibility: ProjectVisibilityType
   createdBy: UserSummary
   managerUser?: UserSummary
   managerTeamId?: number

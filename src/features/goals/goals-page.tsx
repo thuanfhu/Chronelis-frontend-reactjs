@@ -213,7 +213,7 @@ export function GoalsPage() {
     ? 'OWNER'
     : currentMember?.role ?? 'MEMBER'
   const isOwner = currentRole === 'OWNER'
-  const isWorkspaceManager = isOwner || currentRole === 'ADMIN'
+  const isWorkspaceManager = isOwner
   const teamMembershipMap = teamMembershipQuery.data ?? new Map<number, Set<string>>()
   const isCurrentUserInManagerTeam = (teamId?: number) => Boolean(
     teamId

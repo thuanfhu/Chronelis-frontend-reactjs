@@ -12,6 +12,8 @@ export const queryKeys = {
     byWorkspace: (workspaceId: number, page: number, size: number) =>
       ['projects', 'workspace', workspaceId, page, size] as const,
     detail: (projectId: number) => ['projects', 'detail', projectId] as const,
+    effectiveAccess: (projectId: number) => ['projects', 'effective-access', projectId] as const,
+    access: (projectId: number) => ['projects', 'access', projectId] as const,
   },
   goals: {
     byProject: (projectId: number, page: number, size: number) => ['goals', projectId, page, size] as const,
