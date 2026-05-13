@@ -1210,32 +1210,7 @@
       "notFound": "Goal does not exist"
     }
   },
-  "workspace": {
-    "title": "Workspaces",
-    "create": "Create workspace",
-    "noWorkspaces": "No workspaces yet.",
-    "members": "Members",
-    "projects": "Projects",
-    "settings": "Settings",
-    "invite": "Invite members",
-    "role": "Role",
-    "owner": "Owner",
-    "member": "Member",
-    "joinByInvite": "Join workspace",
-    "joinSuccess": "Successfully joined workspace",
-    "leaveConfirm": "Are you sure you want to leave this workspace?",
-    "field": {
-      "visibility": "Visibility",
-      "managerUser": "Project Manager",
-      "managerTeam": "Manager Team"
-    },
-    "visibility": {
-      "public": "Public",
-      "private": "Private",
-      "publicDescription": "Visible to all workspace members",
-      "privateDescription": "Visible only to workspace owner and users/teams with access grants"
-    }
-  },
+
   "project": {
     "title": "Project",
     "overview": "Overview",
@@ -1527,6 +1502,12 @@
       "owner": "Owner",
       "member": "Member"
     },
+    "visibility": {
+      "public": "Public",
+      "private": "Private",
+      "publicDescription": "Visible to all workspace members",
+      "privateDescription": "Visible only to workspace owner and users/teams with access grants"
+    },
     "roleDesc": {
       "owner": "Created the workspace. Has full control: delete workspace, manage members, assign roles.",
       "member": "Workspace member: can see public projects and private projects only when project access is granted."
@@ -1632,7 +1613,8 @@
       "role": "Role",
       "assignedRole": "Assigned role",
       "maxUsesOptional": "Max uses (optional)",
-      "teamName": "Team name"
+      "teamName": "Team name",
+      "visibility": "Visibility"
     },
     "placeholder": {
       "projectName": "e.g. Sprint 1",

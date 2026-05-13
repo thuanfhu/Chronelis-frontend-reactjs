@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "appName": "Chronelis",
     "loading": "Đang tải...",
@@ -1145,32 +1145,7 @@
       "notFound": "Goal không tồn tại"
     }
   },
-  "workspace": {
-    "title": "Workspaces",
-    "create": "Tạo workspace",
-    "noWorkspaces": "Chưa có workspace nào.",
-    "members": "Thành viên",
-    "projects": "Projects",
-    "settings": "Cài đặt",
-    "invite": "Mời thành viên",
-    "role": "Vai trò",
-    "owner": "Chủ sở hữu",
-    "member": "Thành viên",
-    "joinByInvite": "Tham gia workspace",
-    "joinSuccess": "Đã tham gia workspace thành công",
-    "leaveConfirm": "Bạn có chắc muốn rời khỏi workspace này?",
-    "field": {
-      "visibility": "Visibility",
-      "managerUser": "Quản lý project",
-      "managerTeam": "Team quản lý"
-    },
-    "visibility": {
-      "public": "Công khai",
-      "private": "Riêng tư",
-      "publicDescription": "Hiển thị với tất cả thành viên workspace",
-      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập"
-    }
-  },
+
   "project": {
     "title": "Project",
     "overview": "Tổng quan",
@@ -1504,6 +1479,12 @@
       "project": "dự án",
       "team": "nhóm"
     },
+    "visibility": {
+      "public": "Công khai",
+      "private": "Riêng tư",
+      "publicDescription": "Hiển thị với tất cả thành viên workspace",
+      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập"
+    },
     "list": {
       "description": "Không gian làm việc cho đội nhóm và dự án",
       "createTitle": "Tạo workspace mới",
@@ -1632,7 +1613,8 @@
       "role": "Vai trò",
       "assignedRole": "Vai trò được gán",
       "maxUsesOptional": "Giới hạn lượt dùng (tùy chọn)",
-      "teamName": "Tên team"
+      "teamName": "Tên team",
+      "visibility": "Visibility"
     },
     "placeholder": {
       "projectName": "Ví dụ: Sprint 1",

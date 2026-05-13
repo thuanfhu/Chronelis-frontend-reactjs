@@ -70,7 +70,7 @@ function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className={`inline-flex h-6 cursor-default items-center gap-1 rounded-md border px-2 text-[11px] font-semibold ${roleBadgeClassName[role]}`}
+          className={`inline-flex h-6 w-24 cursor-default items-center justify-center gap-1 rounded-md border text-[11px] font-semibold ${roleBadgeClassName[role]}`}
         >
           <Icon className="size-3 shrink-0" />
           {t(`workspace.role.${key}`)}
@@ -1251,11 +1251,11 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span />
                 <span>{t('workspace.table.member')}</span>
+                <span />
                 <span>{t('workspace.table.role')}</span>
-                {canManageWorkspace && <span />}
               </div>
               <div className="divide-y divide-border/40">
                 {paginatedMembers.map((member) => {
@@ -1263,7 +1263,7 @@ export function WorkspaceDetailPage() {
                   const isSelf = member.user.userId === currentUserId
                   const joinedDate = new Date(member.joinedAt).toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' })
                   return (
-                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
+                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
                       <Avatar className="size-9 shrink-0">
                         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                           {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
@@ -1277,7 +1277,6 @@ export function WorkspaceDetailPage() {
                         <p className="truncate text-xs text-muted-foreground">{highlightMatch(member.user.email, memberSearch.trim())}</p>
                         <p className="text-[10px] text-muted-foreground/60">{t('workspace.members.joinedAt', { date: joinedDate })}</p>
                       </div>
-                      <RoleBadge role={member.role} />
                       {canManageWorkspace && !isOwnerMember && !isSelf ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1315,7 +1314,10 @@ export function WorkspaceDetailPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      ) : <span />}
+                      ) : (
+                        <div className="size-8" />
+                      )}
+                      <RoleBadge role={member.role} />
                     </div>
                   )
                 })}
