@@ -1508,7 +1508,14 @@
       "invalidInvite": "Invite không hợp lệ hoặc đã hết hạn",
       "loading": "Đang xác thực invite...",
       "backHome": "Về trang chủ",
-      "action": "Tham gia workspace"
+      "action": "Tham gia workspace",
+      "subtitle": "Bạn được mời tham gia vào không gian làm việc này",
+      "reviewInfo": "Hãy xem lại các thông tin trước khi tham gia không gian này.",
+      "yourRole": "Quyền hạn của bạn",
+      "roleOwnerDesc": "Chủ sở hữu (Quản trị toàn bộ)",
+      "roleMemberDesc": "Thành viên (Cộng tác viên)",
+      "inviteDate": "Ngày tạo lời mời",
+      "invitedBy": "Người mời"
     },
     "roleDesc": {
       "owner": "Tạo workspace, có toàn quyền: xóa workspace, quản lý thành viên, phân quyền mọi người.",

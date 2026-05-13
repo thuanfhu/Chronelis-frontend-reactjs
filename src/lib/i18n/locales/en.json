@@ -317,15 +317,6 @@
       "deleteConfirmGeneric": "Are you sure you want to delete this workspace?",
       "deleteWarning": "This workspace will be removed from your working list after you confirm."
     },
-    "join": {
-      "title": "Join workspace",
-      "success": "Joined workspace successfully",
-      "invalidCode": "Invalid invite code",
-      "invalidInvite": "Invite is invalid or has expired",
-      "loading": "Validating invite...",
-      "backHome": "Go to dashboard",
-      "action": "Join workspace"
-    },
     "showPassword": "Show password",
     "hideConfirmPassword": "Hide confirm password",
     "showConfirmPassword": "Show confirm password",
@@ -1500,6 +1491,24 @@
     "goBack": "Go back"
   },
   "workspace": {
+    "join": {
+      "title": "Join workspace",
+      "success": "Joined workspace successfully",
+      "invalidCode": "Invalid invite code",
+      "invalidInvite": "Invite is invalid or has expired",
+      "loading": "Validating invite...",
+      "backHome": "Go to dashboard",
+      "action": "Join workspace",
+      "subtitle": "You have been invited to join this workspace",
+      "reviewInfo": "Please review the information before joining this workspace.",
+      "yourRole": "Your role",
+      "roleOwnerDesc": "Owner (Full control)",
+      "roleMemberDesc": "Member (Contributor)",
+      "inviteDate": "Invite created date",
+      "invitedBy": "Invited by"
+    },
+    "title": "Workspaces",
+    "create": "Create workspace",
     "role": {
       "owner": "Owner",
       "member": "Member"
