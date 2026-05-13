@@ -333,7 +333,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const leftPanelCopy: PanelCopy = mode === 'forgot-password'
     ? {
         key: 'forgot-left',
-        showBrand: true,
+        showBrand: false,
         title: t('auth.panelForgotLeftTitle'),
         description: t('auth.panelForgotLeftDesc'),
         actionLabel: t('auth.switchSignUp'),
@@ -341,7 +341,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       }
     : {
         key: 'welcome-left',
-        showBrand: true,
+        showBrand: false,
         title: t('auth.panelWelcomeTitle'),
         description: t('auth.panelWelcomeDesc'),
         actionLabel: t('auth.switchSignUp'),
