@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  ShieldPlus,
   Trash2,
   X,
 } from 'lucide-react'
@@ -33,6 +34,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -52,6 +61,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { RoleBadge } from '@/features/admin/components/role-badge'
 import { queryKeys } from '@/lib/api/query-keys'
 import { adminPermissionApi, type CreatePermissionPayload, type UpdatePermissionPayload } from '@/lib/api/modules/admin-permission-api'
@@ -109,6 +119,14 @@ const MODULE_BADGE_STYLES = [
   'border-lime-300 bg-lime-100 text-lime-800 dark:border-lime-500/45 dark:bg-lime-500/15 dark:text-lime-200',
   'border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/45 dark:bg-sky-500/15 dark:text-sky-200',
   'border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-500/45 dark:bg-purple-500/15 dark:text-purple-200',
+  'border-rose-300 bg-rose-100 text-rose-800 dark:border-rose-500/45 dark:bg-rose-500/15 dark:text-rose-200',
+  'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/15 dark:text-emerald-200',
+  'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-500/45 dark:bg-amber-500/15 dark:text-amber-200',
+  'border-indigo-300 bg-indigo-100 text-indigo-800 dark:border-indigo-500/45 dark:bg-indigo-500/15 dark:text-indigo-200',
+  'border-teal-300 bg-teal-100 text-teal-800 dark:border-teal-500/45 dark:bg-teal-500/15 dark:text-teal-200',
+  'border-pink-300 bg-pink-100 text-pink-800 dark:border-pink-500/45 dark:bg-pink-500/15 dark:text-pink-200',
+  'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-500/45 dark:bg-blue-500/15 dark:text-blue-200',
+  'border-violet-300 bg-violet-100 text-violet-800 dark:border-violet-500/45 dark:bg-violet-500/15 dark:text-violet-200',
 ] as const
 
 function resolveModuleBadgeClass(moduleName: string): string {
@@ -1440,6 +1458,8 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
   const [permissionDialogMode, setPermissionDialogMode] = useState<'create' | 'edit'>('create')
   const [editingPermission, setEditingPermission] = useState<AdminPermission | null>(null)
   const [permissionForm, setPermissionForm] = useState<PermissionFormState>(EMPTY_PERMISSION_FORM)
+  const [selectedModule, setSelectedModule] = useState<string | null>(null)
+  const [moduleSearch, setModuleSearch] = useState('')
 
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false)
   const [moduleName, setModuleName] = useState('')
@@ -1447,17 +1467,28 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
 
   const filteredPermissions = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) {
-      return permissions
-    }
 
-    return permissions.filter((permission) => (
-      permission.name.toLowerCase().includes(q)
-      || permission.apiPath.toLowerCase().includes(q)
-      || permission.httpMethod.toLowerCase().includes(q)
-      || (permission.module ?? '').toLowerCase().includes(q)
-    ))
-  }, [permissions, search])
+    return permissions.filter((permission) => {
+      const matchesSearch = !q || (
+        permission.name.toLowerCase().includes(q)
+        || permission.apiPath.toLowerCase().includes(q)
+        || permission.httpMethod.toLowerCase().includes(q)
+        || (permission.module ?? '').toLowerCase().includes(q)
+      )
+
+      const matchesModule = !selectedModule || permission.module === selectedModule
+
+      return matchesSearch && matchesModule
+    })
+  }, [permissions, search, selectedModule])
+
+  const filteredModulesList = useMemo(() => {
+    const q = moduleSearch.trim().toLowerCase()
+    if (!q) {
+      return modules
+    }
+    return modules.filter((m) => m.toLowerCase().includes(q))
+  }, [modules, moduleSearch])
 
   const permissionsTotalPages = Math.max(1, Math.ceil(filteredPermissions.length / TABLE_PAGE_SIZE))
   const safePermissionsPage = Math.min(page, permissionsTotalPages)
@@ -1645,7 +1676,7 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
               {t('admin.permissions.description')}
             </CardDescription>
           </div>
-          <div className="flex w-full max-w-3xl flex-wrap gap-2">
+          <div className="flex w-full max-w-4xl flex-wrap items-center gap-2">
             <div className="relative min-w-64 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -1655,36 +1686,94 @@ function PermissionsAdminTab({ permissions, modules, onDataChanged }: Permission
                 className="pl-9"
               />
             </div>
-            <Button variant="outline" onClick={() => setModuleDialogOpen(true)}>
-              <Settings className="size-4" />
+
+            <Button variant="outline" onClick={() => setModuleDialogOpen(true)} className="gap-2">
+              <Plus className="size-4 text-primary" />
               {t('admin.permissions.createModule')}
             </Button>
-            <Button onClick={openCreatePermissionDialog}>
-              <Plus className="size-4" />
+
+            <DropdownMenu onOpenChange={(open) => { if (!open) setModuleSearch('') }}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className={cn('gap-2 transition-all duration-300', selectedModule && 'border-primary bg-primary/5 text-primary ring-2 ring-primary/20')}>
+                  <Settings className="size-4" />
+                  <span className="max-w-32 truncate font-semibold">{selectedModule || t('admin.permissions.moduleListTitle')}</span>
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-black">
+                    {modules.length}
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-2">
+                <DropdownMenuLabel className="flex items-center gap-2 pb-2">
+                  <ShieldCheck className="size-4 text-primary" />
+                  {t('admin.permissions.moduleListTitle')}
+                </DropdownMenuLabel>
+                
+                <div className="relative mb-2 px-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    value={moduleSearch}
+                    onChange={(event) => setModuleSearch(event.target.value)}
+                    placeholder={t('admin.permissions.searchPlaceholder')}
+                    className="h-8 pl-8 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => setSelectedModule(null)} disabled={!selectedModule} className="cursor-pointer rounded-md py-2">
+                  <X className="mr-2 size-4 text-muted-foreground" />
+                  <span className="text-xs font-medium">{t('admin.permissions.clearModuleFilter')}</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                
+                <ScrollArea className={cn('flex flex-col', filteredModulesList.length > 8 ? 'h-80' : 'h-auto')}>
+                  <div className="grid gap-1 px-1 py-1">
+                    {filteredModulesList.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <Search className="mb-2 size-8 text-muted-foreground/20" />
+                        <p className="text-[11px] text-muted-foreground">
+                          {moduleSearch ? t('admin.permissions.empty') : t('admin.permissions.emptyModules')}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredModulesList.map((moduleName) => (
+                        <DropdownMenuItem
+                          key={moduleName}
+                          onClick={() => setSelectedModule(moduleName)}
+                          className={cn(
+                            'group flex cursor-pointer items-center justify-between rounded-lg border-2 border-transparent px-3 py-2 text-xs transition-all duration-200',
+                            resolveModuleBadgeClass(moduleName),
+                            selectedModule === moduleName && 'ring-2 ring-primary ring-offset-1 border-primary/50 font-bold'
+                          )}
+                        >
+                          <span className="truncate">{moduleName}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 rounded-md text-inherit opacity-0 transition-all hover:bg-black/10 group-hover:opacity-100 dark:hover:bg-white/10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeleteModuleTarget(moduleName)
+                            }}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button onClick={openCreatePermissionDialog} className="gap-2 bg-primary font-bold shadow-md shadow-primary/25 hover:scale-105 active:scale-95 transition-all">
+              <ShieldPlus className="size-4" />
               {t('admin.permissions.newPermission')}
             </Button>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {modules.length === 0 ? (
-            <Badge variant="outline">{t('admin.permissions.emptyModules')}</Badge>
-          ) : (
-            modules.map((moduleName) => (
-              <div key={moduleName} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
-                <span className="font-medium">{moduleName}</span>
-                <button
-                  type="button"
-                  className="text-destructive"
-                  disabled={deleteModuleMutation.isPending}
-                  aria-label={t('admin.permissions.removeModuleButtonAria', { module: moduleName })}
-                  onClick={() => setDeleteModuleTarget(moduleName)}
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-            ))
-          )}
         </div>
       </CardHeader>
 

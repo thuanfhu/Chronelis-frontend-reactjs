@@ -18,6 +18,7 @@ import {
   ListTodo,
   User,
   ArrowUpDown,
+  CalendarOff,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -64,10 +65,10 @@ const goalStatusConfig: Record<GoalStatusType, { translationKey: string; icon: t
 }
 
 const priorityConfig: Record<TaskPriorityType, { translationKey: string; className: string; icon: string }> = {
-  LOW: { translationKey: 'task.priorityLow', className: 'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300', icon: '·' },
-  MEDIUM: { translationKey: 'task.priorityMedium', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300', icon: '↑' },
-  HIGH: { translationKey: 'task.priorityHigh', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', icon: '↑↑' },
-  URGENT: { translationKey: 'task.priorityUrgent', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', icon: '!!!' },
+  LOW: { translationKey: 'task.priorityLow', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300', icon: '·' },
+  MEDIUM: { translationKey: 'task.priorityMedium', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', icon: '↑' },
+  HIGH: { translationKey: 'task.priorityHigh', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', icon: '↑↑' },
+  URGENT: { translationKey: 'task.priorityUrgent', className: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300', icon: '!!!' },
 }
 
 type SortKey = 'status' | 'priority' | 'created' | 'title' | 'dueDate'
@@ -296,9 +297,9 @@ export function GoalTasksPage() {
           <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-x-4 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]">
             <span className="text-center">{t('goals.tasksPage.tableIndex')}</span>
             <span>{t('goals.tasksPage.tableTaskName')}</span>
-            <span className="hidden sm:block">{t('goals.tasksPage.tableStatus')}</span>
-            <span className="hidden sm:block">{t('goals.tasksPage.tablePriority')}</span>
-            <span className="hidden sm:block">{t('goals.tasksPage.tableAssignee')}</span>
+            <span className="hidden text-center sm:block">{t('goals.tasksPage.tableStatus')}</span>
+            <span className="hidden text-center sm:block">{t('goals.tasksPage.tablePriority')}</span>
+            <span className="hidden text-center sm:block">{t('goals.tasksPage.tableAssignee')}</span>
             <span className="hidden text-right sm:block">{t('goals.tasksPage.tableDueDate')}</span>
           </div>
 
@@ -340,7 +341,7 @@ export function GoalTasksPage() {
                         {task.status.name}
                       </span>
                       <span className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}>
-                        {pCfg.icon} {t(pCfg.translationKey)}
+                        {t(pCfg.translationKey)}
                       </span>
                       {dueDateStr && (
                         <span className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -351,17 +352,17 @@ export function GoalTasksPage() {
                   </div>
 
                   {/* Status */}
-                  <span className={`hidden truncate sm:inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-medium ${statusChipClass}`}>
+                  <span className={`hidden truncate sm:inline-flex h-6 items-center justify-center justify-self-center rounded-full border px-2.5 text-[11px] font-medium min-w-[5.5rem] ${statusChipClass}`}>
                     {task.status.name}
                   </span>
 
                   {/* Priority */}
-                  <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center ${pCfg.className}`}>
-                    {pCfg.icon} {t(pCfg.translationKey)}
+                  <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center justify-center justify-self-center min-w-[5rem] ${pCfg.className}`}>
+                    {t(pCfg.translationKey)}
                   </span>
 
                   {/* Assignee */}
-                  <span className="hidden items-center gap-1.5 sm:flex">
+                  <span className="hidden items-center justify-start gap-1.5 sm:flex pl-6">
                     {task.assignee ? (
                       <>
                         <Avatar className="size-5 shrink-0">
@@ -369,20 +370,28 @@ export function GoalTasksPage() {
                             {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate text-[11px] text-muted-foreground">
+                        <span className="truncate text-[11px] text-muted-foreground max-w-[5rem]">
                           {task.assignee.firstName} {task.assignee.lastName}
                         </span>
                       </>
                     ) : (
-                      <span className="inline-flex size-5 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground/30">
-                        <User className="size-2.5" />
-                      </span>
+                      <div className="flex items-center gap-1.5 opacity-30 select-none">
+                        <div className="flex size-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/50">
+                          <User className="size-2.5" />
+                        </div>
+                        <span className="text-[10px] italic">{t('task.notAssigned')}</span>
+                      </div>
                     )}
                   </span>
 
                   {/* Due date */}
                   <span className={`hidden text-right text-[11px] tabular-nums sm:block ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}>
-                    {dueDateStr ?? <span className="text-muted-foreground/30 select-none">—</span>}
+                    {dueDateStr ?? (
+                      <span className="inline-flex items-center gap-1 opacity-30 select-none">
+                        <CalendarOff className="size-3" />
+                        <span className="text-[10px] italic">{t('task.noDueDate')}</span>
+                      </span>
+                    )}
                   </span>
                 </button>
               )

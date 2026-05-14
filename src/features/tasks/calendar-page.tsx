@@ -260,6 +260,12 @@ export function CalendarPage() {
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
+  const { currentUserId, canManageTask, canScheduleTask, permissionsReady } = useProjectPermissions({
+    workspaceId,
+    projectId,
+    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
+  })
+
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
   const calendarRef = useRef<FullCalendar | null>(null)
@@ -267,11 +273,6 @@ export function CalendarPage() {
   const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
 
   useProjectRealtime(Number.isFinite(workspaceId) ? workspaceId : null, Number.isFinite(projectId) ? projectId : null)
-  const { canManageProject, canManageTask, permissionsReady } = useProjectPermissions({
-    workspaceId,
-    projectId,
-    enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
-  })
 
   const [view, setView] = useState<CalendarView>('week')
   const [currentDate, setCurrentDate] = useState(() => new Date())
@@ -304,6 +305,65 @@ export function CalendarPage() {
       taskId ? queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) }) : Promise.resolve(),
     ])
   }
+
+  const createScheduleMutation = useMutation({
+    mutationFn: async ({ taskId, start, end }: { taskId: number; start: Date; end: Date }) =>
+      taskScheduleApi.create({
+        taskId,
+        scheduledStart: toApiLocalDateTime(start),
+        scheduledEnd: toApiLocalDateTime(end),
+      }),
+    onMutate: async ({ taskId, start, end }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'task', taskId] }),
+      ])
+
+      const scheduledStart = toApiLocalDateTime(start)
+      const scheduledEnd = toApiLocalDateTime(end)
+      const scheduledDate = scheduledStart.slice(0, 10)
+      const optimisticId = -Date.now()
+
+      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, taskId)
+
+      const optimisticSchedule: TaskSchedule = {
+        id: optimisticId,
+        taskId,
+        scheduledStart,
+        scheduledEnd,
+        scheduledDate,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: {
+          userId: currentUserId ?? '',
+          email: '',
+          firstName: '',
+          lastName: '',
+        },
+      }
+
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
+      patchTaskScheduleQueries(queryClient, taskId, (schedules) => [...schedules, optimisticSchedule])
+
+      return {
+        projectCalendarSnapshot,
+        taskScheduleSnapshot,
+      }
+    },
+    onSuccess: async (_data, variables) => {
+      await invalidateTaskAndCalendarQueries(variables.taskId)
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.projectCalendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
+      }
+      if (context?.taskScheduleSnapshot) {
+        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
+      }
+      toast.error(t('calendar.updateScheduleFailed'), { description: error.message })
+    },
+  })
 
   const updateScheduleMutation = useMutation({
     mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) =>
@@ -427,8 +487,8 @@ export function CalendarPage() {
         title: task.title,
         start: dueDate,
         end: dueEnd,
-        editable: false,
-        durationEditable: false,
+        editable: canScheduleTask(),
+        durationEditable: canScheduleTask(),
         extendedProps: {
           scheduleId: null,
           taskId: task.id,
@@ -471,7 +531,7 @@ export function CalendarPage() {
   }
 
   const openCreateDialog = (start: Date, end: Date, allDay: boolean) => {
-    if (!canManageProject) {
+    if (!canScheduleTask()) {
       toast.error(t('calendar.permissionCreateTask'))
       return
     }
@@ -510,22 +570,35 @@ export function CalendarPage() {
   }
 
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
-    if (arg.event.extendedProps.isDueDateOnly) {
+    const taskId = Number(arg.event.extendedProps.taskId)
+    const task = arg.event.extendedProps.task as Task | undefined
+    const range = resolveEventRange(arg.event.start, arg.event.end)
+    if (!Number.isFinite(taskId) || !range || !task) {
       arg.revert?.()
+      return
+    }
+
+    if (!canScheduleTask()) {
+      toast.error(t('calendar.permissionUpdateTask'))
+      arg.revert?.()
+      return
+    }
+
+    if (arg.event.extendedProps.isDueDateOnly) {
+      try {
+        await createScheduleMutation.mutateAsync({
+          taskId,
+          start: range.start,
+          end: range.end,
+        })
+      } catch {
+        arg.revert?.()
+      }
       return
     }
 
     const scheduleId = Number(arg.event.id)
-    const taskId = Number(arg.event.extendedProps.taskId)
-    const task = arg.event.extendedProps.task as Task | undefined
-    const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range || !task) {
-      arg.revert?.()
-      return
-    }
-
-    if (!canManageTask()) {
-      toast.error(t('calendar.permissionUpdateTask'))
+    if (!Number.isFinite(scheduleId)) {
       arg.revert?.()
       return
     }
@@ -543,22 +616,35 @@ export function CalendarPage() {
   }
 
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
-    if (arg.event.extendedProps.isDueDateOnly) {
+    const taskId = Number(arg.event.extendedProps.taskId)
+    const task = arg.event.extendedProps.task as Task | undefined
+    const range = resolveEventRange(arg.event.start, arg.event.end)
+    if (!Number.isFinite(taskId) || !range || !task) {
       arg.revert?.()
+      return
+    }
+
+    if (!canScheduleTask()) {
+      toast.error(t('calendar.permissionUpdateTask'))
+      arg.revert?.()
+      return
+    }
+
+    if (arg.event.extendedProps.isDueDateOnly) {
+      try {
+        await createScheduleMutation.mutateAsync({
+          taskId,
+          start: range.start,
+          end: range.end,
+        })
+      } catch {
+        arg.revert?.()
+      }
       return
     }
 
     const scheduleId = Number(arg.event.id)
-    const taskId = Number(arg.event.extendedProps.taskId)
-    const task = arg.event.extendedProps.task as Task | undefined
-    const range = resolveEventRange(arg.event.start, arg.event.end)
-    if (!Number.isFinite(scheduleId) || !Number.isFinite(taskId) || !range || !task) {
-      arg.revert?.()
-      return
-    }
-
-    if (!canManageTask()) {
-      toast.error(t('calendar.permissionUpdateTask'))
+    if (!Number.isFinite(scheduleId)) {
       arg.revert?.()
       return
     }
@@ -631,7 +717,7 @@ export function CalendarPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      {!canManageProject && (
+      {!canScheduleTask() && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <span className="font-medium">{t('calendar.readOnlyTitle')}</span> {t('calendar.readOnlyDescription')}
         </div>
@@ -705,12 +791,12 @@ export function CalendarPage() {
                 slotLabelInterval="01:00:00"
                 snapDuration="00:15:00"
                 scrollTime="08:00:00"
-                selectable={canManageProject}
-                selectMirror={canManageProject}
-                editable={canManageProject}
-                eventStartEditable={canManageProject}
-                eventDurationEditable={canManageProject}
-                eventResizableFromStart={canManageProject}
+                selectable={canScheduleTask()}
+                selectMirror={canScheduleTask()}
+                editable={canScheduleTask()}
+                eventStartEditable={canScheduleTask()}
+                eventDurationEditable={canScheduleTask()}
+                eventResizableFromStart={canScheduleTask()}
                 expandRows
                 dayMaxEvents={3}
                 events={calendarEvents}

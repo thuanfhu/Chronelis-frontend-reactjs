@@ -34,7 +34,7 @@ export function useProjectPermissions({ workspaceId, projectId, enabled = true }
   const project = projectQuery.data ?? null
   const effectiveAccess = effectiveAccessQuery.data ?? null
 
-  const currentRole: WorkspaceMemberRoleType = effectiveAccess?.workspaceOwner
+  const currentRole: WorkspaceMemberRoleType = (effectiveAccess?.workspaceOwner || project?.createdBy.userId === currentUserId)
     ? 'OWNER'
     : 'MEMBER'
 
@@ -44,16 +44,16 @@ export function useProjectPermissions({ workspaceId, projectId, enabled = true }
     && !projectQuery.isLoading
     && !effectiveAccessQuery.isLoading
 
-  const canManageProject = Boolean(permissionsReady && effectiveAccess?.canManageProjectWork)
-  const canViewProject = Boolean(permissionsReady && effectiveAccess?.canViewProject)
-  const canContribute = Boolean(permissionsReady && effectiveAccess?.canContribute)
-  const canComment = Boolean(permissionsReady && effectiveAccess?.canComment)
+  const canManageProject = Boolean(permissionsReady && (effectiveAccess?.canManageProjectWork || isOwner))
+  const canViewProject = Boolean(permissionsReady && (effectiveAccess?.canViewProject || isOwner))
+  const canContribute = Boolean(permissionsReady && (effectiveAccess?.canContribute || isOwner))
+  const canComment = Boolean(permissionsReady && (effectiveAccess?.canComment || isOwner))
   const isWorkspaceManager = canManageProject
   const canManageGoal = () => canManageProject
   const canManageGoalById = () => canManageProject
   const canManageTask = () => canContribute
   const canDeleteTask = () => canManageProject
-  const canScheduleTask = () => canManageProject
+  const canScheduleTask = () => canContribute
 
   return {
     currentUserId,
