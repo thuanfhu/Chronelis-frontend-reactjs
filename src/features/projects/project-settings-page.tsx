@@ -127,8 +127,8 @@ export function ProjectSettingsPage() {
                 )}
                 onClick={() => setActiveTab('general')}
               >
-                <Settings className="size-4.5" />
-                <span className="font-semibold">{t('project.settings.tabGeneral')}</span>
+                <Settings className="size-4" />
+                <span className="text-[13px] font-bold">{t('project.settings.tabGeneral')}</span>
               </Button>
               <Button
                 variant={activeTab === 'access' ? 'secondary' : 'ghost'}
@@ -138,8 +138,8 @@ export function ProjectSettingsPage() {
                 )}
                 onClick={() => setActiveTab('access')}
               >
-                <Users className="size-4.5" />
-                <span className="font-semibold">{t('project.settings.tabAccess')}</span>
+                <Users className="size-4" />
+                <span className="text-[13px] font-bold">{t('project.settings.tabAccess')}</span>
               </Button>
               <Button
                 variant={activeTab === 'roles' ? 'secondary' : 'ghost'}
@@ -149,8 +149,8 @@ export function ProjectSettingsPage() {
                 )}
                 onClick={() => setActiveTab('roles')}
               >
-                <BookOpen className="size-4.5" />
-                <span className="font-semibold">{t('project.settings.tabRoles')}</span>
+                <BookOpen className="size-4" />
+                <span className="text-[13px] font-bold">{t('project.settings.tabRoles')}</span>
               </Button>
             </nav>
             
