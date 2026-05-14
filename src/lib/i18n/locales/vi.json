@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "appName": "Chronelis",
     "loading": "Đang tải...",
@@ -7,6 +7,8 @@
     "cancel": "Hủy",
     "delete": "Xóa",
     "edit": "Sửa",
+    "general": "Chung",
+    "manager": "Người quản lý",
     "saveChanges": "Lưu thay đổi",
     "description": "Quản lý thông tin cá nhân, email đăng nhập và bảo mật tài khoản.",
     "loadFailed": "Không tải được thông tin hồ sơ. Vui lòng đăng nhập lại.",
@@ -1145,32 +1147,7 @@
       "notFound": "Goal không tồn tại"
     }
   },
-  "workspace": {
-    "title": "Workspaces",
-    "create": "Tạo workspace",
-    "noWorkspaces": "Chưa có workspace nào.",
-    "members": "Thành viên",
-    "projects": "Projects",
-    "settings": "Cài đặt",
-    "invite": "Mời thành viên",
-    "role": "Vai trò",
-    "owner": "Chủ sở hữu",
-    "member": "Thành viên",
-    "joinByInvite": "Tham gia workspace",
-    "joinSuccess": "Đã tham gia workspace thành công",
-    "leaveConfirm": "Bạn có chắc muốn rời khỏi workspace này?",
-    "field": {
-      "visibility": "Visibility",
-      "managerUser": "Quản lý project",
-      "managerTeam": "Team quản lý"
-    },
-    "visibility": {
-      "public": "Công khai",
-      "private": "Riêng tư",
-      "publicDescription": "Hiển thị với tất cả thành viên workspace",
-      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập"
-    }
-  },
+
   "project": {
     "title": "Project",
     "overview": "Tổng quan",
@@ -1504,6 +1481,12 @@
       "project": "dự án",
       "team": "nhóm"
     },
+    "visibility": {
+      "public": "Công khai",
+      "private": "Riêng tư",
+      "publicDescription": "Hiển thị với tất cả thành viên workspace",
+      "privateDescription": "Chỉ hiển thị với workspace owner và người dùng/team có quyền truy cập"
+    },
     "list": {
       "description": "Không gian làm việc cho đội nhóm và dự án",
       "createTitle": "Tạo workspace mới",
@@ -1525,7 +1508,14 @@
       "invalidInvite": "Invite không hợp lệ hoặc đã hết hạn",
       "loading": "Đang xác thực invite...",
       "backHome": "Về trang chủ",
-      "action": "Tham gia workspace"
+      "action": "Tham gia workspace",
+      "subtitle": "Bạn được mời tham gia vào không gian làm việc này",
+      "reviewInfo": "Hãy xem lại các thông tin trước khi tham gia không gian này.",
+      "yourRole": "Quyền hạn của bạn",
+      "roleOwnerDesc": "Chủ sở hữu (Quản trị toàn bộ)",
+      "roleMemberDesc": "Thành viên (Cộng tác viên)",
+      "inviteDate": "Ngày tạo lời mời",
+      "invitedBy": "Người mời"
     },
     "roleDesc": {
       "owner": "Tạo workspace, có toàn quyền: xóa workspace, quản lý thành viên, phân quyền mọi người.",
@@ -1632,7 +1622,8 @@
       "role": "Vai trò",
       "assignedRole": "Vai trò được gán",
       "maxUsesOptional": "Giới hạn lượt dùng (tùy chọn)",
-      "teamName": "Tên team"
+      "teamName": "Tên team",
+      "visibility": "Visibility"
     },
     "placeholder": {
       "projectName": "Ví dụ: Sprint 1",

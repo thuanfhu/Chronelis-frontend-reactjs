@@ -70,7 +70,7 @@ function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className={`inline-flex h-6 cursor-default items-center gap-1 rounded-md border px-2 text-[11px] font-semibold ${roleBadgeClassName[role]}`}
+          className={`inline-flex h-6 w-24 cursor-default items-center justify-center gap-1 rounded-md border text-[11px] font-semibold ${roleBadgeClassName[role]}`}
         >
           <Icon className="size-3 shrink-0" />
           {t(`workspace.role.${key}`)}
@@ -987,76 +987,21 @@ export function WorkspaceDetailPage() {
                     : t('workspace.dialog.editProjectDescMember')}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label>{t('workspace.field.projectName')}</Label>
-                  <Input value={editProjectName} onChange={(e) => setEditProjectName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('workspace.field.description')}</Label>
-                  <Textarea value={editProjectDescription} onChange={(e) => setEditProjectDescription(e.target.value)} rows={3} />
-                </div>
-                {isOwner && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>{t('workspace.field.visibility')}</Label>
-                      <Select
-                        value={editProjectVisibility}
-                        onValueChange={(value: 'PUBLIC' | 'PRIVATE') => setEditProjectVisibility(value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PUBLIC">{t('workspace.visibility.public')}</SelectItem>
-                          <SelectItem value="PRIVATE">{t('workspace.visibility.private')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        {editProjectVisibility === 'PUBLIC' ? t('workspace.visibility.publicDescription') : t('workspace.visibility.privateDescription')}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('workspace.field.managerUser')}</Label>
-                      <Select
-                        value={editProjectManagerUserId || 'none'}
-                        onValueChange={(value) => setEditProjectManagerUserId(value === 'none' ? '' : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('workspace.placeholder.noManagerUser')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
-                          {members.map((member) => (
-                            <SelectItem key={member.user.userId} value={member.user.userId}>
-                              {member.user.firstName} {member.user.lastName} ({roleDisplayName[member.role]})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('workspace.field.managerTeam')}</Label>
-                      <Select
-                        value={editProjectManagerTeamId || 'none'}
-                        onValueChange={(value) => setEditProjectManagerTeamId(value === 'none' ? '' : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t('workspace.placeholder.noManagerTeam')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t('workspace.select.noAssignment')}</SelectItem>
-                          {visibleTeams.map((team) => (
-                            <SelectItem key={team.id} value={String(team.id)}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-              </div>
+              <ProjectFormFields
+                name={editProjectName}
+                description={editProjectDescription}
+                visibility={editProjectVisibility}
+                managerUserId={editProjectManagerUserId}
+                managerTeamId={editProjectManagerTeamId}
+                onNameChange={setEditProjectName}
+                onDescriptionChange={setEditProjectDescription}
+                onVisibilityChange={setEditProjectVisibility}
+                onManagerUserChange={setEditProjectManagerUserId}
+                onManagerTeamChange={setEditProjectManagerTeamId}
+                members={members}
+                teams={visibleTeams}
+                isOwner={isOwner}
+              />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>{t('common.cancel')}</Button>
                 <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim() || !isProjectEditDirty}>
@@ -1251,11 +1196,11 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <div className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span />
                 <span>{t('workspace.table.member')}</span>
+                <span />
                 <span>{t('workspace.table.role')}</span>
-                {canManageWorkspace && <span />}
               </div>
               <div className="divide-y divide-border/40">
                 {paginatedMembers.map((member) => {
@@ -1263,7 +1208,7 @@ export function WorkspaceDetailPage() {
                   const isSelf = member.user.userId === currentUserId
                   const joinedDate = new Date(member.joinedAt).toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' })
                   return (
-                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_auto_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
+                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
                       <Avatar className="size-9 shrink-0">
                         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                           {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
@@ -1277,7 +1222,6 @@ export function WorkspaceDetailPage() {
                         <p className="truncate text-xs text-muted-foreground">{highlightMatch(member.user.email, memberSearch.trim())}</p>
                         <p className="text-[10px] text-muted-foreground/60">{t('workspace.members.joinedAt', { date: joinedDate })}</p>
                       </div>
-                      <RoleBadge role={member.role} />
                       {canManageWorkspace && !isOwnerMember && !isSelf ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1315,7 +1259,10 @@ export function WorkspaceDetailPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      ) : <span />}
+                      ) : (
+                        <div className="size-8" />
+                      )}
+                      <RoleBadge role={member.role} />
                     </div>
                   )
                 })}
