@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { CalendarDays, FolderKanban, ListTodo, Activity, Target, Settings } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { KanbanPage } from '@/features/tasks/kanban-page'
@@ -10,23 +11,24 @@ import { ProjectSettingsPage } from '@/features/projects/project-settings-page'
 
 export type TaskViewTab = 'calendar' | 'kanban' | 'todo' | 'goals' | 'activity' | 'settings'
 
-const TASK_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
-  { value: 'calendar', label: 'Lịch', icon: CalendarDays },
-  { value: 'kanban', label: 'Kanban', icon: FolderKanban },
-  { value: 'todo', label: 'To Do', icon: ListTodo },
-]
-
-const PROJECT_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
-  { value: 'goals', label: 'Goals', icon: Target },
-  { value: 'activity', label: 'Hoạt động', icon: Activity },
-  { value: 'settings', label: 'Settings', icon: Settings },
-]
-
 export function TasksLayout() {
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const currentView = searchParams.get('view')
   const activeTab = isTaskViewTab(currentView) ? currentView : 'calendar'
   const isTimelineView = activeTab === 'calendar'
+
+  const TASK_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
+    { value: 'calendar', label: t('nav.calendar'), icon: CalendarDays },
+    { value: 'kanban', label: t('nav.kanban'), icon: FolderKanban },
+    { value: 'todo', label: t('nav.todo'), icon: ListTodo },
+  ]
+
+  const PROJECT_TABS: { value: TaskViewTab; label: string; icon: typeof CalendarDays }[] = [
+    { value: 'goals', label: t('nav.goals'), icon: Target },
+    { value: 'activity', label: t('nav.activity'), icon: Activity },
+    { value: 'settings', label: t('nav.settings'), icon: Settings },
+  ]
 
   const setActiveTab = (tab: TaskViewTab) => {
     const nextParams = new URLSearchParams(searchParams)

@@ -408,6 +408,7 @@
     "todo": "To Do",
     "goals": "Goals",
     "activity": "Activity",
+    "settings": "Settings",
     "dashboard": "Dashboard",
     "workspaces": "Workspaces",
     "searchProjectGoal": "Filter projects & goals..."
@@ -1063,6 +1064,9 @@
       "createModule": "Create module",
       "newPermission": "New permission",
       "emptyModules": "No modules yet",
+      "moduleListTitle": "System Modules",
+      "moduleListDesc": "Group permissions by system functionality",
+      "clearModuleFilter": "Clear filter",
       "removeModuleButtonAria": "Remove module {{module}}",
       "tableName": "Permission name",
       "tableApiPath": "API path",

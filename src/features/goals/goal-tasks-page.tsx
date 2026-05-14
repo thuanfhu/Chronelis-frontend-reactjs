@@ -362,7 +362,7 @@ export function GoalTasksPage() {
                   </span>
 
                   {/* Assignee */}
-                  <span className="hidden items-center justify-center justify-self-center gap-1.5 sm:flex">
+                  <span className="hidden items-center justify-start gap-1.5 sm:flex pl-6">
                     {task.assignee ? (
                       <>
                         <Avatar className="size-5 shrink-0">
