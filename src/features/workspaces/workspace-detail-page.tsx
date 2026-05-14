@@ -1159,7 +1159,7 @@ export function WorkspaceDetailPage() {
                     <div className="space-y-2">
                       <Label>{t('workspace.field.role')}</Label>
                       <div className="flex gap-2">
-                        {(['MEMBER'] as const).map((r) => (
+                        {(['OWNER', 'MEMBER'] as const).map((r) => (
                           <Button
                             key={r}
                             type="button"
@@ -1230,7 +1230,7 @@ export function WorkspaceDetailPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {(['MEMBER'] as const).map((r) => (
+                            {(['OWNER', 'MEMBER'] as const).map((r) => (
                               <DropdownMenuItem
                                 key={r}
                                 disabled={member.role === r}
@@ -1321,7 +1321,7 @@ export function WorkspaceDetailPage() {
                     <div className="space-y-2">
                       <Label>{t('workspace.field.assignedRole')}</Label>
                       <div className="flex gap-2">
-                        {(['MEMBER'] as const).map((r) => (
+                        {(['OWNER', 'MEMBER'] as const).map((r) => (
                           <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
                             {roleDisplayName[r]}
                           </Button>
