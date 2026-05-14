@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Shield, ShieldCheck, ShieldAlert, Lock, Users, Users2, Search, UserPlus, Crown } from 'lucide-react'
+import { Shield, ShieldCheck, ShieldAlert, Lock, Users, Users2, Search, Crown } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -218,7 +218,6 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                       const effectiveRole = getEffectiveRole(userId)
                       const RoleIcon = roleIcon[effectiveRole]
                       const isWorkspaceOwner = userId === workspace.owner.userId
-                      const isPublicContributor = !directGrant && project.visibility === 'PUBLIC' && !isWorkspaceOwner
                       const hasNoAccess = effectiveRole === 'NO_ACCESS'
 
                       return (
