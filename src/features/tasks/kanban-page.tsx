@@ -1,7 +1,7 @@
 import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Loader2, GripVertical, Columns3, RefreshCw } from 'lucide-react'
 import {
@@ -212,8 +212,7 @@ function KanbanColumn({
 
 export function KanbanPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
+
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)

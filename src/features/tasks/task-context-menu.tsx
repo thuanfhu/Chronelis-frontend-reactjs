@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Copy, Edit3, Trash2, Target } from 'lucide-react'
+import { Copy, Edit3, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface TaskContextMenuProps {

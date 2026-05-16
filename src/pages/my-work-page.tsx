@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { highlightMatch } from '@/lib/utils/highlight-match'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { TFunction } from 'i18next'
-import { useNavigate } from 'react-router-dom'
+
 import { useTranslation } from 'react-i18next'
 import {
   AlertTriangle,
@@ -21,7 +21,6 @@ import {
   Rocket,
   Search,
   ShieldAlert,
-  Target,
   TrendingUp,
   Workflow,
   Zap,
@@ -63,7 +62,7 @@ type PriorityFilter = 'ALL' | TaskPriorityType
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 export function MyWorkPage() {
-  const navigate = useNavigate()
+
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
