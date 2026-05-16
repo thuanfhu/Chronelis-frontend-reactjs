@@ -869,9 +869,9 @@ export function CalendarPage() {
                       }
                     }}
                   >
-                    <span className="truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
+                    <span className="fc-event-title truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
                     {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
-                      <span className="truncate text-[10px] opacity-80">{arg.timeText}</span>
+                      <span className="fc-event-time truncate text-[10px]">{arg.timeText}</span>
                     ) : null}
                   </div>
                 )}

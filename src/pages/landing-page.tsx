@@ -1,14 +1,27 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ColorBends from '@/components/ColorBends';
-import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star } from 'lucide-react';
+import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star, LogOut } from 'lucide-react';
 import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle';
 import { useTranslation } from 'react-i18next';
 import TrueFocus from '@/components/TrueFocus';
+import { useAuthStore } from '@/app/store/auth-store';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function LandingPage() {
   const { i18n } = useTranslation();
   const isVi = i18n.language === 'vi';
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const clearSession = useAuthStore((state) => state.clearSession);
+  const navigate = useNavigate();
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground selection:bg-primary/30 font-sans overflow-x-hidden transition-colors duration-300">
@@ -53,14 +66,54 @@ export function LandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <ThemeLanguageToggle />
-            <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-              {isVi ? "Đăng nhập" : "Log in"}
-            </Link>
-            <Button size="sm" asChild className="rounded-full font-semibold">
-              <Link to="/register">
-                {isVi ? "Bắt đầu ngay" : "Get Started"}
-              </Link>
-            </Button>
+            {currentUser ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
+                    <Avatar className="size-7">
+                      {currentUser.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.firstName} />}
+                      <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                        {currentUser.firstName?.charAt(0)}{currentUser.lastName?.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden text-sm font-medium md:inline-block">
+                      {currentUser.firstName}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{currentUser.firstName} {currentUser.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="w-full flex items-center">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="w-full flex items-center">{isVi ? "Hồ sơ" : "Profile"}</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { clearSession(); navigate('/'); }} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 size-4" />
+                    {isVi ? "Đăng xuất" : "Log out"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+                  {isVi ? "Đăng nhập" : "Log in"}
+                </Link>
+                <Button size="sm" asChild className="rounded-full font-semibold">
+                  <Link to="/register">
+                    {isVi ? "Bắt đầu ngay" : "Get Started"}
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>
