@@ -136,9 +136,6 @@ export function MyWorkPage() {
 
   /* ── Handlers ── */
 
-  const goFocus = (task: Task) => navigate(`/workspaces/${task.workspaceId}/projects/${task.projectId}/focus/${task.id}`)
-
-
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork })
@@ -284,10 +281,10 @@ export function MyWorkPage() {
           {/* Task queues — adaptive */}
           <div className={cn('grid gap-4', hasBlocked && hasReady && 'xl:grid-cols-2 xl:items-start')}>
             {hasBlocked && (
-              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} />
+              <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
             )}
             {hasReady && (
-              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} onFocus={goFocus} />
+              <QueueSection title={t('myWork.readyQueue')} tone="emerald" icon={Rocket} desc={t('myWork.readyQueueDesc')} empty={t('myWork.emptyReady')} tasks={readyPg.items} total={filtReady.length} page={readyPg.page} pages={readyPg.pages} onPage={setReadyPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
             )}
             {!hasBlocked && !hasReady && (
               <motion.div variants={fadeSlide}>
@@ -413,11 +410,11 @@ function BlockerDigestCard({ tasks, names, onOpen }: {
 
 /* ── Task Queue Section ── */
 
-function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, search, onOpen, onFocus }: {
+function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page, pages, onPage, names, search, onOpen }: {
   title: string; tone: 'rose' | 'emerald'; icon: typeof AlertTriangle
   desc: string; empty: string; tasks: Task[]; total: number
   page: number; pages: number; onPage: (p: number) => void
-  names?: Map<number, string>; search?: string; onOpen: (t: Task) => void; onFocus: (t: Task) => void
+  names?: Map<number, string>; search?: string; onOpen: (t: Task) => void
 }) {
   const s = {
     rose: { ico: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', txt: 'text-rose-700 dark:text-rose-300', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
@@ -441,7 +438,7 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
           <AnimatePresence mode="popLayout">
             {tasks.length > 0 ? tasks.map((t) => (
               <motion.div key={t.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                <TaskCard task={t} projectName={names?.get(t.projectId)} search={search} onOpen={() => onOpen(t)} onFocus={() => onFocus(t)} />
+                <TaskCard task={t} projectName={names?.get(t.projectId)} search={search} onOpen={() => onOpen(t)} />
               </motion.div>
             )) : (
               <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>
@@ -453,8 +450,8 @@ function QueueSection({ title, tone, icon: Icon, desc, empty, tasks, total, page
   )
 }
 
-function TaskCard({ task, projectName, search, onOpen, onFocus }: {
-  task: Task; projectName?: string; search?: string; onOpen: () => void; onFocus: () => void
+function TaskCard({ task, projectName, search, onOpen }: {
+  task: Task; projectName?: string; search?: string; onOpen: () => void
 }) {
   const { t } = useTranslation()
   const kw = search ?? ''
@@ -490,7 +487,6 @@ function TaskCard({ task, projectName, search, onOpen, onFocus }: {
 
       <div className="mt-3.5 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={onOpen}><ArrowUpRight className="size-3.5" />{t('myWork.openTask')}</Button>
-        <Button size="sm" className="gap-1.5 text-xs" onClick={onFocus}><Target className="size-3.5" />{t('myWork.focusMode')}</Button>
       </div>
     </div>
   )

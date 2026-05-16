@@ -23,7 +23,6 @@ import { GoalTasksPage } from '@/features/goals/goal-tasks-page'
 import { AdminDashboardPage } from '@/features/admin/admin-dashboard-page'
 import { AdminShell } from '@/features/admin/layout/admin-shell'
 import { MyWorkPage } from '@/pages/my-work-page'
-import { TaskFocusPage } from '@/features/tasks/task-focus-page'
 
 import { LandingPage } from '@/pages/landing-page'
 
@@ -124,7 +123,6 @@ export function AppRouter() {
           <Route path="/workspaces/:workspaceId/projects/:projectId" element={<TasksLayout />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/goals/:goalId/tasks" element={<GoalTasksPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/pomodoro/:taskId" element={<TaskPomodoroPage />} />
-          <Route path="/workspaces/:workspaceId/projects/:projectId/focus/:taskId" element={<TaskFocusPage />} />
           <Route path="/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/notes" element={<TaskNotesPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />

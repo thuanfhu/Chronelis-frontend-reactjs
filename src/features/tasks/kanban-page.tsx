@@ -365,13 +365,7 @@ export function KanbanPage() {
     setTaskContextMenu({ x, y, task })
   }
 
-  function openFocusMode(task: Task) {
-    navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${task.id}`, {
-      state: {
-        returnTo: `${location.pathname}${location.search}`,
-      },
-    })
-  }
+
 
   function handleDragOver(event: DragOverEvent) {
     const { over } = event
@@ -590,12 +584,7 @@ export function KanbanPage() {
             openTaskDrawer(task.id, 'edit')
           }
         }}
-        onFocus={() => {
-          const task = taskContextMenu?.task
-          if (task) {
-            openFocusMode(task)
-          }
-        }}
+
         onDelete={() => {
           const task = taskContextMenu?.task
           if (task) {

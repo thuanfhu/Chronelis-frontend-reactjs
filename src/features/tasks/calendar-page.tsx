@@ -929,14 +929,7 @@ export function CalendarPage() {
           }
           openTaskDrawer(menu.taskId, 'edit')
         }}
-        onFocus={() => {
-          const menu = taskContextMenu
-          if (!menu) {
-            return
-          }
 
-          navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${menu.taskId}`)
-        }}
         onDelete={() => {
           const menu = taskContextMenu
           if (!menu) {

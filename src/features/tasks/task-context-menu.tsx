@@ -9,7 +9,6 @@ interface TaskContextMenuProps {
   onClose: () => void
   onDuplicate: () => void
   onEdit: () => void
-  onFocus: () => void
   onDelete: () => void
 }
 
@@ -20,7 +19,6 @@ export function TaskContextMenu({
   onClose,
   onDuplicate,
   onEdit,
-  onFocus,
   onDelete,
 }: TaskContextMenuProps) {
   const { t } = useTranslation()
@@ -98,17 +96,7 @@ export function TaskContextMenu({
         <Edit3 className="size-3.5" />
         {t('common.edit')}
       </button>
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors hover:bg-primary/10"
-        onClick={() => {
-          onFocus()
-          onClose()
-        }}
-      >
-        <Target className="size-3.5" />
-        {t('task.focusMode')}
-      </button>
+
       <button
         type="button"
         className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"

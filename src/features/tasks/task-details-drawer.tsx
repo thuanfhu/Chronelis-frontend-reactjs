@@ -893,19 +893,7 @@ export function TaskDetailsDrawer() {
     handleCloseDrawer()
   }
 
-  const openFocusMode = () => {
-    if (!task) return
 
-    const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
-    if (!Number.isFinite(resolvedWorkspaceId) || !Number.isFinite(resolvedProjectId)) return
-
-    navigate(`/workspaces/${resolvedWorkspaceId}/projects/${resolvedProjectId}/focus/${task.id}`, {
-      state: {
-        returnTo: `${location.pathname}${location.search}`,
-      },
-    })
-    handleCloseDrawer()
-  }
 
 
 
@@ -1307,9 +1295,7 @@ export function TaskDetailsDrawer() {
                                   <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title={t('task.pomodoroTitle')}>
                                     <Timer className="size-3.5" />
                                   </Button>
-                                  <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title={t('task.focusMode')}>
-                                    <Target className="size-3.5" />
-                                  </Button>
+
                                   <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
                                     <NotebookText className="size-3.5" />
                                   </Button>
