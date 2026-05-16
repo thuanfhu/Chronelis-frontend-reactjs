@@ -1,7 +1,7 @@
 import { type MouseEvent, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Plus, Loader2, GripVertical, Columns3, RefreshCw } from 'lucide-react'
 import {
@@ -212,8 +212,7 @@ function KanbanColumn({
 
 export function KanbanPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
+
   const params = useParams()
   const workspaceId = Number(params.workspaceId)
   const projectId = Number(params.projectId)
@@ -365,13 +364,7 @@ export function KanbanPage() {
     setTaskContextMenu({ x, y, task })
   }
 
-  function openFocusMode(task: Task) {
-    navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${task.id}`, {
-      state: {
-        returnTo: `${location.pathname}${location.search}`,
-      },
-    })
-  }
+
 
   function handleDragOver(event: DragOverEvent) {
     const { over } = event
@@ -590,12 +583,7 @@ export function KanbanPage() {
             openTaskDrawer(task.id, 'edit')
           }
         }}
-        onFocus={() => {
-          const task = taskContextMenu?.task
-          if (task) {
-            openFocusMode(task)
-          }
-        }}
+
         onDelete={() => {
           const task = taskContextMenu?.task
           if (task) {

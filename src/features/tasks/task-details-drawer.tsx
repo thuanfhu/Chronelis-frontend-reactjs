@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   CheckCircle2, Circle, MessageSquare, Loader2, Trash2, Pencil, Timer, X, NotebookText,
-  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock, Link2,
+  Target, CalendarClock, Calendar, Flag, AlignLeft, User, Clock, Link2, ArrowUpRight, ShieldAlert,
 } from 'lucide-react'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -710,7 +710,7 @@ export function TaskDetailsDrawer() {
         searchText: `${member.user.email} ${member.role}`,
         prefix: (
           <Avatar className="size-6">
-            <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
               {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
             </AvatarFallback>
           </Avatar>
@@ -893,19 +893,7 @@ export function TaskDetailsDrawer() {
     handleCloseDrawer()
   }
 
-  const openFocusMode = () => {
-    if (!task) return
 
-    const resolvedProjectId = Number.isFinite(routeProjectId) ? routeProjectId : task.projectId
-    if (!Number.isFinite(resolvedWorkspaceId) || !Number.isFinite(resolvedProjectId)) return
-
-    navigate(`/workspaces/${resolvedWorkspaceId}/projects/${resolvedProjectId}/focus/${task.id}`, {
-      state: {
-        returnTo: `${location.pathname}${location.search}`,
-      },
-    })
-    handleCloseDrawer()
-  }
 
 
 
@@ -951,11 +939,11 @@ export function TaskDetailsDrawer() {
   return (
     <>
       <Sheet open={hasTask} onOpenChange={(open) => { if (!open) handleCloseDrawer() }}>
-        <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <SheetContent showCloseButton={false} className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl task-detail-font">
           <SheetHeader className="border-b px-6 py-4">
             <div className="flex items-center gap-2">
               <SheetTitle className="text-base">{isDuplicateMode ? t('task.duplicateTitle') : t('task.detailTitle')}</SheetTitle>
-              <Badge variant="outline" className="text-[10px]">#{taskId}</Badge>
+              <Badge variant="outline" className="text-xs">#{taskId}</Badge>
 
               <div className="ml-auto flex items-center gap-1">
                 {task && !isEditingTask && (
@@ -1017,7 +1005,7 @@ export function TaskDetailsDrawer() {
                     <div className="space-y-5 px-6 py-5">
                       {isDuplicateMode && (
                         <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
-                          <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">{t('task.draftBadge')}</span>
+                          <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide">{t('task.draftBadge')}</span>
                           {t('task.duplicateBanner')}
                         </div>
                       )}
@@ -1137,7 +1125,7 @@ export function TaskDetailsDrawer() {
                         </Label>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <p className="text-[11px] text-muted-foreground">{t('task.scheduleStartLabel')}</p>
+                            <p className="text-xs text-muted-foreground">{t('task.scheduleStartLabel')}</p>
                             <Input
                               type="datetime-local"
                               step={900}
@@ -1147,7 +1135,7 @@ export function TaskDetailsDrawer() {
                             />
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[11px] text-muted-foreground">{t('task.scheduleEndLabel')}</p>
+                            <p className="text-xs text-muted-foreground">{t('task.scheduleEndLabel')}</p>
                             <Input
                               type="datetime-local"
                               step={900}
@@ -1158,7 +1146,7 @@ export function TaskDetailsDrawer() {
                           </div>
                         </div>
                         {editScheduleStart && editScheduleEnd && (
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {t('task.scheduleEndValidation')}
                           </p>
                         )}
@@ -1169,7 +1157,7 @@ export function TaskDetailsDrawer() {
                           <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             <Link2 className="size-3" /> {t('task.dependenciesBlockers')}
                           </Label>
-                          <p className="text-[11px] leading-5 text-muted-foreground">
+                          <p className="text-xs leading-5 text-muted-foreground">
                             {t('task.dependenciesHelp')}
                           </p>
                         </div>
@@ -1217,7 +1205,7 @@ export function TaskDetailsDrawer() {
                               >
                                 <Link2 className="size-3" />
                                 <span className="truncate">{dependencyTask.title}</span>
-                                <span className="text-[10px] opacity-70">{t('task.removeDependency')}</span>
+                                <span className="text-xs opacity-70">{t('task.removeDependency')}</span>
                               </button>
                             ))}
                           </div>
@@ -1226,7 +1214,7 @@ export function TaskDetailsDrawer() {
                         )}
 
                         <div className="space-y-1.5">
-                          <Label className="text-[11px] font-medium text-muted-foreground">{t('task.blockerNoteLabel')}</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">{t('task.blockerNoteLabel')}</Label>
                           <Textarea
                             value={editBlockerNote}
                             onChange={(event) => setEditBlockerNote(event.target.value)}
@@ -1256,7 +1244,7 @@ export function TaskDetailsDrawer() {
                               {/* Title + description + quick actions */}
                               <div className="px-6 py-5">
                                 <h2
-                                  className={`text-lg font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
+                                  className={`text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
                                   style={{ overflowWrap: 'anywhere' }}
                                 >
                                   {task.title}
@@ -1307,9 +1295,7 @@ export function TaskDetailsDrawer() {
                                   <Button variant="outline" size="icon" className="size-8" onClick={openPomodoro} title={t('task.pomodoroTitle')}>
                                     <Timer className="size-3.5" />
                                   </Button>
-                                  <Button variant="outline" size="icon" className="size-8" onClick={openFocusMode} title={t('task.focusMode')}>
-                                    <Target className="size-3.5" />
-                                  </Button>
+
                                   <Button variant="outline" size="icon" className="size-8" onClick={openNotes} title={t('task.notesButton')}>
                                     <NotebookText className="size-3.5" />
                                   </Button>
@@ -1328,7 +1314,7 @@ export function TaskDetailsDrawer() {
                                         <div className="min-w-0 flex-1">
                                           <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-sm font-semibold">{t('common.commentSection')}</p>
-                                            <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-[11px] font-medium text-muted-foreground dark:bg-background/20">
+                                            <span className="inline-flex h-6 items-center rounded-full border border-border/70 bg-background/75 px-2.5 text-xs font-medium text-muted-foreground dark:bg-background/20">
                                               {t('common.commentCount', { count: comments.length })}
                                             </span>
                                           </div>
@@ -1350,7 +1336,7 @@ export function TaskDetailsDrawer() {
 
                                       {latestCommentPreview ? (
                                         <div className="mt-3 rounded-[22px] border border-border/70 bg-background/75 px-3.5 py-3 dark:bg-background/15">
-                                          <p className="text-[11px] font-medium text-muted-foreground">
+                                          <p className="text-xs font-medium text-muted-foreground">
                                             {t('task.latestCommentBy', { name: `${latestCommentPreview.user.firstName} ${latestCommentPreview.user.lastName}` })}
                                           </p>
                                           <p className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80" style={{ overflowWrap: 'anywhere' }}>
@@ -1365,12 +1351,12 @@ export function TaskDetailsDrawer() {
 
                               {/* Properties */}
                               <div className="px-6 py-4">
-                                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.info')}</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.info')}</p>
                                 <div className="space-y-3">
                                   <div className="flex items-start gap-3">
                                     <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.priorityLabel')}</p>
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.priorityLabel')}</p>
                                       <TaskPriorityBadge priority={task.priority} />
                                     </div>
                                   </div>
@@ -1378,7 +1364,7 @@ export function TaskDetailsDrawer() {
                                   <div className="flex items-start gap-3">
                                     <div className="mt-0.5 size-3.5 shrink-0 rounded-sm border-2 border-muted-foreground/40" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.statusLabel')}</p>
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.statusLabel')}</p>
                                       <Badge
                                         variant={task.status.isClosed ? 'secondary' : 'outline'}
                                         className="text-xs"
@@ -1391,7 +1377,7 @@ export function TaskDetailsDrawer() {
                                   <div className="flex items-start gap-3">
                                     <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.assigneeInfo')}</p>
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.assigneeInfo')}</p>
                                       {task.assignee ? (
                                         <div className="flex items-center gap-1.5">
                                           <Avatar className="size-5">
@@ -1410,7 +1396,7 @@ export function TaskDetailsDrawer() {
                                   <div className="flex items-start gap-3">
                                     <Calendar className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.dueDate')}</p>
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.dueDate')}</p>
                                       {task.dueDate ? (
                                         <span className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}>
                                           {formatDateTime(task.dueDate)}
@@ -1424,7 +1410,7 @@ export function TaskDetailsDrawer() {
                                   <div className="flex items-start gap-3">
                                     <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-[11px] text-muted-foreground">{t('task.goalLabel')}</p>
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.goalLabel')}</p>
                                       {task.goalId ? (
                                         <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
                                           <Target className="size-3 shrink-0" />
@@ -1440,10 +1426,10 @@ export function TaskDetailsDrawer() {
                                     <div className="flex items-start gap-3">
                                       <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
                                       <div className="min-w-0 flex-1">
-                                        <p className="mb-1 text-[11px] text-muted-foreground">{t('task.taskTypeLabel')}</p>
+                                        <p className="mb-1 text-xs text-muted-foreground">{t('task.taskTypeLabel')}</p>
                                         <Badge
                                           variant="secondary"
-                                          className="gap-1 text-[11px]"
+                                          className="gap-1 text-xs"
                                           style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
                                         >
                                           {task.taskType.icon && <span>{task.taskType.icon}</span>}
@@ -1456,12 +1442,18 @@ export function TaskDetailsDrawer() {
                               </div>
 
                               <div className="px-6 py-4">
-                                <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.dependenciesBlockers')}</p>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.dependenciesBlockers')}</p>
                                 <div className="space-y-3">
                                   {dependencyDetails?.blockerNote ? (
-                                    <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-900 dark:border-rose-400/25 dark:bg-rose-500/10 dark:text-rose-100">
-                                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-700/80 dark:text-rose-200">{t('task.blockerNoteLabel')}</p>
-                                      <p className="mt-1 whitespace-pre-wrap leading-6">{dependencyDetails.blockerNote}</p>
+                                    <div className="relative overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm">
+                                      <div className="absolute left-0 top-0 h-full w-1 bg-destructive" />
+                                      <div className="flex items-start gap-2">
+                                        <ShieldAlert className="size-4 text-destructive mt-0.5" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-destructive">{t('task.blockerNoteLabel')}</p>
+                                          <p className="mt-1 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{dependencyDetails.blockerNote}</p>
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : null}
 
@@ -1484,19 +1476,19 @@ export function TaskDetailsDrawer() {
                               {/* Schedule */}
                               {primarySchedule && (
                                 <div className="px-6 py-4">
-                                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.scheduleLabel')}</p>
+                                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{t('task.scheduleLabel')}</p>
                                   <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
                                     <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
                                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <div className="flex items-center gap-1.5">
                                           <Clock className="size-3 text-muted-foreground" />
-                                          <span className="text-[11px] text-muted-foreground">{t('task.scheduleStartView')}</span>
+                                          <span className="text-xs text-muted-foreground">{t('task.scheduleStartView')}</span>
                                           <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledStart)}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                           <Clock className="size-3 text-muted-foreground" />
-                                          <span className="text-[11px] text-muted-foreground">{t('task.scheduleEndView')}</span>
+                                          <span className="text-xs text-muted-foreground">{t('task.scheduleEndView')}</span>
                                           <span className="text-xs font-medium tabular-nums">{formatDateTime(primarySchedule.scheduledEnd)}</span>
                                         </div>
                                       </div>
@@ -1575,7 +1567,6 @@ export function TaskDetailsDrawer() {
           )}
         </SheetContent>
       </Sheet>
-
     </>
   )
 }
@@ -1596,8 +1587,8 @@ function DependencyTaskList({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-        <span className="text-[11px] text-muted-foreground">{tasks.length}</span>
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground/80">{title}</p>
+        <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 min-w-5 justify-center rounded-full">{tasks.length}</Badge>
       </div>
 
       {tasks.length > 0 ? (
@@ -1606,26 +1597,32 @@ function DependencyTaskList({
             <button
               key={dependencyTask.id}
               type="button"
-              className="flex w-full items-start justify-between gap-3 rounded-2xl border border-border/70 bg-muted/25 px-3.5 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+              className="flex w-full items-start justify-between gap-3 rounded-xl border border-border/60 bg-card/50 p-3.5 text-left transition-all hover:border-primary/30 hover:bg-muted/30 hover:shadow-sm"
               onClick={() => onOpenTask(dependencyTask.id)}
             >
-              <div className="min-w-0 flex-1 space-y-1">
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{dependencyTask.title}</span>
-                  <span className="text-[10px] text-muted-foreground">#{dependencyTask.id}</span>
+                  <span className="text-sm font-medium text-foreground/90">{dependencyTask.title}</span>
+                  <span className="text-xs text-muted-foreground/70">#{dependencyTask.id}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{dependencyTask.statusName}</span>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">{dependencyTask.statusName}</Badge>
                   <span>{dependencyTask.priority}</span>
                   {dependencyTask.goalId ? <span>{t('task.goalShort', { id: dependencyTask.goalId })}</span> : null}
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-primary">{t('task.openTask')}</span>
+              <span className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
+                {t('task.openTask')}
+                <ArrowUpRight className="size-3" />
+              </span>
             </button>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground/70">
+          <Link2 className="size-4 opacity-50" />
+          <span>{emptyLabel}</span>
+        </div>
       )}
     </div>
   )

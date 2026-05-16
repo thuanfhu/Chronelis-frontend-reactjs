@@ -466,15 +466,7 @@ export function TodoPage() {
     })
   }
 
-  const openFocusMode = (taskId: number) => {
-    if (!Number.isFinite(workspaceId) || !Number.isFinite(projectId)) return
 
-    navigate(`/workspaces/${workspaceId}/projects/${projectId}/focus/${taskId}`, {
-      state: {
-        returnTo: `${location.pathname}${location.search}`,
-      },
-    })
-  }
 
   const handleToggleCompletion = (task: Task, isCompleted: boolean) => {
     if (!canManageTask()) {
@@ -875,12 +867,7 @@ export function TodoPage() {
 
           openTaskDrawer(selectedTask.id, 'edit')
         }}
-        onFocus={() => {
-          const selectedTask = taskContextMenu?.task
-          if (selectedTask) {
-            openFocusMode(selectedTask.id)
-          }
-        }}
+
         onDelete={() => {
           const selectedTask = taskContextMenu?.task
           if (selectedTask) {
