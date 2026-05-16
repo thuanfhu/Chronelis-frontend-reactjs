@@ -621,7 +621,7 @@
         "dependencySearchPlaceholder": "Tìm theo tiêu đề, trạng thái hoặc ưu tiên...",
         "dependencyEmpty": "Không có task phù hợp",
         "dependencyAdd": "Thêm",
-        "dependencySelected": "Đã chọn ({{count}})",
+        "dependencySelected": "Task phụ thuộc đã chọn ({{count}})",
         "dependencyNone": "Chưa chọn task phụ thuộc nào.",
         "blockerNote": "Ghi chú blocker",
         "blockerNotePlaceholder": "Ví dụ: đang chờ khách hàng duyệt dữ liệu, hoặc chờ API từ team khác.",

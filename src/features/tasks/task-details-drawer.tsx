@@ -41,7 +41,8 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
-import { formatDateTime, toLocalDateTimePayload } from '@/lib/utils/datetime'
+import { formatDateTime, toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
+import { cn } from '@/lib/utils/cn'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
@@ -120,7 +121,6 @@ export function TaskDetailsDrawer() {
   const [editScheduleEnd, setEditScheduleEnd] = useState('')
   const [editDependencyTaskIds, setEditDependencyTaskIds] = useState<number[]>([])
   const [editBlockerNote, setEditBlockerNote] = useState('')
-  const [dependencyCandidateId, setDependencyCandidateId] = useState<string | undefined>(undefined)
   const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null)
   const [activeDrawerPanel, setActiveDrawerPanel] = useState<'details' | 'comments'>('details')
   const [descriptionExpanded, setDescriptionExpanded] = useState(false)
@@ -229,7 +229,6 @@ export function TaskDetailsDrawer() {
     setEditScheduleEnd('')
     setEditDependencyTaskIds([])
     setEditBlockerNote('')
-    setDependencyCandidateId(undefined)
     setActiveScheduleId(null)
     setActiveDrawerPanel('details')
     setDescriptionExpanded(false)
@@ -746,13 +745,17 @@ export function TaskDetailsDrawer() {
   const dependencyTaskOptions = useMemo(
     () => projectTasks
       .filter((projectTask) => projectTask.id !== taskId)
+      .filter((projectTask) => !editDependencyTaskIds.includes(projectTask.id))
       .map((projectTask) => ({
         value: String(projectTask.id),
         label: projectTask.title,
         description: `${projectTask.status.name} • ${projectTask.priority}${projectTask.goalId ? ` • ${t('task.goalShort', { id: projectTask.goalId })}` : ''}`,
         searchText: `${projectTask.description ?? ''} ${projectTask.priority} ${projectTask.status.name}`,
+        statusName: projectTask.status.name,
+        priority: projectTask.priority,
+        goalId: projectTask.goalId,
       })),
-    [projectTasks, taskId, t],
+    [projectTasks, taskId, t, editDependencyTaskIds],
   )
 
   const selectedDependencyTasks = useMemo(
@@ -804,7 +807,6 @@ export function TaskDetailsDrawer() {
     setEditScheduleEnd(scheduleEnd)
     setEditDependencyTaskIds(initialDependencyTaskIds)
     setEditBlockerNote(initialBlockerNote)
-    setDependencyCandidateId(undefined)
     setActiveScheduleId(primarySchedule?.id ?? null)
     setEditorSnapshot({
       title: initialTitle,
@@ -853,7 +855,6 @@ export function TaskDetailsDrawer() {
     setEditScheduleEnd('')
     setEditDependencyTaskIds([])
     setEditBlockerNote('')
-    setDependencyCandidateId(undefined)
     setActiveScheduleId(null)
     setActiveDrawerPanel('details')
     setEditorSnapshot(null)
@@ -1145,8 +1146,8 @@ export function TaskDetailsDrawer() {
                             />
                           </div>
                         </div>
-                        {editScheduleStart && editScheduleEnd && (
-                          <p className="text-xs text-muted-foreground">
+                        {editScheduleStart && editScheduleEnd && !isAfter(editScheduleEnd, editScheduleStart) && (
+                          <p className="text-xs text-destructive">
                             {t('task.scheduleEndValidation')}
                           </p>
                         )}
@@ -1162,52 +1163,91 @@ export function TaskDetailsDrawer() {
                           </p>
                         </div>
 
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          <SearchableSelectPopover
-                            value={dependencyCandidateId}
-                            options={dependencyTaskOptions}
-                            placeholder={projectTasksQuery.isLoading ? t('task.loadingTasks') : t('task.searchDependency')}
-                            searchPlaceholder={t('task.searchDependencyPlaceholder')}
-                            emptyLabel={t('task.noTaskFound')}
-                            disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
-                            triggerClassName="h-9"
-                            onValueChange={setDependencyCandidateId}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-9 shrink-0"
-                            disabled={!dependencyCandidateId}
-                            onClick={() => {
-                              const nextDependencyId = Number(dependencyCandidateId)
-                              if (!Number.isFinite(nextDependencyId)) {
-                                return
-                              }
-
-                              setEditDependencyTaskIds((current) => current.includes(nextDependencyId)
+                        <SearchableSelectPopover
+                          value={undefined}
+                          options={dependencyTaskOptions}
+                          placeholder={projectTasksQuery.isLoading ? t('task.loadingTasks') : t('task.searchDependency')}
+                          searchPlaceholder={t('task.searchDependencyPlaceholder')}
+                          emptyLabel={t('task.noTaskFound')}
+                          disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
+                          triggerClassName="h-9"
+                          onValueChange={(value) => {
+                            const nextDependencyId = Number(value)
+                            if (!Number.isFinite(nextDependencyId)) return
+                            setEditDependencyTaskIds((current) =>
+                              current.includes(nextDependencyId)
                                 ? current
-                                : [...current, nextDependencyId])
-                              setDependencyCandidateId(undefined)
-                            }}
-                          >
-                            {t('task.addDependency')}
-                          </Button>
-                        </div>
+                                : [...current, nextDependencyId],
+                            )
+                          }}
+                        />
 
                         {selectedDependencyTasks.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {selectedDependencyTasks.map((dependencyTask) => (
-                              <button
-                                key={dependencyTask.id}
-                                type="button"
-                                className="inline-flex max-w-full items-center gap-2 rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-200 dark:border-amber-400/35 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30"
-                                onClick={() => setEditDependencyTaskIds((current) => current.filter((id) => id !== dependencyTask.id))}
-                              >
-                                <Link2 className="size-3" />
-                                <span className="truncate">{dependencyTask.title}</span>
-                                <span className="text-xs opacity-70">{t('task.removeDependency')}</span>
-                              </button>
-                            ))}
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              {t('task.dependencySelected', { count: selectedDependencyTasks.length })}
+                            </p>
+                            <div className="grid gap-2">
+                              {selectedDependencyTasks.map((dependencyTask) => (
+                                <div
+                                  key={dependencyTask.id}
+                                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm w-full max-w-full overflow-hidden transition-colors hover:bg-muted/30"
+                                >
+                                  <div className="flex flex-col gap-0.5 min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="font-medium truncate" title={dependencyTask.title}>{dependencyTask.title}</span>
+                                      <span className="text-xs text-muted-foreground/70 font-normal shrink-0 ml-auto">#{dependencyTask.id}</span>
+                                    </div>
+                                    <div className="grid grid-cols-[80px_80px_auto] gap-1.5 text-xs items-center">
+                                      <span className={cn(
+                                        "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
+                                        (() => {
+                                          const name = ('status' in dependencyTask ? dependencyTask.status.name : dependencyTask.statusName).toLowerCase()
+                                          if (name.includes('todo') || name.includes('to do')) return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                          if (name.includes('progress') || name.includes('doing')) return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
+                                          if (name.includes('done') || name.includes('complete')) return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800'
+                                          return 'bg-background text-muted-foreground border-border/70'
+                                        })()
+                                      )}>
+                                        {'status' in dependencyTask ? dependencyTask.status.name : dependencyTask.statusName}
+                                      </span>
+                                      
+                                      <span className={cn(
+                                        "inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
+                                        dependencyTask.priority === 'LOW' && 'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
+                                        dependencyTask.priority === 'MEDIUM' && 'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
+                                        dependencyTask.priority === 'HIGH' && 'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
+                                        dependencyTask.priority === 'URGENT' && 'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50'
+                                      )}>
+                                        <span className={cn(
+                                          "inline-block size-1 rounded-full",
+                                          dependencyTask.priority === 'LOW' && 'bg-emerald-800 dark:bg-emerald-200',
+                                          dependencyTask.priority === 'MEDIUM' && 'bg-blue-700 dark:bg-blue-300',
+                                          dependencyTask.priority === 'HIGH' && 'bg-orange-700 dark:bg-orange-300',
+                                          dependencyTask.priority === 'URGENT' && 'bg-rose-700 dark:bg-rose-300'
+                                        )} />
+                                        {dependencyTask.priority}
+                                      </span>
+
+                                      {dependencyTask.goalId ? (
+                                        <span className="inline-flex items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 w-fit justify-self-start">
+                                          {t('task.goalShort', { id: dependencyTask.goalId })}
+                                        </span>
+                                      ) : <div />}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full shrink-0 transition-colors"
+                                    onClick={() => setEditDependencyTaskIds((current) => current.filter((id) => id !== dependencyTask.id))}
+                                  >
+                                    <X className="size-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ) : (
                           <p className="text-xs text-muted-foreground">{t('task.noDependency')}</p>
