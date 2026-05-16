@@ -753,7 +753,7 @@
     "dependencySearchPlaceholder": "Search by title, status or priority...",
     "dependencyEmpty": "No matching tasks",
     "dependencyAdd": "Add",
-    "dependencySelected": "Selected ({{count}})",
+    "dependencySelected": "Selected dependencies ({{count}})",
     "dependencyNone": "No dependencies selected yet.",
     "blockerNote": "Blocker note",
     "blockerNotePlaceholder": "e.g. waiting for client data approval, or waiting for API from another team.",

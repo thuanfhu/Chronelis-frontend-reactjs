@@ -18,3 +18,8 @@ export function formatDateTime(value?: string | null) {
 
   return parsed.toLocaleString()
 }
+
+export function isAfter(date1: string, date2: string) {
+  if (!date1 || !date2) return false
+  return new Date(date1) > new Date(date2)
+}

@@ -6,12 +6,12 @@ import {
   CalendarClock,
   Clock3,
   Flag,
-  Link2,
   Loader2,
   Rows3,
   Shapes,
   Target,
   User,
+  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -45,7 +45,7 @@ import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { taskTypeApi } from '@/lib/api/modules/task-type-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { cn } from '@/lib/utils/cn'
-import { toLocalDateTimePayload } from '@/lib/utils/datetime'
+import { toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
 import type { SourceViewType, Task, TaskPriorityType } from '@/types/domain'
 
 const PRIORITY_OPTIONS: Array<{
@@ -53,27 +53,27 @@ const PRIORITY_OPTIONS: Array<{
   labelKey: string
   className: string
 }> = [
-  {
-    value: 'LOW',
-    labelKey: 'task.priorityLow',
-    className: 'border-slate-300 text-slate-700 data-[active=true]:border-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white dark:border-slate-600 dark:text-slate-200',
-  },
-  {
-    value: 'MEDIUM',
-    labelKey: 'task.priorityMedium',
-    className: 'border-sky-300 text-sky-700 data-[active=true]:border-sky-500 data-[active=true]:bg-sky-500 data-[active=true]:text-white dark:border-sky-500/40 dark:text-sky-200',
-  },
-  {
-    value: 'HIGH',
-    labelKey: 'task.priorityHigh',
-    className: 'border-amber-300 text-amber-700 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-500 data-[active=true]:text-white dark:border-amber-500/40 dark:text-amber-200',
-  },
-  {
-    value: 'URGENT',
-    labelKey: 'task.priorityUrgent',
-    className: 'border-rose-300 text-rose-700 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-500 data-[active=true]:text-white dark:border-rose-500/40 dark:text-rose-200',
-  },
-]
+    {
+      value: 'LOW',
+      labelKey: 'task.priorityLow',
+      className: 'border-slate-300 text-slate-700 data-[active=true]:border-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white dark:border-slate-600 dark:text-slate-200',
+    },
+    {
+      value: 'MEDIUM',
+      labelKey: 'task.priorityMedium',
+      className: 'border-sky-300 text-sky-700 data-[active=true]:border-sky-500 data-[active=true]:bg-sky-500 data-[active=true]:text-white dark:border-sky-500/40 dark:text-sky-200',
+    },
+    {
+      value: 'HIGH',
+      labelKey: 'task.priorityHigh',
+      className: 'border-amber-300 text-amber-700 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-500 data-[active=true]:text-white dark:border-amber-500/40 dark:text-amber-200',
+    },
+    {
+      value: 'URGENT',
+      labelKey: 'task.priorityUrgent',
+      className: 'border-rose-300 text-rose-700 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-500 data-[active=true]:text-white dark:border-rose-500/40 dark:text-rose-200',
+    },
+  ]
 
 const SOURCE_VIEW_LABELS: Record<SourceViewType, string> = {
   KANBAN: 'task.sourceKanban',
@@ -171,7 +171,6 @@ export function TaskCreateDialog({
   const resolvedSubmitLabel = submitLabel ?? t('task.createSubmit')
   const queryClient = useQueryClient()
   const [form, setForm] = useState<TaskCreateFormState>(() => buildInitialFormState({ initialValues, defaultStatusId }))
-  const [dependencyCandidateId, setDependencyCandidateId] = useState<string | undefined>(undefined)
 
   const queryEnabled = open && Number.isFinite(projectId) && Number.isFinite(workspaceId)
 
@@ -219,7 +218,6 @@ export function TaskCreateDialog({
       initialValues,
       defaultStatusId: initialValues?.statusId ?? defaultStatusId,
     }))
-    setDependencyCandidateId(undefined)
   }, [defaultStatusId, initialValues, open])
 
   useEffect(() => {
@@ -259,13 +257,18 @@ export function TaskCreateDialog({
   )
 
   const dependencyOptions = useMemo(
-    () => (projectTasksQuery.data?.content ?? []).map((task) => ({
-      value: String(task.id),
-      label: task.title,
-      description: `${task.status.name} • ${task.priority}${task.goalId ? ` • ${t('task.goalShort', { id: task.goalId })}` : ''}`,
-      searchText: `${task.description ?? ''} ${task.priority} ${task.status.name}`,
-    })),
-    [projectTasksQuery.data?.content, t],
+    () => (projectTasksQuery.data?.content ?? [])
+      .filter((task) => !form.dependencyTaskIds.includes(task.id))
+      .map((task) => ({
+        value: String(task.id),
+        label: task.title,
+        description: `${task.status.name} • ${task.priority}${task.goalId ? ` • ${t('task.goalShort', { id: task.goalId })}` : ''}`,
+        searchText: `${task.description ?? ''} ${task.priority} ${task.status.name}`,
+        statusName: task.status.name,
+        priority: task.priority,
+        goalId: task.goalId,
+      })),
+    [projectTasksQuery.data?.content, t, form.dependencyTaskIds],
   )
 
   const selectedDependencyTasks = useMemo(() => {
@@ -635,7 +638,12 @@ export function TaskCreateDialog({
                   </div>
                 </div>
 
-                {form.scheduleStart && form.scheduleEnd && (
+                {form.scheduleStart && form.scheduleEnd && !isAfter(form.scheduleEnd, form.scheduleStart) && (
+                  <p className="text-xs text-destructive">
+                    {t('task.scheduleEndValidation')}
+                  </p>
+                )}
+                {form.scheduleStart && form.scheduleEnd && isAfter(form.scheduleEnd, form.scheduleStart) && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-200">
                     &#10003; {t('task.scheduleSet')}
                   </div>
@@ -648,60 +656,94 @@ export function TaskCreateDialog({
               <div className="space-y-5">
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">{t('task.dependencyTitle')}</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <SearchableSelectPopover
-                        value={dependencyCandidateId}
-                        options={dependencyOptions}
-                        placeholder={projectTasksQuery.isLoading ? t('common.loading') : t('task.dependencySearch')}
-                        searchPlaceholder={t('task.dependencySearchPlaceholder')}
-                        emptyLabel={t('task.dependencyEmpty')}
-                        disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
-                        triggerClassName="h-9"
-                        onValueChange={setDependencyCandidateId}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-9 shrink-0"
-                      disabled={!dependencyCandidateId}
-                      onClick={() => {
-                        const nextDependencyId = Number(dependencyCandidateId)
-                        if (!Number.isFinite(nextDependencyId)) return
-                        setForm((current) => ({
-                          ...current,
-                          dependencyTaskIds: current.dependencyTaskIds.includes(nextDependencyId)
-                            ? current.dependencyTaskIds
-                            : [...current.dependencyTaskIds, nextDependencyId],
-                        }))
-                        setDependencyCandidateId(undefined)
-                      }}
-                    >
-                      {t('task.dependencyAdd')}
-                    </Button>
-                  </div>
+                  <SearchableSelectPopover
+                    value={undefined}
+                    options={dependencyOptions}
+                    placeholder={projectTasksQuery.isLoading ? t('common.loading') : t('task.dependencySearch')}
+                    searchPlaceholder={t('task.dependencySearchPlaceholder')}
+                    emptyLabel={t('task.dependencyEmpty')}
+                    disabled={projectTasksQuery.isLoading || projectTasksQuery.isError}
+                    triggerClassName="h-9"
+                    onValueChange={(value) => {
+                      const nextDependencyId = Number(value)
+                      if (!Number.isFinite(nextDependencyId)) return
+                      setForm((current) => ({
+                        ...current,
+                        dependencyTaskIds: current.dependencyTaskIds.includes(nextDependencyId)
+                          ? current.dependencyTaskIds
+                          : [...current.dependencyTaskIds, nextDependencyId],
+                      }))
+                    }}
+                  />
                 </div>
 
                 {selectedDependencyTasks.length > 0 ? (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground">{t('task.dependencySelected', { count: selectedDependencyTasks.length })}</p>
-                    <div className="flex flex-wrap gap-2">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      {t('task.dependencySelected', { count: selectedDependencyTasks.length })}
+                    </p>
+                    <div className="grid gap-2">
                       {selectedDependencyTasks.map((task) => (
-                        <button
+                        <div
                           key={task.id}
-                          type="button"
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100 dark:hover:bg-amber-500/20"
-                          onClick={() => setForm((current) => ({
-                            ...current,
-                            dependencyTaskIds: current.dependencyTaskIds.filter((taskId) => taskId !== task.id),
-                          }))}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm w-full max-w-full overflow-hidden transition-colors hover:bg-muted/30"
                         >
-                          <Link2 className="size-3" />
-                          <span className="max-w-48 truncate">{task.title}</span>
-                          <span className="text-[10px] opacity-60">✕</span>
-                        </button>
+                          <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium truncate" title={task.title}>{task.title}</span>
+                              <span className="text-xs text-muted-foreground/70 font-normal shrink-0 ml-auto">#{task.id}</span>
+                            </div>
+                            <div className="grid grid-cols-[80px_80px_auto] gap-1.5 text-xs items-center">
+                              <span className={cn(
+                                "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
+                                (() => {
+                                  const name = task.status.name.toLowerCase()
+                                  if (name.includes('todo') || name.includes('to do')) return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                  if (name.includes('progress') || name.includes('doing')) return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
+                                  if (name.includes('done') || name.includes('complete')) return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800'
+                                  return 'bg-background text-muted-foreground border-border/70'
+                                })()
+                              )}>
+                                {task.status.name}
+                              </span>
+                              
+                              <span className={cn(
+                                "inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
+                                task.priority === 'LOW' && 'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
+                                task.priority === 'MEDIUM' && 'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
+                                task.priority === 'HIGH' && 'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
+                                task.priority === 'URGENT' && 'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50'
+                              )}>
+                                <span className={cn(
+                                  "inline-block size-1 rounded-full",
+                                  task.priority === 'LOW' && 'bg-emerald-800 dark:bg-emerald-200',
+                                  task.priority === 'MEDIUM' && 'bg-blue-700 dark:bg-blue-300',
+                                  task.priority === 'HIGH' && 'bg-orange-700 dark:bg-orange-300',
+                                  task.priority === 'URGENT' && 'bg-rose-700 dark:bg-rose-300'
+                                )} />
+                                {task.priority}
+                              </span>
+
+                              {task.goalId ? (
+                                <span className="inline-flex items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 w-fit justify-self-start">
+                                  {t('task.goalShort', { id: task.goalId })}
+                                </span>
+                              ) : <div />}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full shrink-0 transition-colors"
+                            onClick={() => setForm((current) => ({
+                              ...current,
+                              dependencyTaskIds: current.dependencyTaskIds.filter((taskId) => taskId !== task.id),
+                            }))}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        </div>
                       ))}
                     </div>
                   </div>
