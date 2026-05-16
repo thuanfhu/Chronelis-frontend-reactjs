@@ -1587,7 +1587,7 @@ function DependencyTaskList({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground/80">{title}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/80">{title}</p>
         <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 min-w-5 justify-center rounded-full">{tasks.length}</Badge>
       </div>
 
