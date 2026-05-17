@@ -1855,7 +1855,9 @@
     },
     "permissionManagement": {
         "title": "Quản lý phân quyền",
-        "description": "Quản lý quyền truy cập API trong hệ thống"
+        "description": "Quản lý quyền truy cập API trong hệ thống",
+        "expandAllModules": "Hiển thị toàn bộ module",
+        "collapseAllModules": "Đóng toàn bộ module"
     },
     "sortAscending": "Sắp xếp tăng dần",
     "sortDescending": "Sắp xếp giảm dần",

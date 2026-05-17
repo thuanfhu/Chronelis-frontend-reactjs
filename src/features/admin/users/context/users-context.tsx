@@ -43,7 +43,7 @@ export const UsersProvider = ({ children }: Props) => {
   } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const result = await adminUserApi.list({ page: 1, size: 200 })
+      const result = await adminUserApi.list({ page: 1, size: 100 })
       // Map AdminUser -> User shape
       return (result.content || []).map((u: any): User => ({
         userId: u.userId,

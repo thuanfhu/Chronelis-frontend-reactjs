@@ -79,7 +79,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
   const { data: rolesData } = useQuery({
     queryKey: ['admin-roles-select'],
     queryFn: async () => {
-      const result = await adminRoleApi.list({ page: 1, size: 200 })
+      const result = await adminRoleApi.list({ page: 1, size: 50 })
       return result.content || []
     },
     staleTime: 5 * 60 * 1000,

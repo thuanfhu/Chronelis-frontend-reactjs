@@ -10,13 +10,13 @@ import {
   IconGripVertical,
   IconTrash,
   IconEdit,
+  IconFolder,
 } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Permission } from '../data/schema';
 import { Button } from '@/components/ui/button';
 import { useDroppable } from '@dnd-kit/core';
-import { useTranslation } from 'react-i18next';
 
 interface TreeItemProps {
   id: UniqueIdentifier;
@@ -43,7 +43,7 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) => {
 export function SortableTreeItem({
   id,
   children,
-  collapsed,
+  collapsed = true,
   onCollapse,
   permission,
   onDelete,
@@ -101,8 +101,6 @@ export function SortableTreeItem({
     transition,
   };
 
-  const { t } = useTranslation();
-
   const getMethodColor = (method?: string) => {
     const map: Record<string, string> = {
       GET: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
@@ -119,15 +117,15 @@ export function SortableTreeItem({
       ref={setRefs}
       style={style}
       className={cn(
-        'flex flex-col rounded-md border border-slate-200 dark:border-slate-800 transition-colors duration-200 bg-white dark:bg-zinc-900/50',
+        'flex flex-col rounded-md border transition-colors duration-200 bg-white dark:bg-zinc-900/50',
         isDragging && 'opacity-30 scale-95',
-        isModule && 'bg-slate-50 dark:bg-zinc-800/80 shadow-sm border-slate-300 dark:border-slate-700',
+        isModule ? 'bg-white dark:bg-zinc-800/80 shadow-sm border-slate-200 dark:border-slate-700' : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-zinc-800/50',
         isModule && 'hover:bg-slate-100 dark:hover:bg-zinc-800',
         isOver && 'ring-2 ring-primary ring-offset-2 bg-slate-100 dark:bg-zinc-800',
         isModule && isOver && 'scale-[1.01]'
       )}
     >
-        <div className={cn("flex items-center justify-between py-3", isModule ? "px-4" : "pl-4 pr-0")}>
+        <div className={cn("flex items-center justify-between", isModule ? "py-2 px-4" : "py-1.5 pl-3 pr-1")}>
         <div className="flex items-center gap-3">
           {!isModule && (
             <button
@@ -155,26 +153,30 @@ export function SortableTreeItem({
 
           <div className="flex items-center gap-3">
             {isModule ? (
-              <>
-                <div className="font-semibold text-[15px] text-slate-900 dark:text-slate-100">
+              <div className="flex items-center gap-2">
+                <IconFolder className="h-4 w-4 text-slate-400" />
+                <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                   {highlightText(permission.name, searchQuery)}
                 </div>
-                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none">
-                  {(children as any)?.length || 0} {t('permissions')}
+                <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[11px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none">
+                  {(children as any)?.length || 0}
                 </Badge>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="font-medium text-sm text-slate-700 dark:text-slate-200 min-w-[200px]">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate max-w-[250px]">
                   {highlightText(permission.name, searchQuery)}
                 </div>
-                <Badge variant="secondary" className={cn('text-[10px] font-mono px-2 py-0 border-none', getMethodColor(permission.httpMethod))}>
+                <Badge 
+                  variant="outline" 
+                  className={cn("text-[10px] font-bold px-1.5 py-0 h-4 border-none flex-shrink-0", getMethodColor(permission.httpMethod))}
+                >
                   {permission.httpMethod}
                 </Badge>
-                <span className="text-sm font-mono text-slate-500 dark:text-slate-400">
+                <code className="text-xs text-slate-400 dark:text-slate-500 font-mono truncate flex-1">
                   {highlightText(permission.apiPath, searchQuery)}
-                </span>
-              </>
+                </code>
+              </div>
             )}
           </div>
         </div>

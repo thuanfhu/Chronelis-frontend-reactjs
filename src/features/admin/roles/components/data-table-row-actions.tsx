@@ -42,7 +42,7 @@ export function DataTableRowActions<TData>({
             setOpen('edit')
           }}
         >
-          <IconEdit className="mr-2 h-4 w-4" />
+          <IconEdit className="mr-2 h-4 w-4 text-amber-500" />
           {t('edit')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -53,7 +53,7 @@ export function DataTableRowActions<TData>({
           }}
           className="text-red-600"
         >
-          <IconTrash className="mr-2 h-4 w-4" />
+          <IconTrash className="mr-2 h-4 w-4 text-red-500" />
           {t('delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>

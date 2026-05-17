@@ -18,6 +18,10 @@ interface PermissionsContextType {
   setCurrentRow: (permission: Permission | null) => void
   searchQuery: string
   setSearchQuery: (query: string) => void
+  collapsedModules: Record<string, boolean>
+  setCollapsedModules: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  expandAll: () => void
+  collapseAll: () => void
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined)
@@ -65,6 +69,42 @@ export default function PermissionsProvider({ children }: Props) {
   const permissions = permissionsData?.permissions || []
   const modules = permissionsData?.modules || []
 
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
+
+  React.useEffect(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      let hasChanges = false
+      modules.forEach((moduleName) => {
+        if (newState[moduleName] === undefined) {
+          newState[moduleName] = true // Mặc định đóng
+          hasChanges = true
+        }
+      })
+      return hasChanges ? newState : prev
+    })
+  }, [modules])
+
+  const expandAll = useCallback(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      modules.forEach((moduleName) => {
+        newState[moduleName] = false
+      })
+      return newState
+    })
+  }, [modules])
+
+  const collapseAll = useCallback(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      modules.forEach((moduleName) => {
+        newState[moduleName] = true
+      })
+      return newState
+    })
+  }, [modules])
+
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['admin-permissions'] })
   }, [queryClient])
@@ -84,6 +124,10 @@ export default function PermissionsProvider({ children }: Props) {
         setCurrentRow,
         searchQuery,
         setSearchQuery,
+        collapsedModules,
+        setCollapsedModules,
+        expandAll,
+        collapseAll,
       }}
     >
       {children}

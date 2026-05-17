@@ -1876,7 +1876,9 @@
   },
   "permissionManagement": {
     "title": "Permission Management",
-    "description": "Manage API access permissions in the system"
+    "description": "Manage API access permissions in the system",
+    "expandAllModules": "Expand all modules",
+    "collapseAllModules": "Collapse all modules"
   },
   "sortAscending": "Sort Ascending",
   "sortDescending": "Sort Descending",

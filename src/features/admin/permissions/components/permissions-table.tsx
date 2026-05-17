@@ -63,7 +63,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
 
 export function PermissionsTable() {
   const queryClient = useQueryClient()
-  const { permissions, isLoading, refetch, searchQuery } = usePermissions()
+  const { permissions, isLoading, refetch, searchQuery, collapsedModules, setCollapsedModules } = usePermissions()
   
   const filteredPermissions = permissions.filter((p) => {
     const query = searchQuery.toLowerCase()
@@ -104,20 +104,6 @@ export function PermissionsTable() {
     })
   )
 
-  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
-
-  useEffect(() => {
-    setCollapsedModules((prev) => {
-      const newState = { ...prev }
-      allModules.forEach((moduleName) => {
-        if (newState[moduleName] === undefined) {
-          newState[moduleName] = true // Mặc định đóng
-        }
-      })
-      return newState
-    })
-  }, [allModules])
-
   useEffect(() => {
     if (searchQuery) {
       setCollapsedModules((prev) => {
@@ -128,7 +114,7 @@ export function PermissionsTable() {
         return newState
       })
     }
-  }, [searchQuery, filteredModules])
+  }, [searchQuery, filteredModules, setCollapsedModules])
   const [isDragging, setIsDragging] = useState(false)
   const { t } = useTranslation()
 
@@ -282,7 +268,7 @@ export function PermissionsTable() {
                 <SortableTreeItem
                   id={moduleName}
                   searchQuery={searchQuery}
-                  collapsed={collapsedModules[moduleName]}
+                  collapsed={collapsedModules[moduleName] !== false}
                   onCollapse={() => toggleCollapse(moduleName)}
                   permission={{
                     permissionId: moduleName,
