@@ -87,7 +87,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (selectedPermissions.length === 0) {
-      toast.error('Vui lòng chọn ít nhất một permission')
+      toast.error(t('notification.selectAtLeastOnePermission', 'Vui lòng chọn ít nhất một quyền'))
       return
     }
 
@@ -104,11 +104,11 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
         permissionIds: selectedPermissions,
       })
 
-      toast.success(`Tạo module "${values.moduleName}" thành công`)
+      toast.success(t('notification.moduleCreateSuccess', 'Tạo module thành công'))
       onOpenChange(false)
       refetch()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể tạo module')
+      toast.error(error instanceof Error ? error.message : t('notification.moduleCreateError', 'Không thể tạo module'))
     } finally {
       setIsLoading(false)
     }

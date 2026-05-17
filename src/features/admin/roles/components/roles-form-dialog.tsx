@@ -139,7 +139,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           handleClose()
         }
 
-        toast.success('Cập nhật vai trò thành công')
+        toast.success(t('notification.roleUpdateSuccess', 'Cập nhật vai trò thành công'))
       } else {
         await createRole({
           name: data.name,
@@ -147,12 +147,12 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           active: data.active,
           permissionIds: data.permissionIds,
         })
-        toast.success('Tạo vai trò mới thành công')
+        toast.success(t('notification.roleCreateSuccess', 'Tạo vai trò thành công'))
       }
       handleClose()
     } catch (error) {
       console.error('Submit error:', error)
-      toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra')
+      toast.error(error instanceof Error ? error.message : t('notification.genericError', 'Có lỗi xảy ra'))
     }
   }
 
@@ -174,7 +174,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
         }))
         setAllPermissions(perms)
       } catch (error) {
-        toast.error('Không thể tải danh sách quyền. Vui lòng thử lại sau.')
+        toast.error(t('notification.permissionLoadError', 'Không thể tải danh sách quyền'))
       } finally {
         setIsLoading(false)
       }
@@ -244,9 +244,9 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="px-6 py-4 space-y-6">
                 {/* Basic Info Section */}
                 <div className="space-y-4 p-4 bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600 rounded-lg border border-slate-200 shadow-sm">
@@ -369,15 +369,25 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                   {modulePermissions.map((permission) => (
                                     <div
                                       key={permission.permissionId}
-                                      className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                                      className="flex items-center justify-between pl-8 pr-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
                                     >
                                       <div className="flex flex-col gap-1">
                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-100">
                                           {permission.name}
                                         </span>
-                                        <span className="text-xs text-slate-900 dark:text-slate-300">
-                                          {permission.apiPath} ({permission.httpMethod})
-                                        </span>
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                          <span>{permission.apiPath}</span>
+                                          <span className={cn(
+                                            "text-xs font-mono font-bold px-1.5 py-0.5 rounded",
+                                            permission.httpMethod === 'GET' && "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",
+                                            permission.httpMethod === 'POST' && "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
+                                            permission.httpMethod === 'PUT' && "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20",
+                                            permission.httpMethod === 'DELETE' && "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20",
+                                            permission.httpMethod === 'PATCH' && "text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20"
+                                          )}>
+                                            {permission.httpMethod}
+                                          </span>
+                                        </div>
                                       </div>
                                       <Switch
                                         checked={field.value.includes(permission.permissionId)}
@@ -399,27 +409,27 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                   )}
                 />
               </div>
+            </ScrollArea>
 
-              {/* Footer */}
-              <div className="flex justify-end gap-4 px-6 py-4 border-t dark:bg-zinc-700 bg-slate-50 sticky bottom-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                  className="border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
-                >
-                  {t('cancel')}
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-slate-900 hover:bg-slate-600 dark:hover:bg-slate-600 text-white"
-                >
-                  {isEdit ? t('update') : t('add')}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </ScrollArea>
+            {/* Footer - outside ScrollArea so it always stays at bottom */}
+            <div className="flex justify-end gap-4 px-6 py-4 border-t dark:bg-zinc-700 bg-slate-50 flex-none">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-colors"
+              >
+                {isEdit ? t('update') : t('add')}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

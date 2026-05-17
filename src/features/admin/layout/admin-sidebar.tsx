@@ -100,9 +100,6 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
               className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
             />
           </div>
-          <span className="block text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {t('admin.sidebar.brandLabel')}
-          </span>
         </Link>
 
         <Button

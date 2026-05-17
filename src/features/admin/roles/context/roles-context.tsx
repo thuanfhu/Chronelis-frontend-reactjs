@@ -1,8 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import type { Role } from '../data/schema'
 import { createContext, useContext } from 'react'
 import { toast } from 'sonner'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminRoleApi } from '@/lib/api/modules/admin-role-api'
+import { useTranslation } from 'react-i18next'
 
 type RolesDialogType = 'add' | 'edit' | 'delete'
 type SetOpenType = (type: RolesDialogType | null) => void
@@ -50,6 +52,8 @@ interface Props {
 }
 
 export default function RolesProvider({ children }: Props) {
+  const queryClient = useQueryClient()
+  const { t } = useTranslation()
   const [open, setOpenState] = useState<RolesDialogType | null>(null)
   const setOpen: SetOpenType = useCallback(
     (type) => {
@@ -58,20 +62,16 @@ export default function RolesProvider({ children }: Props) {
     []
   )
   const [currentRow, setCurrentRow] = useState<Role | null>(null)
-  const [roles, setRoles] = useState<Role[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [meta, setMeta] = useState({
-    totalPages: 1,
-    currentPage: 1,
-    totalElements: 0,
-  })
 
-  const fetchRoles = useCallback(async (page: number = 1) => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const result = await adminRoleApi.list({ page, size: 50 })
+  const {
+    data: rolesData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin-roles'],
+    queryFn: async () => {
+      const result = await adminRoleApi.list({ page: 1, size: 50 })
       const mappedRoles: Role[] = (result.content || []).map((r: any) => ({
         roleId: r.roleId,
         name: r.name,
@@ -91,120 +91,120 @@ export default function RolesProvider({ children }: Props) {
         updatedAt: r.updatedAt || '',
         createdBy: r.createdBy || '',
       }))
-      setRoles(mappedRoles)
       const metaData = (result as any).meta
-      if (metaData) {
-        setMeta({
-          totalPages: metaData.totalPages || 1,
-          currentPage: metaData.currentPage || page,
-          totalElements: metaData.totalElements || mappedRoles.length,
-        })
+      return {
+        roles: mappedRoles,
+        meta: {
+          totalPages: metaData?.totalPages || 1,
+          currentPage: metaData?.currentPage || 1,
+          totalElements: metaData?.totalElements || mappedRoles.length,
+        },
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải dữ liệu')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    fetchRoles()
-  }, [fetchRoles])
+  const roles = rolesData?.roles || []
+  const meta = rolesData?.meta || { totalPages: 1, currentPage: 1, totalElements: 0 }
 
-  const refetch = useCallback(() => {
-    fetchRoles(meta.currentPage)
-  }, [fetchRoles, meta.currentPage])
+  const fetchRoles = useCallback(async (_page: number = 1) => {
+    await refetch()
+  }, [refetch])
+
+  const createRoleMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; active: boolean; permissionIds: string[] }) => {
+      return adminRoleApi.create({
+        name: data.name,
+        description: data.description,
+        active: data.active,
+        permissionIds: data.permissionIds,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
+      toast.success(t('notification.roleCreateSuccess', 'Tạo vai trò thành công'))
+      setOpen(null)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || t('notification.roleCreateError', 'Lỗi khi tạo vai trò'))
+    },
+  })
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ roleId, data }: { roleId: string; data: any }) => {
+      return adminRoleApi.update(roleId, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
+      setOpen(null)
+      setCurrentRow(null)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || t('notification.roleUpdateError', 'Lỗi khi cập nhật vai trò'))
+    },
+  })
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (roleId: string) => {
+      return adminRoleApi.remove(roleId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
+      toast.success(t('notification.roleDeleteSuccess', 'Xóa vai trò thành công'))
+      setOpen(null)
+      setCurrentRow(null)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || t('notification.roleDeleteError', 'Lỗi khi xóa vai trò'))
+    },
+  })
 
   const createRole = useCallback(
     async (data: { name: string; description: string; active: boolean; permissionIds: string[] }) => {
-      try {
-        setIsLoading(true)
-        await adminRoleApi.create({
-          name: data.name,
-          description: data.description,
-          active: data.active,
-          permissionIds: data.permissionIds,
-        })
-        setOpen(null)
-        fetchRoles()
-        toast.success('Tạo vai trò thành công')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tạo vai trò')
-        throw err
-      } finally {
-        setIsLoading(false)
-      }
+      await createRoleMutation.mutateAsync(data)
     },
-    [fetchRoles, setOpen]
+    [createRoleMutation]
   )
 
   const updateRole = useCallback(
-    async (roleId: string, data: { name?: string; description?: string; active?: boolean; permissionIds?: string[] }) => {
-      try {
-        setIsLoading(true)
-        await adminRoleApi.update(roleId, data)
-        setOpen(null)
-        setCurrentRow(null)
-        fetchRoles()
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi cập nhật vai trò')
-        throw err
-      } finally {
-        setIsLoading(false)
-      }
+    async (roleId: string, data: any) => {
+      await updateRoleMutation.mutateAsync({ roleId, data })
     },
-    [fetchRoles, setOpen]
+    [updateRoleMutation]
   )
 
   const deleteRole = useCallback(
     async (roleId: string) => {
-      try {
-        setIsLoading(true)
-        await adminRoleApi.remove(roleId)
-        setOpen(null)
-        setCurrentRow(null)
-        fetchRoles()
-        toast.success('Xóa vai trò thành công')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi xóa vai trò')
-        throw err
-      } finally {
-        setIsLoading(false)
-      }
+      await deleteRoleMutation.mutateAsync(roleId)
     },
-    [fetchRoles, setOpen]
+    [deleteRoleMutation]
   )
 
   const updateRolePermissions = useCallback(
     async (roleId: string, permissionIds: string[]) => {
       try {
-        setIsLoading(true)
         await adminRoleApi.update(roleId, { permissionIds })
-        fetchRoles()
+        queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi cập nhật quyền')
+        toast.error(err instanceof Error ? err.message : t('notification.permissionUpdateError', 'Lỗi khi cập nhật quyền'))
         throw err
-      } finally {
-        setIsLoading(false)
       }
     },
-    [fetchRoles]
+    [queryClient, t]
   )
 
   const removePermissions = useCallback(
     async (roleId: string, permissionIds: string[]) => {
       try {
-        setIsLoading(true)
         await adminRoleApi.deletePermissions(roleId, { permissionIds })
-        fetchRoles()
+        queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi xóa quyền')
+        toast.error(err instanceof Error ? err.message : t('notification.permissionRemoveError', 'Lỗi khi xóa quyền'))
         throw err
-      } finally {
-        setIsLoading(false)
       }
     },
-    [fetchRoles]
+    [queryClient, t]
   )
 
   const handleCloseDialog = useCallback(() => {
@@ -217,7 +217,7 @@ export default function RolesProvider({ children }: Props) {
       value={{
         roles,
         isLoading,
-        error,
+        error: error as string | null,
         refetch,
         meta,
         fetchRoles,

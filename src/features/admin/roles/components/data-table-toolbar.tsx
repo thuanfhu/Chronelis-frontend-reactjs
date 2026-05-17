@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { DataTableFacetedFilter } from '@/components/ui/data-table-faceted-filter'
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options'
 import { useTranslation } from 'react-i18next'
+import { IconSearch } from '@tabler/icons-react'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -18,15 +19,18 @@ export function DataTableToolbar<TData>({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2 overflow-hidden">
-        <Input
-          placeholder={t('searchPlaceholder')}
-          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('name')?.setFilterValue(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px] truncate"
-        />
+      <div className="flex flex-1 flex-col-reverse items-start gap-y-2 sm:flex-row sm:items-center sm:space-x-2">
+        <div className="relative">
+          <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('searchPlaceholder')}
+            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+            onChange={(event) =>
+              table.getColumn('name')?.setFilterValue(event.target.value)
+            }
+            className="h-8 w-[150px] lg:w-[250px] pl-8 truncate"
+          />
+        </div>
         <div className="flex gap-x-2 flex-wrap">
           {table.getColumn('active') && (
             <DataTableFacetedFilter

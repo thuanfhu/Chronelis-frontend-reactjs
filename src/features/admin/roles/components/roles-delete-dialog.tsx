@@ -48,38 +48,57 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
         if (!newOpen) setValue('')
       }}
     >
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{t('confirmDelete')}</DialogTitle>
-          <DialogDescription>
-            {t('roleDeleteConfirmation', { roleName: currentRow.name, defaultValue: `Bạn có chắc chắn muốn xóa vai trò "${currentRow.name}"?` })}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[425px] dark:bg-zinc-900">
+        <DialogHeader className="space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+            <IconAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
+          </div>
+          <div className="text-center">
+            <DialogTitle className="text-lg font-semibold text-foreground">
+              {t('confirmDelete')}
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-muted-foreground">
+              {t('roleDeleteConfirmation', { roleName: currentRow.name, defaultValue: `Bạn có chắc chắn muốn xóa vai trò "${currentRow.name}"?` })}
+            </DialogDescription>
+          </div>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <Label className="space-y-2 block">
-            <span>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="role-name-confirm" className="text-sm font-medium">
               {t('enterRoleNameToConfirm', { roleName: currentRow.name, defaultValue: `Nhập tên vai trò "${currentRow.name}" để xác nhận` })}
-            </span>
+            </Label>
             <Input
+              id="role-name-confirm"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={t('enterRoleNamePlaceholder', 'Nhập tên vai trò')}
+              className="border-red-200 focus-visible:ring-red-500"
             />
-          </Label>
-          <Alert variant="destructive">
-            <IconAlertTriangle className="h-4 w-4" />
-            <AlertTitle>{t('warning')}</AlertTitle>
-            <AlertDescription>{t('roleDeleteWarning', 'Thao tác này không thể hoàn tác')}</AlertDescription>
+          </div>
+
+          <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/50">
+            <IconAlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <AlertTitle className="text-red-700 dark:text-red-300 font-medium">{t('warning')}</AlertTitle>
+            <AlertDescription className="text-red-600 dark:text-red-400 text-xs">
+              {t('roleDeleteWarning', 'Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.')}
+            </AlertDescription>
           </Alert>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => { onOpenChange(false); setValue('') }}>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button 
+            variant="outline" 
+            onClick={() => { onOpenChange(false); setValue('') }}
+            className="flex-1 sm:flex-none"
+          >
             {t('cancel')}
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
             disabled={value.trim() !== currentRow.name}
+            className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white disabled:bg-red-200 dark:disabled:bg-red-900/50"
           >
             {t('delete')}
           </Button>

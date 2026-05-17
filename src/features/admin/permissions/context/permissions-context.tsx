@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback } from 'react'
 import type { Permission } from '../data/schema'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminPermissionApi } from '@/lib/api/modules/admin-permission-api'
 
 type PermissionsDialogType = 'add' | 'edit' | 'delete'
@@ -24,16 +25,17 @@ interface Props {
 }
 
 export default function PermissionsProvider({ children }: Props) {
-  const [permissions, setPermissions] = useState<Permission[]>([])
-  const [modules, setModules] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient()
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
   const [open, setOpen] = useState<PermissionsDialogType | null>(null)
   const [currentRow, setCurrentRow] = useState<Permission | null>(null)
 
-  const fetchPermissions = useCallback(async () => {
-    try {
-      setIsLoading(true)
+  const {
+    data: permissionsData,
+    isLoading,
+  } = useQuery({
+    queryKey: ['admin-permissions'],
+    queryFn: async () => {
       const result = await adminPermissionApi.list({ page: 1, size: 500 })
       const mapped: Permission[] = (result.content || []).map((p: any) => ({
         permissionId: p.permissionId,
@@ -45,27 +47,24 @@ export default function PermissionsProvider({ children }: Props) {
         updatedAt: p.updatedAt || '',
         createdBy: p.createdBy || '',
       }))
-      setPermissions(mapped)
 
       // Extract unique modules
       const uniqueModules = Array.from(
         new Set(mapped.map((p) => p.module).filter(Boolean))
       ).sort() as string[]
-      setModules(uniqueModules)
-    } catch (error) {
-      console.error('Error fetching permissions:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
 
-  useEffect(() => {
-    fetchPermissions()
-  }, [fetchPermissions])
+      return { permissions: mapped, modules: uniqueModules }
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  })
+
+  const permissions = permissionsData?.permissions || []
+  const modules = permissionsData?.modules || []
 
   const refetch = useCallback(() => {
-    fetchPermissions()
-  }, [fetchPermissions])
+    queryClient.invalidateQueries({ queryKey: ['admin-permissions'] })
+  }, [queryClient])
 
   return (
     <PermissionsContext.Provider
