@@ -47,14 +47,18 @@ export const useColumns = (): ColumnDef<Role>[] => {
         const role = row.original
         return (
           <TooltipProvider>
-            <Tooltip>
+            <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <div className="font-medium cursor-help hover:text-primary transition-colors">
                   {role.name}
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="max-w-xs text-xs">{role.description || t('noDescription', 'Không có mô tả')}</p>
+              <TooltipContent 
+                side="top" 
+                className="bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-lg p-3 max-w-[600px] w-max"
+              >
+                <p className="text-sm font-semibold mb-1 text-slate-900 dark:text-slate-100">{role.name}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed text-balance">{role.description || t('noDescription', 'Không có mô tả')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
