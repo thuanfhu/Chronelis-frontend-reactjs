@@ -14,6 +14,7 @@ export const queryKeys = {
     detail: (projectId: number) => ['projects', 'detail', projectId] as const,
     effectiveAccess: (projectId: number) => ['projects', 'effective-access', projectId] as const,
     access: (projectId: number) => ['projects', 'access', projectId] as const,
+    analytics: (projectId: number) => ['projects', 'analytics', projectId] as const,
   },
   goals: {
     byProject: (projectId: number, page: number, size: number) => ['goals', projectId, page, size] as const,
@@ -28,6 +29,7 @@ export const queryKeys = {
     detail: (taskId: number) => ['tasks', 'detail', taskId] as const,
     dependencies: (taskId: number) => ['tasks', 'dependencies', taskId] as const,
     myWork: ['tasks', 'my-work'] as const,
+    analytics: ['tasks', 'analytics'] as const,
   },
   schedules: {
     byTask: (taskId: number) => ['task-schedules', 'task', taskId] as const,

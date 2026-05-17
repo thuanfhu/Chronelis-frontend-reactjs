@@ -20,11 +20,14 @@ import {
   RefreshCw,
   Rocket,
   Search,
-  ShieldAlert,
   TrendingUp,
   Workflow,
-  Zap,
 } from 'lucide-react'
+import { TaskHealthDonut } from '@/components/charts/task-health-donut'
+import { PriorityBarChart } from '@/components/charts/priority-bar-chart'
+import { DailyAreaChart } from '@/components/charts/daily-area-chart'
+import { CompletionLineChart } from '@/components/charts/completion-line-chart'
+import { PriorityComposedChart } from '@/components/charts/priority-composed-chart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -76,6 +79,12 @@ export function MyWorkPage() {
 
   /* ── Queries ── */
 
+  const analyticsQuery = useQuery({
+    queryKey: queryKeys.tasks.analytics,
+    queryFn: taskApi.analytics,
+    staleTime: 2 * 60_000,
+  })
+
   const myWorkQuery = useQuery({
     queryKey: queryKeys.tasks.myWork,
     queryFn: taskApi.myWork,
@@ -122,17 +131,6 @@ export function MyWorkPage() {
     [blocked],
   )
 
-  /* ── Signals ── */
-
-  const signals = useMemo(() => {
-    const nextDue = assigned.filter((t) => t.dueDate).sort((a, b) => dueTs(a) - dueTs(b))[0]
-    return [
-      { label: t('myWork.signalBlocker'), icon: ShieldAlert, tone: 'rose' as const, value: blocked[0]?.title ?? t('myWork.noBlocker') },
-      { label: t('myWork.signalReady'), icon: Rocket, tone: 'emerald' as const, value: ready[0]?.title ?? t('myWork.noReady') },
-      { label: t('myWork.signalDeadline'), icon: Clock3, tone: 'amber' as const, value: nextDue ? nextDue.title + ' · ' + fmtDue(nextDue.dueDate, t) : t('myWork.noDeadline') },
-    ]
-  }, [assigned, blocked, ready, t])
-
   /* ── Handlers ── */
 
 
@@ -148,24 +146,22 @@ export function MyWorkPage() {
     <div className="space-y-6">
       {/* ── Header ── */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }} className="flex flex-col gap-3 border-b border-border/60 pb-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3.5">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-amber-500 to-rose-500 text-white shadow-lg shadow-amber-500/30">
+        <div className="flex items-center gap-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm">
             <LayoutDashboard className="size-5" />
           </div>
           <div>
-            <h1 className="flex items-center gap-2 text-xl font-extrabold tracking-tight sm:text-2xl">
-              <span className="bg-linear-to-r from-amber-600 via-orange-500 to-rose-500 bg-clip-text text-transparent">{t('myWork.title')}</span>
-              <Flame className="size-5 text-orange-500 drop-shadow-[0_1px_3px_rgba(249,115,22,0.5)]" />
-              <Zap className="size-4 text-amber-400" />
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">
+              {t('myWork.title')}
             </h1>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-              <TrendingUp className="size-3.5" />
-              <span>{t('myWork.blocked')}</span>
-              <span className="text-border">·</span>
-              <span>{t('myWork.ready')}</span>
-              <span className="text-border">·</span>
-              <span>{t('myWork.subtitle')}</span>
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+              <TrendingUp className="size-3.5 text-emerald-500" />
+              {t('myWork.subtitle').split('·').map((part, index) => (
+                <span key={index} className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                  {part.trim()}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -174,7 +170,6 @@ export function MyWorkPage() {
             <RefreshCw className={cn('size-3.5', myWorkQuery.isFetching && 'animate-spin')} />
             {myWorkQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
           </Button>
-
         </div>
       </motion.div>
 
@@ -197,44 +192,91 @@ export function MyWorkPage() {
             <MetricCard icon={Workflow} label={t('myWork.metricHighPriority')} value={myWorkQuery.data.highPriorityCount} desc={t('myWork.metricHighPriorityDesc')} tone="emerald" />
           </div>
 
-          {/* Hero + Sidebar */}
-          <motion.div variants={fadeSlide} className="grid gap-5 xl:grid-cols-[1fr_22rem]">
-
-            {/* Hero card */}
-            <Card className="overflow-hidden border-border/60 bg-linear-to-br from-amber-50/60 via-white to-sky-50/40 shadow-xl shadow-black/4 dark:from-amber-950/20 dark:via-background dark:to-sky-950/15">
-              <CardContent className="space-y-5 p-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
-                    <Flame className="size-3.5" />
-                    {t('myWork.boardTitle')}
-                  </div>
-                  <h2 className="text-2xl font-bold leading-snug tracking-tight text-foreground">
-                    {t('myWork.boardHero')}
-                  </h2>
-                  <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-                    {t('myWork.boardDescription')}
-                  </p>
+          {/* ─── Charts row 1: Area + Composed ─── */}
+          <motion.div variants={fadeSlide} className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            {/* AREA CHART: daily task creation trend */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <TrendingUp className="size-4 text-indigo-500" />
+                    {t('myWork.charts.activityTitle')}
+                  </CardTitle>
+                  {analyticsQuery.isLoading && <Skeleton className="h-4 w-20" />}
                 </div>
-
-                {/* Summary row */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <SummaryCard icon={AlertTriangle} tone="rose" title={t('myWork.blocked')} value={blocked.length} desc={t('myWork.blockedDesc')} />
-                  <SummaryCard icon={Rocket} tone="emerald" title={t('myWork.ready')} value={ready.length} desc={t('myWork.readyDesc')} />
-                </div>
-
-                {/* Signals */}
-                <div className="grid gap-3 md:grid-cols-3">
-                  {signals.map((s) => (
-                    <SignalCard key={s.label} icon={s.icon} tone={s.tone} label={s.label} value={s.value} />
-                  ))}
-                </div>
+                <p className="text-xs text-muted-foreground">{t('myWork.charts.activityDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-4 pt-0">
+                <DailyAreaChart data={analyticsQuery.data?.trend ?? []} />
               </CardContent>
             </Card>
 
-            {/* Right sidebar: Blockers */}
-            <div className="flex flex-col gap-4">
-              <BlockerDigestCard tasks={topBlockers} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
-            </div>
+            {/* COMPOSED CHART: estimated hours + task count by priority */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-5">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Flame className="size-4 text-orange-500" />
+                  {t('myWork.charts.workloadTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('myWork.charts.workloadDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-4 pt-0">
+                <PriorityComposedChart data={analyticsQuery.data?.estimatedByPriority ?? []} />
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* ─── Charts row 2: Pie + Bar + Line + Blockers ─── */}
+          <motion.div variants={fadeSlide} className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_18rem]">
+            {/* PIE CHART: task health donut */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-1 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  {t('myWork.charts.healthTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('myWork.charts.healthDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <TaskHealthDonut
+                  assignedCount={myWorkQuery.data?.assignedCount ?? 0}
+                  blockedCount={myWorkQuery.data?.blockedCount ?? 0}
+                  overdueCount={myWorkQuery.data?.overdueCount ?? 0}
+                  dueTodayCount={myWorkQuery.data?.dueTodayCount ?? 0}
+                />
+              </CardContent>
+            </Card>
+
+            {/* BAR CHART: priority breakdown */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-1 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Workflow className="size-4 text-amber-500" />
+                  {t('myWork.charts.priorityTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('myWork.charts.priorityDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <PriorityBarChart tasks={assigned} />
+              </CardContent>
+            </Card>
+
+            {/* LINE CHART: cumulative completions */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-1 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Rocket className="size-4 text-purple-500" />
+                  {t('myWork.charts.completionTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('myWork.charts.completionDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <CompletionLineChart data={analyticsQuery.data?.trend ?? []} mode="cumulative" />
+              </CardContent>
+            </Card>
+
+            {/* Blockers digest sidebar */}
+            <BlockerDigestCard tasks={topBlockers} names={projectDirQuery.data} onOpen={(t) => openTaskDrawer(t.id, 'view')} />
           </motion.div>
 
           {/* Filter bar */}
@@ -337,42 +379,6 @@ function MetricCard({ icon: Icon, label, value, desc, tone }: {
     </motion.div>
   )
 }
-
-function SummaryCard({ icon: Icon, tone, title, value, desc }: {
-  icon: typeof AlertTriangle; tone: 'rose' | 'emerald'; title: string; value: number; desc: string
-}) {
-  const ico = { rose: 'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400', emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' }[tone]
-  const val = { rose: 'text-rose-600 dark:text-rose-400', emerald: 'text-emerald-600 dark:text-emerald-400' }[tone]
-  return (
-    <div className="rounded-xl border border-border/60 bg-background/90 p-4 shadow-sm">
-      <div className="mb-1.5 flex items-center gap-2">
-        <div className={cn('flex size-7 items-center justify-center rounded-lg', ico)}><Icon className="size-3.5" /></div>
-        <p className="text-xs font-semibold text-muted-foreground">{title}</p>
-      </div>
-      <p className={cn('text-3xl font-bold tracking-tight', val)}>{value}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{desc}</p>
-    </div>
-  )
-}
-
-function SignalCard({ label, icon: Icon, tone, value }: {
-  label: string; icon: typeof AlertTriangle; tone: 'rose' | 'emerald' | 'amber'; value: string
-}) {
-  const wrap = { rose: 'border-rose-200/60 bg-rose-50/70 dark:border-rose-500/25 dark:bg-rose-500/10', emerald: 'border-emerald-200/60 bg-emerald-50/70 dark:border-emerald-500/25 dark:bg-emerald-500/10', amber: 'border-amber-200/60 bg-amber-50/70 dark:border-amber-500/25 dark:bg-amber-500/10' }[tone]
-  const ico = { rose: 'bg-rose-200 text-rose-700 dark:bg-rose-500/25 dark:text-rose-300', emerald: 'bg-emerald-200 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300', amber: 'bg-amber-200 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300' }[tone]
-  const lbl = { rose: 'text-rose-700 dark:text-rose-300', emerald: 'text-emerald-700 dark:text-emerald-300', amber: 'text-amber-700 dark:text-amber-300' }[tone]
-  return (
-    <div className={cn('rounded-xl border p-3.5', wrap)}>
-      <div className="mb-2 flex items-center gap-2">
-        <div className={cn('flex size-6 items-center justify-center rounded-md', ico)}><Icon className="size-3.5" /></div>
-        <p className={cn('text-xs font-bold', lbl)}>{label}</p>
-      </div>
-      <p className="text-[13px] font-medium leading-6 text-foreground">{value}</p>
-    </div>
-  )
-}
-
-
 
 /* ── Blocker Digest ── */
 

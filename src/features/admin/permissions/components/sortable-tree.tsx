@@ -125,7 +125,7 @@ export function SortableTreeItem({
         isModule && isOver && 'scale-[1.01]'
       )}
     >
-        <div className={cn("flex items-center justify-between", isModule ? "py-2 px-4" : "py-1.5 pl-3 pr-1")}>
+        <div className={cn("flex items-center justify-between", isModule ? "py-2 px-4" : "py-1.5 pl-3 pr-0")}>
         <div className="flex items-center gap-3">
           {!isModule && (
             <button

@@ -500,7 +500,19 @@
         "emptyAllDescription": "Hãy thử bỏ bớt bộ lọc hoặc tải lại để lấy danh sách việc mới nhất được giao cho bạn.",
         "projectFallback": "Dự án #{{id}}",
         "aiTaskPrompt": "Hãy tóm tắt bước tiếp theo cho task \"{{title}}\" bằng ngôn ngữ dễ hiểu, chỉ ra blocker hiện tại và đề xuất việc nên làm ngay trong project hiện tại.",
-        "aiSmartPrompt": "Dựa trên task ưu tiên hiện tại là \"{{title}}\", hãy đề xuất thứ tự xử lý blocker, việc nên làm ngay và cách giữ nhịp cho phần việc còn lại trong project này."
+        "aiSmartPrompt": "Dựa trên task ưu tiên hiện tại là \"{{title}}\", hãy đề xuất thứ tự xử lý blocker, việc nên làm ngay và cách giữ nhịp cho phần việc còn lại trong project này.",
+        "charts": {
+            "activityTitle": "Xu hướng hoạt động 14 ngày",
+            "activityDesc": "Công việc được tạo và hoàn thành mỗi ngày",
+            "workloadTitle": "Khối lượng công việc theo độ ưu tiên",
+            "workloadDesc": "Giờ ước tính (cột) · Công việc đang mở (đường)",
+            "healthTitle": "Tình trạng công việc",
+            "healthDesc": "Bị chặn · Quá hạn · Hôm nay · Đúng tiến độ",
+            "priorityTitle": "Phân tích theo độ ưu tiên",
+            "priorityDesc": "Số công việc theo từng cấp độ ưu tiên",
+            "completionTitle": "Xu hướng hoàn thành",
+            "completionDesc": "Tổng công việc hoàn thành trong kỳ này"
+        }
     },
     "kanban": {
         "title": "Kanban Board",
@@ -1151,7 +1163,6 @@
             "notFound": "Goal không tồn tại"
         }
     },
-
     "ai": {
         "title": "Trợ lý AI",
         "tooltip": "Mở trợ lý AI",
@@ -1641,6 +1652,42 @@
             "addMemberPlaceholder": "Thêm thành viên vào team...",
             "selectMember": "Chọn thành viên",
             "allMembersAdded": "Tất cả thành viên đã thuộc team này."
+        },
+        "charts": {
+            "total": "Tổng",
+            "owned": "Sở hữu",
+            "joined": "Đã tham gia",
+            "ownershipTitle": "Quyền sở hữu workspace",
+            "ownershipDesc": "Vai trò của bạn trên tất cả workspace",
+            "ownedByMe": "Do tôi sở hữu",
+            "noWorkspaces": "Chưa có workspace",
+            "growthTitle": "Tăng trưởng workspace",
+            "growthDesc": "Thêm mỗi tháng (cột) · tổng tích lũy (đường)",
+            "noGrowthHistory": "Chưa đủ lịch sử workspace",
+            "areaTitle": "Biểu đồ vùng theo tháng",
+            "areaDesc": "Workspace được tạo theo tháng (vùng)",
+            "lineTitle": "Đường tăng trưởng tích lũy",
+            "lineDesc": "Tổng workspace theo thời gian",
+            "totalProjects": "Tổng dự án",
+            "active": "Đang hoạt động",
+            "members": "Thành viên",
+            "teams": "Nhóm",
+            "projectsByStatus": "Dự án theo trạng thái",
+            "statusSummary": "Hoạt động {{active}} · Hoàn thành {{completed}} · Lưu trữ {{archived}}",
+            "projectGrowthTitle": "Tăng trưởng dự án theo thời gian",
+            "projectGrowthDesc": "Dự án được thêm mỗi tháng · tổng tích lũy (đường)",
+            "noProjectHistory": "Chưa đủ lịch sử dự án",
+            "memberRoleTitle": "Phân bổ vai trò thành viên",
+            "memberRoleDesc": "Chủ sở hữu và thành viên thường",
+            "owners": "Chủ sở hữu",
+            "completionTrendTitle": "Xu hướng hoàn thành (7 ngày)",
+            "completionTrendDesc": "Dự án đã hoàn thành gần đây",
+            "snapshotTitle": "Tổng quan workspace",
+            "snapshotDesc": "Thống kê nhanh",
+            "completionRate": "Tỷ lệ hoàn thành",
+            "activeRatio": "Tỷ lệ đang hoạt động",
+            "archivedRatio": "Tỷ lệ đã lưu trữ",
+            "noMembers": "Chưa có thành viên"
         }
     },
     "project": {
@@ -1729,6 +1776,23 @@
             "private": "Riêng tư",
             "publicDescription": "Tất cả thành viên workspace có thể xem và cộng tác trong dự án này.",
             "privateDescription": "Chỉ những người dùng và nhóm được cấp quyền cụ thể mới có thể thấy dự án này."
+        },
+        "status": {
+            "ACTIVE": "Đang hoạt động",
+            "COMPLETED": "Hoàn thành",
+            "ARCHIVED": "Đã lưu trữ"
+        },
+        "charts": {
+            "activityTitle": "Xu hướng hoạt động 30 ngày",
+            "activityDesc": "Công việc được tạo và hoàn thành mỗi ngày",
+            "volumeTitle": "Tổng quan khối lượng công việc",
+            "volumeDesc": "Tạo mỗi ngày (cột) · hoàn thành (đường) · tổng cộng (vùng)",
+            "columnDesc": "Công việc theo từng cột kanban",
+            "noStatuses": "Chưa có trạng thái",
+            "priorityTitle": "Phân bổ theo độ ưu tiên",
+            "priorityDesc": "Công việc được nhóm theo cấp độ ưu tiên",
+            "completionTitle": "Xu hướng hoàn thành",
+            "completionDesc": "Tổng công việc hoàn thành trong 30 ngày"
         }
     },
     "searchPlaceholder": "Tìm kiếm...",
@@ -1746,6 +1810,26 @@
     "warning": "Cảnh báo",
     "createdAt": "Ngày tạo",
     "createdBy": "Tạo bởi",
+    "charts": {
+        "created": "Đã tạo",
+        "completed": "Đã hoàn thành",
+        "noActivity": "Không có hoạt động trong 14 ngày qua",
+        "noCompletion": "Chưa có dữ liệu hoàn thành",
+        "noOpenTasks": "Không có công việc đang mở được giao",
+        "noProjectActivity": "Không có hoạt động công việc trong 30 ngày qua",
+        "noTasks": "Chưa có công việc",
+        "noData": "Chưa có dữ liệu",
+        "completionRate": "Tỷ lệ hoàn thành",
+        "cumulativeCompleted": "Tích lũy đã hoàn thành",
+        "estHours": "Giờ ước tính",
+        "openTasks": "Công việc đang mở",
+        "estimatedHours": "Số giờ ước tính",
+        "totalCreated": "Tổng đã tạo",
+        "newLabel": "Mới",
+        "totalLabel": "Tổng",
+        "rate": "Tỷ lệ",
+        "cumulative": "Tích lũy"
+    },
     "moduleAdd": "Thêm Module",
     "moduleAddDesc": "Thêm module hệ thống mới để nhóm các quyền liên quan lại với nhau",
     "moduleName": "Tên Module",
@@ -1864,4 +1948,3 @@
     "hideColumn": "Ẩn cột",
     "toggleColumns": "Ẩn/Hiện cột"
 }
-

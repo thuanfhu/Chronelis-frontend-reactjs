@@ -183,6 +183,19 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const isOwner = workspaceQuery.data?.owner.userId === currentUserId
   const searchKeyword = workspaceSearch.trim().toLowerCase()
 
+  const [hasExpandedAll, setHasExpandedAll] = useState(false)
+
+  useEffect(() => {
+    if (projects.length > 0 && !hasExpandedAll) {
+      setExpandedProjects((prev) => {
+        const next = new Set(prev)
+        projects.forEach((p) => next.add(p.id))
+        return next
+      })
+      setHasExpandedAll(true)
+    }
+  }, [projects, hasExpandedAll])
+
   const projectFormDirty = projectDialogMode === 'create'
     ? Boolean(projectFormName.trim())
     : (

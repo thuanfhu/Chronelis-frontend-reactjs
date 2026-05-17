@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -10,6 +10,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts'
+import { GrowthComposedChart } from '@/components/charts/growth-composed-chart'
+import { DailyAreaChart } from '@/components/charts/daily-area-chart'
+import { CompletionLineChart } from '@/components/charts/completion-line-chart'
+import type { GrowthPoint } from '@/components/charts/growth-composed-chart'
 import {
   Dialog,
   DialogContent,
@@ -221,6 +226,46 @@ export function WorkspacesPage() {
   const pendingWorkspaceIds = new Set(pendingWorkspaceDeletes.map((entry) => entry.payload.id))
   const visibleWorkspaces = workspaces.filter((workspace) => !pendingWorkspaceIds.has(workspace.id))
 
+  const ownedCount = useMemo(
+    () => visibleWorkspaces.filter((ws) => ws.owner.userId === currentUser?.userId).length,
+    [visibleWorkspaces, currentUser],
+  )
+  const joinedCount = visibleWorkspaces.length - ownedCount
+
+  const ownershipData = [
+    { name: t('workspace.charts.ownedByMe'), value: ownedCount, color: '#6366f1' },
+    { name: t('workspace.charts.joined'), value: joinedCount, color: '#22c55e' },
+  ].filter((d) => d.value > 0)
+
+  const workspaceGrowth = useMemo<GrowthPoint[]>(() => {
+    const monthMap = new Map<string, number>()
+    for (const ws of visibleWorkspaces) {
+      if (!ws.createdAt) continue
+      const m = ws.createdAt.slice(0, 7)
+      monthMap.set(m, (monthMap.get(m) ?? 0) + 1)
+    }
+    const sorted = [...monthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+    let cumul = 0
+    return sorted.map(([month, count]) => {
+      cumul += count
+      return { label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), count, cumulative: cumul }
+    })
+  }, [visibleWorkspaces])
+
+  const workspaceAreaData = useMemo(() => {
+    const monthMap = new Map<string, number>()
+    for (const ws of visibleWorkspaces) {
+      if (!ws.createdAt) continue
+      monthMap.set(ws.createdAt.slice(0, 7), (monthMap.get(ws.createdAt.slice(0, 7)) ?? 0) + 1)
+    }
+    return [...monthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+      .map(([month, count]) => ({ date: month + '-01', created: count, completed: 0 }))
+  }, [visibleWorkspaces])
+
+  const workspaceLineData = useMemo(() =>
+    workspaceAreaData.map((d) => ({ ...d, completed: d.created })),
+    [workspaceAreaData])
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -267,6 +312,113 @@ export function WorkspacesPage() {
           </Dialog>
         }
       />
+
+      {/* Workspace overview — 5 chart types */}
+      {!listQuery.isLoading && visibleWorkspaces.length > 0 && (
+        <div className="space-y-5">
+          {/* Totals row */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: t('workspace.charts.total'), value: visibleWorkspaces.length, color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' },
+              { label: t('workspace.charts.owned'), value: ownedCount, color: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300' },
+              { label: t('workspace.charts.joined'), value: joinedCount, color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
+            ].map((s) => (
+              <div key={s.label} className={`flex flex-col items-center justify-center rounded-xl py-3 ${s.color}`}>
+                <span className="text-2xl font-bold">{s.value}</span>
+                <span className="mt-0.5 text-xs opacity-70">{s.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 1: PIE + COMPOSED */}
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            {/* PIE CHART: ownership donut */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-5">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <PanelsTopLeft className="size-4 text-indigo-500" />
+                  {t('workspace.charts.ownershipTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('workspace.charts.ownershipDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-4 pt-0">
+                {ownershipData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie data={ownershipData} cx="50%" cy="50%" innerRadius="46%" outerRadius="68%" paddingAngle={3} dataKey="value" nameKey="name" animationBegin={0} animationDuration={600} strokeWidth={0}>
+                        {ownershipData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={(props: any) => {
+                        if (!props.active || !props.payload?.length) return null
+                        const d = props.payload[0]
+                        return (
+                          <div className="rounded-xl border border-border/60 bg-background px-3 py-2 shadow-xl">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="inline-block size-2.5 rounded-full" style={{ background: d.payload.color }} />
+                              <span className="font-semibold text-foreground">{d.name}</span>
+                              <span className="font-bold text-foreground">{d.value}</span>
+                            </div>
+                          </div>
+                        )
+                      }} />
+                      <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} formatter={(v) => <span style={{ color: 'hsl(var(--muted-foreground))' }}>{v}</span>} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[200px] items-center justify-center"><p className="text-sm text-muted-foreground">{t('workspace.charts.noWorkspaces')}</p></div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* COMPOSED CHART: workspace growth (bar monthly + line cumulative) */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-5">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Users className="size-4 text-emerald-500" />
+                  {t('workspace.charts.growthTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('workspace.charts.growthDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-4 pt-0">
+                <GrowthComposedChart data={workspaceGrowth} barColor="#6366f1" lineColor="#22c55e" emptyMessage={t('workspace.charts.noGrowthHistory')} />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 2: AREA + LINE */}
+          <div className="grid gap-5 md:grid-cols-2">
+            {/* AREA CHART: monthly workspace additions */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <PanelsTopLeft className="size-4 text-violet-500" />
+                  {t('workspace.charts.areaTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('workspace.charts.areaDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <DailyAreaChart data={workspaceAreaData} height={180} showLegend={false} />
+              </CardContent>
+            </Card>
+
+            {/* LINE CHART: cumulative workspace count */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Users className="size-4 text-amber-500" />
+                  {t('workspace.charts.lineTitle')}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{t('workspace.charts.lineDesc')}</p>
+              </CardHeader>
+              <CardContent className="pb-3 pt-0">
+                <CompletionLineChart data={workspaceLineData} mode="cumulative" height={180} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {listQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

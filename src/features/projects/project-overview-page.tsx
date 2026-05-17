@@ -1,10 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight } from 'lucide-react'
+import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight, TrendingUp, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
+import { TaskStatusBarChart } from '@/components/charts/task-status-bar-chart'
+import { PriorityPieChart } from '@/components/charts/priority-pie-chart'
+import { DailyAreaChart } from '@/components/charts/daily-area-chart'
+import { CompletionLineChart } from '@/components/charts/completion-line-chart'
+import { ProjectCombinedChart } from '@/components/charts/project-combined-chart'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
@@ -45,6 +51,13 @@ export function ProjectOverviewPage() {
     queryKey: queryKeys.tasks.byProject(projectId, 1, 200),
     queryFn: () => taskApi.listByProject(projectId, { page: 1, size: 200 }),
     enabled: Number.isFinite(projectId),
+  })
+
+  const analyticsQuery = useQuery({
+    queryKey: queryKeys.projects.analytics(projectId),
+    queryFn: () => projectApi.analytics(projectId),
+    enabled: Number.isFinite(projectId),
+    staleTime: 2 * 60_000,
   })
 
   const goalsQuery = useQuery({
@@ -192,29 +205,91 @@ export function ProjectOverviewPage() {
         </div>
       </div>
 
-      {/* Kanban columns breakdown */}
-      {statuses.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">{t('project.columnDistribution')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {statuses.map((status) => {
-                const count = tasks.filter((t) => t.status.id === status.id).length
-                const pct = tasks.length > 0 ? Math.round((count / tasks.length) * 100) : 0
-                return (
-                  <div key={status.id} className="flex items-center gap-3">
-                    <span className="w-28 truncate text-sm">{status.name}</span>
-                    <Progress value={pct} className="h-1.5 flex-1" />
-                    <span className="w-16 text-right text-xs text-muted-foreground">{t('project.taskCount', { count })}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* ─── Charts: 5 diverse types ─── */}
+      <div className="space-y-5">
+        {/* Row 1: Area + Composed (wide) */}
+        <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+          {/* AREA CHART: 30-day task activity */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-5">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <TrendingUp className="size-4 text-indigo-500" />
+                  {t('project.charts.activityTitle')}
+                </CardTitle>
+                {analyticsQuery.isLoading && <Skeleton className="h-4 w-20" />}
+              </div>
+              <p className="text-xs text-muted-foreground">{t('project.charts.activityDesc')}</p>
+            </CardHeader>
+            <CardContent className="pb-4 pt-0">
+              <DailyAreaChart data={analyticsQuery.data?.trend ?? []} height={230} />
+            </CardContent>
+          </Card>
+
+          {/* COMPOSED CHART: created (bars) + completed (line) + cumulative (area) */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Activity className="size-4 text-emerald-500" />
+                {t('project.charts.volumeTitle')}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{t('project.charts.volumeDesc')}</p>
+            </CardHeader>
+            <CardContent className="pb-4 pt-0">
+              <ProjectCombinedChart data={analyticsQuery.data?.trend ?? []} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Row 2: Bar + Pie + Line */}
+        <div className="grid gap-5 md:grid-cols-3">
+          {/* BAR CHART: tasks per kanban status */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <BarChart2 className="size-4 text-indigo-500" />
+                {t('project.columnDistribution')}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{t('project.charts.columnDesc')}</p>
+            </CardHeader>
+            <CardContent className="pb-3 pt-0">
+              {statuses.length > 0 ? (
+                <TaskStatusBarChart statuses={statuses} tasks={tasks} />
+              ) : (
+                <div className="flex h-[200px] items-center justify-center"><p className="text-sm text-muted-foreground">{t('project.charts.noStatuses')}</p></div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* PIE CHART: priority distribution */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <PieChartIcon className="size-4 text-amber-500" />
+                {t('project.charts.priorityTitle')}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{t('project.charts.priorityDesc')}</p>
+            </CardHeader>
+            <CardContent className="pb-3 pt-0">
+              <PriorityPieChart tasks={tasks} />
+            </CardContent>
+          </Card>
+
+          {/* LINE CHART: completion rate over time */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <LineChartIcon className="size-4 text-purple-500" />
+                {t('project.charts.completionTitle')}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{t('project.charts.completionDesc')}</p>
+            </CardHeader>
+            <CardContent className="pb-3 pt-0">
+              <CompletionLineChart data={analyticsQuery.data?.trend ?? []} mode="cumulative" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
