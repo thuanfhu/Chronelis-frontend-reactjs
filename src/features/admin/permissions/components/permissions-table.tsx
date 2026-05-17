@@ -283,7 +283,7 @@ export function PermissionsTable() {
         <DataTableViewOptions table={table} />
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-22rem)]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -293,9 +293,9 @@ export function PermissionsTable() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -309,7 +309,7 @@ export function PermissionsTable() {
                   data-state={row.getIsSelected() && 'selected'}
                   className={cn(
                     row.original.type === 'module' &&
-                      'bg-muted/40 hover:bg-muted/60 font-medium cursor-pointer'
+                    'bg-muted/40 hover:bg-muted/60 font-medium cursor-pointer'
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (

@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react'
 import { toast } from 'sonner'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminUserApi } from '@/lib/api/modules/admin-user-api'
+import { useTranslation } from 'react-i18next'
 
 type UsersDialogType = 'invite' | 'add' | 'edit' | 'delete' | 'view'
 
@@ -30,6 +31,7 @@ interface Props {
 
 export const UsersProvider = ({ children }: Props) => {
   const queryClient = useQueryClient()
+  const { t } = useTranslation()
   const [open, setOpen] = useDialogState<UsersDialogType>(null)
   const [currentRow, setCurrentRow] = useState<User | null>(null)
 
@@ -89,11 +91,11 @@ export const UsersProvider = ({ children }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      toast.success('Tạo người dùng thành công')
+      toast.success(t('notification.userCreateSuccess', 'Tạo người dùng thành công'))
       setOpen(null)
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Lỗi khi tạo người dùng')
+      toast.error(error.message || t('notification.userCreateError', 'Lỗi khi tạo người dùng'))
     },
   })
 
@@ -113,12 +115,12 @@ export const UsersProvider = ({ children }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      toast.success('Cập nhật thông tin người dùng thành công')
+      toast.success(t('notification.userUpdateSuccess', 'Cập nhật người dùng thành công'))
       setOpen(null)
       setCurrentRow(null)
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Lỗi khi cập nhật người dùng')
+      toast.error(error.message || t('notification.userUpdateError', 'Lỗi khi cập nhật người dùng'))
     },
   })
 
@@ -128,12 +130,12 @@ export const UsersProvider = ({ children }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      toast.success('Xóa người dùng thành công')
+      toast.success(t('notification.userDeleteSuccess', 'Xóa người dùng thành công'))
       setOpen(null)
       setCurrentRow(null)
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Lỗi khi xóa người dùng')
+      toast.error(error.message || t('notification.userDeleteError', 'Lỗi khi xóa người dùng'))
     },
   })
 

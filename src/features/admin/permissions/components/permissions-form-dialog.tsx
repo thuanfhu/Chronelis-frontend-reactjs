@@ -132,7 +132,7 @@ export function PermissionsFormDialog({
         }
 
         await adminPermissionApi.update(currentRow.permissionId, changedFields)
-        toast.success('Cập nhật permission thành công')
+        toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
       } else {
         const { name, apiPath, httpMethod, module } = values as z.infer<typeof addPermissionSchema>
         const createPayload: any = {
@@ -142,13 +142,13 @@ export function PermissionsFormDialog({
           ...(module !== 'none' && module ? { module } : {}),
         }
         await adminPermissionApi.create(createPayload)
-        toast.success('Tạo permission thành công')
+        toast.success(t('notification.permissionCreateSuccess', 'Tạo quyền thành công'))
       }
 
       await refetch()
       onOpenChange(false)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Có lỗi xảy ra'
+      const message = error instanceof Error ? error.message : t('notification.genericError', 'Có lỗi xảy ra')
       toast.error(message)
     } finally {
       setIsLoading(false)

@@ -1,23 +1,17 @@
 import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Loader2,
   RefreshCcw,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
 import { LanguageSwitcher } from '@/components/shared/language-switcher'
-import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { queryKeys } from '@/lib/api/query-keys'
-import { adminPermissionApi } from '@/lib/api/modules/admin-permission-api'
-import { adminRoleApi } from '@/lib/api/modules/admin-role-api'
-import { adminUserApi } from '@/lib/api/modules/admin-user-api'
+import { DataTableSkeleton } from '@/components/ui/data-table-skeleton'
 import { isAdminUser } from '@/lib/auth/role-utils'
 
-// --- New modular imports (PreziQ!-style) ---
+// --- Modular imports (PreziQ!-style) ---
 import { UsersProvider, useUsers } from '@/features/admin/users/context/users-context'
 import { UsersTable } from '@/features/admin/users/components/users-table'
 import { UsersDialogs } from '@/features/admin/users/components/users-dialogs'
@@ -29,8 +23,6 @@ import { RolesPrimaryButtons } from '@/features/admin/roles/components/roles-pri
 import PermissionsProvider from '@/features/admin/permissions/context/permissions-context'
 import { PermissionsTable } from '@/features/admin/permissions/components/permissions-table'
 import { PermissionsPrimaryButtons } from '@/features/admin/permissions/components/permissions-primary-buttons'
-
-const PAGE_SIZE = 200
 
 type AdminSection = 'users' | 'roles' | 'permissions'
 
@@ -51,7 +43,6 @@ function resolveAdminSection(value: string | undefined): AdminSection | null {
 
 export function AdminDashboardPage() {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const params = useParams<{ section?: string }>()
   const currentUser = useAuthStore((state) => state.currentUser)
@@ -63,51 +54,6 @@ export function AdminDashboardPage() {
       navigate('/admin/users', { replace: true })
     }
   }, [navigate, parsedSection])
-
-  const shouldLoadUsers = activeSection === 'users'
-  const shouldLoadRoles = activeSection === 'users' || activeSection === 'roles'
-  const shouldLoadPermissions = activeSection === 'roles' || activeSection === 'permissions'
-  const shouldLoadModules = activeSection === 'permissions'
-
-  const rolesQuery = useQuery({
-    queryKey: queryKeys.admin.roles(1, PAGE_SIZE),
-    queryFn: () => adminRoleApi.list({ page: 1, size: PAGE_SIZE }),
-    enabled: shouldLoadRoles,
-  })
-
-  const permissionsQuery = useQuery({
-    queryKey: queryKeys.admin.permissions(1, PAGE_SIZE),
-    queryFn: () => adminPermissionApi.list({ page: 1, size: PAGE_SIZE }),
-    enabled: shouldLoadPermissions,
-  })
-
-  const usersQuery = useQuery({
-    queryKey: queryKeys.admin.users(1, PAGE_SIZE),
-    queryFn: () => adminUserApi.list({ page: 1, size: PAGE_SIZE }),
-    enabled: shouldLoadUsers,
-  })
-
-  const modulesQuery = useQuery({
-    queryKey: queryKeys.admin.modules,
-    queryFn: adminPermissionApi.listModules,
-    enabled: shouldLoadModules,
-  })
-
-  const isLoading = (shouldLoadRoles && rolesQuery.isLoading)
-    || (shouldLoadPermissions && permissionsQuery.isLoading)
-    || (shouldLoadUsers && usersQuery.isLoading)
-    || (shouldLoadModules && modulesQuery.isLoading)
-
-  const refreshAll = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['admin'] }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
-    ])
-  }
-
-  if (isLoading) {
-    return <LoadingPanel />
-  }
 
   if (!isAdminUser(currentUser)) {
     return (
@@ -135,7 +81,7 @@ export function AdminDashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <LanguageSwitcher showLabel className="rounded-full border border-border/70 bg-background/80 px-3 hover:bg-muted" />
-          <Button variant="outline" onClick={() => void refreshAll()}>
+          <Button variant="outline" onClick={() => navigate(0)}>
             <RefreshCcw className="size-4" />
             {t('common.refresh')}
           </Button>
@@ -163,7 +109,7 @@ export function AdminDashboardPage() {
   )
 }
 
-// --- New modular tab content components ---
+// --- Tab content components ---
 function NewUsersTabContent() {
   const { users, isLoading } = useUsers()
   const { t } = useTranslation()
@@ -175,14 +121,12 @@ function NewUsersTabContent() {
             <CardTitle>{t('userManagement.title', 'Quản lý người dùng')}</CardTitle>
             <CardDescription>{t('userManagement.description', 'Quản lý tài khoản người dùng trong hệ thống')}</CardDescription>
           </div>
-          <UsersPrimaryButtons />
+          {!isLoading && <UsersPrimaryButtons />}
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <DataTableSkeleton columns={7} rows={6} />
         ) : (
           <UsersTable data={users} />
         )}
@@ -203,14 +147,12 @@ function NewRolesTabContent() {
             <CardTitle>{t('roleManagement.title', 'Quản lý vai trò')}</CardTitle>
             <CardDescription>{t('roleManagement.description', 'Quản lý vai trò và quyền hạn trong hệ thống')}</CardDescription>
           </div>
-          <RolesPrimaryButtons />
+          {!isLoading && <RolesPrimaryButtons />}
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <DataTableSkeleton columns={6} rows={5} />
         ) : (
           <RolesTable data={roles} />
         )}
