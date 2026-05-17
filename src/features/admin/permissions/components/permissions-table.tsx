@@ -1,368 +1,355 @@
-import { useState, useMemo, useCallback } from 'react'
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/react-table'
-import {
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { DataTablePagination } from '@/components/ui/data-table-pagination'
-import { DataTableViewOptions } from '@/components/ui/data-table-view-options'
-import { DataTableColumnHeader } from '@/components/ui/data-table-column-header'
-import { DataTableSkeleton } from '@/components/ui/data-table-skeleton'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { IconChevronRight, IconEdit, IconTrash } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
+import { useState, useEffect } from 'react'
 import { usePermissions } from '../context/permissions-context'
-import type { Permission } from '../data/schema'
-import { useTranslation } from 'react-i18next'
-import { PermissionsFormDialog } from './permissions-form-dialog'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { IconPlus } from '@tabler/icons-react'
+import { CreateModuleDialog } from './create-module-dialog'
 import { PermissionsDeleteDialog } from './permissions-delete-dialog'
+import { PermissionsFormDialog } from './permissions-form-dialog'
+import type { Permission } from '../data/schema'
+import type {
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from '@dnd-kit/core'
+import { SortableContext } from '@dnd-kit/sortable'
+import { SortableTreeItem } from './sortable-tree'
+import { toast } from 'sonner'
+import { adminPermissionApi } from '@/lib/api/modules/admin-permission-api'
+import { useTranslation } from 'react-i18next'
+import { DataTableSkeleton } from '@/components/ui/data-table-skeleton'
+import { useQueryClient } from '@tanstack/react-query'
 
+function DroppableArea({ children }: { children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'other-permissions',
+  })
+  const { t } = useTranslation()
 
-interface TableItem {
-  id: string
-  name: string
-  type: 'module' | 'permission'
-  apiPath?: string
-  httpMethod?: string
-  module?: string
-  children?: Permission[]
-  permissionId?: string
-  createdAt?: string
-  updatedAt?: string
-  createdBy?: string
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'space-y-3 p-6 rounded-xl border-2 border-dashed transition-all duration-200',
+        isOver 
+          ? 'border-primary bg-primary/5 dark:bg-primary/10 scale-[1.01] shadow-inner' 
+          : 'border-slate-200 dark:border-slate-800',
+        !children &&
+          'min-h-[150px] flex flex-col items-center justify-center text-muted-foreground bg-slate-50/50 dark:bg-zinc-900/30'
+      )}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {t('otherPermissions', 'Quyền chưa phân loại')}
+        </h3>
+        <Badge variant="secondary" className="rounded-full font-mono text-[10px]">
+          {Array.isArray(children) ? children.length : children ? 1 : 0}
+        </Badge>
+      </div>
+      {children || (
+        <div className="text-sm text-center max-w-sm opacity-60">
+          {t('dragPermissionHere', 'Kéo thả các quyền không thuộc module nào vào đây')}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function PermissionsTable() {
-  const {
-    permissions,
-    isLoading,
-    selectedModule,
-  } = usePermissions()
+  const queryClient = useQueryClient()
+  const { permissions, isLoading, refetch } = usePermissions()
+  const [openCreateModule, setOpenCreateModule] = useState(false)
+  const [deleteData, setDeleteData] = useState<{
+    type: 'module' | 'permission'
+    data: { permissionId?: string; name: string; module?: string }
+  } | null>(null)
+  const [openCreatePermission, setOpenCreatePermission] = useState(false)
+  const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
+
+  const modules = Array.from(new Set(permissions.map((p) => p.module).filter(Boolean))) as string[]
+
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>(() => {
+    return modules.reduce((acc, moduleName) => {
+      acc[moduleName] = true // true = collapsed
+      return acc
+    }, {} as Record<string, boolean>)
+  })
+  const [isDragging, setIsDragging] = useState(false)
   const { t } = useTranslation()
 
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({})
-  const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null)
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteData, setDeleteData] = useState<{ permissionId?: string; name: string; module?: string } | null>(null)
-
-  const handleDeletePermission = useCallback((permission: Permission) => {
-    setDeleteData({
-      permissionId: permission.permissionId,
-      name: permission.name,
-      module: permission.module,
+  // Mở module khi nó mới được tạo
+  useEffect(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      let hasChanges = false
+      modules.forEach((moduleName) => {
+        if (newState[moduleName] === undefined) {
+          newState[moduleName] = false // Mở module mới
+          hasChanges = true
+        }
+      })
+      return hasChanges ? newState : prev
     })
-    setDeleteOpen(true)
-  }, [])
+  }, [modules])
 
-  const handleEditPermission = useCallback((permission: Permission) => {
-    setSelectedPermission(permission)
-    setEditOpen(true)
-  }, [])
-
-  const handleToggleModule = useCallback((moduleName: string) => {
-    setExpandedModules((prev) => ({
+  const toggleCollapse = (moduleName: string) => {
+    setCollapsedModules((prev) => ({
       ...prev,
-      [moduleName]: prev[moduleName] === false ? true : false,
+      [moduleName]: !prev[moduleName],
     }))
-  }, [])
+  }
 
-  // Memoize tableData so it doesn't recompute on dialog state changes
-  const tableData = useMemo<TableItem[]>(() => {
-    const filteredPermissions = selectedModule
-      ? permissions.filter((p) => p.module === selectedModule)
-      : permissions
-
-    const groupedByModule = filteredPermissions.reduce(
-      (acc, permission) => {
-        const module = permission.module || 'Other'
-        if (!acc[module]) acc[module] = []
-        acc[module].push(permission)
-        return acc
+  const handleDelete = (permission: Permission) => {
+    setDeleteData({
+      type: 'permission',
+      data: {
+        permissionId: permission.permissionId,
+        name: permission.name,
+        module: permission.module,
       },
-      {} as Record<string, Permission[]>
-    )
+    })
+  }
 
-    return Object.entries(groupedByModule).flatMap(
-      ([module, modulePermissions]) => {
-        const isExpanded = expandedModules[module] !== false // default expanded
-        const rows: TableItem[] = [
-          {
-            id: `module-${module}`,
-            name: module,
-            type: 'module' as const,
-            children: modulePermissions,
-          },
-        ]
-        if (isExpanded) {
-          modulePermissions.forEach((p) => {
-            rows.push({
-              id: p.permissionId,
-              name: p.name,
-              type: 'permission' as const,
-              apiPath: p.apiPath,
-              httpMethod: p.httpMethod,
-              module: p.module,
-              permissionId: p.permissionId,
-              createdAt: p.createdAt,
-              updatedAt: p.updatedAt,
-              createdBy: p.createdBy,
-            })
-          })
+  const handleEdit = (permission: Permission) => {
+    setSelectedPermission(permission)
+    setOpenCreatePermission(true)
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+    setIsDragging(true)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setIsDragging(false)
+    setActiveId(null)
+
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const draggedPermission = permissions.find((p) => p.permissionId === active.id)
+    if (!draggedPermission) return
+
+    let newModule: string | null = null
+
+    if (modules.includes(over.id as string)) {
+      newModule = over.id as string
+    } else {
+      newModule = ''
+    }
+
+    if (newModule !== (draggedPermission.module || '')) {
+      // Optimistic update
+      const previousPermissions = permissions
+      
+      const optimisticPermissions = permissions.map(p => {
+        if (p.permissionId === draggedPermission.permissionId) {
+          return { ...p, module: newModule }
         }
-        return rows
+        return p
+      })
+      
+      // Update local cache directly for snappy UI
+      queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
+        if (!oldData) return oldData
+        return {
+          ...oldData,
+          permissions: optimisticPermissions
+        }
+      })
+      
+      // Mở module đích nếu nó đang bị đóng
+      if (newModule && collapsedModules[newModule]) {
+        toggleCollapse(newModule)
       }
-    )
-  }, [permissions, selectedModule, expandedModules])
 
-  // Memoize columns to prevent re-creation on every render
-  const columns = useMemo<ColumnDef<TableItem>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('permissionName')} />
-      ),
-      cell: ({ row }) => {
-        const item = row.original
-        if (item.type === 'module') {
-          return (
-            <button
-              className="flex items-center gap-2 font-medium hover:text-primary transition-colors"
-              onClick={() => handleToggleModule(item.name)}
-            >
-              <IconChevronRight
-                className={cn(
-                  'h-4 w-4 shrink-0 transition-transform duration-200',
-                  expandedModules[item.name] !== false && 'rotate-90'
-                )}
-              />
-              <Badge variant="outline" className="font-semibold">
-                {item.name}
-              </Badge>
-              <span className="text-xs text-muted-foreground ml-1">
-                ({item.children?.length || 0})
-              </span>
-            </button>
-          )
-        }
-        return <div className="pl-8 font-medium">{item.name}</div>
-      },
-    },
-    {
-      accessorKey: 'apiPath',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('permissionApiPath')} />
-      ),
-      cell: ({ row }) => {
-        if (row.original.type === 'module') return null
-        return <div className="text-sm text-muted-foreground">{row.original.apiPath}</div>
-      },
-    },
-    {
-      accessorKey: 'httpMethod',
-      header: 'HTTP Method',
-      cell: ({ row }) => {
-        if (row.original.type === 'module') return null
-        const method = row.original.httpMethod
-        const colorMap: Record<string, string> = {
-          GET: 'bg-blue-100 text-blue-800',
-          POST: 'bg-green-100 text-green-800',
-          PUT: 'bg-yellow-100 text-yellow-800',
-          PATCH: 'bg-orange-100 text-orange-800',
-          DELETE: 'bg-red-100 text-red-800',
-        }
-        return (
-          <Badge variant="secondary" className={cn('text-xs font-mono', colorMap[method || ''] || '')}>
-            {method}
-          </Badge>
-        )
-      },
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const item = row.original
-        if (item.type !== 'permission' || !item.permissionId) return null
-        const permission: Permission = {
-          permissionId: item.permissionId,
-          name: item.name,
-          apiPath: item.apiPath || '',
-          httpMethod: (item.httpMethod as Permission['httpMethod']) || 'GET',
-          module: item.module || '',
-          createdAt: item.createdAt || '',
-          updatedAt: item.updatedAt || '',
-          createdBy: item.createdBy || '',
-        }
-        return (
-          <div className="flex items-center gap-1 justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-amber-600"
-              onClick={() => handleEditPermission(permission)}
-            >
-              <IconEdit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-red-600"
-              onClick={() => handleDeletePermission(permission)}
-            >
-              <IconTrash className="h-4 w-4" />
-            </Button>
-          </div>
-        )
-      },
-    },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, expandedModules, handleEditPermission, handleDeletePermission, handleToggleModule])
-
-  const table = useReactTable({
-    data: tableData,
-    columns,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+      try {
+        await adminPermissionApi.update(draggedPermission.permissionId, {
+          module: newModule || '',
+        })
+        
+        toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
+        // Refetch to ensure data consistency
+        refetch()
+      } catch (error) {
+        // Revert optimistic update
+        queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            permissions: previousPermissions
+          }
+        })
+        const message = error instanceof Error ? error.message : t('notification.genericError')
+        toast.error(message)
+      }
+    }
+  }
 
   if (isLoading) {
-    return <DataTableSkeleton columns={4} rows={10} />
+    return <DataTableSkeleton columns={1} rows={5} />
   }
 
   return (
-    <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-1 items-center space-x-2">
-            <Input
-              placeholder={t('searchPlaceholder')}
-              value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-              onChange={(event) =>
-                table.getColumn('name')?.setFilterValue(event.target.value)
-              }
-              className="h-8 w-[150px] lg:w-[250px]"
-            />
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="space-y-6">
+        <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('moduleList')}</h2>
+            <p className="text-sm text-slate-500">{t('moduleListDesc', 'Kéo thả các quyền để thay đổi module')}</p>
           </div>
-          <DataTableViewOptions table={table} />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpenCreatePermission(true)}>
+              <IconPlus className="mr-2 h-4 w-4" />
+              {t('permissionAddTitle')}
+            </Button>
+            <Button size="sm" onClick={() => setOpenCreateModule(true)}>
+              <IconPlus className="mr-2 h-4 w-4" />
+              {t('moduleAdd')}
+            </Button>
+          </div>
         </div>
 
-        <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-22rem)]">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                    </TableHead>
+        {/* Modules và Permissions */}
+        <div className="grid gap-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-2 pb-10">
+          {modules.map((moduleName) => {
+            const modulePermissions = permissions.filter(
+              (p) => p.module === moduleName
+            )
+
+            return (
+              <SortableContext
+                key={moduleName}
+                items={modulePermissions.map((p) => p.permissionId)}
+              >
+                <SortableTreeItem
+                  id={moduleName}
+                  collapsed={collapsedModules[moduleName]}
+                  onCollapse={() => toggleCollapse(moduleName)}
+                  permission={{
+                    permissionId: moduleName,
+                    name: moduleName,
+                    httpMethod: 'GET',
+                    apiPath: '',
+                    module: moduleName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    createdBy: 'system',
+                  }}
+                  onDelete={(permission) =>
+                    setDeleteData({
+                      type: 'module',
+                      data: {
+                        name: permission.name,
+                        module: permission.module,
+                      },
+                    })
+                  }
+                  isModule
+                >
+                  {modulePermissions.map((permission) => (
+                    <SortableTreeItem
+                      key={permission.permissionId}
+                      id={permission.permissionId}
+                      permission={permission}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                    className={cn(
-                      row.original.type === 'module' &&
-                      'bg-muted/40 hover:bg-muted/60 font-medium cursor-pointer'
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    {t('tableNoData')}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <DataTablePagination table={table} />
-      </div>
+                </SortableTreeItem>
+              </SortableContext>
+            )
+          })}
 
-      {/* Dialogs rendered outside table tree to avoid triggering table re-renders */}
-      {editOpen && (
+          {/* Khu vực Permissions khác */}
+          {(isDragging || permissions.some((p) => !p.module || p.module === 'none' || p.module === '')) && (
+            <div className="mt-8">
+              <DroppableArea>
+                <SortableContext
+                  items={permissions
+                    .filter((p) => !p.module || p.module === 'none' || p.module === '')
+                    .map((p) => p.permissionId)}
+                >
+                  <div className="grid gap-2 w-full">
+                    {permissions
+                      .filter((p) => !p.module || p.module === 'none' || p.module === '')
+                      .map((permission) => (
+                        <SortableTreeItem
+                          key={permission.permissionId}
+                          id={permission.permissionId}
+                          permission={permission}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                  </div>
+                </SortableContext>
+              </DroppableArea>
+            </div>
+          )}
+        </div>
+
+        <CreateModuleDialog
+          open={openCreateModule}
+          onOpenChange={setOpenCreateModule}
+        />
+
         <PermissionsFormDialog
           key={selectedPermission ? `perm-edit-${selectedPermission.permissionId}` : 'perm-add'}
-          open={editOpen}
+          open={openCreatePermission}
           onOpenChange={(isOpen) => {
-            setEditOpen(isOpen)
+            setOpenCreatePermission(isOpen)
             if (!isOpen) setSelectedPermission(null)
           }}
           currentRow={selectedPermission}
         />
-      )}
-      {deleteOpen && deleteData && (
-        <PermissionsDeleteDialog
-          open={deleteOpen}
-          onOpenChange={(isOpen) => {
-            setDeleteOpen(isOpen)
-            if (!isOpen) setDeleteData(null)
+
+        {deleteData && (
+          <PermissionsDeleteDialog
+            open={!!deleteData}
+            onOpenChange={(open) => !open && setDeleteData(null)}
+            type={deleteData.type}
+            data={deleteData.data}
+          />
+        )}
+
+        {/* Hiển thị overlay khi kéo */}
+        <DragOverlay
+          dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
           }}
-          type="permission"
-          data={deleteData}
-        />
-      )}
-    </>
+        >
+          {activeId ? (
+            <div className="rounded-md border bg-white dark:bg-zinc-800 px-4 py-3 shadow-xl scale-105 opacity-90 border-primary">
+              <div className="font-medium text-primary">
+                {permissions.find((p) => p.permissionId === activeId)?.name}
+              </div>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </div>
+    </DndContext>
   )
 }
