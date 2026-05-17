@@ -11,7 +11,8 @@ export function UsersDialogs() {
         <>
           <UsersActionDialog
             key={`user-edit-${currentRow.userId}`}
-            open={open === 'edit'}
+            open={open === 'edit' || open === 'view'}
+            isView={open === 'view'}
             onOpenChange={(state) => {
               if (!state) {
                 setOpen(null)

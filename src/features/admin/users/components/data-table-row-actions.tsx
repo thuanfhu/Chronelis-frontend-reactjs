@@ -58,7 +58,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700 transition-colors rounded-full"
               disabled={!isValidRow()}
             >
-              <IconUserSearch className="h-4 w-4" />
+              <IconUserSearch className="h-4 w-4 text-blue-500" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="bg-slate-800 text-white">
@@ -77,7 +77,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className="h-8 w-8 p-0 hover:bg-amber-100 hover:text-amber-700 transition-colors rounded-full"
               disabled={!isValidRow()}
             >
-              <IconEdit className="h-4 w-4" />
+              <IconEdit className="h-4 w-4 text-amber-500" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="bg-slate-800 text-white">
@@ -96,7 +96,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-700 transition-colors rounded-full"
               disabled={!isValidRow()}
             >
-              <IconTrash className="h-4 w-4" />
+              <IconTrash className="h-4 w-4 text-red-500" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top" className="bg-slate-800 text-white">

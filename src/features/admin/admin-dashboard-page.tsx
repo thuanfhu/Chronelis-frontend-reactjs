@@ -20,7 +20,9 @@ import RolesProvider, { useRoles } from '@/features/admin/roles/context/roles-co
 import { RolesTable } from '@/features/admin/roles/components/roles-table'
 import { RolesDialogs } from '@/features/admin/roles/components/roles-dialogs'
 import { RolesPrimaryButtons } from '@/features/admin/roles/components/roles-primary-buttons'
-import PermissionsProvider from '@/features/admin/permissions/context/permissions-context'
+import PermissionsProvider, { usePermissions } from '@/features/admin/permissions/context/permissions-context'
+import { Input } from '@/components/ui/input'
+import { IconSearch, IconChevronsDown, IconChevronsUp } from '@tabler/icons-react'
 import { PermissionsTable } from '@/features/admin/permissions/components/permissions-table'
 import { PermissionsPrimaryButtons } from '@/features/admin/permissions/components/permissions-primary-buttons'
 
@@ -163,6 +165,14 @@ function NewRolesTabContent() {
 
 function NewPermissionsTabContent() {
   const { t } = useTranslation()
+  const { searchQuery, setSearchQuery, expandAll, collapseAll, collapsedModules, modules, setCollapsedModules } = usePermissions()
+  
+  useEffect(() => {
+    setCollapsedModules({})
+  }, [setCollapsedModules])
+  
+  const isAllCollapsed = modules.length > 0 && modules.every(m => collapsedModules[m] !== false)
+
   return (
     <Card>
       <CardHeader>
@@ -171,7 +181,39 @@ function NewPermissionsTabContent() {
             <CardTitle>{t('permissionManagement.title', 'Quản lý phân quyền')}</CardTitle>
             <CardDescription>{t('permissionManagement.description', 'Quản lý quyền truy cập API trong hệ thống')}</CardDescription>
           </div>
-          <PermissionsPrimaryButtons />
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder={t('searchPlaceholder', 'Tìm kiếm...')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-slate-50 dark:bg-zinc-800"
+              />
+            </div>
+            
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => {
+                if (isAllCollapsed) {
+                  expandAll()
+                } else {
+                  collapseAll()
+                }
+              }}
+              title={isAllCollapsed ? t('permissionManagement.expandAllModules', 'Hiển thị toàn bộ module') : t('permissionManagement.collapseAllModules', 'Đóng toàn bộ module')}
+            >
+              {isAllCollapsed ? (
+                <IconChevronsDown className="h-4 w-4 text-slate-600" />
+              ) : (
+                <IconChevronsUp className="h-4 w-4 text-slate-600" />
+              )}
+            </Button>
+
+            <PermissionsPrimaryButtons />
+          </div>
         </div>
       </CardHeader>
       <CardContent>

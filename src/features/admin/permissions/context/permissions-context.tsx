@@ -16,6 +16,12 @@ interface PermissionsContextType {
   setOpen: (type: PermissionsDialogType | null) => void
   currentRow: Permission | null
   setCurrentRow: (permission: Permission | null) => void
+  searchQuery: string
+  setSearchQuery: (query: string) => void
+  collapsedModules: Record<string, boolean>
+  setCollapsedModules: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  expandAll: () => void
+  collapseAll: () => void
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined)
@@ -28,6 +34,7 @@ export default function PermissionsProvider({ children }: Props) {
   const queryClient = useQueryClient()
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
   const [open, setOpen] = useState<PermissionsDialogType | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [currentRow, setCurrentRow] = useState<Permission | null>(null)
 
   const {
@@ -46,7 +53,7 @@ export default function PermissionsProvider({ children }: Props) {
         createdAt: p.createdAt || '',
         updatedAt: p.updatedAt || '',
         createdBy: p.createdBy || '',
-      }))
+      })).sort((a, b) => a.name.localeCompare(b.name))
 
       // Extract unique modules
       const uniqueModules = Array.from(
@@ -61,6 +68,42 @@ export default function PermissionsProvider({ children }: Props) {
 
   const permissions = permissionsData?.permissions || []
   const modules = permissionsData?.modules || []
+
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
+
+  React.useEffect(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      let hasChanges = false
+      modules.forEach((moduleName) => {
+        if (newState[moduleName] === undefined) {
+          newState[moduleName] = true // Mặc định đóng
+          hasChanges = true
+        }
+      })
+      return hasChanges ? newState : prev
+    })
+  }, [modules])
+
+  const expandAll = useCallback(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      modules.forEach((moduleName) => {
+        newState[moduleName] = false
+      })
+      return newState
+    })
+  }, [modules])
+
+  const collapseAll = useCallback(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      modules.forEach((moduleName) => {
+        newState[moduleName] = true
+      })
+      return newState
+    })
+  }, [modules])
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['admin-permissions'] })
@@ -79,6 +122,12 @@ export default function PermissionsProvider({ children }: Props) {
         setOpen,
         currentRow,
         setCurrentRow,
+        searchQuery,
+        setSearchQuery,
+        collapsedModules,
+        setCollapsedModules,
+        expandAll,
+        collapseAll,
       }}
     >
       {children}

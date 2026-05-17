@@ -67,9 +67,10 @@ interface Props {
   currentRow?: User | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  isView?: boolean
 }
 
-export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
+export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Props) {
   const { updateUser, createUser } = useUsers()
   const { t } = useTranslation()
   const isEdit = !!currentRow
@@ -78,7 +79,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { data: rolesData } = useQuery({
     queryKey: ['admin-roles-select'],
     queryFn: async () => {
-      const result = await adminRoleApi.list({ page: 1, size: 200 })
+      const result = await adminRoleApi.list({ page: 1, size: 50 })
       return result.content || []
     },
     staleTime: 5 * 60 * 1000,
@@ -205,16 +206,21 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
         >
           <DialogHeader className="p-6 pb-2 border-b bg-slate-50 dark:bg-zinc-800">
             <DialogTitle className="text-xl">
-              {isEdit ? t('userManagement.editUser') : t('userManagement.addUser')}
+              {isView 
+                ? t('userManagement.viewUser', 'Xem thông tin người dùng') 
+                : isEdit ? t('userManagement.editUser') : t('userManagement.addUser')}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              {isEdit ? t('userManagement.editUserDesc') : t('userManagement.addUserDesc')}
+              {isView 
+                ? t('userManagement.viewUserDesc', 'Chi tiết thông tin người dùng')
+                : isEdit ? t('userManagement.editUserDesc') : t('userManagement.addUserDesc')}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[65vh] px-6 py-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <motion.div
+                <fieldset disabled={isView} className="space-y-6 w-full border-0 p-0 m-0">
+                  <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
@@ -425,6 +431,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
                     )} />
                   </div>
                 </motion.div>
+                </fieldset>
               </form>
             </Form>
           </ScrollArea>
@@ -434,20 +441,22 @@ export function UsersActionDialog({ currentRow, open, onOpenChange }: Props) {
               onClick={() => onOpenChange(false)}
               className="transition-all duration-200 hover:bg-slate-100"
             >
-              {t('userManagement.cancel')}
+              {isView ? t('close', 'Đóng') : t('userManagement.cancel')}
             </Button>
-            <Button
-              type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              disabled={form.formState.isSubmitting || isUploading}
-              className="bg-primary transition-all duration-200 hover:bg-primary/90"
-            >
-              {form.formState.isSubmitting || isUploading
-                ? t('userManagement.processing')
-                : isEdit
-                  ? t('userManagement.update')
-                  : t('userManagement.add')}
-            </Button>
+            {!isView && (
+              <Button
+                type="submit"
+                onClick={form.handleSubmit(onSubmit)}
+                disabled={form.formState.isSubmitting || isUploading}
+                className="bg-primary transition-all duration-200 hover:bg-primary/90"
+              >
+                {form.formState.isSubmitting || isUploading
+                  ? t('userManagement.processing')
+                  : isEdit
+                    ? t('userManagement.update')
+                    : t('userManagement.add')}
+              </Button>
+            )}
           </DialogFooter>
         </motion.div>
       </DialogContent>
