@@ -72,7 +72,7 @@ export function PermissionsFormDialog({
     defaultValues: {
       name: currentRow?.name || '',
       apiPath: currentRow?.apiPath || '',
-      httpMethod: currentRow?.httpMethod || undefined,
+      httpMethod: currentRow?.httpMethod || 'GET',
       module: currentRow?.module || '',
     },
   })

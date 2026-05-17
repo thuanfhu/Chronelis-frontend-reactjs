@@ -160,9 +160,9 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
               </div>
 
               <div className="border rounded-md overflow-hidden">
-                <ScrollArea className="h-[300px]">
+                <ScrollArea className="max-h-[300px]">
                   {filteredPermissions.length === 0 ? (
-                    <div className="flex items-center justify-center h-full p-4 text-center text-muted-foreground">
+                    <div className="flex items-center justify-center py-12 text-center text-muted-foreground">
                       <p>{t('noPermissionsFound')}</p>
                     </div>
                   ) : (

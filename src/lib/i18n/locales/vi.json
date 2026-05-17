@@ -1838,7 +1838,16 @@
         "nationality": "Quốc tịch",
         "nationalityPlaceholder": "Nhập quốc tịch",
         "imageAndPermissions": "Ảnh đại diện và Phân quyền",
-        "avatar": "Ảnh đại diện"
+        "avatar": "Ảnh đại diện",
+        "avatarFormat": "Định dạng URL ảnh đại diện (ví dụ: https://...)",
+        "role": "Vai trò",
+        "emailVerification": "Xác thực Email",
+        "userVerified": "Đã xác thực",
+        "userUnverified": "Chưa xác thực",
+        "cancel": "Hủy",
+        "update": "Cập nhật",
+        "rolePlaceholder": "Chọn vai trò",
+        "addUser": "Thêm người dùng"
     },
     "roleManagement": {
         "title": "Quản lý vai trò",
@@ -1850,6 +1859,7 @@
     },
     "sortAscending": "Sắp xếp tăng dần",
     "sortDescending": "Sắp xếp giảm dần",
-    "hideColumn": "Ẩn cột"
+    "hideColumn": "Ẩn cột",
+    "toggleColumns": "Ẩn/Hiện cột"
 }
 

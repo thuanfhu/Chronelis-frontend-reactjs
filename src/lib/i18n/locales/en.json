@@ -1859,7 +1859,16 @@
     "nationality": "Nationality",
     "nationalityPlaceholder": "Enter nationality",
     "imageAndPermissions": "Avatar & Permissions",
-    "avatar": "Avatar"
+    "avatar": "Avatar",
+    "avatarFormat": "Avatar URL format (e.g., https://...)",
+    "role": "Role",
+    "emailVerification": "Email Verification",
+    "userVerified": "Verified",
+    "userUnverified": "Unverified",
+    "cancel": "Cancel",
+    "update": "Update",
+    "rolePlaceholder": "Select role",
+    "addUser": "Add User"
   },
   "roleManagement": {
     "title": "Role Management",
@@ -1871,7 +1880,8 @@
   },
   "sortAscending": "Sort Ascending",
   "sortDescending": "Sort Descending",
-  "hideColumn": "Hide Column"
+  "hideColumn": "Hide Column",
+  "toggleColumns": "Toggle Columns"
 }
 
 

@@ -33,7 +33,7 @@ export function DataTableViewOptions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[150px]">
-        <DropdownMenuLabel>{t('toggleColumns')}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('toggleColumns', 'Ẩn/Hiện cột')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
           .getAllColumns()
@@ -42,6 +42,21 @@ export function DataTableViewOptions<TData>({
               typeof column.accessorFn !== 'undefined' && column.getCanHide()
           )
           .map((column) => {
+            const getColumnLabel = (id: string) => {
+              const map: Record<string, string> = {
+                name: t('name', 'Tên'),
+                apiPath: t('apiPath', 'Đường dẫn API'),
+                httpMethod: t('httpMethod', 'HTTP Method'),
+                email: t('email', 'Email'),
+                active: t('status', 'Trạng thái'),
+                createdAt: t('createdAt', 'Ngày tạo'),
+                createdBy: t('createdBy', 'Tạo bởi'),
+                isVerified: t('isVerified', 'Xác thực'),
+                role: t('role', 'Vai trò'),
+              }
+              return map[id] || id
+            }
+
             return (
               <DropdownMenuCheckboxItem
                 key={column.id}
@@ -49,7 +64,7 @@ export function DataTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {getColumnLabel(column.id)}
               </DropdownMenuCheckboxItem>
             )
           })}
