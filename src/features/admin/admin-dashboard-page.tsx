@@ -20,7 +20,9 @@ import RolesProvider, { useRoles } from '@/features/admin/roles/context/roles-co
 import { RolesTable } from '@/features/admin/roles/components/roles-table'
 import { RolesDialogs } from '@/features/admin/roles/components/roles-dialogs'
 import { RolesPrimaryButtons } from '@/features/admin/roles/components/roles-primary-buttons'
-import PermissionsProvider from '@/features/admin/permissions/context/permissions-context'
+import PermissionsProvider, { usePermissions } from '@/features/admin/permissions/context/permissions-context'
+import { Input } from '@/components/ui/input'
+import { IconSearch } from '@tabler/icons-react'
 import { PermissionsTable } from '@/features/admin/permissions/components/permissions-table'
 import { PermissionsPrimaryButtons } from '@/features/admin/permissions/components/permissions-primary-buttons'
 
@@ -163,6 +165,7 @@ function NewRolesTabContent() {
 
 function NewPermissionsTabContent() {
   const { t } = useTranslation()
+  const { searchQuery, setSearchQuery } = usePermissions()
   return (
     <Card>
       <CardHeader>
@@ -171,7 +174,18 @@ function NewPermissionsTabContent() {
             <CardTitle>{t('permissionManagement.title', 'Quản lý phân quyền')}</CardTitle>
             <CardDescription>{t('permissionManagement.description', 'Quản lý quyền truy cập API trong hệ thống')}</CardDescription>
           </div>
-          <PermissionsPrimaryButtons />
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder={t('searchPlaceholder', 'Tìm kiếm...')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-slate-50 dark:bg-zinc-800"
+              />
+            </div>
+            <PermissionsPrimaryButtons />
+          </div>
         </div>
       </CardHeader>
       <CardContent>

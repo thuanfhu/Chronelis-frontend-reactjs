@@ -27,6 +27,7 @@ interface TreeItemProps {
   onDelete: (permission: Permission) => void;
   onEdit?: (permission: Permission) => void;
   isModule?: boolean;
+  searchQuery?: string;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) => {
@@ -48,7 +49,26 @@ export function SortableTreeItem({
   onDelete,
   onEdit,
   isModule = false,
+  searchQuery = '',
 }: TreeItemProps) {
+  const highlightText = (text: string, query: string) => {
+    if (!query) return text
+    const parts = text.split(new RegExp(`(${query})`, 'gi'))
+    return (
+      <span>
+        {parts.map((part, i) =>
+          part.toLowerCase() === query.toLowerCase() ? (
+            <span key={i} className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">
+              {part}
+            </span>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    )
+  }
+
   const {
     attributes,
     listeners,
@@ -137,7 +157,7 @@ export function SortableTreeItem({
             {isModule ? (
               <>
                 <div className="font-semibold text-[15px] text-slate-900 dark:text-slate-100">
-                  {permission.name}
+                  {highlightText(permission.name, searchQuery)}
                 </div>
                 <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none">
                   {(children as any)?.length || 0} {t('permissions')}
@@ -146,13 +166,13 @@ export function SortableTreeItem({
             ) : (
               <>
                 <div className="font-medium text-sm text-slate-700 dark:text-slate-200 min-w-[200px]">
-                  {permission.name}
+                  {highlightText(permission.name, searchQuery)}
                 </div>
                 <Badge variant="secondary" className={cn('text-[10px] font-mono px-2 py-0 border-none', getMethodColor(permission.httpMethod))}>
                   {permission.httpMethod}
                 </Badge>
                 <span className="text-sm font-mono text-slate-500 dark:text-slate-400">
-                  {permission.apiPath}
+                  {highlightText(permission.apiPath, searchQuery)}
                 </span>
               </>
             )}

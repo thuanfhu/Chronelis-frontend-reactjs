@@ -18,7 +18,7 @@ import {
   useSensors,
   useDroppable,
 } from '@dnd-kit/core'
-import { SortableContext } from '@dnd-kit/sortable'
+import { SortableContext, arrayMove } from '@dnd-kit/sortable'
 import { SortableTreeItem } from './sortable-tree'
 import { toast } from 'sonner'
 import { adminPermissionApi } from '@/lib/api/modules/admin-permission-api'
@@ -63,7 +63,30 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
 
 export function PermissionsTable() {
   const queryClient = useQueryClient()
-  const { permissions, isLoading, refetch } = usePermissions()
+  const { permissions, isLoading, refetch, searchQuery } = usePermissions()
+  
+  const filteredPermissions = permissions.filter((p) => {
+    const query = searchQuery.toLowerCase()
+    return (
+      p.name.toLowerCase().includes(query) ||
+      p.module.toLowerCase().includes(query) ||
+      p.apiPath.toLowerCase().includes(query)
+    )
+  })
+
+  const filteredModules = Array.from(
+    new Set(filteredPermissions.map((p) => p.module).filter(Boolean))
+  ) as string[]
+
+  const allModules = Array.from(
+    new Set(permissions.map((p) => p.module).filter(Boolean))
+  ).sort() as string[]
+
+  const sortedModules = searchQuery ? [
+    ...allModules.filter(m => filteredModules.includes(m)),
+    ...allModules.filter(m => !filteredModules.includes(m))
+  ] : allModules
+
   const [openCreateModule, setOpenCreateModule] = useState(false)
   const [deleteData, setDeleteData] = useState<{
     type: 'module' | 'permission'
@@ -81,14 +104,31 @@ export function PermissionsTable() {
     })
   )
 
-  const modules = Array.from(new Set(permissions.map((p) => p.module).filter(Boolean))) as string[]
+  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>({})
 
-  const [collapsedModules, setCollapsedModules] = useState<Record<string, boolean>>(() => {
-    return modules.reduce((acc, moduleName) => {
-      acc[moduleName] = true // true = collapsed
-      return acc
-    }, {} as Record<string, boolean>)
-  })
+  useEffect(() => {
+    setCollapsedModules((prev) => {
+      const newState = { ...prev }
+      allModules.forEach((moduleName) => {
+        if (newState[moduleName] === undefined) {
+          newState[moduleName] = true // Mặc định đóng
+        }
+      })
+      return newState
+    })
+  }, [allModules])
+
+  useEffect(() => {
+    if (searchQuery) {
+      setCollapsedModules((prev) => {
+        const newState = { ...prev }
+        filteredModules.forEach((moduleName) => {
+          newState[moduleName] = false // Tự động mở khi search
+        })
+        return newState
+      })
+    }
+  }, [searchQuery, filteredModules])
   const [isDragging, setIsDragging] = useState(false)
   const { t } = useTranslation()
 
@@ -97,7 +137,7 @@ export function PermissionsTable() {
     setCollapsedModules((prev) => {
       const newState = { ...prev }
       let hasChanges = false
-      modules.forEach((moduleName) => {
+      allModules.forEach((moduleName) => {
         if (newState[moduleName] === undefined) {
           newState[moduleName] = false // Mở module mới
           hasChanges = true
@@ -105,7 +145,7 @@ export function PermissionsTable() {
       })
       return hasChanges ? newState : prev
     })
-  }, [modules])
+  }, [allModules])
 
   const toggleCollapse = (moduleName: string) => {
     setCollapsedModules((prev) => ({
@@ -145,16 +185,35 @@ export function PermissionsTable() {
     const draggedPermission = permissions.find((p) => p.permissionId === active.id)
     if (!draggedPermission) return
 
+    const overPermission = permissions.find((p) => p.permissionId === over.id)
     let newModule: string | null = null
 
-    if (modules.includes(over.id as string)) {
+    if (overPermission) {
+      newModule = overPermission.module || ''
+    } else if (allModules.includes(over.id as string)) {
       newModule = over.id as string
     } else {
       newModule = ''
     }
 
-    if (newModule !== (draggedPermission.module || '')) {
-      // Optimistic update
+    if (newModule === (draggedPermission.module || '')) {
+      // Reorder within the same module
+      if (overPermission && active.id !== over.id) {
+        const activeIndex = permissions.findIndex((p) => p.permissionId === active.id)
+        const overIndex = permissions.findIndex((p) => p.permissionId === over.id)
+        
+        const reorderedPermissions = arrayMove(permissions, activeIndex, overIndex)
+        
+        queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            permissions: reorderedPermissions
+          }
+        })
+      }
+    } else {
+      // Move to a different module
       const previousPermissions = permissions
       
       const optimisticPermissions = permissions.map(p => {
@@ -164,7 +223,6 @@ export function PermissionsTable() {
         return p
       })
       
-      // Update local cache directly for snappy UI
       queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
         if (!oldData) return oldData
         return {
@@ -173,7 +231,6 @@ export function PermissionsTable() {
         }
       })
       
-      // Mở module đích nếu nó đang bị đóng
       if (newModule && collapsedModules[newModule]) {
         toggleCollapse(newModule)
       }
@@ -184,10 +241,8 @@ export function PermissionsTable() {
         })
         
         toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
-        // Refetch to ensure data consistency
         refetch()
       } catch (error) {
-        // Revert optimistic update
         queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
           if (!oldData) return oldData
           return {
@@ -213,9 +268,9 @@ export function PermissionsTable() {
     >
       <div className="space-y-6">
         {/* Modules và Permissions */}
-        <div className="grid gap-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-2 pb-10">
-          {modules.map((moduleName) => {
-            const modulePermissions = permissions.filter(
+        <div className="grid gap-3 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2 pb-10">
+          {sortedModules.map((moduleName) => {
+            const modulePermissions = filteredPermissions.filter(
               (p) => p.module === moduleName
             )
 
@@ -226,6 +281,7 @@ export function PermissionsTable() {
               >
                 <SortableTreeItem
                   id={moduleName}
+                  searchQuery={searchQuery}
                   collapsed={collapsedModules[moduleName]}
                   onCollapse={() => toggleCollapse(moduleName)}
                   permission={{
@@ -256,6 +312,7 @@ export function PermissionsTable() {
                       permission={permission}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      searchQuery={searchQuery}
                     />
                   ))}
                 </SortableTreeItem>
@@ -264,16 +321,16 @@ export function PermissionsTable() {
           })}
 
           {/* Khu vực Permissions khác */}
-          {(isDragging || permissions.some((p) => !p.module || p.module === 'none' || p.module === '')) && (
+          {(isDragging || filteredPermissions.some((p) => !p.module || p.module === 'none' || p.module === '')) && (
             <div className="mt-8">
               <DroppableArea>
                 <SortableContext
-                  items={permissions
+                  items={filteredPermissions
                     .filter((p) => !p.module || p.module === 'none' || p.module === '')
                     .map((p) => p.permissionId)}
                 >
                   <div className="grid gap-2 w-full">
-                    {permissions
+                    {filteredPermissions
                       .filter((p) => !p.module || p.module === 'none' || p.module === '')
                       .map((permission) => (
                         <SortableTreeItem
@@ -282,6 +339,7 @@ export function PermissionsTable() {
                           permission={permission}
                           onEdit={handleEdit}
                           onDelete={handleDelete}
+                          searchQuery={searchQuery}
                         />
                       ))}
                   </div>

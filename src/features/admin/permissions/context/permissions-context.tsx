@@ -16,6 +16,8 @@ interface PermissionsContextType {
   setOpen: (type: PermissionsDialogType | null) => void
   currentRow: Permission | null
   setCurrentRow: (permission: Permission | null) => void
+  searchQuery: string
+  setSearchQuery: (query: string) => void
 }
 
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined)
@@ -28,6 +30,7 @@ export default function PermissionsProvider({ children }: Props) {
   const queryClient = useQueryClient()
   const [selectedModule, setSelectedModule] = useState<string | null>(null)
   const [open, setOpen] = useState<PermissionsDialogType | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [currentRow, setCurrentRow] = useState<Permission | null>(null)
 
   const {
@@ -46,7 +49,7 @@ export default function PermissionsProvider({ children }: Props) {
         createdAt: p.createdAt || '',
         updatedAt: p.updatedAt || '',
         createdBy: p.createdBy || '',
-      }))
+      })).sort((a, b) => a.name.localeCompare(b.name))
 
       // Extract unique modules
       const uniqueModules = Array.from(
@@ -79,6 +82,8 @@ export default function PermissionsProvider({ children }: Props) {
         setOpen,
         currentRow,
         setCurrentRow,
+        searchQuery,
+        setSearchQuery,
       }}
     >
       {children}
