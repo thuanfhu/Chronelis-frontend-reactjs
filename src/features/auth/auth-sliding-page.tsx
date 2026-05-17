@@ -35,7 +35,7 @@ interface PanelCopy {
 
 const ROUTE_SWITCH_DELAY_MS = 780
 const FORM_TRANSITION = {
-  duration: 0.32,
+  duration: 0.2,
   ease: [0.22, 1, 0.36, 1] as const,
 }
 
@@ -370,7 +370,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
       leftPanel={<AuthPanelContent side="left" content={leftPanelCopy} />}
       rightPanel={<AuthPanelContent side="right" content={rightPanelCopy} />}
     >
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} mode="wait">
         {mode === 'sign-in' ? (
           <motion.form
             key="sign-in-form"

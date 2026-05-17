@@ -99,9 +99,6 @@
   transform-style: preserve-3d;
   backface-visibility: hidden;
   will-change: transform, opacity;
-  transition:
-    opacity var(--auth-fade-duration) var(--auth-ease-soft),
-    transform 0.34s var(--auth-ease-soft);
 }
 
 .chronelis-auth-title {
