@@ -85,6 +85,7 @@
       "confirmPasswordMismatch": "Password confirmation does not match."
     },
     "toast": {
+      "logoutSuccess": "Logged out successfully!",
       "updateSuccess": "Profile updated successfully",
       "updateFailed": "Failed to update profile",
       "emailRequestSuccess": "Email change request sent",
@@ -541,7 +542,23 @@
     "ownerName": "Owner: {{name}}",
     "createdAt": "Created on {{date}}",
     "noWorkspaces": "No workspaces yet. Create your first workspace to get started.",
-    "createFirstWorkspace": "Create workspace"
+    "createFirstWorkspace": "Create workspace",
+    "overview": "Overview",
+    "blockedTasks": "Blocked tasks",
+    "overdue": "Overdue",
+    "taskHealth": "Task Health",
+    "taskHealthDesc": "Breakdown of your assigned tasks",
+    "priorityBreakdown": "Priority Breakdown",
+    "priorityDesc": "Your tasks by priority level",
+    "noAssignedTasks": "No assigned tasks",
+    "noTasksToDisplay": "No tasks to display",
+    "tasks": "tasks",
+    "segments": {
+      "blocked": "Blocked",
+      "overdue": "Overdue",
+      "dueToday": "Due Today",
+      "onTrack": "On Track"
+    }
   },
   "command": {
     "inputPlaceholder": "Type a command or search...",
@@ -1966,5 +1983,18 @@
   "sortAscending": "Sort Ascending",
   "sortDescending": "Sort Descending",
   "hideColumn": "Hide Column",
-  "toggleColumns": "Toggle Columns"
+  "toggleColumns": "Toggle Columns",
+  "roleDeleteSuccess": "Role \"{{roleName}}\" has been deleted successfully",
+  "roleDeleteConfirmation": "Are you sure you want to delete role \"{{roleName}}\"?",
+  "enterRoleNameToConfirm": "Enter role name \"{{roleName}}\" to confirm",
+  "enterRoleNamePlaceholder": "Enter role name",
+  "roleDeleteWarning": "This action cannot be undone and may affect users holding this role.",
+  "roleDeleteError": "Error deleting role",
+  "editRole": "Edit Role",
+  "addNewRole": "Add New Role",
+  "editRoleDesc": "Update role information",
+  "addNewRoleDesc": "Add a new role to the system",
+  "roleName": "Role Name",
+  "enterRoleName": "Enter role name",
+  "enterRoleDescription": "Enter role description"
 }

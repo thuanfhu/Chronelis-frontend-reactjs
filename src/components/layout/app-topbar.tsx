@@ -130,6 +130,7 @@ export function AppTopbar() {
 
   const handleLogout = () => {
     clearSession()
+    toast.success(t('common.toast.logoutSuccess'))
     setLogoutConfirmOpen(false)
     navigate('/login')
   }
@@ -169,7 +170,7 @@ export function AppTopbar() {
               <ChevronsUpDown className="size-3 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto">
             <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {workspaces.map((ws) => (

@@ -63,7 +63,7 @@ const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
 
 const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
   OWNER: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
-  MEMBER: 'border-border bg-muted text-muted-foreground',
+  MEMBER: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-300',
 }
 
 function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
@@ -90,6 +90,7 @@ function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
 
 const MEMBER_PAGE_SIZE = 10
 const TEAM_PAGE_SIZE = 6
+const PROJECT_PAGE_SIZE = 6
 
 type WorkspaceDetailDeletePayload = {
   kind: 'project' | 'workspace' | 'team'
@@ -132,6 +133,7 @@ export function WorkspaceDetailPage() {
   const [memberRoleFilter, setMemberRoleFilter] = useState<WorkspaceMemberRoleType | 'ALL'>('ALL')
   const [memberSortKey, setMemberSortKey] = useState<'name' | 'role' | 'joined'>('role')
   const [memberPage, setMemberPage] = useState(1)
+  const [projectPage, setProjectPage] = useState(1)
   const [teamPage, setTeamPage] = useState(1)
   const [teamSearch, setTeamSearch] = useState('')
   const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
@@ -617,6 +619,10 @@ export function WorkspaceDetailPage() {
   const visibleProjects = projects.filter((project) => !pendingProjectIds.has(project.id))
   const visibleTeams = teams.filter((team) => !pendingTeamIds.has(team.id))
 
+  const projectTotalPages = Math.max(1, Math.ceil(visibleProjects.length / PROJECT_PAGE_SIZE))
+  const projectCurrentPage = Math.min(projectPage, projectTotalPages)
+  const paginatedProjects = visibleProjects.slice((projectCurrentPage - 1) * PROJECT_PAGE_SIZE, projectCurrentPage * PROJECT_PAGE_SIZE)
+
   const currentMember = members.find((member) => member.user.userId === currentUserId)
   const currentRole: WorkspaceMemberRoleType = workspace?.owner.userId === currentUserId
     ? 'OWNER'
@@ -867,7 +873,7 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {visibleProjects.map((project) => {
+              {paginatedProjects.map((project) => {
                 const canManageCurrentProject = canManageProject(project)
 
                 return (
@@ -882,31 +888,24 @@ export function WorkspaceDetailPage() {
                           {project.description && (
                             <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{project.description}</p>
                           )}
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
                             <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
                               {t(`project.status.${project.status}`)}
                             </Badge>
                             <Badge variant="outline" className="text-[10px]">
                               {t(`project.visibility.${(project.visibility ?? 'PUBLIC').toLowerCase()}`)}
                             </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              {project.createdBy.firstName} {project.createdBy.lastName}
-                            </span>
+                            {project.managerUser && (
+                              <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
+                                {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
+                              </Badge>
+                            )}
+                            {project.managerTeamName && (
+                              <Badge variant="outline" className="text-[10px] border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300">
+                                {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
+                              </Badge>
+                            )}
                           </div>
-                          {(project.managerUser || project.managerTeamName) && (
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              {project.managerUser && (
-                                <Badge variant="secondary" className="text-[10px]">
-                                  {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
-                                </Badge>
-                              )}
-                              {project.managerTeamName && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </Link>
                       {canManageCurrentProject && (
@@ -978,6 +977,47 @@ export function WorkspaceDetailPage() {
                   </Card>
                 )
               })}
+            </div>
+          )}
+
+          {/* Project pagination */}
+          {projectTotalPages > 1 && (
+            <div className="mt-6 flex flex-col items-center gap-2 pb-4">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={projectCurrentPage === 1}
+                  onClick={() => setProjectPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                {buildPageNumbers(projectCurrentPage, projectTotalPages).map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={projectCurrentPage === p ? 'default' : 'outline'}
+                      size="icon"
+                      className="size-8 text-xs"
+                      onClick={() => setProjectPage(p as number)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={projectCurrentPage === projectTotalPages}
+                  onClick={() => setProjectPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1293,23 +1333,40 @@ export function WorkspaceDetailPage() {
 
           {/* Member pagination */}
           {memberTotalPages > 1 && (
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-muted-foreground">
-                {t('workspace.pagination.memberInfo', { current: memberCurrentPage, total: memberTotalPages, count: filteredMembers.length })}
-              </p>
+            <div className="mt-6 flex flex-col items-center gap-2 pb-4">
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
-                  <ChevronLeft className="size-3.5" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={memberCurrentPage === 1}
+                  onClick={() => setMemberPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
                 </Button>
                 {buildPageNumbers(memberCurrentPage, memberTotalPages).map((p, idx) =>
                   p === '...' ? (
-                    <span key={`dots-${idx}`} className="flex size-7 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
                   ) : (
-                    <Button key={p} variant={memberCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-7 text-xs" onClick={() => setMemberPage(p as number)}>{p}</Button>
+                    <Button
+                      key={p}
+                      variant={memberCurrentPage === p ? 'default' : 'outline'}
+                      size="icon"
+                      className="size-8 text-xs"
+                      onClick={() => setMemberPage(p as number)}
+                    >
+                      {p}
+                    </Button>
                   )
                 )}
-                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === memberTotalPages} onClick={() => setMemberPage((p) => p + 1)}>
-                  <ChevronRight className="size-3.5" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={memberCurrentPage === memberTotalPages}
+                  onClick={() => setMemberPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
                 </Button>
               </div>
             </div>

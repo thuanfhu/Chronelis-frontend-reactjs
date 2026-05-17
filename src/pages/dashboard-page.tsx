@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase, ShieldAlert, Clock, TrendingUp } from 'lucide-react'
+import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase, ShieldAlert, Clock, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,10 +18,11 @@ import { PriorityBarChart } from '@/components/charts/priority-bar-chart'
 export function DashboardPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
   const { t } = useTranslation()
+  const [page, setPage] = useState(1)
 
   const workspaceQuery = useQuery({
-    queryKey: queryKeys.workspaces.list(1, 6),
-    queryFn: () => workspaceApi.list({ page: 1, size: 6 }),
+    queryKey: ['workspaces', 'list', page, 6],
+    queryFn: () => workspaceApi.list({ page, size: 6, sort: 'createdAt,desc' }),
   })
 
   const notificationCountQuery = useQuery({
@@ -62,15 +63,15 @@ export function DashboardPage() {
           {/* Compact stats */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3 pt-5">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Overview</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">{t('dashboard.overview')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pb-5">
               <MiniStat icon={PanelsTopLeft} label={t('dashboard.totalWorkspaces')} value={workspaceCount} accent="text-primary bg-primary/10" />
               <MiniStat icon={FolderKanban} label={t('dashboard.totalProjects')} value={workspaces.length} accent="text-violet-600 bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300" />
               <MiniStat icon={Bell} label={t('notification.title')} value={unreadCount} accent="text-rose-600 bg-rose-100 dark:bg-rose-500/20 dark:text-rose-300" />
               <MiniStat icon={Briefcase} label={t('dashboard.tasksAssigned')} value={myWork?.assignedCount ?? 0} accent="text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300" />
-              <MiniStat icon={ShieldAlert} label="Blocked tasks" value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
-              <MiniStat icon={Clock} label="Overdue" value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
+              <MiniStat icon={ShieldAlert} label={t('dashboard.blockedTasks')} value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
+              <MiniStat icon={Clock} label={t('dashboard.overdue')} value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
             </CardContent>
           </Card>
 
@@ -79,9 +80,9 @@ export function DashboardPage() {
             <CardHeader className="pb-2 pt-5">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <TrendingUp className="size-4 text-emerald-500" />
-                Task Health
+                {t('dashboard.taskHealth')}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Breakdown of your assigned tasks</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.taskHealthDesc')}</p>
             </CardHeader>
             <CardContent className="pt-0 pb-4">
               <TaskHealthDonut
@@ -98,9 +99,9 @@ export function DashboardPage() {
             <CardHeader className="pb-2 pt-5">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Briefcase className="size-4 text-amber-500" />
-                Priority Breakdown
+                {t('dashboard.priorityBreakdown')}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Your tasks by priority level</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.priorityDesc')}</p>
             </CardHeader>
             <CardContent className="pt-0 pb-4">
               <PriorityBarChart tasks={assignedTasks} />
@@ -141,36 +142,81 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {workspaces.map((ws) => (
-              <Link key={ws.id} to={`/workspaces/${ws.id}`}>
-                <Card className="group transition-all hover:border-primary/30 hover:shadow-md">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                        {ws.name.charAt(0).toUpperCase()}
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {workspaces.map((ws) => (
+                <Link key={ws.id} to={`/workspaces/${ws.id}`}>
+                  <Card className="group transition-all hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                          {ws.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <CardTitle className="truncate text-base">{ws.name}</CardTitle>
+                          <p className="text-xs text-muted-foreground">
+                            {t('dashboard.ownerName', {
+                              name: `${ws.owner.firstName} ${ws.owner.lastName}`,
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <CardTitle className="truncate text-base">{ws.name}</CardTitle>
-                        <p className="text-xs text-muted-foreground">
-                          {t('dashboard.ownerName', {
-                            name: `${ws.owner.firstName} ${ws.owner.lastName}`,
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground">
-                      {t('dashboard.createdAt', {
-                        date: new Date(ws.createdAt).toLocaleDateString(),
-                      })}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-muted-foreground">
+                        {t('dashboard.createdAt', {
+                          date: new Date(ws.createdAt).toLocaleDateString(),
+                        })}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {/* Pagination controls */}
+            {workspaceQuery.data && workspaceQuery.data.meta.totalPages > 1 && (
+              <div className="mt-6 flex flex-col items-center gap-2 pb-6">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1 || workspaceQuery.isLoading}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  
+                  {Array.from({ length: workspaceQuery.data.meta.totalPages }, (_, i) => i + 1).map((p) => (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "outline"}
+                      size="icon"
+                      className="size-8"
+                      onClick={() => setPage(p)}
+                      disabled={workspaceQuery.isLoading}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!workspaceQuery.data.meta.hasNext || workspaceQuery.isLoading}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('myWork.pageOf', { current: page, total: workspaceQuery.data.meta.totalPages })}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

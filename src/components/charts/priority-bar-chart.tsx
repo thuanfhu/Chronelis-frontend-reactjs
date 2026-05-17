@@ -1,12 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import type { TaskPriorityType } from '@/types/domain'
-
-const PRIORITY_CONFIG: Record<TaskPriorityType, { label: string; color: string; bg: string }> = {
-  URGENT: { label: 'Urgent', color: '#f43f5e', bg: '#fef2f2' },
-  HIGH: { label: 'High', color: '#f59e0b', bg: '#fffbeb' },
-  MEDIUM: { label: 'Medium', color: '#3b82f6', bg: '#eff6ff' },
-  LOW: { label: 'Low', color: '#10b981', bg: '#f0fdf4' },
-}
 
 const PRIORITY_ORDER: TaskPriorityType[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
 
@@ -20,6 +14,7 @@ type ChartEntry = { priority: TaskPriorityType; fullLabel: string; label: string
 interface TipProps { active?: boolean; payload?: Array<{ value: number; payload: ChartEntry }> }
 
 function CustomTooltip({ active, payload }: TipProps) {
+  const { t } = useTranslation()
   if (!active || !payload?.length) return null
   const { value } = payload[0]
   const entry = payload[0].payload
@@ -28,13 +23,22 @@ function CustomTooltip({ active, payload }: TipProps) {
       <div className="flex items-center gap-2">
         <span className="inline-block size-2.5 rounded-full" style={{ background: entry.color }} />
         <span className="text-sm font-semibold">{entry.fullLabel}</span>
-        <span className="ml-2 text-sm text-muted-foreground">{value} tasks</span>
+        <span className="ml-2 text-sm text-muted-foreground">{value} {t('dashboard.tasks')}</span>
       </div>
     </div>
   )
 }
 
 export function PriorityBarChart({ tasks, title }: Props) {
+  const { t } = useTranslation()
+
+  const PRIORITY_CONFIG: Record<TaskPriorityType, { label: string; color: string; bg: string }> = {
+    URGENT: { label: t('task.priorityUrgent'), color: '#f43f5e', bg: '#fef2f2' },
+    HIGH: { label: t('task.priorityHigh'), color: '#f59e0b', bg: '#fffbeb' },
+    MEDIUM: { label: t('task.priorityMedium'), color: '#3b82f6', bg: '#eff6ff' },
+    LOW: { label: t('task.priorityLow'), color: '#10b981', bg: '#f0fdf4' },
+  }
+
   const counts = PRIORITY_ORDER.reduce<Record<TaskPriorityType, number>>(
     (acc, p) => ({ ...acc, [p]: 0 }),
     {} as Record<TaskPriorityType, number>,
@@ -56,7 +60,7 @@ export function PriorityBarChart({ tasks, title }: Props) {
   if (tasks.length === 0) {
     return (
       <div className="flex h-[200px] items-center justify-center">
-        <p className="text-sm text-muted-foreground">No tasks to display</p>
+        <p className="text-sm text-muted-foreground">{t('dashboard.noTasksToDisplay')}</p>
       </div>
     )
   }
@@ -78,7 +82,7 @@ export function PriorityBarChart({ tasks, title }: Props) {
           <YAxis
             type="category"
             dataKey="fullLabel"
-            width={52}
+            width={65}
             tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }}
             axisLine={false}
             tickLine={false}

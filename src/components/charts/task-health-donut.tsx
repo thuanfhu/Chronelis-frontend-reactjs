@@ -1,10 +1,11 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { useTranslation } from 'react-i18next'
 
 const SEGMENTS = [
-  { key: 'blocked', label: 'Blocked', color: '#f43f5e' },
-  { key: 'overdue', label: 'Overdue', color: '#f97316' },
-  { key: 'dueToday', label: 'Due Today', color: '#eab308' },
-  { key: 'onTrack', label: 'On Track', color: '#10b981' },
+  { key: 'blocked', color: '#f43f5e' },
+  { key: 'overdue', color: '#f97316' },
+  { key: 'dueToday', color: '#eab308' },
+  { key: 'onTrack', color: '#10b981' },
 ] as const
 
 interface Props {
@@ -15,34 +16,38 @@ interface Props {
   title?: string
 }
 
-type SegmentEntry = { key: string; label: string; color: string; value: number }
+type SegmentEntry = { key: string; color: string; value: number }
 interface TipProps { active?: boolean; payload?: Array<{ name: string; value: number; payload: SegmentEntry }> }
 
 function CustomTooltip({ active, payload }: TipProps) {
+  const { t } = useTranslation()
   if (!active || !payload?.length) return null
-  const { name, value } = payload[0]
+  const { value } = payload[0]
   const entry = payload[0].payload
+  const label = t(`dashboard.segments.${entry.key}`)
   return (
     <div className="rounded-lg border border-border/60 bg-background px-3 py-2 shadow-lg">
       <div className="flex items-center gap-2">
         <span className="inline-block size-2.5 rounded-full" style={{ background: entry.color }} />
-        <span className="text-sm font-semibold">{name}</span>
-        <span className="ml-2 text-sm text-muted-foreground">{value} tasks</span>
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="ml-2 text-sm text-muted-foreground">{value} {t('dashboard.tasks')}</span>
       </div>
     </div>
   )
 }
 
 function CenterLabel({ total }: { total: number }) {
+  const { t } = useTranslation()
   return (
     <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
       <tspan x="50%" dy="-0.4em" fontSize="22" fontWeight="700" fill="currentColor">{total}</tspan>
-      <tspan x="50%" dy="1.4em" fontSize="11" fill="#94a3b8">tasks</tspan>
+      <tspan x="50%" dy="1.4em" fontSize="11" fill="#94a3b8">{t('dashboard.tasks')}</tspan>
     </text>
   )
 }
 
 export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, dueTodayCount, title }: Props) {
+  const { t } = useTranslation()
   const onTrack = Math.max(0, assignedCount - blockedCount - overdueCount - dueTodayCount)
   const raw = [
     { ...SEGMENTS[0], value: blockedCount },
@@ -58,7 +63,7 @@ export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, due
         <div className="flex size-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
           <span className="text-xl">✓</span>
         </div>
-        <p className="text-sm text-muted-foreground">No assigned tasks</p>
+        <p className="text-sm text-muted-foreground">{t('dashboard.noAssignedTasks')}</p>
       </div>
     )
   }
@@ -76,7 +81,7 @@ export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, due
             outerRadius={80}
             paddingAngle={2}
             dataKey="value"
-            nameKey="label"
+            nameKey="key"
             animationBegin={0}
             animationDuration={600}
           >
@@ -89,7 +94,7 @@ export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, due
           <Legend
             iconType="circle"
             iconSize={8}
-            formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
+            formatter={(value) => <span className="text-xs text-muted-foreground">{t(`dashboard.segments.${value}`)}</span>}
           />
         </PieChart>
       </ResponsiveContainer>

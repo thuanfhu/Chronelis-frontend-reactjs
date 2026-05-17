@@ -21,7 +21,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <TooltipProvider delayDuration={200}>
         <ThemeSync />
         <RealtimeProvider>{children}</RealtimeProvider>
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" closeButton />
       </TooltipProvider>
     </QueryClientProvider>
   )

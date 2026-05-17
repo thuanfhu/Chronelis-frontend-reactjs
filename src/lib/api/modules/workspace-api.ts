@@ -14,6 +14,7 @@ export interface AddWorkspaceMemberPayload {
 export interface PageQuery {
   page?: number
   size?: number
+  sort?: string
 }
 
 export const workspaceApi = {
