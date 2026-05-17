@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -26,6 +26,7 @@ import {
 import { DataTablePagination } from '@/components/ui/data-table-pagination'
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options'
 import { DataTableColumnHeader } from '@/components/ui/data-table-column-header'
+import { DataTableSkeleton } from '@/components/ui/data-table-skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,69 +71,77 @@ export function PermissionsTable() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteData, setDeleteData] = useState<{ permissionId?: string; name: string; module?: string } | null>(null)
 
-  // Filter permissions by selected module or show all
-  const filteredPermissions = selectedModule
-    ? permissions.filter((p) => p.module === selectedModule)
-    : permissions
-
-  // Group permissions by module  
-  const groupedByModule = filteredPermissions.reduce(
-    (acc, permission) => {
-      const module = permission.module || 'Other'
-      if (!acc[module]) acc[module] = []
-      acc[module].push(permission)
-      return acc
-    },
-    {} as Record<string, Permission[]>
-  )
-
-  // Build flat table data with modules and permissions
-  const tableData: TableItem[] = Object.entries(groupedByModule).flatMap(
-    ([module, modulePermissions]) => {
-      const isExpanded = expandedModules[module] !== false // default expanded
-      const rows: TableItem[] = [
-        {
-          id: `module-${module}`,
-          name: module,
-          type: 'module' as const,
-          children: modulePermissions,
-        },
-      ]
-      if (isExpanded) {
-        modulePermissions.forEach((p) => {
-          rows.push({
-            id: p.permissionId,
-            name: p.name,
-            type: 'permission' as const,
-            apiPath: p.apiPath,
-            httpMethod: p.httpMethod,
-            module: p.module,
-            permissionId: p.permissionId,
-            createdAt: p.createdAt,
-            updatedAt: p.updatedAt,
-            createdBy: p.createdBy,
-          })
-        })
-      }
-      return rows
-    }
-  )
-
-  const handleDeletePermission = (permission: Permission) => {
+  const handleDeletePermission = useCallback((permission: Permission) => {
     setDeleteData({
       permissionId: permission.permissionId,
       name: permission.name,
       module: permission.module,
     })
     setDeleteOpen(true)
-  }
+  }, [])
 
-  const handleEditPermission = (permission: Permission) => {
+  const handleEditPermission = useCallback((permission: Permission) => {
     setSelectedPermission(permission)
     setEditOpen(true)
-  }
+  }, [])
 
-  const columns: ColumnDef<TableItem>[] = [
+  const handleToggleModule = useCallback((moduleName: string) => {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [moduleName]: prev[moduleName] === false ? true : false,
+    }))
+  }, [])
+
+  // Memoize tableData so it doesn't recompute on dialog state changes
+  const tableData = useMemo<TableItem[]>(() => {
+    const filteredPermissions = selectedModule
+      ? permissions.filter((p) => p.module === selectedModule)
+      : permissions
+
+    const groupedByModule = filteredPermissions.reduce(
+      (acc, permission) => {
+        const module = permission.module || 'Other'
+        if (!acc[module]) acc[module] = []
+        acc[module].push(permission)
+        return acc
+      },
+      {} as Record<string, Permission[]>
+    )
+
+    return Object.entries(groupedByModule).flatMap(
+      ([module, modulePermissions]) => {
+        const isExpanded = expandedModules[module] !== false // default expanded
+        const rows: TableItem[] = [
+          {
+            id: `module-${module}`,
+            name: module,
+            type: 'module' as const,
+            children: modulePermissions,
+          },
+        ]
+        if (isExpanded) {
+          modulePermissions.forEach((p) => {
+            rows.push({
+              id: p.permissionId,
+              name: p.name,
+              type: 'permission' as const,
+              apiPath: p.apiPath,
+              httpMethod: p.httpMethod,
+              module: p.module,
+              permissionId: p.permissionId,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+              createdBy: p.createdBy,
+            })
+          })
+        }
+        return rows
+      }
+    )
+  }, [permissions, selectedModule, expandedModules])
+
+  // Memoize columns to prevent re-creation on every render
+  const columns = useMemo<ColumnDef<TableItem>[]>(() => [
     {
       accessorKey: 'name',
       header: ({ column }) => (
@@ -144,12 +153,7 @@ export function PermissionsTable() {
           return (
             <button
               className="flex items-center gap-2 font-medium hover:text-primary transition-colors"
-              onClick={() => {
-                setExpandedModules((prev) => ({
-                  ...prev,
-                  [item.name]: prev[item.name] === false ? true : false,
-                }))
-              }}
+              onClick={() => handleToggleModule(item.name)}
             >
               <IconChevronRight
                 className={cn(
@@ -236,7 +240,8 @@ export function PermissionsTable() {
         )
       },
     },
-  ]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, expandedModules, handleEditPermission, handleDeletePermission, handleToggleModule])
 
   const table = useReactTable({
     data: tableData,
@@ -260,84 +265,82 @@ export function PermissionsTable() {
   })
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <div className="text-muted-foreground">{t('tableLoading')}</div>
-      </div>
-    )
+    return <DataTableSkeleton columns={4} rows={10} />
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-1 items-center space-x-2">
-          <Input
-            placeholder={t('searchPlaceholder')}
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-              table.getColumn('name')?.setFilterValue(event.target.value)
-            }
-            className="h-8 w-[150px] lg:w-[250px]"
-          />
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-1 items-center space-x-2">
+            <Input
+              placeholder={t('searchPlaceholder')}
+              value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+              onChange={(event) =>
+                table.getColumn('name')?.setFilterValue(event.target.value)
+              }
+              className="h-8 w-[150px] lg:w-[250px]"
+            />
+          </div>
+          <DataTableViewOptions table={table} />
         </div>
-        <DataTableViewOptions table={table} />
-      </div>
 
-      <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-22rem)]">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className={cn(
-                    row.original.type === 'module' &&
-                    'bg-muted/40 hover:bg-muted/60 font-medium cursor-pointer'
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+        <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-22rem)]">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  {t('tableNoData')}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && 'selected'}
+                    className={cn(
+                      row.original.type === 'module' &&
+                      'bg-muted/40 hover:bg-muted/60 font-medium cursor-pointer'
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    {t('tableNoData')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <DataTablePagination table={table} />
       </div>
-      <DataTablePagination table={table} />
 
-      {/* Dialogs */}
+      {/* Dialogs rendered outside table tree to avoid triggering table re-renders */}
       {editOpen && (
         <PermissionsFormDialog
           key={selectedPermission ? `perm-edit-${selectedPermission.permissionId}` : 'perm-add'}
@@ -360,6 +363,6 @@ export function PermissionsTable() {
           data={deleteData}
         />
       )}
-    </div>
+    </>
   )
 }
