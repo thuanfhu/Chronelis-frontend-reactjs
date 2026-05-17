@@ -1818,6 +1818,7 @@
     "last": "Last page"
   },
   "userManagement": {
+    "title": "User Management",
     "description": "Manage user accounts in the system",
     "columns": {
       "email": "Email",
@@ -1859,6 +1860,15 @@
     "nationalityPlaceholder": "Enter nationality",
     "imageAndPermissions": "Avatar & Permissions",
     "avatar": "Avatar"
+  },
+  "roleManagement": {
+    "title": "Role Management",
+    "description": "Manage roles and permissions in the system"
+  },
+  "permissionManagement": {
+    "title": "Permission Management",
+    "description": "Manage API access permissions in the system"
   }
 }
+
 

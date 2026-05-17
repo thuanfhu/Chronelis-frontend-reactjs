@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -12,7 +13,7 @@ export const useColumns = (): ColumnDef<Role>[] => {
   const { t, i18n } = useTranslation()
   const dateLocale = i18n.language === 'vi' ? vi : enUS
 
-  return [
+  return useMemo(() => [
     {
       id: 'select',
       header: ({ table }) => (
@@ -104,5 +105,5 @@ export const useColumns = (): ColumnDef<Role>[] => {
       id: 'actions',
       cell: DataTableRowActions,
     },
-  ]
+  ], [t, dateLocale])
 }

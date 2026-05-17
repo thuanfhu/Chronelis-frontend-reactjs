@@ -1797,6 +1797,7 @@
         "last": "Trang cuối"
     },
     "userManagement": {
+        "title": "Quản lý người dùng",
         "description": "Quản lý tài khoản người dùng trong hệ thống",
         "columns": {
             "email": "Email",
@@ -1838,5 +1839,14 @@
         "nationalityPlaceholder": "Nhập quốc tịch",
         "imageAndPermissions": "Ảnh đại diện và Phân quyền",
         "avatar": "Ảnh đại diện"
+    },
+    "roleManagement": {
+        "title": "Quản lý vai trò",
+        "description": "Quản lý vai trò và quyền hạn trong hệ thống"
+    },
+    "permissionManagement": {
+        "title": "Quản lý phân quyền",
+        "description": "Quản lý quyền truy cập API trong hệ thống"
     }
 }
+

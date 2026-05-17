@@ -74,8 +74,7 @@ export function AdminDashboardPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('admin.consoleTitle')}</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
           <p className="text-sm text-muted-foreground">{sectionMeta.description}</p>
         </div>
 
