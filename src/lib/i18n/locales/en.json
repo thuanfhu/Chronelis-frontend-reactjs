@@ -1868,7 +1868,10 @@
   "permissionManagement": {
     "title": "Permission Management",
     "description": "Manage API access permissions in the system"
-  }
+  },
+  "sortAscending": "Sort Ascending",
+  "sortDescending": "Sort Descending",
+  "hideColumn": "Hide Column"
 }
 
 
