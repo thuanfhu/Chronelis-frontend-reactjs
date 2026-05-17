@@ -1,6 +1,7 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase } from 'lucide-react'
+import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase, ShieldAlert, Clock, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -11,6 +12,8 @@ import { taskApi } from '@/lib/api/modules/task-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useTranslation } from 'react-i18next'
+import { TaskHealthDonut } from '@/components/charts/task-health-donut'
+import { PriorityBarChart } from '@/components/charts/priority-bar-chart'
 
 export function DashboardPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
@@ -34,6 +37,11 @@ export function DashboardPage() {
   const workspaces = workspaceQuery.data?.content ?? []
   const workspaceCount = workspaceQuery.data?.meta.totalElements ?? 0
   const unreadCount = notificationCountQuery.data?.unreadCount ?? 0
+  const myWork = myWorkQuery.data
+
+  const assignedTasks = useMemo(() => myWork?.assignedTasks ?? [], [myWork])
+
+  const isLoading = workspaceQuery.isLoading || myWorkQuery.isLoading
 
   return (
     <div className="space-y-8">
@@ -42,33 +50,64 @@ export function DashboardPage() {
         description={t('dashboard.recentWorkspaces')}
       />
 
-      {/* Stats grid */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          icon={PanelsTopLeft}
-          label={t('dashboard.totalWorkspaces')}
-          value={workspaceQuery.isLoading ? null : workspaceCount}
-          accent="bg-primary/10 text-primary"
-        />
-        <StatCard
-          icon={FolderKanban}
-          label={t('dashboard.totalProjects')}
-          value={workspaceQuery.isLoading ? null : workspaces.length}
-          accent="bg-accent/20 text-accent-foreground"
-        />
-        <StatCard
-          icon={Bell}
-          label={t('notification.title')}
-          value={notificationCountQuery.isLoading ? null : unreadCount}
-          accent="bg-destructive/10 text-destructive"
-        />
-        <StatCard
-          icon={Briefcase}
-          label={t('dashboard.tasksAssigned')}
-          value={myWorkQuery.isLoading ? null : myWorkQuery.data?.assignedCount ?? 0}
-          accent="bg-amber-100 text-amber-900"
-        />
-      </div>
+      {/* Overview panel */}
+      {isLoading ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-[280px] rounded-2xl lg:col-span-1" />
+          <Skeleton className="h-[280px] rounded-2xl" />
+          <Skeleton className="h-[280px] rounded-2xl" />
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Compact stats */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-3 pt-5">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-5">
+              <MiniStat icon={PanelsTopLeft} label={t('dashboard.totalWorkspaces')} value={workspaceCount} accent="text-primary bg-primary/10" />
+              <MiniStat icon={FolderKanban} label={t('dashboard.totalProjects')} value={workspaces.length} accent="text-violet-600 bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300" />
+              <MiniStat icon={Bell} label={t('notification.title')} value={unreadCount} accent="text-rose-600 bg-rose-100 dark:bg-rose-500/20 dark:text-rose-300" />
+              <MiniStat icon={Briefcase} label={t('dashboard.tasksAssigned')} value={myWork?.assignedCount ?? 0} accent="text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300" />
+              <MiniStat icon={ShieldAlert} label="Blocked tasks" value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
+              <MiniStat icon={Clock} label="Overdue" value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
+            </CardContent>
+          </Card>
+
+          {/* Task Health Donut */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <TrendingUp className="size-4 text-emerald-500" />
+                Task Health
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Breakdown of your assigned tasks</p>
+            </CardHeader>
+            <CardContent className="pt-0 pb-4">
+              <TaskHealthDonut
+                assignedCount={myWork?.assignedCount ?? 0}
+                blockedCount={myWork?.blockedCount ?? 0}
+                overdueCount={myWork?.overdueCount ?? 0}
+                dueTodayCount={myWork?.dueTodayCount ?? 0}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Priority Distribution */}
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Briefcase className="size-4 text-amber-500" />
+                Priority Breakdown
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Your tasks by priority level</p>
+            </CardHeader>
+            <CardContent className="pt-0 pb-4">
+              <PriorityBarChart tasks={assignedTasks} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Recent workspaces */}
       <div>
@@ -138,32 +177,16 @@ export function DashboardPage() {
   )
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: typeof PanelsTopLeft
-  label: string
-  value: number | null
-  accent: string
-}) {
+function MiniStat({ icon: Icon, label, value, accent }: { icon: typeof PanelsTopLeft; label: string; value: number; accent: string }) {
   return (
-    <Card className="group transition-all hover:shadow-sm">
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${accent}`}>
-          <Icon className="size-5 icon-hover-bounce" />
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${accent}`}>
+          <Icon className="size-3.5" />
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          {value === null ? (
-            <Skeleton className="mt-1 h-7 w-12" />
-          ) : (
-            <p className="text-2xl font-bold">{value}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        <span className="text-sm text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-base font-bold tabular-nums">{value}</span>
+    </div>
   )
 }

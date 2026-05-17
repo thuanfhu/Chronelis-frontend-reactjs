@@ -71,6 +71,14 @@ export interface EffectiveProjectAccess {
   canManageWorkspaceSettings: boolean
 }
 
+export interface ProjectDailyTrendPoint { date: string; created: number; completed: number; cumulative: number }
+export interface ProjectAnalytics {
+  trend: ProjectDailyTrendPoint[]
+  completionRate: number
+  totalTasks: number
+  completedTasks: number
+}
+
 export const projectApi = {
   async create(payload: CreateProjectPayload) {
     const response = await http.post<ApiResponse<Project>>('/projects', payload)
@@ -125,5 +133,10 @@ export const projectApi = {
   async revokeAccess(projectId: number, accessId: number) {
     const response = await http.delete<ApiResponse<void>>(`/projects/${projectId}/access/${accessId}`)
     return unwrapVoid(response.data)
+  },
+
+  async analytics(projectId: number) {
+    const response = await http.get<ApiResponse<ProjectAnalytics>>(`/projects/${projectId}/analytics`)
+    return unwrapData(response.data)
   },
 }

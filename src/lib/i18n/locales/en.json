@@ -657,7 +657,19 @@
     "emptyAllDescription": "Try clearing filters or refresh to pull your latest assigned work.",
     "projectFallback": "Project #{{id}}",
     "aiTaskPrompt": "Summarize the next step for task \"{{title}}\" in plain language, highlight current blockers, and suggest the most immediate action in the current project.",
-    "aiSmartPrompt": "Based on the current priority task \"{{title}}\", propose the order to resolve blockers, the next action to take, and how to keep momentum across the remaining work in this project."
+    "aiSmartPrompt": "Based on the current priority task \"{{title}}\", propose the order to resolve blockers, the next action to take, and how to keep momentum across the remaining work in this project.",
+    "charts": {
+      "activityTitle": "14-Day Activity Trend",
+      "activityDesc": "Tasks created vs completed each day",
+      "workloadTitle": "Workload by Priority",
+      "workloadDesc": "Estimated hours (bars) · Open tasks (line)",
+      "healthTitle": "Task Health",
+      "healthDesc": "Blocked · Overdue · Due today · On track",
+      "priorityTitle": "Priority Breakdown",
+      "priorityDesc": "Count of tasks per priority level",
+      "completionTitle": "Completion Trend",
+      "completionDesc": "Cumulative tasks completed this period"
+    }
   },
   "kanban": {
     "title": "Kanban Board",
@@ -1232,8 +1244,6 @@
       "notFound": "Goal does not exist"
     }
   },
-
-
   "ai": {
     "title": "AI Assistant",
     "tooltip": "Open AI Assistant",
@@ -1662,6 +1672,42 @@
       "addMemberPlaceholder": "Add member to team...",
       "selectMember": "Select member",
       "allMembersAdded": "All members have been added to this team."
+    },
+    "charts": {
+      "total": "Total",
+      "owned": "Owned",
+      "joined": "Joined",
+      "ownershipTitle": "Workspace Ownership",
+      "ownershipDesc": "Your role across all workspaces",
+      "ownedByMe": "Owned by me",
+      "noWorkspaces": "No workspaces",
+      "growthTitle": "Workspace Growth",
+      "growthDesc": "Monthly additions (bars) · cumulative total (line)",
+      "noGrowthHistory": "Not enough workspace history",
+      "areaTitle": "Monthly Activity Area",
+      "areaDesc": "Workspace creation by month (area)",
+      "lineTitle": "Cumulative Growth Line",
+      "lineDesc": "Total workspaces over time",
+      "totalProjects": "Total Projects",
+      "active": "Active",
+      "members": "Members",
+      "teams": "Teams",
+      "projectsByStatus": "Projects by Status",
+      "statusSummary": "Active {{active}} · Completed {{completed}} · Archived {{archived}}",
+      "projectGrowthTitle": "Project Growth Over Time",
+      "projectGrowthDesc": "Monthly project additions · cumulative total (line)",
+      "noProjectHistory": "Not enough project history",
+      "memberRoleTitle": "Member Role Distribution",
+      "memberRoleDesc": "Owners vs regular members",
+      "owners": "Owners",
+      "completionTrendTitle": "Completion Trend (7d)",
+      "completionTrendDesc": "Projects completed recently",
+      "snapshotTitle": "Workspace Snapshot",
+      "snapshotDesc": "At-a-glance summary",
+      "completionRate": "Completion rate",
+      "activeRatio": "Active ratio",
+      "archivedRatio": "Archived ratio",
+      "noMembers": "No members"
     }
   },
   "project": {
@@ -1750,7 +1796,44 @@
       "private": "Private",
       "publicDescription": "All workspace members can see and collaborate on this project.",
       "privateDescription": "Only specifically granted users and teams can see this project."
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "COMPLETED": "Completed",
+      "ARCHIVED": "Archived"
+    },
+    "charts": {
+      "activityTitle": "30-Day Activity Trend",
+      "activityDesc": "Tasks created vs completed each day",
+      "volumeTitle": "Task Volume Overview",
+      "volumeDesc": "Daily created (bars) · completed (line) · running total (area)",
+      "columnDesc": "Tasks per kanban column",
+      "noStatuses": "No statuses yet",
+      "priorityTitle": "Priority Distribution",
+      "priorityDesc": "Tasks grouped by priority level",
+      "completionTitle": "Completion Trend",
+      "completionDesc": "Cumulative tasks completed over 30 days"
     }
+  },
+  "charts": {
+    "created": "Created",
+    "completed": "Completed",
+    "noActivity": "No activity in the last 14 days",
+    "noCompletion": "No completion data yet",
+    "noOpenTasks": "No open assigned tasks",
+    "noProjectActivity": "No task activity in the last 30 days",
+    "noTasks": "No tasks",
+    "noData": "No data available",
+    "completionRate": "Completion rate",
+    "cumulativeCompleted": "Cumulative completed",
+    "estHours": "Est. hours",
+    "openTasks": "Open tasks",
+    "estimatedHours": "Estimated hours",
+    "totalCreated": "Total created",
+    "newLabel": "New",
+    "totalLabel": "Total",
+    "rate": "Rate",
+    "cumulative": "Cumulative"
   },
   "moduleAdd": "Add Module",
   "moduleAddDesc": "Add a new system module to group related permissions together",
@@ -1885,5 +1968,3 @@
   "hideColumn": "Hide Column",
   "toggleColumns": "Toggle Columns"
 }
-
-

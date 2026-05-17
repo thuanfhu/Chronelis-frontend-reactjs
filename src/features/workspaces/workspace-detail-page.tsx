@@ -37,6 +37,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { projectApi } from '@/lib/api/modules/project-api'
+import { ProjectStatusDonut } from '@/components/charts/project-status-donut'
+import { GrowthComposedChart } from '@/components/charts/growth-composed-chart'
+import { CompletionLineChart } from '@/components/charts/completion-line-chart'
+import type { GrowthPoint } from '@/components/charts/growth-composed-chart'
 import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
 import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
@@ -697,12 +701,20 @@ export function WorkspaceDetailPage() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title={workspace.name}
-        description={t('workspace.headerDesc', {
-          owner: `${workspace.owner.firstName} ${workspace.owner.lastName}`,
-          memberCount: members.length,
-          projectCount: visibleProjects.length,
-          role: roleDisplayName[currentRole],
-        })}
+        description={
+          <span className="flex flex-wrap items-center gap-1.5 mt-0.5">
+            {t('workspace.headerDesc', {
+              owner: `${workspace.owner.firstName} ${workspace.owner.lastName}`,
+              memberCount: members.length,
+              projectCount: visibleProjects.length,
+              role: roleDisplayName[currentRole],
+            }).split('·').map((part, index) => (
+              <span key={index} className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                {part.trim()}
+              </span>
+            ))}
+          </span>
+        }
         actions={
           canManageWorkspace ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -766,6 +778,15 @@ export function WorkspaceDetailPage() {
           )
         }
       />
+
+      {/* Workspace analytics — 5 chart types */}
+      {visibleProjects.length > 0 && (
+        <WorkspaceChartsSection
+          projects={visibleProjects}
+          members={members}
+          teamsCount={visibleTeams.length}
+        />
+      )}
 
       <Tabs defaultValue="projects">
         <TabsList className="h-auto w-full justify-start">
@@ -1731,6 +1752,184 @@ export function WorkspaceDetailPage() {
               : t('workspace.toast.deletingTeam')
         )}
       />
+    </div>
+  )
+}
+
+/* ─── WorkspaceChartsSection ──────────────────────────────────────────────── */
+
+interface WorkspaceChartsSectionProps {
+  projects: Project[]
+  members: { role: WorkspaceMemberRoleType }[]
+  teamsCount: number
+}
+
+function WorkspaceChartsSection({ projects, members, teamsCount }: WorkspaceChartsSectionProps) {
+  const { t } = useTranslation()
+  const projectGrowth = useMemo<GrowthPoint[]>(() => {
+    const monthMap = new Map<string, number>()
+    for (const p of projects) {
+      if (!p.createdAt) continue
+      const m = p.createdAt.slice(0, 7)
+      monthMap.set(m, (monthMap.get(m) ?? 0) + 1)
+    }
+    const sorted = [...monthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+    let cumul = 0
+    return sorted.map(([month, count]) => {
+      cumul += count
+      return { label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), count, cumulative: cumul }
+    })
+  }, [projects])
+
+  const memberRoleData = useMemo(() => {
+    const owners = members.filter((m) => m.role === 'OWNER').length
+    const memberCount = members.filter((m) => m.role === 'MEMBER').length
+    return [
+      { label: t('workspace.charts.owners'), count: owners, cumulative: owners },
+      { label: t('workspace.charts.members'), count: memberCount, cumulative: owners + memberCount },
+    ]
+  }, [members, t])
+
+  const completionTrend = useMemo(() => {
+    const now = new Date()
+    const days: { date: string; created: number; completed: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().slice(0, 10)
+      const created = projects.filter((p) => p.createdAt?.slice(0, 10) === dateStr).length
+      const completed = projects.filter((p) => p.status === 'COMPLETED' && p.updatedAt?.slice(0, 10) === dateStr).length
+      days.push({ date: dateStr, created, completed })
+    }
+    return days
+  }, [projects])
+
+  const activeCount = projects.filter((p) => p.status === 'ACTIVE').length
+  const completedCount = projects.filter((p) => p.status === 'COMPLETED').length
+  const archivedCount = projects.filter((p) => p.status === 'ARCHIVED').length
+
+  return (
+    <div className="space-y-5">
+      {/* Summary totals */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: t('workspace.charts.totalProjects'), value: projects.length, color: 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20' },
+          { label: t('workspace.charts.active'), value: activeCount, color: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20' },
+          { label: t('workspace.charts.members'), value: members.length, color: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20' },
+          { label: t('workspace.charts.teams'), value: teamsCount, color: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20' },
+        ].map((s) => (
+          <div key={s.label} className={`flex flex-col items-center justify-center rounded-xl py-3 ${s.color}`}>
+            <span className="text-2xl font-bold">{s.value}</span>
+            <span className="mt-0.5 text-xs opacity-80 font-medium">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Row 1: PIE + COMPOSED */}
+      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        {/* PIE CHART: project status donut */}
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FolderKanban className="size-4 text-indigo-500" />
+              {t('workspace.charts.projectsByStatus')}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {t('workspace.charts.statusSummary', { active: activeCount, completed: completedCount, archived: archivedCount })}
+            </p>
+          </CardHeader>
+          <CardContent className="pb-4 pt-0">
+            <ProjectStatusDonut projects={projects} />
+          </CardContent>
+        </Card>
+
+        {/* COMPOSED CHART: project creation growth (bar monthly + line cumulative) */}
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FolderKanban className="size-4 text-emerald-500" />
+              {t('workspace.charts.projectGrowthTitle')}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">{t('workspace.charts.projectGrowthDesc')}</p>
+          </CardHeader>
+          <CardContent className="pb-4 pt-0">
+            <GrowthComposedChart
+              data={projectGrowth}
+              barColor="#6366f1"
+              lineColor="#22c55e"
+              emptyMessage={t('workspace.charts.noProjectHistory')}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 2: BAR + LINE + AREA (via CompletionLineChart) */}
+      <div className="grid gap-5 md:grid-cols-3">
+        {/* BAR CHART: member roles */}
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Users className="size-4 text-amber-500" />
+              {t('workspace.charts.memberRoleTitle')}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">{t('workspace.charts.memberRoleDesc')}</p>
+          </CardHeader>
+          <CardContent className="pb-3 pt-0">
+            <GrowthComposedChart
+              data={memberRoleData}
+              barColor="#f97316"
+              lineColor="#a855f7"
+              height={180}
+              emptyMessage={t('workspace.charts.noMembers')}
+            />
+          </CardContent>
+        </Card>
+
+        {/* LINE CHART: project completion trend (7 days) */}
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="size-4 text-emerald-500" />
+              {t('workspace.charts.completionTrendTitle')}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">{t('workspace.charts.completionTrendDesc')}</p>
+          </CardHeader>
+          <CardContent className="pb-3 pt-0">
+            <CompletionLineChart data={completionTrend} mode="cumulative" height={180} />
+          </CardContent>
+        </Card>
+
+        {/* AREA covered by GrowthComposedChart above (inline area portion) */}
+        {/* Additional quick stats card */}
+        <Card className="border-border/60 shadow-sm">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Crown className="size-4 text-violet-500" />
+              {t('workspace.charts.snapshotTitle')}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">{t('workspace.charts.snapshotDesc')}</p>
+          </CardHeader>
+          <CardContent className="pb-3 pt-0">
+            <div className="space-y-3 pt-1">
+              {[
+                { label: t('workspace.charts.completionRate'), value: projects.length > 0 ? `${Math.round(completedCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? completedCount / projects.length : 0, color: 'bg-emerald-500' },
+                { label: t('workspace.charts.activeRatio'), value: projects.length > 0 ? `${Math.round(activeCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? activeCount / projects.length : 0, color: 'bg-indigo-500' },
+                { label: t('workspace.charts.archivedRatio'), value: projects.length > 0 ? `${Math.round(archivedCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? archivedCount / projects.length : 0, color: 'bg-slate-400' },
+              ].map((row) => (
+                <div key={row.label} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="font-semibold">{row.value}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className={`h-full rounded-full ${row.color}`} style={{ width: `${row.bar * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

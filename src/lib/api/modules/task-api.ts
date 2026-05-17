@@ -47,7 +47,31 @@ export interface UpdateTaskDependenciesPayload {
   blockerNote?: string
 }
 
+export interface DailyTrendPoint {
+  date: string
+  created: number
+  completed: number
+}
+
+export interface PriorityEstimatePoint {
+  priority: string
+  totalMinutes: number
+  taskCount: number
+}
+
+export interface TaskAnalyticsResponse {
+  trend: DailyTrendPoint[]
+  estimatedByPriority: PriorityEstimatePoint[]
+  totalAssigned: number
+  totalCompleted: number
+}
+
 export const taskApi = {
+  async analytics() {
+    const response = await http.get<ApiResponse<TaskAnalyticsResponse>>('/tasks/analytics')
+    return unwrapData(response.data)
+  },
+
   async create(payload: CreateTaskPayload) {
     const response = await http.post<ApiResponse<Task>>('/tasks', payload)
     return unwrapData(response.data)
