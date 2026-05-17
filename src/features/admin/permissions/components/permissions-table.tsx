@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { usePermissions } from '../context/permissions-context'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { IconPlus } from '@tabler/icons-react'
 import { CreateModuleDialog } from './create-module-dialog'
 import { PermissionsDeleteDialog } from './permissions-delete-dialog'
 import { PermissionsFormDialog } from './permissions-form-dialog'
@@ -214,23 +212,6 @@ export function PermissionsTable() {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
-        <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('moduleList')}</h2>
-            <p className="text-sm text-slate-500">{t('moduleListDesc', 'Kéo thả các quyền để thay đổi module')}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setOpenCreatePermission(true)}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              {t('permissionAddTitle')}
-            </Button>
-            <Button size="sm" onClick={() => setOpenCreateModule(true)}>
-              <IconPlus className="mr-2 h-4 w-4" />
-              {t('moduleAdd')}
-            </Button>
-          </div>
-        </div>
-
         {/* Modules và Permissions */}
         <div className="grid gap-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-2 pb-10">
           {modules.map((moduleName) => {

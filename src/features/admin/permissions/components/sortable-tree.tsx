@@ -107,7 +107,7 @@ export function SortableTreeItem({
         isModule && isOver && 'scale-[1.01]'
       )}
     >
-      <div className="flex items-center justify-between py-3 px-4">
+        <div className={cn("flex items-center justify-between py-3", isModule ? "px-4" : "pl-4 pr-0")}>
         <div className="flex items-center gap-3">
           {!isModule && (
             <button
@@ -139,7 +139,7 @@ export function SortableTreeItem({
                 <div className="font-semibold text-[15px] text-slate-900 dark:text-slate-100">
                   {permission.name}
                 </div>
-                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs bg-slate-200/50 dark:bg-zinc-700/50 text-slate-700 dark:text-slate-300 border-none">
+                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none">
                   {(children as any)?.length || 0} {t('permissions')}
                 </Badge>
               </>
@@ -164,7 +164,7 @@ export function SortableTreeItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30"
               onClick={() => onEdit(permission)}
             >
               <IconEdit className="h-4 w-4" />
@@ -173,7 +173,7 @@ export function SortableTreeItem({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
             onClick={() => onDelete(permission)}
           >
             <IconTrash className="h-4 w-4" />
@@ -182,7 +182,7 @@ export function SortableTreeItem({
       </div>
 
       {!collapsed && children && (
-        <div className="pl-12 pr-4 pb-4 mt-2 max-h-[50vh] overflow-y-auto space-y-2">
+        <div className="pl-12 pr-4 pb-4 mt-2 space-y-2">
           {children}
         </div>
       )}

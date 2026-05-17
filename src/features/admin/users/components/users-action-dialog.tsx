@@ -219,7 +219,8 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
           <ScrollArea className="h-[65vh] px-6 py-4">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <motion.div
+                <fieldset disabled={isView} className="space-y-6 w-full border-0 p-0 m-0">
+                  <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 }}
@@ -430,6 +431,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
                     )} />
                   </div>
                 </motion.div>
+                </fieldset>
               </form>
             </Form>
           </ScrollArea>
