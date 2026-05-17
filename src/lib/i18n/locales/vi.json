@@ -384,7 +384,23 @@
         "ownerName": "Chủ sở hữu: {{name}}",
         "createdAt": "Tạo ngày {{date}}",
         "noWorkspaces": "Chưa có workspace nào. Tạo workspace đầu tiên để bắt đầu.",
-        "createFirstWorkspace": "Tạo workspace"
+        "createFirstWorkspace": "Tạo workspace",
+        "overview": "Tổng quan",
+        "blockedTasks": "Task bị chặn",
+        "overdue": "Quá hạn",
+        "taskHealth": "Sức khỏe Task",
+        "taskHealthDesc": "Phân tích task được giao",
+        "priorityBreakdown": "Phân tích mức độ ưu tiên",
+        "priorityDesc": "Task của bạn theo mức độ ưu tiên",
+        "noAssignedTasks": "Không có task được giao",
+        "noTasksToDisplay": "Không có task để hiển thị",
+        "tasks": "task",
+        "segments": {
+            "blocked": "Bị chặn",
+            "overdue": "Quá hạn",
+            "dueToday": "Hạn hôm nay",
+            "onTrack": "Đúng tiến độ"
+        }
     },
     "command": {
         "inputPlaceholder": "Nhập lệnh hoặc tìm kiếm...",

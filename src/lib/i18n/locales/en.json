@@ -541,7 +541,23 @@
     "ownerName": "Owner: {{name}}",
     "createdAt": "Created on {{date}}",
     "noWorkspaces": "No workspaces yet. Create your first workspace to get started.",
-    "createFirstWorkspace": "Create workspace"
+    "createFirstWorkspace": "Create workspace",
+    "overview": "Overview",
+    "blockedTasks": "Blocked tasks",
+    "overdue": "Overdue",
+    "taskHealth": "Task Health",
+    "taskHealthDesc": "Breakdown of your assigned tasks",
+    "priorityBreakdown": "Priority Breakdown",
+    "priorityDesc": "Your tasks by priority level",
+    "noAssignedTasks": "No assigned tasks",
+    "noTasksToDisplay": "No tasks to display",
+    "tasks": "tasks",
+    "segments": {
+      "blocked": "Blocked",
+      "overdue": "Overdue",
+      "dueToday": "Due Today",
+      "onTrack": "On Track"
+    }
   },
   "command": {
     "inputPlaceholder": "Type a command or search...",

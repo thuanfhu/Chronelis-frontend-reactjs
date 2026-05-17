@@ -63,15 +63,15 @@ export function DashboardPage() {
           {/* Compact stats */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3 pt-5">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">Overview</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">{t('dashboard.overview')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pb-5">
               <MiniStat icon={PanelsTopLeft} label={t('dashboard.totalWorkspaces')} value={workspaceCount} accent="text-primary bg-primary/10" />
               <MiniStat icon={FolderKanban} label={t('dashboard.totalProjects')} value={workspaces.length} accent="text-violet-600 bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300" />
               <MiniStat icon={Bell} label={t('notification.title')} value={unreadCount} accent="text-rose-600 bg-rose-100 dark:bg-rose-500/20 dark:text-rose-300" />
               <MiniStat icon={Briefcase} label={t('dashboard.tasksAssigned')} value={myWork?.assignedCount ?? 0} accent="text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300" />
-              <MiniStat icon={ShieldAlert} label="Blocked tasks" value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
-              <MiniStat icon={Clock} label="Overdue" value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
+              <MiniStat icon={ShieldAlert} label={t('dashboard.blockedTasks')} value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
+              <MiniStat icon={Clock} label={t('dashboard.overdue')} value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
             </CardContent>
           </Card>
 
@@ -80,9 +80,9 @@ export function DashboardPage() {
             <CardHeader className="pb-2 pt-5">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <TrendingUp className="size-4 text-emerald-500" />
-                Task Health
+                {t('dashboard.taskHealth')}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Breakdown of your assigned tasks</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.taskHealthDesc')}</p>
             </CardHeader>
             <CardContent className="pt-0 pb-4">
               <TaskHealthDonut
@@ -99,9 +99,9 @@ export function DashboardPage() {
             <CardHeader className="pb-2 pt-5">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Briefcase className="size-4 text-amber-500" />
-                Priority Breakdown
+                {t('dashboard.priorityBreakdown')}
               </CardTitle>
-              <p className="text-xs text-muted-foreground">Your tasks by priority level</p>
+              <p className="text-xs text-muted-foreground">{t('dashboard.priorityDesc')}</p>
             </CardHeader>
             <CardContent className="pt-0 pb-4">
               <PriorityBarChart tasks={assignedTasks} />
@@ -212,7 +212,7 @@ export function DashboardPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Trang {page} / {workspaceQuery.data.meta.totalPages}
+                  {t('myWork.pageOf', { current: page, total: workspaceQuery.data.meta.totalPages })}
                 </p>
               </div>
             )}
