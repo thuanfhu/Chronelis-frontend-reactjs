@@ -63,7 +63,7 @@ const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
 
 const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
   OWNER: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
-  MEMBER: 'border-border bg-muted text-muted-foreground',
+  MEMBER: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-300',
 }
 
 function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
@@ -888,31 +888,24 @@ export function WorkspaceDetailPage() {
                           {project.description && (
                             <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{project.description}</p>
                           )}
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
                             <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
                               {t(`project.status.${project.status}`)}
                             </Badge>
                             <Badge variant="outline" className="text-[10px]">
                               {t(`project.visibility.${(project.visibility ?? 'PUBLIC').toLowerCase()}`)}
                             </Badge>
-                            <span className="text-[10px] text-muted-foreground">
-                              {project.createdBy.firstName} {project.createdBy.lastName}
-                            </span>
+                            {project.managerUser && (
+                              <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
+                                {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
+                              </Badge>
+                            )}
+                            {project.managerTeamName && (
+                              <Badge variant="outline" className="text-[10px] border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300">
+                                {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
+                              </Badge>
+                            )}
                           </div>
-                          {(project.managerUser || project.managerTeamName) && (
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                              {project.managerUser && (
-                                <Badge variant="secondary" className="text-[10px]">
-                                  {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
-                                </Badge>
-                              )}
-                              {project.managerTeamName && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </Link>
                       {canManageCurrentProject && (
