@@ -130,6 +130,7 @@ export function AppTopbar() {
 
   const handleLogout = () => {
     clearSession()
+    toast.success(t('common.toast.logoutSuccess'))
     setLogoutConfirmOpen(false)
     navigate('/login')
   }

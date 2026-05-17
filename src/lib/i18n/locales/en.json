@@ -85,6 +85,7 @@
       "confirmPasswordMismatch": "Password confirmation does not match."
     },
     "toast": {
+      "logoutSuccess": "Logged out successfully!",
       "updateSuccess": "Profile updated successfully",
       "updateFailed": "Failed to update profile",
       "emailRequestSuccess": "Email change request sent",

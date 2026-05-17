@@ -780,6 +780,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
   const handleLogout = () => {
     clearSession()
+    toast.success(t('common.toast.logoutSuccess'))
     navigate('/login')
   }
 

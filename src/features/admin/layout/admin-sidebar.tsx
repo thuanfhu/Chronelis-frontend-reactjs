@@ -8,6 +8,7 @@ import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils/cn'
+import { toast } from 'sonner'
 
 interface AdminSidebarProps {
   mobileOpen: boolean
@@ -76,6 +77,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
 
   const handleLogout = () => {
     clearSession()
+    toast.success(t('common.toast.logoutSuccess'))
     setLogoutConfirmOpen(false)
     navigate('/login', { replace: true })
   }

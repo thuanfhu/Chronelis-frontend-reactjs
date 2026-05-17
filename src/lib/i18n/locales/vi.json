@@ -85,6 +85,7 @@
             "confirmPasswordMismatch": "Xác nhận mật khẩu chưa khớp."
         },
         "toast": {
+            "logoutSuccess": "Đăng xuất thành công!",
             "updateSuccess": "Cập nhật hồ sơ thành công",
             "updateFailed": "Cập nhật hồ sơ thất bại",
             "emailRequestSuccess": "Yêu cầu đổi email đã được gửi",
