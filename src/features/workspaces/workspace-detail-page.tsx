@@ -90,6 +90,7 @@ function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
 
 const MEMBER_PAGE_SIZE = 10
 const TEAM_PAGE_SIZE = 6
+const PROJECT_PAGE_SIZE = 6
 
 type WorkspaceDetailDeletePayload = {
   kind: 'project' | 'workspace' | 'team'
@@ -132,6 +133,7 @@ export function WorkspaceDetailPage() {
   const [memberRoleFilter, setMemberRoleFilter] = useState<WorkspaceMemberRoleType | 'ALL'>('ALL')
   const [memberSortKey, setMemberSortKey] = useState<'name' | 'role' | 'joined'>('role')
   const [memberPage, setMemberPage] = useState(1)
+  const [projectPage, setProjectPage] = useState(1)
   const [teamPage, setTeamPage] = useState(1)
   const [teamSearch, setTeamSearch] = useState('')
   const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
@@ -617,6 +619,10 @@ export function WorkspaceDetailPage() {
   const visibleProjects = projects.filter((project) => !pendingProjectIds.has(project.id))
   const visibleTeams = teams.filter((team) => !pendingTeamIds.has(team.id))
 
+  const projectTotalPages = Math.max(1, Math.ceil(visibleProjects.length / PROJECT_PAGE_SIZE))
+  const projectCurrentPage = Math.min(projectPage, projectTotalPages)
+  const paginatedProjects = visibleProjects.slice((projectCurrentPage - 1) * PROJECT_PAGE_SIZE, projectCurrentPage * PROJECT_PAGE_SIZE)
+
   const currentMember = members.find((member) => member.user.userId === currentUserId)
   const currentRole: WorkspaceMemberRoleType = workspace?.owner.userId === currentUserId
     ? 'OWNER'
@@ -867,7 +873,7 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {visibleProjects.map((project) => {
+              {paginatedProjects.map((project) => {
                 const canManageCurrentProject = canManageProject(project)
 
                 return (
@@ -978,6 +984,47 @@ export function WorkspaceDetailPage() {
                   </Card>
                 )
               })}
+            </div>
+          )}
+
+          {/* Project pagination */}
+          {projectTotalPages > 1 && (
+            <div className="mt-6 flex flex-col items-center gap-2 pb-4">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={projectCurrentPage === 1}
+                  onClick={() => setProjectPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                {buildPageNumbers(projectCurrentPage, projectTotalPages).map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={projectCurrentPage === p ? 'default' : 'outline'}
+                      size="icon"
+                      className="size-8 text-xs"
+                      onClick={() => setProjectPage(p as number)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={projectCurrentPage === projectTotalPages}
+                  onClick={() => setProjectPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1293,23 +1340,40 @@ export function WorkspaceDetailPage() {
 
           {/* Member pagination */}
           {memberTotalPages > 1 && (
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-muted-foreground">
-                {t('workspace.pagination.memberInfo', { current: memberCurrentPage, total: memberTotalPages, count: filteredMembers.length })}
-              </p>
+            <div className="mt-6 flex flex-col items-center gap-2 pb-4">
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === 1} onClick={() => setMemberPage((p) => p - 1)}>
-                  <ChevronLeft className="size-3.5" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={memberCurrentPage === 1}
+                  onClick={() => setMemberPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="size-4" />
                 </Button>
                 {buildPageNumbers(memberCurrentPage, memberTotalPages).map((p, idx) =>
                   p === '...' ? (
-                    <span key={`dots-${idx}`} className="flex size-7 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
                   ) : (
-                    <Button key={p} variant={memberCurrentPage === p ? 'default' : 'outline'} size="icon" className="size-7 text-xs" onClick={() => setMemberPage(p as number)}>{p}</Button>
+                    <Button
+                      key={p}
+                      variant={memberCurrentPage === p ? 'default' : 'outline'}
+                      size="icon"
+                      className="size-8 text-xs"
+                      onClick={() => setMemberPage(p as number)}
+                    >
+                      {p}
+                    </Button>
                   )
                 )}
-                <Button variant="outline" size="icon" className="size-7" disabled={memberCurrentPage === memberTotalPages} onClick={() => setMemberPage((p) => p + 1)}>
-                  <ChevronRight className="size-3.5" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={memberCurrentPage === memberTotalPages}
+                  onClick={() => setMemberPage((p) => p + 1)}
+                >
+                  <ChevronRight className="size-4" />
                 </Button>
               </div>
             </div>

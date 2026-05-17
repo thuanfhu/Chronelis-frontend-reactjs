@@ -299,13 +299,22 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                     name="active"
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-zinc-700 dark:border-slate-700 p-4 border border-slate-200">
-                        <div className="space-y-1">
+                        <div className="flex items-center gap-2">
                           <FormLabel className="text-sm font-medium text-slate-700 dark:text-slate-100">
-                            {t('status')}
+                            {t('status')}:
                           </FormLabel>
-                          <div className="text-sm text-slate-900 dark:text-slate-200">
-                            {t('role')} {field.value ? t('active') : t('inactive')}
-                          </div>
+                          <span className={cn(
+                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                            field.value 
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
+                              : "bg-slate-100 text-slate-800 dark:bg-zinc-800 dark:text-slate-300"
+                          )}>
+                            <span className={cn(
+                              "size-1.5 rounded-full mr-1.5",
+                              field.value ? "bg-green-600" : "bg-slate-400"
+                            )} />
+                            {field.value ? t('active') : t('inactive')}
+                          </span>
                         </div>
                         <FormControl>
                           <Switch

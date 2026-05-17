@@ -1946,5 +1946,18 @@
     "sortAscending": "Sắp xếp tăng dần",
     "sortDescending": "Sắp xếp giảm dần",
     "hideColumn": "Ẩn cột",
-    "toggleColumns": "Ẩn/Hiện cột"
+    "toggleColumns": "Ẩn/Hiện cột",
+    "roleDeleteSuccess": "Vai trò \"{{roleName}}\" đã được xóa thành công",
+    "roleDeleteConfirmation": "Bạn có chắc chắn muốn xóa vai trò \"{{roleName}}\"?",
+    "enterRoleNameToConfirm": "Nhập tên vai trò \"{{roleName}}\" để xác nhận",
+    "enterRoleNamePlaceholder": "Nhập tên vai trò",
+    "roleDeleteWarning": "Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.",
+    "roleDeleteError": "Lỗi khi xóa vai trò",
+    "editRole": "Sửa vai trò",
+    "addNewRole": "Thêm vai trò mới",
+    "editRoleDesc": "Cập nhật thông tin vai trò",
+    "addNewRoleDesc": "Thêm vai trò mới vào hệ thống",
+    "roleName": "Tên vai trò",
+    "enterRoleName": "Nhập tên vai trò",
+    "enterRoleDescription": "Nhập mô tả vai trò"
 }

@@ -976,7 +976,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         )}
 
         {/* ─── Scrollable navigation ─── */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           {/* ─── Projects section ─── */}
           {workspaceId && !collapsed && (
             <div className="px-2 py-2">

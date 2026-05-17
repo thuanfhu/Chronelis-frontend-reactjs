@@ -63,9 +63,9 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="role-name-confirm" className="text-sm font-medium">
+        <div className="space-y-6 py-4">
+          <div>
+            <Label htmlFor="role-name-confirm" className="text-sm font-medium mb-2.5 block">
               {t('enterRoleNameToConfirm', { roleName: currentRow.name, defaultValue: `Nhập tên vai trò "${currentRow.name}" để xác nhận` })}
             </Label>
             <Input
@@ -86,9 +86,9 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
           </Alert>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button 
-            variant="outline" 
+        <DialogFooter className="gap-3">
+          <Button
+            variant="outline"
             onClick={() => { onOpenChange(false); setValue('') }}
             className="flex-1 sm:flex-none"
           >
