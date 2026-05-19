@@ -32,6 +32,7 @@ import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskCommentApi } from '@/lib/api/modules/task-comment-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { resolveTaskTypeIcon } from '@/lib/task-types/task-type-icons'
 import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import {
   applyTaskCompletion,
@@ -47,7 +48,7 @@ import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { Task, TaskComment, TaskDependencyTask, TaskPriorityType } from '@/types/domain'
+import type { Task, TaskComment, TaskDependencyTask, TaskPriorityType, TaskType } from '@/types/domain'
 
 function areNumberArraysEqual(left: number[], right: number[]): boolean {
   if (left.length !== right.length) {
@@ -1463,20 +1464,7 @@ export function TaskDetailsDrawer() {
                                   </div>
 
                                   {task.taskType && (
-                                    <div className="flex items-start gap-3">
-                                      <div className="mt-0.5 size-3.5 shrink-0 rounded-full border border-muted-foreground/40" />
-                                      <div className="min-w-0 flex-1">
-                                        <p className="mb-1 text-xs text-muted-foreground">{t('task.taskTypeLabel')}</p>
-                                        <Badge
-                                          variant="secondary"
-                                          className="gap-1 text-xs"
-                                          style={task.taskType.color ? { backgroundColor: `${task.taskType.color}20`, color: task.taskType.color } : undefined}
-                                        >
-                                          {task.taskType.icon && <span>{task.taskType.icon}</span>}
-                                          {task.taskType.name}
-                                        </Badge>
-                                      </div>
-                                    </div>
+                                    <TaskTypeInfoBlock taskType={task.taskType} label={t('task.taskTypeLabel')} />
                                   )}
                                 </div>
                               </div>
@@ -1664,6 +1652,30 @@ function DependencyTaskList({
           <span>{emptyLabel}</span>
         </div>
       )}
+    </div>
+  )
+}
+
+function TaskTypeInfoBlock({ taskType, label }: { taskType: TaskType; label: string }) {
+  const TaskTypeIcon = resolveTaskTypeIcon(taskType.icon)
+  const color = taskType.color ?? '#3B82F6'
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border" style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}>
+        <TaskTypeIcon className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 text-xs text-muted-foreground">{label}</p>
+        <Badge
+          variant="secondary"
+          className="gap-1 text-xs"
+          style={{ backgroundColor: `${color}20`, color }}
+        >
+          <TaskTypeIcon className="size-3.5" />
+          {taskType.name}
+        </Badge>
+      </div>
     </div>
   )
 }

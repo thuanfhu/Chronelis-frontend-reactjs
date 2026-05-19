@@ -44,6 +44,7 @@ import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { taskTypeApi } from '@/lib/api/modules/task-type-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
+import { resolveTaskTypeIcon } from '@/lib/task-types/task-type-icons'
 import { cn } from '@/lib/utils/cn'
 import { toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
 import type { SourceViewType, Task, TaskPriorityType } from '@/types/domain'
@@ -583,14 +584,17 @@ export function TaskCreateDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none">{t('task.taskTypeNone')}</SelectItem>
-                        {taskTypes.map((taskType) => (
-                          <SelectItem key={taskType.id} value={String(taskType.id)}>
-                            <span className="flex items-center gap-1.5">
-                              {taskType.icon ? <span>{taskType.icon}</span> : null}
-                              <span>{taskType.name}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {taskTypes.map((taskType) => {
+                          const TaskTypeIcon = resolveTaskTypeIcon(taskType.icon)
+                          return (
+                            <SelectItem key={taskType.id} value={String(taskType.id)}>
+                              <span className="flex items-center gap-1.5">
+                                <TaskTypeIcon className="size-3.5" style={taskType.color ? { color: taskType.color } : undefined} />
+                                <span>{taskType.name}</span>
+                              </span>
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PageHeader } from '@/components/shared/page-header'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
 import { taskApi } from '@/lib/api/modules/task-api'
+import { pomodoroApi } from '@/lib/api/modules/pomodoro-api'
 import { queryKeys } from '@/lib/api/query-keys'
 
 type PomodoroMode = 'focus' | 'short-break' | 'long-break'
@@ -184,6 +185,7 @@ export function TaskPomodoroPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
+  const queryClient = useQueryClient()
   const openTaskDrawer = useUiStore((state) => state.openTaskDrawer)
 
   const workspaceId = Number(params.workspaceId)
@@ -207,6 +209,7 @@ export function TaskPomodoroPage() {
   const modeRef = useRef(mode)
   const completedRef = useRef(completedFocusSessions)
   const hasSeededFocusRef = useRef(false)
+  const focusStartedAtRef = useRef<Date | null>(null)
 
   const playBellTone = usePomodoroAlarm(alarmSoundId)
 
@@ -234,6 +237,20 @@ export function TaskPomodoroPage() {
     queryKey: queryKeys.tasks.detail(taskId),
     queryFn: () => taskApi.detail(taskId),
     enabled: Number.isFinite(taskId) && taskId > 0,
+  })
+
+  const sessionsQuery = useQuery({
+    queryKey: queryKeys.pomodoro.byTask(taskId),
+    queryFn: () => pomodoroApi.getSessions(taskId),
+    enabled: Number.isFinite(taskId) && taskId > 0,
+  })
+
+  const saveSessionMutation = useMutation({
+    mutationFn: (payload: { durationMinutes: number; startedAt?: string; endedAt?: string }) =>
+      pomodoroApi.saveSession(taskId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.pomodoro.byTask(taskId) })
+    },
   })
 
   useEffect(() => {
@@ -266,6 +283,16 @@ export function TaskPomodoroPage() {
       const nextCompleted = completedRef.current + (countFocusSession ? 1 : 0)
       if (countFocusSession) {
         setCompletedFocusSessions(nextCompleted)
+        const endedAt = new Date()
+        const startedAt = focusStartedAtRef.current
+          ?? new Date(endedAt.getTime() - durationsRef.current.focus * 1000)
+
+        saveSessionMutation.mutate({
+          durationMinutes: Math.round(durationsRef.current.focus / 60),
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
+        })
+        focusStartedAtRef.current = null
       }
 
       const useLongBreak = countFocusSession && nextCompleted > 0 && nextCompleted % 4 === 0
@@ -278,7 +305,7 @@ export function TaskPomodoroPage() {
 
     setMode('focus')
     setSecondsLeft(durationsRef.current.focus)
-  }, [])
+  }, [saveSessionMutation])
 
   useEffect(() => {
     if (!isRunning) {
@@ -330,19 +357,33 @@ export function TaskPomodoroPage() {
 
   const switchMode = (nextMode: PomodoroMode) => {
     setIsRunning(false)
+    focusStartedAtRef.current = null
     setMode(nextMode)
     setSecondsLeft(durationsRef.current[nextMode])
   }
 
   const resetCurrentMode = () => {
     setIsRunning(false)
+    focusStartedAtRef.current = null
     setSecondsLeft(durationsRef.current[modeRef.current])
   }
 
   const skipCurrentMode = () => {
     setIsRunning(false)
+    focusStartedAtRef.current = null
     playBellTone()
     moveToNextMode(false)
+  }
+
+  const toggleTimer = () => {
+    setIsRunning((running) => {
+      const nextRunning = !running
+      if (nextRunning && modeRef.current === 'focus' && !focusStartedAtRef.current) {
+        const elapsedSeconds = durationsRef.current.focus - secondsLeft
+        focusStartedAtRef.current = new Date(Date.now() - Math.max(0, elapsedSeconds) * 1000)
+      }
+      return nextRunning
+    })
   }
 
   const adjustFocusMinutes = (deltaMinutes: number) => {
@@ -379,6 +420,11 @@ export function TaskPomodoroPage() {
     if (mode === 'short-break') return <Coffee className="size-4" />
     return <Timer className="size-4" />
   }, [mode])
+
+  const totalTrackedMinutes = useMemo(
+    () => (sessionsQuery.data ?? []).reduce((total, session) => total + session.durationMinutes, 0),
+    [sessionsQuery.data],
+  )
 
   if (!Number.isFinite(taskId) || taskId <= 0) {
     return (
@@ -500,7 +546,7 @@ export function TaskPomodoroPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={() => setIsRunning((running) => !running)}>
+            <Button onClick={toggleTimer}>
               {isRunning ? <Pause className="size-4" /> : <Play className="size-4" />}
               {isRunning ? t('pomodoro.actions.pause') : t('pomodoro.actions.start')}
             </Button>
@@ -551,6 +597,23 @@ export function TaskPomodoroPage() {
                 <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(5)}>+5m</Button>
               </div>
               <p className="text-xs text-muted-foreground">{t('pomodoro.estimatedDuration', { minutes: taskQuery.data?.estimatedMinutes ?? 0 })}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-border/80 bg-background p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Phiên đã lưu</p>
+              <p className="mt-1 text-2xl font-bold">{sessionsQuery.data?.length ?? 0}</p>
+            </div>
+            <div className="rounded-lg border border-border/80 bg-background p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Phút tập trung</p>
+              <p className="mt-1 text-2xl font-bold">{totalTrackedMinutes}</p>
+            </div>
+            <div className="rounded-lg border border-border/80 bg-background p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Trạng thái lưu</p>
+              <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                {saveSessionMutation.isPending ? 'Đang lưu phiên...' : 'Tự lưu khi focus hoàn tất'}
+              </p>
             </div>
           </div>
         </CardContent>

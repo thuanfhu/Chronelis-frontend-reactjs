@@ -15,6 +15,7 @@ import { projectApi } from '@/lib/api/modules/project-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { ProjectAccessManagement } from './components/project-members-list'
+import { ProjectTaskTypesTab } from './components/project-task-types-tab'
 import { toast } from 'sonner'
 import type { EffectiveProjectAccessRoleType } from '@/types/domain'
 import { cn } from '@/lib/utils'
@@ -42,7 +43,7 @@ export function ProjectSettingsPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
-  const [activeTab, setActiveTab] = useState<'general' | 'access' | 'roles'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'access' | 'roles' | 'taskTypes'>('general')
 
   const permissions = useProjectPermissions({
     workspaceId: Number.isFinite(workspaceId) ? workspaceId : 0,
@@ -151,6 +152,17 @@ export function ProjectSettingsPage() {
               >
                 <BookOpen className="size-4" />
                 <span className="text-[13px] font-bold">{t('project.settings.tabRoles')}</span>
+              </Button>
+              <Button
+                variant={activeTab === 'taskTypes' ? 'secondary' : 'ghost'}
+                className={cn(
+                  "w-full justify-start gap-3 h-11 transition-all duration-200", 
+                  activeTab === 'taskTypes' ? "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setActiveTab('taskTypes')}
+              >
+                <Settings className="size-4" />
+                <span className="text-[13px] font-bold">Loại công việc</span>
               </Button>
             </nav>
             
@@ -440,6 +452,23 @@ export function ProjectSettingsPage() {
                     </CardContent>
                   </Card>
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'taskTypes' && (
+              <motion.div
+                key="taskTypes"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="space-y-6"
+              >
+                <ProjectTaskTypesTab 
+                  workspaceId={workspaceId} 
+                  projectId={projectId} 
+                  isOwnerOrManager={isOwner || effectiveRole === 'MANAGER'} 
+                />
               </motion.div>
             )}
           </AnimatePresence>

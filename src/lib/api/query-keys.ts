@@ -53,6 +53,9 @@ export const queryKeys = {
     byProject: (projectId: number) => ['task-types', 'project', projectId] as const,
     detail: (taskTypeId: number) => ['task-types', 'detail', taskTypeId] as const,
   },
+  pomodoro: {
+    byTask: (taskId: number) => ['pomodoro', 'task', taskId] as const,
+  },
   teams: {
     byWorkspace: (workspaceId: number) => ['workspace-teams', 'workspace', workspaceId] as const,
     detail: (teamId: number) => ['workspace-teams', 'detail', teamId] as const,
