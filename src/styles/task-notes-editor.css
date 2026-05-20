@@ -1,8 +1,9 @@
 .task-notes-editor .task-notes-prosemirror {
-  min-height: 420px;
+  min-height: 560px;
   outline: none;
   line-height: 1.7;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  color: hsl(var(--foreground));
 }
 
 .task-notes-editor .task-notes-prosemirror > * + * {
@@ -16,11 +17,11 @@
 }
 
 .task-notes-editor .task-notes-prosemirror h1 {
-  font-size: 1.35rem;
+  font-size: 1.65rem;
 }
 
 .task-notes-editor .task-notes-prosemirror h2 {
-  font-size: 1.15rem;
+  font-size: 1.32rem;
 }
 
 .task-notes-editor .task-notes-prosemirror ul,
@@ -49,14 +50,22 @@
 }
 
 .task-notes-editor .task-notes-prosemirror img {
-  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
   display: block;
   height: auto;
   max-width: 100%;
+  padding: 0.2rem;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.task-notes-editor .task-notes-prosemirror img:hover {
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
 }
 
 .task-notes-editor .task-notes-prosemirror img.ProseMirror-selectednode {
   outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
 }
 
 @media (max-width: 640px) {

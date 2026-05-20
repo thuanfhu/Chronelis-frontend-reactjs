@@ -16,6 +16,7 @@ export interface UpdateTaskTypePayload {
   name?: string
   description?: string
   goalId?: number
+  clearGoal?: boolean
   color?: string
   icon?: string
 }
