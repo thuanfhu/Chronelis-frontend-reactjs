@@ -455,7 +455,7 @@ export function KanbanPage() {
   for (const bucket of grouped.values()) bucket.sort((a, b) => a.boardPosition - b.boardPosition)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0">
       <PageHeader
         title={t('kanban.title')}
         description={t('kanban.description')}

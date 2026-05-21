@@ -1044,7 +1044,7 @@ export function TaskDetailsDrawer() {
                         <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           <Flag className="size-3" /> {t('task.priorityLabel')}
                         </Label>
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           {([
                             { value: 'LOW', label: t('task.priorityLow'), cls: 'border-slate-300 text-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white data-[active=true]:border-slate-600' },
                             { value: 'MEDIUM', label: t('task.priorityMedium'), cls: 'border-sky-300 text-sky-600 data-[active=true]:bg-sky-500 data-[active=true]:text-white data-[active=true]:border-sky-500' },
@@ -1125,7 +1125,7 @@ export function TaskDetailsDrawer() {
                         <Label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           <CalendarClock className="size-3" /> {t('task.scheduleOptionalLabel')}
                         </Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
                           <div className="space-y-1">
                             <p className="text-xs text-muted-foreground">{t('task.scheduleStartLabel')}</p>
                             <Input
