@@ -490,7 +490,7 @@ export function TodoPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0">
       <PageHeader
         title={t('todo.title')}
         description={t('todo.pageDescription')}

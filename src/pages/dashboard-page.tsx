@@ -177,7 +177,7 @@ export function DashboardPage() {
             {/* Pagination controls */}
             {workspaceQuery.data && workspaceQuery.data.meta.totalPages > 1 && (
               <div className="mt-6 flex flex-col items-center gap-2 pb-6">
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                   <Button
                     variant="outline"
                     size="icon"

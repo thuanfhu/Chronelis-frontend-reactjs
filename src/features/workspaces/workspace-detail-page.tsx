@@ -795,22 +795,22 @@ export function WorkspaceDetailPage() {
       )}
 
       <Tabs defaultValue="projects">
-        <TabsList className="h-auto w-full justify-start">
-          <TabsTrigger value="projects" className="shrink-0 gap-1.5">
-            <FolderKanban className="size-3.5" />
-            {t('workspace.tab.projects')} ({visibleProjects.length})
+        <TabsList className="flex w-full bg-muted p-1 h-9 rounded-lg justify-between sm:w-fit sm:justify-start sm:gap-1 sm:p-[3px]">
+          <TabsTrigger value="projects" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
+            <FolderKanban className="size-3.5 hidden sm:inline-block" />
+            <span className="truncate">{t('workspace.tab.projects')} ({visibleProjects.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="shrink-0 gap-1.5">
-            <Users className="size-3.5" />
-            {t('workspace.tab.members')} ({members.length})
+          <TabsTrigger value="members" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
+            <Users className="size-3.5 hidden sm:inline-block" />
+            <span className="truncate">{t('workspace.tab.members')} ({members.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="invites" className="shrink-0 gap-1.5">
-            <Link2 className="size-3.5" />
-            {t('workspace.tab.invites')} ({invites.length})
+          <TabsTrigger value="invites" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
+            <Link2 className="size-3.5 hidden sm:inline-block" />
+            <span className="truncate">{t('workspace.tab.invites')} ({invites.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="teams" className="shrink-0 gap-1.5">
-            <UsersRound className="size-3.5" />
-            {t('workspace.tab.teams')} ({visibleTeams.length})
+          <TabsTrigger value="teams" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
+            <UsersRound className="size-3.5 hidden sm:inline-block" />
+            <span className="truncate">{t('workspace.tab.teams')} ({visibleTeams.length})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -877,102 +877,114 @@ export function WorkspaceDetailPage() {
                 const canManageCurrentProject = canManageProject(project)
 
                 return (
-                  <Card key={project.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-sm">
-                    <CardContent className="flex items-start gap-3 p-4">
-                      <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground">
-                          {project.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{project.name}</p>
-                          {project.description && (
-                            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{project.description}</p>
-                          )}
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px]">
-                              {t(`project.status.${project.status}`)}
-                            </Badge>
-                            <Badge variant="outline" className="text-[10px]">
-                              {t(`project.visibility.${(project.visibility ?? 'PUBLIC').toLowerCase()}`)}
-                            </Badge>
-                            {project.managerUser && (
-                              <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
-                                {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
-                              </Badge>
-                            )}
-                            {project.managerTeamName && (
-                              <Badge variant="outline" className="text-[10px] border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300">
-                                {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
-                              </Badge>
+                  <Card key={project.id} className="group relative h-full transition-all hover:border-primary/30 hover:shadow-sm">
+                    <CardContent className="p-4">
+                      {/* Top Row: Avatar, Title, and Action button */}
+                      <div className="flex items-start justify-between gap-3">
+                        <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground shadow-sm">
+                            {project.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2 break-words">
+                              {project.name}
+                            </h3>
+                            {project.description && (
+                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                                {project.description}
+                              </p>
                             )}
                           </div>
-                        </div>
-                      </Link>
-                      {canManageCurrentProject && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setEditProjectId(project.id)
-                                setEditProjectName(project.name)
-                                setEditProjectDescription(project.description ?? '')
-                                setEditProjectVisibility(project.visibility ?? 'PUBLIC')
-                                setEditProjectManagerUserId(project.managerUser?.userId ?? '')
-                                setEditProjectManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
-                                setEditProjectInitialName(project.name.trim())
-                                setEditProjectInitialDescription((project.description ?? '').trim())
-                                setEditProjectInitialVisibility(project.visibility ?? 'PUBLIC')
-                                setEditProjectInitialManagerUserId(project.managerUser?.userId ?? '')
-                                setEditProjectInitialManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
-                                setEditProjectDialogOpen(true)
-                              }}
-                            >
-                              <Pencil className="mr-2 size-3.5" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {project.status !== 'ACTIVE' && (
-                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
-                                <RotateCcw className="mr-2 size-3.5" />
-                                {t('workspace.action.reactivate')}
-                              </DropdownMenuItem>
-                            )}
-                            {project.status !== 'COMPLETED' && (
-                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
-                                <CheckCircle2 className="mr-2 size-3.5" />
-                                {t('workspace.action.complete')}
-                              </DropdownMenuItem>
-                            )}
-                            {project.status !== 'ARCHIVED' && (
-                              <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
-                                <Archive className="mr-2 size-3.5" />
-                                {t('workspace.action.archive')}
-                              </DropdownMenuItem>
-                            )}
-                            {isOwner && (
-                              <>
-                                <DropdownMenuSeparator />
+                        </Link>
+
+                        {canManageCurrentProject && (
+                          <div className="shrink-0">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="size-8 opacity-60 hover:opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => {
-                                    setDeleteProject(project)
-                                    setDeleteProjectDialogOpen(true)
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditProjectId(project.id)
+                                    setEditProjectName(project.name)
+                                    setEditProjectDescription(project.description ?? '')
+                                    setEditProjectVisibility(project.visibility ?? 'PUBLIC')
+                                    setEditProjectManagerUserId(project.managerUser?.userId ?? '')
+                                    setEditProjectManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                    setEditProjectInitialName(project.name.trim())
+                                    setEditProjectInitialDescription((project.description ?? '').trim())
+                                    setEditProjectInitialVisibility(project.visibility ?? 'PUBLIC')
+                                    setEditProjectInitialManagerUserId(project.managerUser?.userId ?? '')
+                                    setEditProjectInitialManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                    setEditProjectDialogOpen(true)
                                   }}
                                 >
-                                  <Trash2 className="mr-2 size-3.5" />
-                                  {t('workspace.action.deleteProject')}
+                                  <Pencil className="mr-2 size-3.5" />
+                                  {t('common.edit')}
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                                <DropdownMenuSeparator />
+                                {project.status !== 'ACTIVE' && (
+                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
+                                    <RotateCcw className="mr-2 size-3.5" />
+                                    {t('workspace.action.reactivate')}
+                                  </DropdownMenuItem>
+                                )}
+                                {project.status !== 'COMPLETED' && (
+                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
+                                    <CheckCircle2 className="mr-2 size-3.5" />
+                                    {t('workspace.action.complete')}
+                                  </DropdownMenuItem>
+                                )}
+                                {project.status !== 'ARCHIVED' && (
+                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
+                                    <Archive className="mr-2 size-3.5" />
+                                    {t('workspace.action.archive')}
+                                  </DropdownMenuItem>
+                                )}
+                                {isOwner && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        setDeleteProject(project)
+                                        setDeleteProjectDialogOpen(true)
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 size-3.5" />
+                                      {t('workspace.action.deleteProject')}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom Row: Metadata badges */}
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-3 border-t border-border/40">
+                        <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px] px-2 py-0.5 font-medium">
+                          {t(`project.status.${project.status}`)}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium">
+                          {t(`project.visibility.${(project.visibility ?? 'PUBLIC').toLowerCase()}`)}
+                        </Badge>
+                        {project.managerUser && (
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
+                            {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
+                          </Badge>
+                        )}
+                        {project.managerTeamName && (
+                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300">
+                            {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
+                          </Badge>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 )

@@ -1,5 +1,11 @@
 {
- "name": "App",
+ "name": "Chronelis – Quản lý công việc nhóm",
+ "short_name": "Chronelis",
+ "description": "Nền tảng quản lý công việc nhóm theo thời gian thực với Kanban, Calendar, Todo và cộng tác realtime.",
+ "start_url": "/",
+ "display": "standalone",
+ "background_color": "#ffffff",
+ "theme_color": "#4338ca",
  "icons": [
   {
     "src": "/favicon/android-icon-36x36.png",

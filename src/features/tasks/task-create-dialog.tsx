@@ -473,7 +473,7 @@ export function TaskCreateDialog({
                 </div>
 
                 {/* 2-column row: Status + Goal */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-sm font-medium">
                       <Rows3 className="size-3.5 text-muted-foreground" /> {t('task.status')}
@@ -541,7 +541,7 @@ export function TaskCreateDialog({
                 </div>
 
                 {/* 3-column row: Deadline + Estimated + Task Type */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-sm font-medium">
                       <Calendar className="size-3.5 text-muted-foreground" /> {t('task.deadline')}
@@ -619,7 +619,7 @@ export function TaskCreateDialog({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">{t('task.scheduleStart')}</Label>
                     <Input
