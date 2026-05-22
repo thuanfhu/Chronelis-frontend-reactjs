@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlignLeft, Calendar, CalendarClock, Clock3, Flag, Loader2, Rows3, Shapes, Target, User, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/app/store/auth-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,9 +28,20 @@ import { taskStatusApi } from '@/lib/api/modules/task-status-api'
 import { taskTypeApi } from '@/lib/api/modules/task-type-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { resolveTaskTypeIcon } from '@/lib/task-types/task-type-icons'
+import {
+  patchProjectCalendarQueries,
+  patchProjectTaskQueries,
+  patchTaskScheduleQueries,
+  restoreProjectCalendarQueries,
+  restoreProjectTaskQueries,
+  restoreTaskScheduleQueries,
+  snapshotProjectCalendarQueries,
+  snapshotProjectTaskQueries,
+  snapshotTaskScheduleQueries,
+} from '@/lib/tasks/optimistic-task-cache'
 import { cn } from '@/lib/utils/cn'
 import { toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
-import type { SourceViewType, Task, TaskPriorityType } from '@/types/domain'
+import type { SourceViewType, Task, TaskPriorityType, TaskSchedule, UserSummary } from '@/types/domain'
 
 const PRIORITY_OPTIONS: Array<{
   value: TaskPriorityType
@@ -115,6 +127,14 @@ interface TaskCreateFormState {
   dependencyTaskIds: number[]
 }
 
+interface TaskCreateOptimisticContext {
+  optimisticTaskId: number
+  optimisticScheduleId?: number
+  projectTasksSnapshot: ReturnType<typeof snapshotProjectTaskQueries>
+  projectCalendarSnapshot: ReturnType<typeof snapshotProjectCalendarQueries>
+  taskScheduleSnapshot: ReturnType<typeof snapshotTaskScheduleQueries>
+}
+
 function buildInitialFormState(args: {
   initialValues?: TaskCreateDialogInitialValues
   defaultStatusId?: number | null
@@ -157,6 +177,7 @@ export function TaskCreateDialog({
   const resolvedDescription = description ?? t('task.createDescription')
   const resolvedSubmitLabel = submitLabel ?? t('task.createSubmit')
   const queryClient = useQueryClient()
+  const currentUser = useAuthStore((state) => state.currentUser)
   const [form, setForm] = useState<TaskCreateFormState>(() => buildInitialFormState({ initialValues, defaultStatusId }))
 
   const queryEnabled = open && Number.isFinite(projectId) && Number.isFinite(workspaceId)
@@ -267,7 +288,7 @@ export function TaskCreateDialog({
     return form.dependencyTaskIds.map((taskId) => taskById.get(taskId)).filter((task): task is Task => Boolean(task))
   }, [form.dependencyTaskIds, projectTasksQuery.data?.content])
 
-  const createTaskMutation = useMutation({
+  const createTaskMutation = useMutation<Task, Error, void, TaskCreateOptimisticContext | undefined>({
     mutationFn: async () => {
       const titleValue = form.title.trim()
       if (!titleValue) {
@@ -334,7 +355,143 @@ export function TaskCreateDialog({
 
       return createdTask
     },
-    onSuccess: async (createdTask) => {
+    onMutate: async () => {
+      const titleValue = form.title.trim()
+      const selectedStatus = statusesQuery.data?.find((status) => status.id === form.statusId)
+      const estimatedMinutes = form.estimatedMinutes.trim() ? Number(form.estimatedMinutes) : undefined
+
+      if (!titleValue || !form.statusId || !selectedStatus) {
+        return undefined
+      }
+
+      if (estimatedMinutes != null && (!Number.isFinite(estimatedMinutes) || estimatedMinutes < 0)) {
+        return undefined
+      }
+
+      if (requireSchedule && (!form.scheduleStart || !form.scheduleEnd)) {
+        return undefined
+      }
+
+      if ((form.scheduleStart && !form.scheduleEnd) || (!form.scheduleStart && form.scheduleEnd)) {
+        return undefined
+      }
+
+      if (form.scheduleStart && form.scheduleEnd) {
+        const startDate = new Date(form.scheduleStart)
+        const endDate = new Date(form.scheduleEnd)
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
+          return undefined
+        }
+      }
+
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+      ])
+
+      const nowIso = new Date().toISOString()
+      const optimisticTaskId = -Date.now()
+      const optimisticScheduleId = optimisticTaskId - 1
+      const projectTasksSnapshot = snapshotProjectTaskQueries(queryClient, projectId)
+      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, optimisticTaskId)
+      const cachedProjectTasks = projectTasksQuery.data?.content ?? []
+      const assignee = form.assigneeId
+        ? membersQuery.data?.find((member) => member.user.userId === form.assigneeId)?.user
+        : undefined
+      const createdBy: UserSummary = currentUser
+        ? {
+            userId: currentUser.userId,
+            email: currentUser.email,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName,
+          }
+        : {
+            userId: '',
+            email: '',
+            firstName: '',
+            lastName: '',
+          }
+
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        workspaceId,
+        projectId,
+        goalId: form.goalId ?? undefined,
+        status: selectedStatus,
+        title: titleValue,
+        description: form.description.trim() || undefined,
+        priority: form.priority,
+        taskType: taskTypesQuery.data?.find((taskType) => taskType.id === form.taskTypeId),
+        sourceView: defaultSourceView,
+        assignee,
+        createdBy,
+        dueDate: form.dueDate ? toLocalDateTimePayload(form.dueDate) : undefined,
+        estimatedMinutes: estimatedMinutes ?? 0,
+        boardPosition:
+          Math.max(
+            -1,
+            ...cachedProjectTasks
+              .filter((task) => task.status.id === selectedStatus.id)
+              .map((task) => task.boardPosition),
+          ) + 1,
+        isCompleted: Boolean(selectedStatus.isClosed),
+        completedAt: selectedStatus.isClosed ? nowIso : undefined,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      }
+
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+
+      if (form.scheduleStart && form.scheduleEnd) {
+        const scheduledStart = toLocalDateTimePayload(form.scheduleStart)
+        const scheduledEnd = toLocalDateTimePayload(form.scheduleEnd)
+        const optimisticSchedule: TaskSchedule = {
+          id: optimisticScheduleId,
+          taskId: optimisticTaskId,
+          scheduledStart,
+          scheduledEnd,
+          scheduledDate: scheduledStart.slice(0, 10),
+          createdBy,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        }
+
+        patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
+        patchTaskScheduleQueries(queryClient, optimisticTaskId, (schedules) => [...schedules, optimisticSchedule])
+      }
+
+      onOpenChange(false)
+
+      return {
+        optimisticTaskId,
+        optimisticScheduleId: form.scheduleStart && form.scheduleEnd ? optimisticScheduleId : undefined,
+        projectTasksSnapshot,
+        projectCalendarSnapshot,
+        taskScheduleSnapshot,
+      }
+    },
+    onSuccess: async (createdTask, _variables, context) => {
+      queryClient.setQueryData(queryKeys.tasks.detail(createdTask.id), createdTask)
+
+      if (context?.optimisticTaskId) {
+        patchProjectTaskQueries(queryClient, projectId, (tasks) => {
+          const replacedTasks = tasks.map((task) => (task.id === context.optimisticTaskId ? createdTask : task))
+          const dedupedTasks = replacedTasks.filter(
+            (task, index, allTasks) => allTasks.findIndex((item) => item.id === task.id) === index,
+          )
+          return dedupedTasks.some((task) => task.id === createdTask.id) ? dedupedTasks : [...dedupedTasks, createdTask]
+        })
+
+        if (context.optimisticScheduleId != null) {
+          patchProjectCalendarQueries(queryClient, projectId, (schedules) =>
+            schedules.map((schedule) =>
+              schedule.id === context.optimisticScheduleId ? { ...schedule, taskId: createdTask.id } : schedule,
+            ),
+          )
+        }
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork }),
@@ -349,7 +506,17 @@ export function TaskCreateDialog({
       toast.success(t('task.createSuccess'))
       onOpenChange(false)
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.projectTasksSnapshot) {
+        restoreProjectTaskQueries(queryClient, context.projectTasksSnapshot)
+      }
+      if (context?.projectCalendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
+      }
+      if (context?.taskScheduleSnapshot) {
+        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
+      }
+
       toast.error(t('task.createError'), { description: error.message })
     },
   })
