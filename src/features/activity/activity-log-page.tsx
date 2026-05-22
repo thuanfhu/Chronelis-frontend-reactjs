@@ -9,24 +9,76 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { activityLogApi } from '@/lib/api/modules/activity-log-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
-import { CheckCircle2, Target, Layout, Users, Trash2, PlusCircle, RotateCw, UserPlus, Activity, History, MessageSquare, Clock } from 'lucide-react'
+import {
+  CheckCircle2,
+  Target,
+  Layout,
+  Users,
+  Trash2,
+  PlusCircle,
+  RotateCw,
+  UserPlus,
+  Activity,
+  History,
+  MessageSquare,
+  Clock,
+} from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { vi, enUS } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 
-const actionConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive', icon: any, color: string }> = {
-  CREATED: { variant: 'default', icon: PlusCircle, color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20' },
-  ADDED: { variant: 'default', icon: PlusCircle, color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20' },
-  UPDATED: { variant: 'secondary', icon: RotateCw, color: 'text-blue-600 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20' },
-  EDITED: { variant: 'secondary', icon: RotateCw, color: 'text-blue-600 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20' },
-  DELETED: { variant: 'destructive', icon: Trash2, color: 'text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20' },
-  REMOVED: { variant: 'destructive', icon: Trash2, color: 'text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20' },
-  ASSIGNED: { variant: 'outline', icon: UserPlus, color: 'text-purple-600 bg-purple-500/10 dark:text-purple-400 dark:bg-purple-500/20' },
-  COMPLETED: { variant: 'default', icon: CheckCircle2, color: 'text-green-600 bg-green-500/10 dark:text-green-400 dark:bg-green-500/20' },
-  COMMENTED: { variant: 'outline', icon: MessageSquare, color: 'text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20' },
+const actionConfig: Record<
+  string,
+  { variant: 'default' | 'secondary' | 'outline' | 'destructive'; icon: any; color: string }
+> = {
+  CREATED: {
+    variant: 'default',
+    icon: PlusCircle,
+    color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20',
+  },
+  ADDED: {
+    variant: 'default',
+    icon: PlusCircle,
+    color: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/20',
+  },
+  UPDATED: {
+    variant: 'secondary',
+    icon: RotateCw,
+    color: 'text-blue-600 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20',
+  },
+  EDITED: {
+    variant: 'secondary',
+    icon: RotateCw,
+    color: 'text-blue-600 bg-blue-500/10 dark:text-blue-400 dark:bg-blue-500/20',
+  },
+  DELETED: {
+    variant: 'destructive',
+    icon: Trash2,
+    color: 'text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20',
+  },
+  REMOVED: {
+    variant: 'destructive',
+    icon: Trash2,
+    color: 'text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/20',
+  },
+  ASSIGNED: {
+    variant: 'outline',
+    icon: UserPlus,
+    color: 'text-purple-600 bg-purple-500/10 dark:text-purple-400 dark:bg-purple-500/20',
+  },
+  COMPLETED: {
+    variant: 'default',
+    icon: CheckCircle2,
+    color: 'text-green-600 bg-green-500/10 dark:text-green-400 dark:bg-green-500/20',
+  },
+  COMMENTED: {
+    variant: 'outline',
+    icon: MessageSquare,
+    color: 'text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/20',
+  },
 }
 
-const targetConfig: Record<string, { icon: any, color: string }> = {
+const targetConfig: Record<string, { icon: any; color: string }> = {
   TASK: { icon: CheckCircle2, color: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' },
   GOAL: { icon: Target, color: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400' },
   PROJECT: { icon: Layout, color: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' },
@@ -71,22 +123,25 @@ export function ActivityLogPage() {
   const logs = logsQuery.data?.content ?? []
 
   // Group logs by date
-  const groupedLogs = logs.reduce((groups, log) => {
-    const date = new Date(log.createdAt)
-    let groupKey = ''
-    
-    if (isToday(date)) {
-      groupKey = t('activity.today', { defaultValue: 'Hôm nay' })
-    } else if (isYesterday(date)) {
-      groupKey = t('activity.yesterday', { defaultValue: 'Hôm qua' })
-    } else {
-      groupKey = format(date, 'PPP', { locale: i18n.language === 'vi' ? vi : enUS })
-    }
+  const groupedLogs = logs.reduce(
+    (groups, log) => {
+      const date = new Date(log.createdAt)
+      let groupKey = ''
 
-    if (!groups[groupKey]) groups[groupKey] = []
-    groups[groupKey].push(log)
-    return groups
-  }, {} as Record<string, typeof logs>)
+      if (isToday(date)) {
+        groupKey = t('activity.today', { defaultValue: 'Hôm nay' })
+      } else if (isYesterday(date)) {
+        groupKey = t('activity.yesterday', { defaultValue: 'Hôm qua' })
+      } else {
+        groupKey = format(date, 'PPP', { locale: i18n.language === 'vi' ? vi : enUS })
+      }
+
+      if (!groups[groupKey]) groups[groupKey] = []
+      groups[groupKey].push(log)
+      return groups
+    },
+    {} as Record<string, typeof logs>,
+  )
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-10">
@@ -117,7 +172,10 @@ export function ActivityLogPage() {
           {Object.entries(groupedLogs).map(([date, dateLogs]) => (
             <div key={date} className="space-y-4">
               <div className="flex items-center gap-4">
-                <Badge variant="secondary" className="px-3 py-1 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-lg">
+                <Badge
+                  variant="secondary"
+                  className="px-3 py-1 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded-lg"
+                >
                   {date}
                 </Badge>
                 <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
@@ -134,28 +192,39 @@ export function ActivityLogPage() {
                     <div key={log.id} className="relative py-4 group">
                       {/* Timeline Dot */}
                       <div className="absolute -left-[43px] top-1/2 -translate-y-1/2 size-5 rounded-full border-4 border-background bg-muted-foreground/30 dark:bg-white/40 flex items-center justify-center transition-colors group-hover:bg-primary group-hover:border-primary/20 shadow-sm z-10">
-                         <div className="size-1.5 rounded-full bg-background" />
+                        <div className="size-1.5 rounded-full bg-background" />
                       </div>
 
                       <div className="flex items-start gap-4 p-4 rounded-2xl transition-all bg-background border border-border/80 dark:border-border/40 shadow-sm group-hover:shadow-md group-hover:border-primary/30 group-hover:bg-muted/5">
                         <Avatar className="size-10 shrink-0 shadow-sm border-2 border-background ring-1 ring-border/20">
                           <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-xs font-bold text-primary">
-                            {log.actor.firstName.charAt(0)}{log.actor.lastName.charAt(0)}
+                            {log.actor.firstName.charAt(0)}
+                            {log.actor.lastName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        
+
                         <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                             <span className="text-[15px] font-bold text-foreground truncate max-w-[150px]">
                               {log.actor.firstName} {log.actor.lastName}
                             </span>
-                            
-                            <Badge className={cn("px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-tight border-none", actionInfo.color)}>
+
+                            <Badge
+                              className={cn(
+                                'px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-tight border-none',
+                                actionInfo.color,
+                              )}
+                            >
                               <ActionIcon className="size-3 mr-1 inline-block" />
                               {log.actionType.replaceAll('_', ' ')}
                             </Badge>
 
-                            <Badge className={cn("px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-tight border-none", targetInfo.color)}>
+                            <Badge
+                              className={cn(
+                                'px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-tight border-none',
+                                targetInfo.color,
+                              )}
+                            >
                               <TargetIcon className="size-3 mr-1 inline-block" />
                               {log.targetType}
                             </Badge>

@@ -11,7 +11,10 @@ interface Props {
 
 type ChartEntry = { priority: TaskPriorityType; fullLabel: string; label: string; value: number; color: string }
 
-interface TipProps { active?: boolean; payload?: Array<{ value: number; payload: ChartEntry }> }
+interface TipProps {
+  active?: boolean
+  payload?: Array<{ value: number; payload: ChartEntry }>
+}
 
 function CustomTooltip({ active, payload }: TipProps) {
   const { t } = useTranslation()
@@ -23,7 +26,9 @@ function CustomTooltip({ active, payload }: TipProps) {
       <div className="flex items-center gap-2">
         <span className="inline-block size-2.5 rounded-full" style={{ background: entry.color }} />
         <span className="text-sm font-semibold">{entry.fullLabel}</span>
-        <span className="ml-2 text-sm text-muted-foreground">{value} {t('dashboard.tasks')}</span>
+        <span className="ml-2 text-sm text-muted-foreground">
+          {value} {t('dashboard.tasks')}
+        </span>
       </div>
     </div>
   )

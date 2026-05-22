@@ -56,7 +56,9 @@
   height: auto;
   max-width: 100%;
   padding: 0.2rem;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .task-notes-editor .task-notes-prosemirror img:hover {

@@ -1,8 +1,9 @@
 let audioContext: AudioContext | null = null
 
-type AudioContextWindow = Window & typeof globalThis & {
-  webkitAudioContext?: typeof AudioContext
-}
+type AudioContextWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext
+  }
 
 function getAudioContext() {
   if (typeof window === 'undefined') {

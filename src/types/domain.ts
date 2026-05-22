@@ -23,7 +23,17 @@ export type NotificationType =
   | 'TASK_UPDATED'
   | 'WORKSPACE_INVITE_USED'
 
-export type ReferenceType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE' | 'TASK_TYPE' | 'TEAM' | 'INVITE' | 'CHECK_ITEM'
+export type ReferenceType =
+  | 'TASK'
+  | 'GOAL'
+  | 'PROJECT'
+  | 'WORKSPACE'
+  | 'COMMENT'
+  | 'SCHEDULE'
+  | 'TASK_TYPE'
+  | 'TEAM'
+  | 'INVITE'
+  | 'CHECK_ITEM'
 
 export type ActivityActionType =
   | 'WORKSPACE_CREATED'
@@ -64,7 +74,19 @@ export type ActivityActionType =
   | 'CHECK_ITEM_UPDATED'
   | 'CHECK_ITEM_DELETED'
 
-export type ActivityTargetType = 'TASK' | 'GOAL' | 'PROJECT' | 'WORKSPACE' | 'COMMENT' | 'SCHEDULE' | 'MEMBER' | 'STATUS' | 'TASK_TYPE' | 'TEAM' | 'INVITE' | 'CHECK_ITEM'
+export type ActivityTargetType =
+  | 'TASK'
+  | 'GOAL'
+  | 'PROJECT'
+  | 'WORKSPACE'
+  | 'COMMENT'
+  | 'SCHEDULE'
+  | 'MEMBER'
+  | 'STATUS'
+  | 'TASK_TYPE'
+  | 'TEAM'
+  | 'INVITE'
+  | 'CHECK_ITEM'
 
 export interface UserSummary {
   userId: string

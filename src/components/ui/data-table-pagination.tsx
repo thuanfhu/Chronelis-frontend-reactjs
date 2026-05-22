@@ -1,18 +1,7 @@
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from '@radix-ui/react-icons'
+import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRightIcon } from '@radix-ui/react-icons'
 import type { Table } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTranslation } from 'react-i18next'
 
 interface DataTablePaginationProps<TData> {
@@ -21,25 +10,18 @@ interface DataTablePaginationProps<TData> {
   onPageChange?: (page: number) => void
 }
 
-export function DataTablePagination<TData>({
-  table,
-  totalPages,
-  onPageChange,
-}: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData>({ table, totalPages, onPageChange }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center justify-between overflow-auto px-2">
       <div className="hidden flex-1 text-sm text-muted-foreground sm:block">
-        {table.getFilteredSelectedRowModel().rows.length} {t('selectedCount')}{' '}
-        {t('tablePagination.of')} {table.getFilteredRowModel().rows.length}{' '}
-        {t('tablePagination.entries')}
+        {table.getFilteredSelectedRowModel().rows.length} {t('selectedCount')} {t('tablePagination.of')}{' '}
+        {table.getFilteredRowModel().rows.length} {t('tablePagination.entries')}
       </div>
       <div className="flex items-center sm:space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
-          <p className="hidden text-sm font-medium sm:block">
-            {t('tablePagination.rowsPerPage')}
-          </p>
+          <p className="hidden text-sm font-medium sm:block">{t('tablePagination.rowsPerPage')}</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -59,8 +41,7 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex min-w-[100px] items-center justify-center text-sm font-medium whitespace-nowrap">
-          {t('tablePagination.page')}{' '}
-          {table.getState().pagination.pageIndex + 1} {t('tablePagination.of')}{' '}
+          {t('tablePagination.page')} {table.getState().pagination.pageIndex + 1} {t('tablePagination.of')}{' '}
           {totalPages ?? table.getPageCount()}
         </div>
         <div className="flex items-center space-x-2">

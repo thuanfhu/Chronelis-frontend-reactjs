@@ -60,11 +60,11 @@ http.interceptors.response.use(
     }
 
     if (
-      appError.status === 403
-      && (onAdminRoute || isAdminApiRequest)
-      && !onTokenizedAuthRoute
-      && !isAuthVerificationRequest
-      && !window.location.pathname.startsWith('/forbidden')
+      appError.status === 403 &&
+      (onAdminRoute || isAdminApiRequest) &&
+      !onTokenizedAuthRoute &&
+      !isAuthVerificationRequest &&
+      !window.location.pathname.startsWith('/forbidden')
     ) {
       window.location.href = '/forbidden'
     }

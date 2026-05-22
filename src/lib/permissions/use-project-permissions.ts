@@ -13,11 +13,8 @@ interface UseProjectPermissionsOptions {
 export function useProjectPermissions({ workspaceId, projectId, enabled = true }: UseProjectPermissionsOptions) {
   const currentUserId = useAuthStore((state) => state.currentUser?.userId ?? null)
 
-  const canQuery = enabled
-    && Number.isFinite(workspaceId)
-    && Number.isFinite(projectId)
-    && workspaceId > 0
-    && projectId > 0
+  const canQuery =
+    enabled && Number.isFinite(workspaceId) && Number.isFinite(projectId) && workspaceId > 0 && projectId > 0
 
   const projectQuery = useQuery({
     queryKey: queryKeys.projects.detail(projectId),
@@ -34,15 +31,12 @@ export function useProjectPermissions({ workspaceId, projectId, enabled = true }
   const project = projectQuery.data ?? null
   const effectiveAccess = effectiveAccessQuery.data ?? null
 
-  const currentRole: WorkspaceMemberRoleType = (effectiveAccess?.workspaceOwner || project?.createdBy.userId === currentUserId)
-    ? 'OWNER'
-    : 'MEMBER'
+  const currentRole: WorkspaceMemberRoleType =
+    effectiveAccess?.workspaceOwner || project?.createdBy.userId === currentUserId ? 'OWNER' : 'MEMBER'
 
   const isOwner = currentRole === 'OWNER'
 
-  const permissionsReady = canQuery
-    && !projectQuery.isLoading
-    && !effectiveAccessQuery.isLoading
+  const permissionsReady = canQuery && !projectQuery.isLoading && !effectiveAccessQuery.isLoading
 
   const canManageProject = Boolean(permissionsReady && (effectiveAccess?.canManageProjectWork || isOwner))
   const canViewProject = Boolean(permissionsReady && (effectiveAccess?.canViewProject || isOwner))
@@ -66,9 +60,15 @@ export function useProjectPermissions({ workspaceId, projectId, enabled = true }
     canContribute,
     canComment,
     canManageProjectAccess: Boolean(permissionsReady && effectiveAccess?.canManageProjectAccess),
-    canGrantManager: Boolean(permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess)),
-    canRevokeManager: Boolean(permissionsReady && (effectiveAccess?.canRevokeManager ?? effectiveAccess?.canManageManagerAccess)),
-    canManageManagerAccess: Boolean(permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess)),
+    canGrantManager: Boolean(
+      permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess),
+    ),
+    canRevokeManager: Boolean(
+      permissionsReady && (effectiveAccess?.canRevokeManager ?? effectiveAccess?.canManageManagerAccess),
+    ),
+    canManageManagerAccess: Boolean(
+      permissionsReady && (effectiveAccess?.canGrantManager ?? effectiveAccess?.canManageManagerAccess),
+    ),
     canChangeVisibility: Boolean(permissionsReady && effectiveAccess?.canChangeVisibility),
     canDeleteProject: Boolean(permissionsReady && effectiveAccess?.canDeleteProject),
     canAssignOthers: Boolean(permissionsReady && effectiveAccess?.canAssignOthers),

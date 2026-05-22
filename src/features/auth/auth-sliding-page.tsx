@@ -151,7 +151,10 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
         className="chronelis-auth-panel-copy"
       >
         {content.showBrand ? (
-          <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop relative h-8 w-32 flex items-center justify-center">
+          <Link
+            to="/login"
+            className="chronelis-auth-brand chronelis-auth-brand--desktop relative h-8 w-32 flex items-center justify-center"
+          >
             <img
               src={logoSrc}
               alt="Chronelis"
@@ -189,12 +192,15 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
     setMode(initialMode)
   }, [initialMode])
 
-  useEffect(() => () => {
-    if (routeSwitchTimeoutRef.current !== null) {
-      window.clearTimeout(routeSwitchTimeoutRef.current)
-      routeSwitchTimeoutRef.current = null
-    }
-  }, [])
+  useEffect(
+    () => () => {
+      if (routeSwitchTimeoutRef.current !== null) {
+        window.clearTimeout(routeSwitchTimeoutRef.current)
+        routeSwitchTimeoutRef.current = null
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (signUpResendCountdown <= 0 && forgotResendCountdown <= 0) {
@@ -335,39 +341,41 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const passwordStrength = resolvePasswordStrength(signUpPassword)
   const pageClassName = AUTH_MODE_CLASS[mode]
 
-  const leftPanelCopy: PanelCopy = mode === 'forgot-password'
-    ? {
-        key: 'forgot-left',
-        showBrand: false,
-        title: t('auth.panelForgotLeftTitle'),
-        description: t('auth.panelForgotLeftDesc'),
-        actionLabel: t('auth.switchSignUp'),
-        onAction: () => switchMode('sign-up'),
-      }
-    : {
-        key: 'welcome-left',
-        showBrand: false,
-        title: t('auth.panelWelcomeTitle'),
-        description: t('auth.panelWelcomeDesc'),
-        actionLabel: t('auth.switchSignUp'),
-        onAction: () => switchMode('sign-up'),
-      }
+  const leftPanelCopy: PanelCopy =
+    mode === 'forgot-password'
+      ? {
+          key: 'forgot-left',
+          showBrand: false,
+          title: t('auth.panelForgotLeftTitle'),
+          description: t('auth.panelForgotLeftDesc'),
+          actionLabel: t('auth.switchSignUp'),
+          onAction: () => switchMode('sign-up'),
+        }
+      : {
+          key: 'welcome-left',
+          showBrand: false,
+          title: t('auth.panelWelcomeTitle'),
+          description: t('auth.panelWelcomeDesc'),
+          actionLabel: t('auth.switchSignUp'),
+          onAction: () => switchMode('sign-up'),
+        }
 
-  const rightPanelCopy: PanelCopy = mode === 'forgot-password'
-    ? {
-        key: 'forgot-right',
-        title: t('auth.panelForgotRightTitle'),
-        description: t('auth.panelForgotRightDesc'),
-        actionLabel: t('auth.switchSignIn'),
-        onAction: () => switchMode('sign-in'),
-      }
-    : {
-        key: 'signin-right',
-        title: t('auth.panelSignInRightTitle'),
-        description: t('auth.panelSignInRightDesc'),
-        actionLabel: t('auth.switchSignIn'),
-        onAction: () => switchMode('sign-in'),
-      }
+  const rightPanelCopy: PanelCopy =
+    mode === 'forgot-password'
+      ? {
+          key: 'forgot-right',
+          title: t('auth.panelForgotRightTitle'),
+          description: t('auth.panelForgotRightDesc'),
+          actionLabel: t('auth.switchSignIn'),
+          onAction: () => switchMode('sign-in'),
+        }
+      : {
+          key: 'signin-right',
+          title: t('auth.panelSignInRightTitle'),
+          description: t('auth.panelSignInRightDesc'),
+          actionLabel: t('auth.switchSignIn'),
+          onAction: () => switchMode('sign-in'),
+        }
 
   return (
     <AuthSharedShell
@@ -386,7 +394,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: 10 }}
             transition={FORM_TRANSITION}
           >
-            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
+            <Link
+              to="/login"
+              className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4"
+            >
               <img
                 src={logoSrc}
                 alt="Chronelis"
@@ -422,16 +433,26 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 onClick={() => setShowSignInPassword((prev) => !prev)}
                 aria-label={showSignInPassword ? t('auth.hidePassword') : t('auth.showPassword')}
               >
-                {showSignInPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                {showSignInPassword ? (
+                  <EyeOff className="chronelis-auth-input-icon" />
+                ) : (
+                  <Eye className="chronelis-auth-input-icon" />
+                )}
               </button>
             </div>
             <FieldError message={loginForm.formState.errors.password?.message} />
 
             <div className="chronelis-auth-form-meta">
-              <button type="button" className="chronelis-auth-link" onClick={() => switchMode('forgot-password')}>{t('auth.forgotPasswordLink')}</button>
+              <button type="button" className="chronelis-auth-link" onClick={() => switchMode('forgot-password')}>
+                {t('auth.forgotPasswordLink')}
+              </button>
             </div>
 
-            <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={loginMutation.isPending}>
+            <button
+              className="chronelis-auth-btn chronelis-auth-btn--solid"
+              type="submit"
+              disabled={loginMutation.isPending}
+            >
               {loginMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
               {t('auth.login')}
             </button>
@@ -527,7 +548,11 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                     onClick={() => setShowSignUpPassword((prev) => !prev)}
                     aria-label={showSignUpPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   >
-                    {showSignUpPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                    {showSignUpPassword ? (
+                      <EyeOff className="chronelis-auth-input-icon" />
+                    ) : (
+                      <Eye className="chronelis-auth-input-icon" />
+                    )}
                   </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.password?.message} />
@@ -545,9 +570,15 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                     type="button"
                     className="chronelis-auth-input-toggle"
                     onClick={() => setShowSignUpConfirmPassword((prev) => !prev)}
-                    aria-label={showSignUpConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
+                    aria-label={
+                      showSignUpConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')
+                    }
                   >
-                    {showSignUpConfirmPassword ? <EyeOff className="chronelis-auth-input-icon" /> : <Eye className="chronelis-auth-input-icon" />}
+                    {showSignUpConfirmPassword ? (
+                      <EyeOff className="chronelis-auth-input-icon" />
+                    ) : (
+                      <Eye className="chronelis-auth-input-icon" />
+                    )}
                   </button>
                 </div>
                 <FieldError message={registerForm.formState.errors.confirmPassword?.message} />
@@ -558,7 +589,14 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
               <div className="chronelis-auth-strength-bar" data-level={passwordStrength.level}>
                 <div className="chronelis-auth-strength-segments">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <span key={i} className={i <= passwordStrength.score ? 'chronelis-auth-strength-seg active' : 'chronelis-auth-strength-seg'} />
+                    <span
+                      key={i}
+                      className={
+                        i <= passwordStrength.score
+                          ? 'chronelis-auth-strength-seg active'
+                          : 'chronelis-auth-strength-seg'
+                      }
+                    />
                   ))}
                 </div>
                 <span className="chronelis-auth-strength-lbl">{t(passwordStrength.label)}</span>
@@ -572,9 +610,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <Mail className="size-5" />
                 </div>
                 <p className="chronelis-auth-forgot-success-title">{t('auth.checkInbox')}</p>
-                <p className="chronelis-auth-forgot-success-description">
-                  {t('auth.verifyEmailSent')}
-                </p>
+                <p className="chronelis-auth-forgot-success-description">{t('auth.verifyEmailSent')}</p>
                 <button
                   type="button"
                   className="chronelis-auth-resend-btn"
@@ -582,11 +618,17 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   disabled={!signUpEmail || signUpResendCountdown > 0 || resendVerifyMutation.isPending}
                 >
                   {resendVerifyMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
-                  {signUpResendCountdown > 0 ? t('auth.resendAfter', { seconds: signUpResendCountdown }) : t('auth.resendVerifyEmail')}
+                  {signUpResendCountdown > 0
+                    ? t('auth.resendAfter', { seconds: signUpResendCountdown })
+                    : t('auth.resendVerifyEmail')}
                 </button>
               </div>
             ) : (
-              <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={registerMutation.isPending}>
+              <button
+                className="chronelis-auth-btn chronelis-auth-btn--solid"
+                type="submit"
+                disabled={registerMutation.isPending}
+              >
                 {registerMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
                 {t('auth.createAccount')}
               </button>
@@ -615,7 +657,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: -10 }}
             transition={FORM_TRANSITION}
           >
-            <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
+            <Link
+              to="/login"
+              className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4"
+            >
               <img
                 src={logoSrc}
                 alt="Chronelis"
@@ -632,9 +677,7 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   <Mail className="size-5" />
                 </div>
                 <p className="chronelis-auth-forgot-success-title">{t('auth.checkYourEmail')}</p>
-                <p className="chronelis-auth-forgot-success-description">
-                  {t('auth.resetLinkSent')}
-                </p>
+                <p className="chronelis-auth-forgot-success-description">{t('auth.resetLinkSent')}</p>
                 <button
                   type="button"
                   className="chronelis-auth-resend-btn"
@@ -642,7 +685,9 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                   disabled={!forgotEmail || forgotResendCountdown > 0 || resendForgotMutation.isPending}
                 >
                   {resendForgotMutation.isPending && <Loader2 className="chronelis-auth-resend-spinner" />}
-                  {forgotResendCountdown > 0 ? t('auth.resendAfter', { seconds: forgotResendCountdown }) : t('auth.resendEmail')}
+                  {forgotResendCountdown > 0
+                    ? t('auth.resendAfter', { seconds: forgotResendCountdown })
+                    : t('auth.resendEmail')}
                 </button>
               </div>
             ) : (
@@ -659,13 +704,16 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
                 </div>
                 <FieldError message={forgotForm.formState.errors.email?.message} />
 
-                <button className="chronelis-auth-btn chronelis-auth-btn--solid" type="submit" disabled={forgotMutation.isPending}>
+                <button
+                  className="chronelis-auth-btn chronelis-auth-btn--solid"
+                  type="submit"
+                  disabled={forgotMutation.isPending}
+                >
                   {forgotMutation.isPending && <Loader2 className="chronelis-auth-btn-spinner" />}
                   {t('auth.sendResetEmail')}
                 </button>
               </>
             )}
-
           </motion.form>
         ) : null}
       </AnimatePresence>

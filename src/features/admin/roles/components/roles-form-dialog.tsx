@@ -2,31 +2,14 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect, useState, useCallback } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import {
-  Collapse,
-  CollapseContent,
-  CollapseTrigger,
-} from '@/components/ui/collapse'
+import { Collapse, CollapseContent, CollapseTrigger } from '@/components/ui/collapse'
 import { useRoles } from '../context/roles-context'
 import { toast } from 'sonner'
 import type { Permission, Role } from '../data/schema'
@@ -199,7 +182,10 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
     if (checked) {
       form.setValue('permissionIds', Array.from(new Set([...currentPermissions, ...modulePermissionIds])))
     } else {
-      form.setValue('permissionIds', currentPermissions.filter((id) => !modulePermissionIds.includes(id)))
+      form.setValue(
+        'permissionIds',
+        currentPermissions.filter((id) => !modulePermissionIds.includes(id)),
+      )
     }
   }
 
@@ -208,7 +194,10 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
     if (checked) {
       form.setValue('permissionIds', [...currentPermissions, permissionId])
     } else {
-      form.setValue('permissionIds', currentPermissions.filter((id) => id !== permissionId))
+      form.setValue(
+        'permissionIds',
+        currentPermissions.filter((id) => id !== permissionId),
+      )
     }
   }
 
@@ -250,9 +239,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
               <div className="px-6 py-4 space-y-6">
                 {/* Basic Info Section */}
                 <div className="space-y-4 p-4 bg-white dark:text-slate-100 dark:bg-zinc-800 dark:border-slate-600 rounded-lg border border-slate-200 shadow-sm">
-                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-300 mb-3">
-                    {t('basicInfo')}
-                  </h3>
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-300 mb-3">{t('basicInfo')}</h3>
 
                   <FormField
                     control={form.control}
@@ -303,16 +290,20 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                           <FormLabel className="text-sm font-medium text-slate-700 dark:text-slate-100">
                             {t('status')}:
                           </FormLabel>
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
-                            field.value 
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" 
-                              : "bg-slate-100 text-slate-800 dark:bg-zinc-800 dark:text-slate-300"
-                          )}>
-                            <span className={cn(
-                              "size-1.5 rounded-full mr-1.5",
-                              field.value ? "bg-green-600" : "bg-slate-400"
-                            )} />
+                          <span
+                            className={cn(
+                              'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors',
+                              field.value
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-slate-100 text-slate-800 dark:bg-zinc-800 dark:text-slate-300',
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'size-1.5 rounded-full mr-1.5',
+                                field.value ? 'bg-green-600' : 'bg-slate-400',
+                              )}
+                            />
                             {field.value ? t('active') : t('inactive')}
                           </span>
                         </div>
@@ -358,7 +349,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                       <IconChevronRight
                                         className={cn(
                                           'h-4 w-4 shrink-0 transition-transform duration-200 text-slate-900 dark:text-slate-300',
-                                          openModules[module] && 'rotate-90'
+                                          openModules[module] && 'rotate-90',
                                         )}
                                       />
                                       <span className="text-sm font-medium text-slate-900 dark:text-slate-300">
@@ -367,9 +358,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                     </CollapseTrigger>
                                     <Switch
                                       checked={isModuleChecked(modulePermissions)}
-                                      onCheckedChange={(checked) =>
-                                        handleModulePermissionChange(module, checked)
-                                      }
+                                      onCheckedChange={(checked) => handleModulePermissionChange(module, checked)}
                                       className="data-[state=checked]:bg-slate-900 data-[state=unchecked]:bg-slate-100"
                                     />
                                   </div>
@@ -386,14 +375,21 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
                                         </span>
                                         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                                           <span>{permission.apiPath}</span>
-                                          <span className={cn(
-                                            "text-xs font-mono font-bold px-1.5 py-0.5 rounded",
-                                            permission.httpMethod === 'GET' && "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20",
-                                            permission.httpMethod === 'POST' && "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20",
-                                            permission.httpMethod === 'PUT' && "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20",
-                                            permission.httpMethod === 'DELETE' && "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20",
-                                            permission.httpMethod === 'PATCH' && "text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20"
-                                          )}>
+                                          <span
+                                            className={cn(
+                                              'text-xs font-mono font-bold px-1.5 py-0.5 rounded',
+                                              permission.httpMethod === 'GET' &&
+                                                'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20',
+                                              permission.httpMethod === 'POST' &&
+                                                'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20',
+                                              permission.httpMethod === 'PUT' &&
+                                                'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20',
+                                              permission.httpMethod === 'DELETE' &&
+                                                'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20',
+                                              permission.httpMethod === 'PATCH' &&
+                                                'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-900/20',
+                                            )}
+                                          >
                                             {permission.httpMethod}
                                           </span>
                                         </div>

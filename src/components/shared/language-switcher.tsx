@@ -23,7 +23,11 @@ export function LanguageSwitcher({ showLabel = false, className }: LanguageSwitc
         <Button
           variant="ghost"
           size={showLabel ? 'sm' : 'icon'}
-          className={showLabel ? ['group h-8 rounded-full px-3 text-xs font-medium', className].filter(Boolean).join(' ') : ['group size-8', className].filter(Boolean).join(' ')}
+          className={
+            showLabel
+              ? ['group h-8 rounded-full px-3 text-xs font-medium', className].filter(Boolean).join(' ')
+              : ['group size-8', className].filter(Boolean).join(' ')
+          }
           onClick={toggle}
           aria-label={t('common.language')}
         >

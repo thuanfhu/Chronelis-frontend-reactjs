@@ -29,13 +29,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -123,7 +117,10 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): P
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
-        if (!blob) { reject(new Error(AVATAR_CROP_EMPTY_ERROR)); return }
+        if (!blob) {
+          reject(new Error(AVATAR_CROP_EMPTY_ERROR))
+          return
+        }
         resolve(blob)
       },
       'image/jpeg',
@@ -187,12 +184,16 @@ export function ProfilePage() {
     setCroppedAreaPixels(croppedPixels)
   }, [])
 
-  const [profileForm, setProfileForm] = useState<ProfileFormState>(() => mapUserToForm(currentUser ?? {
-    userId: '',
-    email: '',
-    firstName: '',
-    lastName: '',
-  }))
+  const [profileForm, setProfileForm] = useState<ProfileFormState>(() =>
+    mapUserToForm(
+      currentUser ?? {
+        userId: '',
+        email: '',
+        firstName: '',
+        lastName: '',
+      },
+    ),
+  )
 
   const [newEmail, setNewEmail] = useState('')
   const [passwordForm, setPasswordForm] = useState({
@@ -287,15 +288,16 @@ export function ProfilePage() {
   }, [passwordForm, t])
 
   const updateProfileMutation = useMutation({
-    mutationFn: () => userApi.updateProfile({
-      firstName: profileForm.firstName.trim(),
-      lastName: profileForm.lastName.trim(),
-      nickname: profileForm.nickname.trim() || undefined,
-      avatarUrl: profileForm.avatarUrl.trim() || undefined,
-      biography: profileForm.biography.trim() || undefined,
-      city: profileForm.city.trim() || undefined,
-      nationality: profileForm.nationality.trim() || undefined,
-    }),
+    mutationFn: () =>
+      userApi.updateProfile({
+        firstName: profileForm.firstName.trim(),
+        lastName: profileForm.lastName.trim(),
+        nickname: profileForm.nickname.trim() || undefined,
+        avatarUrl: profileForm.avatarUrl.trim() || undefined,
+        biography: profileForm.biography.trim() || undefined,
+        city: profileForm.city.trim() || undefined,
+        nationality: profileForm.nationality.trim() || undefined,
+      }),
     onSuccess: (updatedUser) => {
       queryClient.setQueryData(queryKeys.auth.me, updatedUser)
       if (accessToken) {
@@ -312,9 +314,10 @@ export function ProfilePage() {
   })
 
   const updateEmailMutation = useMutation({
-    mutationFn: () => userApi.updateEmail({
-      newEmail: newEmail.trim(),
-    }),
+    mutationFn: () =>
+      userApi.updateEmail({
+        newEmail: newEmail.trim(),
+      }),
     onSuccess: (message) => {
       setPendingEmail(newEmail.trim())
       setNewEmail('')
@@ -326,11 +329,12 @@ export function ProfilePage() {
   })
 
   const updatePasswordMutation = useMutation({
-    mutationFn: () => userApi.updatePassword({
-      currentPassword: passwordForm.currentPassword,
-      newPassword: passwordForm.newPassword,
-      confirmPassword: passwordForm.confirmPassword,
-    }),
+    mutationFn: () =>
+      userApi.updatePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+      }),
     onSuccess: () => {
       toast.success(t('profile.toast.passwordUpdateSuccess'))
       clearSession()
@@ -379,12 +383,13 @@ export function ProfilePage() {
       setRawImageSrc(null)
       toast.success(t('profile.toast.avatarUpdated'))
     } catch (error) {
-      const description = error instanceof Error
-        && error.message
-        && error.message !== AVATAR_CROP_CONTEXT_ERROR
-        && error.message !== AVATAR_CROP_EMPTY_ERROR
-        ? error.message
-        : t('profile.toast.avatarUploadFallback')
+      const description =
+        error instanceof Error &&
+        error.message &&
+        error.message !== AVATAR_CROP_CONTEXT_ERROR &&
+        error.message !== AVATAR_CROP_EMPTY_ERROR
+          ? error.message
+          : t('profile.toast.avatarUploadFallback')
       toast.error(t('profile.toast.avatarUploadFailed'), { description })
     } finally {
       setAvatarUploading(false)
@@ -404,9 +409,7 @@ export function ProfilePage() {
   if (!loadedUser) {
     return (
       <Card className="border-dashed">
-        <CardContent className="py-10 text-sm text-muted-foreground">
-          {t('profile.loadFailed')}
-        </CardContent>
+        <CardContent className="py-10 text-sm text-muted-foreground">{t('profile.loadFailed')}</CardContent>
       </Card>
     )
   }
@@ -428,9 +431,7 @@ export function ProfilePage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{t('profile.title')}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t('profile.description')}
-            </p>
+            <p className="text-sm text-muted-foreground">{t('profile.description')}</p>
           </div>
         </motion.div>
       </div>
@@ -521,7 +522,9 @@ export function ProfilePage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{profileForm.firstName} {profileForm.lastName}</p>
+                  <p className="truncate text-sm font-medium">
+                    {profileForm.firstName} {profileForm.lastName}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">{profileForm.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{t('profile.labels.avatarHelp')}</p>
                 </div>
@@ -596,14 +599,16 @@ export function ProfilePage() {
                     options={(countriesQuery.data ?? []).map((country) => ({
                       value: country.name,
                       label: country.name,
-                      prefix: country.flag
-                        ? <img src={country.flag} alt="" className="size-4 rounded-xs object-cover" loading="lazy" />
-                        : null,
+                      prefix: country.flag ? (
+                        <img src={country.flag} alt="" className="size-4 rounded-xs object-cover" loading="lazy" />
+                      ) : null,
                     }))}
                     placeholder={countriesQuery.isLoading ? t('common.loading') : t('profile.placeholders.nationality')}
                     searchPlaceholder={t('profile.placeholders.nationalitySearch')}
                     emptyLabel={t('profile.placeholders.nationalityEmpty')}
-                    onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, nationality: nextValue, city: '' }))}
+                    onValueChange={(nextValue) =>
+                      setProfileForm((prev) => ({ ...prev, nationality: nextValue, city: '' }))
+                    }
                   />
                 </div>
 
@@ -611,7 +616,9 @@ export function ProfilePage() {
                   <Label htmlFor="profile-city">
                     {t('profile.labels.city')}
                     {!profileForm.nationality && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">({t('profile.labels.selectNationalityFirst')})</span>
+                      <span className="ml-1 text-[10px] text-muted-foreground">
+                        ({t('profile.labels.selectNationalityFirst')})
+                      </span>
                     )}
                   </Label>
                   <SearchableSelectPopover
@@ -621,9 +628,15 @@ export function ProfilePage() {
                       label: city,
                       description: profileForm.nationality || undefined,
                     }))}
-                    placeholder={citiesQuery.isLoading ? t('profile.placeholders.cityLoading') : t('profile.placeholders.city')}
+                    placeholder={
+                      citiesQuery.isLoading ? t('profile.placeholders.cityLoading') : t('profile.placeholders.city')
+                    }
                     searchPlaceholder={t('profile.placeholders.citySearch')}
-                    emptyLabel={profileForm.nationality ? t('profile.placeholders.cityEmpty') : t('profile.placeholders.citySelectNationality')}
+                    emptyLabel={
+                      profileForm.nationality
+                        ? t('profile.placeholders.cityEmpty')
+                        : t('profile.placeholders.citySelectNationality')
+                    }
                     disabled={!profileForm.nationality}
                     onValueChange={(nextValue) => setProfileForm((prev) => ({ ...prev, city: nextValue }))}
                   />
@@ -641,16 +654,18 @@ export function ProfilePage() {
                 />
               </div>
 
-              {profileValidationError && (
-                <p className="text-sm text-destructive">{profileValidationError}</p>
-              )}
+              {profileValidationError && <p className="text-sm text-destructive">{profileValidationError}</p>}
 
               <div className="flex justify-end">
                 <Button
                   onClick={() => updateProfileMutation.mutate()}
                   disabled={updateProfileMutation.isPending || avatarUploading || Boolean(profileValidationError)}
                 >
-                  {updateProfileMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  {updateProfileMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Save className="size-4" />
+                  )}
                   {t('profile.actions.saveProfile')}
                 </Button>
               </div>
@@ -662,9 +677,7 @@ export function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('profile.sections.emailTitle')}</CardTitle>
-              <CardDescription>
-                {t('profile.sections.emailDescription')}
-              </CardDescription>
+              <CardDescription>{t('profile.sections.emailDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="rounded-lg border bg-muted/20 p-4">
@@ -696,7 +709,11 @@ export function ProfilePage() {
                   onClick={() => updateEmailMutation.mutate()}
                   disabled={updateEmailMutation.isPending || Boolean(emailValidationError)}
                 >
-                  {updateEmailMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
+                  {updateEmailMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Mail className="size-4" />
+                  )}
                   {t('profile.actions.sendEmailChange')}
                 </Button>
               </div>
@@ -708,9 +725,7 @@ export function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>{t('profile.changePassword')}</CardTitle>
-              <CardDescription>
-                {t('profile.sections.passwordDescription')}
-              </CardDescription>
+              <CardDescription>{t('profile.sections.passwordDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
@@ -766,23 +781,27 @@ export function ProfilePage() {
                     type="button"
                     className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
                     onClick={() => setShowPassword((prev) => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
-                    aria-label={showPassword.confirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
+                    aria-label={
+                      showPassword.confirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')
+                    }
                   >
                     {showPassword.confirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
               </div>
 
-              {passwordValidationError && (
-                <p className="text-sm text-destructive">{passwordValidationError}</p>
-              )}
+              {passwordValidationError && <p className="text-sm text-destructive">{passwordValidationError}</p>}
 
               <div className="flex justify-end">
                 <Button
                   onClick={() => updatePasswordMutation.mutate()}
                   disabled={updatePasswordMutation.isPending || Boolean(passwordValidationError)}
                 >
-                  {updatePasswordMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
+                  {updatePasswordMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Shield className="size-4" />
+                  )}
                   {t('profile.actions.updatePassword')}
                 </Button>
               </div>
@@ -792,7 +811,15 @@ export function ProfilePage() {
       </Tabs>
 
       {/* ─── Avatar Crop Dialog ─── */}
-      <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!open && !avatarUploading) { setCropDialogOpen(false); setRawImageSrc(null) } }}>
+      <Dialog
+        open={cropDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !avatarUploading) {
+            setCropDialogOpen(false)
+            setRawImageSrc(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -861,12 +888,20 @@ export function ProfilePage() {
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => { setCropDialogOpen(false); setRawImageSrc(null) }}
+              onClick={() => {
+                setCropDialogOpen(false)
+                setRawImageSrc(null)
+              }}
               disabled={avatarUploading}
             >
               {t('common.cancel')}
             </Button>
-            <Button onClick={() => { void handleCropConfirm() }} disabled={avatarUploading}>
+            <Button
+              onClick={() => {
+                void handleCropConfirm()
+              }}
+              disabled={avatarUploading}
+            >
               {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Crop className="size-4" />}
               {t('profile.actions.applyAvatar')}
             </Button>

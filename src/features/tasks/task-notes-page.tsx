@@ -102,7 +102,9 @@ const RichTextStyle = Mark.create({
       color ? `color: ${color}` : '',
       backgroundColor ? `background-color: ${backgroundColor}` : '',
       fontSize ? `font-size: ${fontSize}` : '',
-    ].filter(Boolean).join('; ')
+    ]
+      .filter(Boolean)
+      .join('; ')
 
     return ['span', mergeAttributes(attrs, mergedStyle ? { style: mergedStyle } : {}), 0]
   },
@@ -126,17 +128,14 @@ const RichImage = Image.extend({
   renderHTML({ HTMLAttributes }) {
     const { width, dataAlign, style, ...attrs } = HTMLAttributes
     const align = dataAlign === 'left' || dataAlign === 'right' || dataAlign === 'center' ? dataAlign : 'center'
-    const marginStyle = align === 'left'
-      ? 'margin-left: 0; margin-right: auto'
-      : align === 'right'
-        ? 'margin-left: auto; margin-right: 0'
-        : 'margin-left: auto; margin-right: auto'
+    const marginStyle =
+      align === 'left'
+        ? 'margin-left: 0; margin-right: auto'
+        : align === 'right'
+          ? 'margin-left: auto; margin-right: 0'
+          : 'margin-left: auto; margin-right: auto'
 
-    const mergedStyle = [
-      style,
-      width ? `width: ${width}` : '',
-      marginStyle,
-    ].filter(Boolean).join('; ')
+    const mergedStyle = [style, width ? `width: ${width}` : '', marginStyle].filter(Boolean).join('; ')
 
     return ['img', mergeAttributes(attrs, { style: mergedStyle, 'data-align': align }), 0]
   },
@@ -361,7 +360,11 @@ export function TaskNotesPage() {
   const updateImageWidth = (delta: number) => {
     if (!editor || !imageSelected) return
     const nextWidth = Math.min(100, Math.max(25, selectedImageWidth + delta))
-    editor.chain().focus().updateAttributes('image', { width: `${nextWidth}%` }).run()
+    editor
+      .chain()
+      .focus()
+      .updateAttributes('image', { width: `${nextWidth}%` })
+      .run()
   }
 
   const alignImage = (dataAlign: 'left' | 'center' | 'right') => {
@@ -389,7 +392,7 @@ export function TaskNotesPage() {
       <PageHeader
         title={t('task.notesTitle')}
         description={t('task.notesPageDescription')}
-        actions={(
+        actions={
           <>
             <Button variant="outline" size="sm" onClick={handleBack}>
               <ArrowLeft className="size-4" />
@@ -404,7 +407,7 @@ export function TaskNotesPage() {
               {t('task.notesSaveAction')}
             </Button>
           </>
-        )}
+        }
       />
 
       {!canEditNotes && permissionsReady && (
@@ -419,7 +422,9 @@ export function TaskNotesPage() {
             <div>
               <CardTitle className="text-base">{taskQuery.data?.title ?? t('task.notesTaskFallback')}</CardTitle>
               <CardDescription>
-                {lastSavedAt ? t('task.notesLastSaved', { date: formatDateTime(lastSavedAt) }) : t('task.notesNoRecentSave')}
+                {lastSavedAt
+                  ? t('task.notesLastSaved', { date: formatDateTime(lastSavedAt) })
+                  : t('task.notesNoRecentSave')}
               </CardDescription>
             </div>
             <div className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
@@ -439,45 +444,107 @@ export function TaskNotesPage() {
             <>
               <div className="sticky top-0 z-10 space-y-2 border-b border-border/70 bg-background/95 p-3 backdrop-blur">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <ToolbarButton title="Heading 1" active={editor?.isActive('heading', { level: 1 })} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}>
+                  <ToolbarButton
+                    title="Heading 1"
+                    active={editor?.isActive('heading', { level: 1 })}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                  >
                     <Heading1 className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Heading 2" active={editor?.isActive('heading', { level: 2 })} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>
+                  <ToolbarButton
+                    title="Heading 2"
+                    active={editor?.isActive('heading', { level: 2 })}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                  >
                     <Heading2 className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Bold (Ctrl/Cmd+B)" active={editor?.isActive('bold')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleBold().run()}>
+                  <ToolbarButton
+                    title="Bold (Ctrl/Cmd+B)"
+                    active={editor?.isActive('bold')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleBold().run()}
+                  >
                     <Bold className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Italic (Ctrl/Cmd+I)" active={editor?.isActive('italic')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleItalic().run()}>
+                  <ToolbarButton
+                    title="Italic (Ctrl/Cmd+I)"
+                    active={editor?.isActive('italic')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleItalic().run()}
+                  >
                     <Italic className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Underline (Ctrl/Cmd+U)" active={editor?.isActive('underline')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleUnderline().run()}>
+                  <ToolbarButton
+                    title="Underline (Ctrl/Cmd+U)"
+                    active={editor?.isActive('underline')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                  >
                     <UnderlineIcon className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Strike" active={editor?.isActive('strike')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleStrike().run()}>
+                  <ToolbarButton
+                    title="Strike"
+                    active={editor?.isActive('strike')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleStrike().run()}
+                  >
                     <Strikethrough className="size-4" />
                   </ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="Bulleted list" active={editor?.isActive('bulletList')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
+                  <ToolbarButton
+                    title="Bulleted list"
+                    active={editor?.isActive('bulletList')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                  >
                     <List className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Ordered list" active={editor?.isActive('orderedList')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>
+                  <ToolbarButton
+                    title="Ordered list"
+                    active={editor?.isActive('orderedList')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                  >
                     <ListOrdered className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Quote" active={editor?.isActive('blockquote')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>
+                  <ToolbarButton
+                    title="Quote"
+                    active={editor?.isActive('blockquote')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+                  >
                     <Quote className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Code block" active={editor?.isActive('codeBlock')} disabled={!canEditNotes} onClick={() => editor?.chain().focus().toggleCodeBlock().run()}>
+                  <ToolbarButton
+                    title="Code block"
+                    active={editor?.isActive('codeBlock')}
+                    disabled={!canEditNotes}
+                    onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+                  >
                     <Code className="size-4" />
                   </ToolbarButton>
                   <ToolbarDivider />
-                  <ToolbarButton title="Undo" disabled={!canEditNotes || !editor?.can().undo()} onClick={() => editor?.chain().focus().undo().run()}>
+                  <ToolbarButton
+                    title="Undo"
+                    disabled={!canEditNotes || !editor?.can().undo()}
+                    onClick={() => editor?.chain().focus().undo().run()}
+                  >
                     <Undo2 className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Redo" disabled={!canEditNotes || !editor?.can().redo()} onClick={() => editor?.chain().focus().redo().run()}>
+                  <ToolbarButton
+                    title="Redo"
+                    disabled={!canEditNotes || !editor?.can().redo()}
+                    onClick={() => editor?.chain().focus().redo().run()}
+                  >
                     <Redo2 className="size-4" />
                   </ToolbarButton>
-                  <ToolbarButton title="Upload image" disabled={!canEditNotes} onClick={() => fileInputRef.current?.click()}>
+                  <ToolbarButton
+                    title="Upload image"
+                    disabled={!canEditNotes}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <ImagePlus className="size-4" />
                   </ToolbarButton>
                   <input
@@ -498,24 +565,55 @@ export function TaskNotesPage() {
                   <div className="flex items-center gap-1 rounded-md border border-border/70 bg-muted/25 px-2 py-1">
                     <Paintbrush className="size-3.5 text-muted-foreground" />
                     {TEXT_COLORS.map((color) => (
-                      <ColorButton key={color} color={color} disabled={!canEditNotes} onClick={() => applyTextColor(color)} />
+                      <ColorButton
+                        key={color}
+                        color={color}
+                        disabled={!canEditNotes}
+                        onClick={() => applyTextColor(color)}
+                      />
                     ))}
-                    <Input type="color" className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0" disabled={!canEditNotes} onChange={(event) => applyTextColor(event.target.value)} title="Custom text color" />
+                    <Input
+                      type="color"
+                      className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0"
+                      disabled={!canEditNotes}
+                      onChange={(event) => applyTextColor(event.target.value)}
+                      title="Custom text color"
+                    />
                   </div>
                   <div className="flex items-center gap-1 rounded-md border border-border/70 bg-muted/25 px-2 py-1">
                     <Highlighter className="size-3.5 text-muted-foreground" />
                     {HIGHLIGHT_COLORS.map((color) => (
-                      <ColorButton key={color} color={color} disabled={!canEditNotes} onClick={() => applyHighlight(color)} />
+                      <ColorButton
+                        key={color}
+                        color={color}
+                        disabled={!canEditNotes}
+                        onClick={() => applyHighlight(color)}
+                      />
                     ))}
                   </div>
                   <div className="flex items-center gap-1 rounded-md border border-border/70 bg-muted/25 px-2 py-1">
                     <span className="text-xs font-semibold text-muted-foreground">Size</span>
                     {FONT_SIZES.map((size) => (
-                      <Button key={size.value} type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={!canEditNotes} onClick={() => applyFontSize(size.value)}>
+                      <Button
+                        key={size.value}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        disabled={!canEditNotes}
+                        onClick={() => applyFontSize(size.value)}
+                      >
                         {size.label}
                       </Button>
                     ))}
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={!canEditNotes} onClick={clearMarks}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      disabled={!canEditNotes}
+                      onClick={clearMarks}
+                    >
                       Clear
                     </Button>
                   </div>
@@ -524,7 +622,11 @@ export function TaskNotesPage() {
                 {imageSelected && (
                   <div className="flex flex-wrap items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 px-2 py-1.5">
                     <span className="px-1 text-xs font-semibold text-primary">Image {selectedImageWidth}%</span>
-                    <ToolbarButton title="Zoom out image" disabled={!canEditNotes} onClick={() => updateImageWidth(-10)}>
+                    <ToolbarButton
+                      title="Zoom out image"
+                      disabled={!canEditNotes}
+                      onClick={() => updateImageWidth(-10)}
+                    >
                       <ZoomOut className="size-4" />
                     </ToolbarButton>
                     <ToolbarButton title="Zoom in image" disabled={!canEditNotes} onClick={() => updateImageWidth(10)}>
@@ -533,13 +635,28 @@ export function TaskNotesPage() {
                     <ToolbarButton title="Align image left" disabled={!canEditNotes} onClick={() => alignImage('left')}>
                       <AlignLeft className="size-4" />
                     </ToolbarButton>
-                    <ToolbarButton title="Align image center" disabled={!canEditNotes} onClick={() => alignImage('center')}>
+                    <ToolbarButton
+                      title="Align image center"
+                      disabled={!canEditNotes}
+                      onClick={() => alignImage('center')}
+                    >
                       <AlignCenter className="size-4" />
                     </ToolbarButton>
-                    <ToolbarButton title="Align image right" disabled={!canEditNotes} onClick={() => alignImage('right')}>
+                    <ToolbarButton
+                      title="Align image right"
+                      disabled={!canEditNotes}
+                      onClick={() => alignImage('right')}
+                    >
                       <AlignRight className="size-4" />
                     </ToolbarButton>
-                    <Button type="button" variant="destructive" size="sm" className="h-8 gap-1 px-2" disabled={!canEditNotes} onClick={deleteSelectedImage}>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 gap-1 px-2"
+                      disabled={!canEditNotes}
+                      onClick={deleteSelectedImage}
+                    >
                       <Trash2 className="size-4" />
                       Delete
                     </Button>
@@ -547,7 +664,12 @@ export function TaskNotesPage() {
                 )}
               </div>
 
-              <div className={cn('task-notes-editor bg-background px-5 py-4', !canEditNotes && 'pointer-events-none opacity-75')}>
+              <div
+                className={cn(
+                  'task-notes-editor bg-background px-5 py-4',
+                  !canEditNotes && 'pointer-events-none opacity-75',
+                )}
+              >
                 <EditorContent editor={editor} />
               </div>
             </>

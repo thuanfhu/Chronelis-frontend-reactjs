@@ -10,7 +10,10 @@ interface Props {
 }
 
 type BarEntry = { name: string; value: number; color: string; pct: number }
-interface TipProps { active?: boolean; payload?: Array<{ value: number; payload: BarEntry }> }
+interface TipProps {
+  active?: boolean
+  payload?: Array<{ value: number; payload: BarEntry }>
+}
 
 function CustomTooltip({ active, payload }: TipProps) {
   if (!active || !payload?.length) return null

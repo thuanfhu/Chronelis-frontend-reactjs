@@ -39,22 +39,16 @@ export function AuthSharedShell({
         </div>
       </div>
       <div className="chronelis-auth-forms-container">
-        <div className={cn('chronelis-auth-signin-signup', formsClassName)}>
-          {children}
-        </div>
+        <div className={cn('chronelis-auth-signin-signup', formsClassName)}>{children}</div>
       </div>
 
       <div className="chronelis-auth-panels-container">
         <section className="chronelis-auth-panel chronelis-auth-left-panel">
-          <div className="chronelis-auth-panel-content">
-            {leftPanel}
-          </div>
+          <div className="chronelis-auth-panel-content">{leftPanel}</div>
         </section>
 
         <section className="chronelis-auth-panel chronelis-auth-right-panel">
-          <div className="chronelis-auth-panel-content">
-            {rightPanel}
-          </div>
+          <div className="chronelis-auth-panel-content">{rightPanel}</div>
         </section>
       </div>
     </div>

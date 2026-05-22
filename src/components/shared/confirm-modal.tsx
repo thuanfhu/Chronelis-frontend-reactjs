@@ -41,21 +41,24 @@ export function ConfirmModal({
   const resolvedCancelText = cancelText ?? t('common.cancel')
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => { if (!loading) onOpenChange(nextOpen) }}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!loading) onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent className="sm:max-w-md" showCloseButton={!loading}>
         <DialogHeader>
           <DialogTitle className="inline-flex items-center gap-2">
             <span
               className={cn(
                 'inline-flex size-8 items-center justify-center rounded-full',
-                confirmVariant === 'destructive'
-                  ? 'bg-destructive/10 text-destructive'
-                  : 'bg-primary/10 text-primary',
+                confirmVariant === 'destructive' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary',
               )}
             >
               <AlertTriangle className="size-4" />
             </span>
-              {resolvedTitle}
+            {resolvedTitle}
           </DialogTitle>
           <DialogDescription className="space-y-2 text-left leading-relaxed [&_mark]:rounded-md [&_mark]:bg-destructive/10 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-foreground [&_strong]:break-all [&_strong]:font-semibold [&_strong]:text-foreground">
             {description}

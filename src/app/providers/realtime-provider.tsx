@@ -19,28 +19,27 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount })
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
         toast.info(t('notification.newTitle'), {
-          description:
-            typeof parsed.data === 'object' ? t('notification.newDescription') : undefined,
+          description: typeof parsed.data === 'object' ? t('notification.newDescription') : undefined,
         })
       }
     },
     [queryClient, t],
   )
 
-  const handleUnreadCount = useCallback(
-    () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount })
-    },
-    [queryClient],
-  )
+  const handleUnreadCount = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount })
+  }, [queryClient])
 
-  const handleWsErrors = useCallback((rawBody: string) => {
-    const parsed = tryParse(rawBody)
-    const firstError = parsed?.errors?.[0]
-    if (firstError?.message) {
-      toast.error(t('notification.realtimeErrorTitle'), { description: firstError.message })
-    }
-  }, [t])
+  const handleWsErrors = useCallback(
+    (rawBody: string) => {
+      const parsed = tryParse(rawBody)
+      const firstError = parsed?.errors?.[0]
+      if (firstError?.message) {
+        toast.error(t('notification.realtimeErrorTitle'), { description: firstError.message })
+      }
+    },
+    [t],
+  )
 
   useRealtimeSubscription('/client/private/notifications', handleNotification)
   useRealtimeSubscription('/client/private/notifications/unread-count', handleUnreadCount)

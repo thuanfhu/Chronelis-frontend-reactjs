@@ -1,7 +1,19 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Bell, PanelsTopLeft, FolderKanban, ArrowRight, Plus, Briefcase, ShieldAlert, Clock, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Bell,
+  PanelsTopLeft,
+  FolderKanban,
+  ArrowRight,
+  Plus,
+  Briefcase,
+  ShieldAlert,
+  Clock,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -39,7 +51,6 @@ export function DashboardPage() {
   const workspaceCount = workspaceQuery.data?.meta.totalElements ?? 0
   const unreadCount = notificationCountQuery.data?.unreadCount ?? 0
   const myWork = myWorkQuery.data
-
   const assignedTasks = useMemo(() => myWork?.assignedTasks ?? [], [myWork])
 
   const isLoading = workspaceQuery.isLoading || myWorkQuery.isLoading
@@ -49,9 +60,7 @@ export function DashboardPage() {
       <PageHeader
         title={t('dashboard.greeting', { name: currentUser?.firstName ?? t('dashboard.userFallback') }) + ' 👋'}
         description={t('dashboard.recentWorkspaces')}
-      />
-
-      {/* Overview panel */}
+      />      {/* Overview panel */}
       {isLoading ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <Skeleton className="h-[280px] rounded-2xl lg:col-span-1" />
@@ -63,15 +72,47 @@ export function DashboardPage() {
           {/* Compact stats */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="pb-3 pt-5">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">{t('dashboard.overview')}</CardTitle>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+                {t('dashboard.overview')}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pb-5">
-              <MiniStat icon={PanelsTopLeft} label={t('dashboard.totalWorkspaces')} value={workspaceCount} accent="text-primary bg-primary/10" />
-              <MiniStat icon={FolderKanban} label={t('dashboard.totalProjects')} value={workspaces.length} accent="text-violet-600 bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300" />
-              <MiniStat icon={Bell} label={t('notification.title')} value={unreadCount} accent="text-rose-600 bg-rose-100 dark:bg-rose-500/20 dark:text-rose-300" />
-              <MiniStat icon={Briefcase} label={t('dashboard.tasksAssigned')} value={myWork?.assignedCount ?? 0} accent="text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300" />
-              <MiniStat icon={ShieldAlert} label={t('dashboard.blockedTasks')} value={myWork?.blockedCount ?? 0} accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300" />
-              <MiniStat icon={Clock} label={t('dashboard.overdue')} value={myWork?.overdueCount ?? 0} accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300" />
+              <MiniStat
+                icon={PanelsTopLeft}
+                label={t('dashboard.totalWorkspaces')}
+                value={workspaceCount}
+                accent="text-primary bg-primary/10"
+              />
+              <MiniStat
+                icon={FolderKanban}
+                label={t('dashboard.totalProjects')}
+                value={workspaces.length}
+                accent="text-violet-600 bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300"
+              />
+              <MiniStat
+                icon={Bell}
+                label={t('notification.title')}
+                value={unreadCount}
+                accent="text-rose-600 bg-rose-100 dark:bg-rose-500/20 dark:text-rose-300"
+              />
+              <MiniStat
+                icon={Briefcase}
+                label={t('dashboard.tasksAssigned')}
+                value={myWork?.assignedCount ?? 0}
+                accent="text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300"
+              />
+              <MiniStat
+                icon={ShieldAlert}
+                label={t('dashboard.blockedTasks')}
+                value={myWork?.blockedCount ?? 0}
+                accent="text-orange-600 bg-orange-100 dark:bg-orange-500/20 dark:text-orange-300"
+              />
+              <MiniStat
+                icon={Clock}
+                label={t('dashboard.overdue')}
+                value={myWork?.overdueCount ?? 0}
+                accent="text-sky-600 bg-sky-100 dark:bg-sky-500/20 dark:text-sky-300"
+              />
             </CardContent>
           </Card>
 
@@ -187,11 +228,11 @@ export function DashboardPage() {
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
-                  
+
                   {Array.from({ length: workspaceQuery.data.meta.totalPages }, (_, i) => i + 1).map((p) => (
                     <Button
                       key={p}
-                      variant={p === page ? "default" : "outline"}
+                      variant={p === page ? 'default' : 'outline'}
                       size="icon"
                       className="size-8"
                       onClick={() => setPage(p)}
@@ -223,7 +264,17 @@ export function DashboardPage() {
   )
 }
 
-function MiniStat({ icon: Icon, label, value, accent }: { icon: typeof PanelsTopLeft; label: string; value: number; accent: string }) {
+function MiniStat({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: typeof PanelsTopLeft
+  label: string
+  value: number
+  accent: string
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-2.5">

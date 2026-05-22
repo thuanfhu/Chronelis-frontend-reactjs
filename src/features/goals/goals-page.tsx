@@ -67,19 +67,23 @@ const goalTypeConfig: Record<GoalType, { icon: typeof Timer; color: string }> = 
 const goalStatusConfig: Record<GoalStatusType, { icon: typeof CircleDashed; className: string }> = {
   NOT_STARTED: {
     icon: CircleDashed,
-    className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
+    className:
+      'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
   },
   IN_PROGRESS: {
     icon: PlayCircle,
-    className: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
+    className:
+      'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
   },
   ON_HOLD: {
     icon: PauseCircle,
-    className: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
+    className:
+      'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
   },
   COMPLETED: {
     icon: CheckCircle2,
-    className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
+    className:
+      'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
   },
 }
 
@@ -175,7 +179,12 @@ export function GoalsPage() {
   })
 
   const teamMembershipQuery = useQuery({
-    queryKey: ['workspace-teams', 'membership-map', workspaceId, (teamsQuery.data ?? []).map((team) => team.id).join(',')],
+    queryKey: [
+      'workspace-teams',
+      'membership-map',
+      workspaceId,
+      (teamsQuery.data ?? []).map((team) => team.id).join(','),
+    ],
     queryFn: async () => {
       const entries = await Promise.all(
         (teamsQuery.data ?? []).map(async (team) => {
@@ -209,23 +218,19 @@ export function GoalsPage() {
   const teams = teamsQuery.data ?? []
   const project = projectQuery.data ?? null
   const currentMember = members.find((member) => member.user.userId === currentUserId)
-  const currentRole: WorkspaceMemberRoleType = workspaceQuery.data?.owner.userId === currentUserId
-    ? 'OWNER'
-    : currentMember?.role ?? 'MEMBER'
+  const currentRole: WorkspaceMemberRoleType =
+    workspaceQuery.data?.owner.userId === currentUserId ? 'OWNER' : (currentMember?.role ?? 'MEMBER')
   const isOwner = currentRole === 'OWNER'
   const isWorkspaceManager = isOwner
   const teamMembershipMap = teamMembershipQuery.data ?? new Map<number, Set<string>>()
-  const isCurrentUserInManagerTeam = (teamId?: number) => Boolean(
-    teamId
-    && currentUserId
-    && teamMembershipMap.get(teamId)?.has(currentUserId),
-  )
-  const canManageProject = isWorkspaceManager
-    || project?.managerUser?.userId === currentUserId
-    || isCurrentUserInManagerTeam(project?.managerTeamId)
-  const canManageGoal = (goal: Goal) => canManageProject
-    || goal.managerUser?.userId === currentUserId
-    || isCurrentUserInManagerTeam(goal.managerTeamId)
+  const isCurrentUserInManagerTeam = (teamId?: number) =>
+    Boolean(teamId && currentUserId && teamMembershipMap.get(teamId)?.has(currentUserId))
+  const canManageProject =
+    isWorkspaceManager ||
+    project?.managerUser?.userId === currentUserId ||
+    isCurrentUserInManagerTeam(project?.managerTeamId)
+  const canManageGoal = (goal: Goal) =>
+    canManageProject || goal.managerUser?.userId === currentUserId || isCurrentUserInManagerTeam(goal.managerTeamId)
   const currentRoleLabel = t(`workspace.role.${currentRole.toLowerCase()}`)
   const getMemberRoleLabel = (role: WorkspaceMemberRoleType) => t(`workspace.role.${role.toLowerCase()}`)
 
@@ -265,13 +270,22 @@ export function GoalsPage() {
         goalType,
         status,
         progressPercent: 0,
-        createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+        createdBy: {
+          userId: user?.userId ?? '',
+          email: user?.email ?? '',
+          firstName: user?.firstName ?? '',
+          lastName: user?.lastName ?? '',
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
       queryClient.setQueryData<PageResult<Goal>>(queryKeys.goals.byProject(projectId, 1, 50), (old) => {
         if (!old) return old
-        return { ...old, content: [...old.content, optimisticGoal], meta: { ...old.meta, totalElements: old.meta.totalElements + 1 } }
+        return {
+          ...old,
+          content: [...old.content, optimisticGoal],
+          meta: { ...old.meta, totalElements: old.meta.totalElements + 1 },
+        }
       })
       return { snapshot }
     },
@@ -325,7 +339,13 @@ export function GoalsPage() {
           ...old,
           content: old.content.map((g) =>
             g.id === editGoal.id
-              ? { ...g, title: editTitle.trim(), goalType: editGoalType, status: editStatus, updatedAt: new Date().toISOString() }
+              ? {
+                  ...g,
+                  title: editTitle.trim(),
+                  goalType: editGoalType,
+                  status: editStatus,
+                  updatedAt: new Date().toISOString(),
+                }
               : g,
           ),
         }
@@ -371,7 +391,15 @@ export function GoalsPage() {
     errorTitle: t('goals.toast.deleteFailed'),
   })
 
-  if (goalsQuery.isLoading || goalTasksQuery.isLoading || projectQuery.isLoading || membersQuery.isLoading || teamsQuery.isLoading || workspaceQuery.isLoading || teamMembershipQuery.isLoading) {
+  if (
+    goalsQuery.isLoading ||
+    goalTasksQuery.isLoading ||
+    projectQuery.isLoading ||
+    membersQuery.isLoading ||
+    teamsQuery.isLoading ||
+    workspaceQuery.isLoading ||
+    teamMembershipQuery.isLoading
+  ) {
     return <LoadingPanel />
   }
 
@@ -396,14 +424,12 @@ export function GoalsPage() {
   }
 
   const isGoalUpdateDirty = Boolean(
-    editGoal
-    && (
-      editTitle.trim() !== editInitialTitle
-      || editGoalType !== editInitialGoalType
-      || editStatus !== editInitialStatus
-      || editManagerUserId !== editInitialManagerUserId
-      || editManagerTeamId !== editInitialManagerTeamId
-    ),
+    editGoal &&
+    (editTitle.trim() !== editInitialTitle ||
+      editGoalType !== editInitialGoalType ||
+      editStatus !== editInitialStatus ||
+      editManagerUserId !== editInitialManagerUserId ||
+      editManagerTeamId !== editInitialManagerTeamId),
   )
 
   return (
@@ -424,9 +450,7 @@ export function GoalsPage() {
                 <DialogHeader>
                   <DialogTitle>{t('goals.create')}</DialogTitle>
                   <DialogDescription>
-                    {isOwner
-                      ? t('goals.createOwnerDescription')
-                      : t('goals.createMemberDescription')}
+                    {isOwner ? t('goals.createOwnerDescription') : t('goals.createMemberDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -475,7 +499,10 @@ export function GoalsPage() {
                     <>
                       <div className="space-y-2">
                         <Label>{t('goals.managerUserOptionalLabel')}</Label>
-                        <Select value={managerUserId || 'none'} onValueChange={(value) => setManagerUserId(value === 'none' ? '' : value)}>
+                        <Select
+                          value={managerUserId || 'none'}
+                          onValueChange={(value) => setManagerUserId(value === 'none' ? '' : value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder={t('goals.managerUserPlaceholder')} />
                           </SelectTrigger>
@@ -491,7 +518,10 @@ export function GoalsPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>{t('goals.managerTeamOptionalLabel')}</Label>
-                        <Select value={managerTeamId || 'none'} onValueChange={(value) => setManagerTeamId(value === 'none' ? '' : value)}>
+                        <Select
+                          value={managerTeamId || 'none'}
+                          onValueChange={(value) => setManagerTeamId(value === 'none' ? '' : value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder={t('goals.managerTeamPlaceholder')} />
                           </SelectTrigger>
@@ -509,7 +539,9 @@ export function GoalsPage() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    {t('common.cancel')}
+                  </Button>
                   <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !title.trim()}>
                     {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                     {t('common.create')}
@@ -550,7 +582,11 @@ export function GoalsPage() {
                       {canManageCurrentGoal && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-foreground">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-6 text-muted-foreground hover:text-foreground"
+                            >
                               <MoreHorizontal className="size-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -602,13 +638,17 @@ export function GoalsPage() {
 
                   <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                     <span>{t(`goals.type.${goal.goalType}`)}</span>
-                    <span>{goal.createdBy.firstName} {goal.createdBy.lastName}</span>
+                    <span>
+                      {goal.createdBy.firstName} {goal.createdBy.lastName}
+                    </span>
                   </div>
                   {(goal.managerUser || goal.managerTeamName) && (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {goal.managerUser && (
                         <Badge variant="secondary" className="text-[10px]">
-                          {t('goals.managerUserBadge', { name: `${goal.managerUser.firstName} ${goal.managerUser.lastName}` })}
+                          {t('goals.managerUserBadge', {
+                            name: `${goal.managerUser.firstName} ${goal.managerUser.lastName}`,
+                          })}
                         </Badge>
                       )}
                       {goal.managerTeamName && (
@@ -665,21 +705,29 @@ export function GoalsPage() {
           <DialogHeader>
             <DialogTitle>{t('goals.editTitle')}</DialogTitle>
             <DialogDescription>
-              {isOwner
-                ? t('goals.editOwnerDescription')
-                : t('goals.editMemberDescription')}
+              {isOwner ? t('goals.editOwnerDescription') : t('goals.editMemberDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('goals.titleLabel')}</Label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder={t('goals.editTitlePlaceholder')} />
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder={t('goals.editTitlePlaceholder')}
+              />
             </div>
             <div className="space-y-2">
               <Label>{t('goals.typeLabel')}</Label>
               <div className="flex gap-2">
                 {(Object.keys(goalTypeConfig) as GoalType[]).map((goalTypeOption) => (
-                  <Button key={goalTypeOption} type="button" variant={editGoalType === goalTypeOption ? 'default' : 'outline'} size="sm" onClick={() => setEditGoalType(goalTypeOption)}>
+                  <Button
+                    key={goalTypeOption}
+                    type="button"
+                    variant={editGoalType === goalTypeOption ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setEditGoalType(goalTypeOption)}
+                  >
                     {t(`goals.type.${goalTypeOption}`)}
                   </Button>
                 ))}
@@ -689,7 +737,13 @@ export function GoalsPage() {
               <Label>{t('task.status')}</Label>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(goalStatusConfig) as GoalStatusType[]).map((s) => (
-                  <Button key={s} type="button" variant={editStatus === s ? 'default' : 'outline'} size="sm" onClick={() => setEditStatus(s)}>
+                  <Button
+                    key={s}
+                    type="button"
+                    variant={editStatus === s ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setEditStatus(s)}
+                  >
                     {t('goals.status.' + s)}
                   </Button>
                 ))}
@@ -706,7 +760,10 @@ export function GoalsPage() {
               <>
                 <div className="space-y-2">
                   <Label>{t('goals.managerUserLabel')}</Label>
-                  <Select value={editManagerUserId || 'none'} onValueChange={(value) => setEditManagerUserId(value === 'none' ? '' : value)}>
+                  <Select
+                    value={editManagerUserId || 'none'}
+                    onValueChange={(value) => setEditManagerUserId(value === 'none' ? '' : value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={t('goals.managerUserPlaceholder')} />
                     </SelectTrigger>
@@ -722,7 +779,10 @@ export function GoalsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t('goals.managerTeamLabel')}</Label>
-                  <Select value={editManagerTeamId || 'none'} onValueChange={(value) => setEditManagerTeamId(value === 'none' ? '' : value)}>
+                  <Select
+                    value={editManagerTeamId || 'none'}
+                    onValueChange={(value) => setEditManagerTeamId(value === 'none' ? '' : value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={t('goals.managerTeamPlaceholder')} />
                     </SelectTrigger>
@@ -740,8 +800,13 @@ export function GoalsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending || !editTitle.trim() || !isGoalUpdateDirty}>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => updateMutation.mutate()}
+              disabled={updateMutation.isPending || !editTitle.trim() || !isGoalUpdateDirty}
+            >
               {updateMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {t('common.save')}
             </Button>
@@ -773,7 +838,9 @@ export function GoalsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteGoalTarget(null)}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => setDeleteGoalTarget(null)}>
+              {t('common.cancel')}
+            </Button>
             <Button
               variant="destructive"
               onClick={() => {

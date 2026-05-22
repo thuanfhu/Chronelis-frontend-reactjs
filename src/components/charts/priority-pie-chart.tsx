@@ -60,7 +60,10 @@ export function PriorityPieChart({ tasks, height = 200 }: Props) {
             return (
               <div className="rounded-xl border border-border/60 bg-background px-3 py-2 shadow-xl">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="inline-block size-2.5 rounded-full" style={{ background: PRIORITY_COLOR[entry.payload?.key] ?? '#94a3b8' }} />
+                  <span
+                    className="inline-block size-2.5 rounded-full"
+                    style={{ background: PRIORITY_COLOR[entry.payload?.key] ?? '#94a3b8' }}
+                  />
                   <span className="font-semibold text-foreground">{entry.name}</span>
                   <span className="text-muted-foreground">·</span>
                   <span className="font-bold text-foreground">{entry.value}</span>

@@ -54,9 +54,12 @@ export const workspaceApi = {
   },
 
   async updateMemberRole(workspaceId: number, userId: string, role: WorkspaceMemberRoleType) {
-    const response = await http.patch<ApiResponse<WorkspaceMember>>(`/workspaces/${workspaceId}/members/${userId}/role`, {
-      role,
-    })
+    const response = await http.patch<ApiResponse<WorkspaceMember>>(
+      `/workspaces/${workspaceId}/members/${userId}/role`,
+      {
+        role,
+      },
+    )
     return unwrapData(response.data)
   },
 

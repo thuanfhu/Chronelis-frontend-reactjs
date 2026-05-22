@@ -43,10 +43,13 @@ export function ProjectFormFields({
   const nameId = `${baseId}-project-name`
   const descriptionId = `${baseId}-description`
 
-  const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
-    OWNER: t('workspace.role.owner'),
-    MEMBER: t('workspace.role.member'),
-  }), [t])
+  const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(
+    () => ({
+      OWNER: t('workspace.role.owner'),
+      MEMBER: t('workspace.role.member'),
+    }),
+    [t],
+  )
 
   if (!isOwner) {
     return (
@@ -102,10 +105,7 @@ export function ProjectFormFields({
         </div>
         <div className="space-y-2">
           <Label>{t('workspace.field.visibility')}</Label>
-          <Select
-            value={visibility}
-            onValueChange={(value: 'PUBLIC' | 'PRIVATE') => onVisibilityChange(value)}
-          >
+          <Select value={visibility} onValueChange={(value: 'PUBLIC' | 'PRIVATE') => onVisibilityChange(value)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -115,7 +115,9 @@ export function ProjectFormFields({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            {visibility === 'PUBLIC' ? t('workspace.visibility.publicDescription') : t('workspace.visibility.privateDescription')}
+            {visibility === 'PUBLIC'
+              ? t('workspace.visibility.publicDescription')
+              : t('workspace.visibility.privateDescription')}
           </p>
         </div>
       </TabsContent>

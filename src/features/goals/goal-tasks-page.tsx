@@ -36,39 +36,74 @@ import { useUiStore } from '@/app/store/ui-store'
 import type { GoalStatusType, GoalType, Task, TaskPriorityType } from '@/types/domain'
 
 const goalTypeConfig: Record<GoalType, { translationKey: string; icon: typeof Timer; color: string }> = {
-  SHORT_TERM: { translationKey: 'goals.type.SHORT_TERM', icon: Timer, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  MEDIUM_TERM: { translationKey: 'goals.type.MEDIUM_TERM', icon: Clock, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  LONG_TERM: { translationKey: 'goals.type.LONG_TERM', icon: Milestone, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  SHORT_TERM: {
+    translationKey: 'goals.type.SHORT_TERM',
+    icon: Timer,
+    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  },
+  MEDIUM_TERM: {
+    translationKey: 'goals.type.MEDIUM_TERM',
+    icon: Clock,
+    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  },
+  LONG_TERM: {
+    translationKey: 'goals.type.LONG_TERM',
+    icon: Milestone,
+    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  },
 }
 
-const goalStatusConfig: Record<GoalStatusType, { translationKey: string; icon: typeof CircleDashed; className: string }> = {
+const goalStatusConfig: Record<
+  GoalStatusType,
+  { translationKey: string; icon: typeof CircleDashed; className: string }
+> = {
   NOT_STARTED: {
     translationKey: 'goals.status.NOT_STARTED',
     icon: CircleDashed,
-    className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
+    className:
+      'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/15 dark:text-slate-100',
   },
   IN_PROGRESS: {
     translationKey: 'goals.status.IN_PROGRESS',
     icon: PlayCircle,
-    className: 'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
+    className:
+      'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-400/40 dark:bg-blue-500/20 dark:text-blue-100',
   },
   ON_HOLD: {
     translationKey: 'goals.status.ON_HOLD',
     icon: PauseCircle,
-    className: 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
+    className:
+      'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-400/40 dark:bg-amber-500/20 dark:text-amber-100',
   },
   COMPLETED: {
     translationKey: 'goals.status.COMPLETED',
     icon: CheckCircle2,
-    className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
+    className:
+      'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-100',
   },
 }
 
 const priorityConfig: Record<TaskPriorityType, { translationKey: string; className: string; icon: string }> = {
-  LOW: { translationKey: 'task.priorityLow', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300', icon: '·' },
-  MEDIUM: { translationKey: 'task.priorityMedium', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', icon: '↑' },
-  HIGH: { translationKey: 'task.priorityHigh', className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', icon: '↑↑' },
-  URGENT: { translationKey: 'task.priorityUrgent', className: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300', icon: '!!!' },
+  LOW: {
+    translationKey: 'task.priorityLow',
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
+    icon: '·',
+  },
+  MEDIUM: {
+    translationKey: 'task.priorityMedium',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
+    icon: '↑',
+  },
+  HIGH: {
+    translationKey: 'task.priorityHigh',
+    className: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+    icon: '↑↑',
+  },
+  URGENT: {
+    translationKey: 'task.priorityUrgent',
+    className: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300',
+    icon: '!!!',
+  },
 }
 
 type SortKey = 'status' | 'priority' | 'created' | 'title' | 'dueDate'
@@ -137,7 +172,7 @@ export function GoalTasksPage() {
   const filteredTasks = allTasks.filter((task) => {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
-      if (!task.title.toLowerCase().includes(q) && !(task.description?.toLowerCase().includes(q))) {
+      if (!task.title.toLowerCase().includes(q) && !task.description?.toLowerCase().includes(q)) {
         return false
       }
     }
@@ -180,7 +215,9 @@ export function GoalTasksPage() {
         {goal ? (
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${typeConfig?.color ?? ''}`}>
+              <div
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${typeConfig?.color ?? ''}`}
+              >
                 <TypeIcon className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -203,12 +240,18 @@ export function GoalTasksPage() {
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <ListTodo className="size-3.5" />
-                    <span>{allTasks.length === 0 ? t('goals.taskCountZero') : t('goals.taskCount', { count: allTasks.length })}</span>
+                    <span>
+                      {allTasks.length === 0
+                        ? t('goals.taskCountZero')
+                        : t('goals.taskCount', { count: allTasks.length })}
+                    </span>
                   </div>
                   {goal.managerUser && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <User className="size-3" />
-                      <span>{goal.managerUser.firstName} {goal.managerUser.lastName}</span>
+                      <span>
+                        {goal.managerUser.firstName} {goal.managerUser.lastName}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -226,25 +269,42 @@ export function GoalTasksPage() {
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setPage(1)
+            }}
             placeholder={t('goals.tasksPage.searchPlaceholder')}
             className="h-9 pl-8 text-sm"
           />
         </div>
 
-        <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v as TaskPriorityType | 'ALL'); setPage(1) }}>
+        <Select
+          value={priorityFilter}
+          onValueChange={(v) => {
+            setPriorityFilter(v as TaskPriorityType | 'ALL')
+            setPage(1)
+          }}
+        >
           <SelectTrigger className="h-9 w-46 shrink-0 px-3 text-sm whitespace-nowrap">
             <SelectValue placeholder={t('goals.tasksPage.priorityPlaceholder')} />
           </SelectTrigger>
           <SelectContent className="min-w-46">
             <SelectItem value="ALL">{t('goals.tasksPage.allPriorities')}</SelectItem>
             {(['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
-              <SelectItem key={p} value={p}>{t(priorityConfig[p].translationKey)}</SelectItem>
+              <SelectItem key={p} value={p}>
+                {t(priorityConfig[p].translationKey)}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as 'ALL' | 'OPEN' | 'CLOSED'); setPage(1) }}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => {
+            setStatusFilter(v as 'ALL' | 'OPEN' | 'CLOSED')
+            setPage(1)
+          }}
+        >
           <SelectTrigger className="h-9 w-42 shrink-0 px-3 text-sm whitespace-nowrap">
             <SelectValue />
           </SelectTrigger>
@@ -308,7 +368,11 @@ export function GoalTasksPage() {
               const pCfg = priorityConfig[task.priority]
               const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1
               const dueDateStr = task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                  })
                 : null
               const isPastDue = task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date()
               const statusChipClass = task.status.isClosed
@@ -329,22 +393,32 @@ export function GoalTasksPage() {
 
                   {/* Title + description */}
                   <div className="min-w-0">
-                    <p className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}>
+                    <p
+                      className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}
+                    >
                       {highlightMatch(task.title, searchQuery.trim())}
                     </p>
                     {task.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">{highlightMatch(task.description, searchQuery.trim())}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">
+                        {highlightMatch(task.description, searchQuery.trim())}
+                      </p>
                     )}
                     {/* Mobile-only inline badges */}
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
-                      <span className={`inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium ${statusChipClass}`}>
+                      <span
+                        className={`inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium ${statusChipClass}`}
+                      >
                         {task.status.name}
                       </span>
-                      <span className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}>
+                      <span
+                        className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}
+                      >
                         {t(pCfg.translationKey)}
                       </span>
                       {dueDateStr && (
-                        <span className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        <span
+                          className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}
+                        >
                           {dueDateStr}
                         </span>
                       )}
@@ -352,12 +426,16 @@ export function GoalTasksPage() {
                   </div>
 
                   {/* Status */}
-                  <span className={`hidden truncate sm:inline-flex h-6 items-center justify-center justify-self-center rounded-full border px-2.5 text-[11px] font-medium min-w-[5.5rem] ${statusChipClass}`}>
+                  <span
+                    className={`hidden truncate sm:inline-flex h-6 items-center justify-center justify-self-center rounded-full border px-2.5 text-[11px] font-medium min-w-[5.5rem] ${statusChipClass}`}
+                  >
                     {task.status.name}
                   </span>
 
                   {/* Priority */}
-                  <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center justify-center justify-self-center min-w-[5rem] ${pCfg.className}`}>
+                  <span
+                    className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center justify-center justify-self-center min-w-[5rem] ${pCfg.className}`}
+                  >
                     {t(pCfg.translationKey)}
                   </span>
 
@@ -367,7 +445,8 @@ export function GoalTasksPage() {
                       <>
                         <Avatar className="size-5 shrink-0">
                           <AvatarFallback className="bg-primary/15 text-[9px] font-bold text-primary">
-                            {task.assignee.firstName.charAt(0)}{task.assignee.lastName.charAt(0)}
+                            {task.assignee.firstName.charAt(0)}
+                            {task.assignee.lastName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <span className="truncate text-[11px] text-muted-foreground max-w-[5rem]">
@@ -385,7 +464,9 @@ export function GoalTasksPage() {
                   </span>
 
                   {/* Due date */}
-                  <span className={`hidden text-right text-[11px] tabular-nums sm:block ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}>
+                  <span
+                    className={`hidden text-right text-[11px] tabular-nums sm:block ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}
+                  >
                     {dueDateStr ?? (
                       <span className="inline-flex items-center gap-1 opacity-30 select-none">
                         <CalendarOff className="size-3" />
@@ -404,12 +485,17 @@ export function GoalTasksPage() {
       <div className="flex items-center justify-between gap-4 pt-0.5">
         <p className="text-xs text-muted-foreground">
           {filteredTasks.length > 0 ? (
-            t(filteredTasks.length !== allTasks.length ? 'goals.tasksPage.showingRangeFiltered' : 'goals.tasksPage.showingRange', {
-              start: (currentPage - 1) * PAGE_SIZE + 1,
-              end: Math.min(currentPage * PAGE_SIZE, filteredTasks.length),
-              filtered: filteredTasks.length,
-              total: allTasks.length,
-            })
+            t(
+              filteredTasks.length !== allTasks.length
+                ? 'goals.tasksPage.showingRangeFiltered'
+                : 'goals.tasksPage.showingRange',
+              {
+                start: (currentPage - 1) * PAGE_SIZE + 1,
+                end: Math.min(currentPage * PAGE_SIZE, filteredTasks.length),
+                filtered: filteredTasks.length,
+                total: allTasks.length,
+              },
+            )
           ) : (
             <span>{t('goals.tasksPage.noMatchingCount', { total: allTasks.length })}</span>
           )}
@@ -436,7 +522,9 @@ export function GoalTasksPage() {
               }, [])
               .map((item, i) =>
                 item === '...' ? (
-                  <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-muted-foreground">…</span>
+                  <span key={`ellipsis-${i}`} className="w-7 text-center text-xs text-muted-foreground">
+                    …
+                  </span>
                 ) : (
                   <Button
                     key={item}

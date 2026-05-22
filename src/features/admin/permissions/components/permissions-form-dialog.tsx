@@ -10,22 +10,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { httpMethods } from '../data/data'
 import type { Permission } from '../data/schema'
@@ -54,11 +41,7 @@ interface PermissionsFormDialogProps {
   currentRow?: Permission | null
 }
 
-export function PermissionsFormDialog({
-  open,
-  onOpenChange,
-  currentRow,
-}: PermissionsFormDialogProps) {
+export function PermissionsFormDialog({ open, onOpenChange, currentRow }: PermissionsFormDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [availableModules, setAvailableModules] = useState<string[]>([])
   const { refetch } = usePermissions()
@@ -115,11 +98,11 @@ export function PermissionsFormDialog({
         const changedFields = Object.entries(values).reduce(
           (acc, [key, value]) => {
             if (value !== currentRow[key as keyof Permission]) {
-              (acc as any)[key] = value
+              ;(acc as any)[key] = value
             }
             return acc
           },
-          {} as Record<string, any>
+          {} as Record<string, any>,
         )
 
         if ((changedFields as any).module === 'none' || !(changedFields as any).module) {
@@ -159,83 +142,90 @@ export function PermissionsFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] dark:bg-zinc-800">
         <DialogHeader>
-          <DialogTitle>
-            {currentRow ? t('permissionEditTitle') : t('permissionAddTitle')}
-          </DialogTitle>
-          <DialogDescription>
-            {currentRow ? t('permissionEditDesc') : t('permissionAddDesc')}
-          </DialogDescription>
+          <DialogTitle>{currentRow ? t('permissionEditTitle') : t('permissionAddTitle')}</DialogTitle>
+          <DialogDescription>{currentRow ? t('permissionEditDesc') : t('permissionAddDesc')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('permissionName')}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t('permissionNamePlaceholder')} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <FormField control={form.control} name="apiPath" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('permissionApiPath')}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t('permissionApiPathPlaceholder')} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <FormField control={form.control} name="httpMethod" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('permissionHttpMethod')}</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('permissionName')}</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue>
-                        {field.value ? field.value : t('permissionHttpMethodPlaceholder')}
-                      </SelectValue>
-                    </SelectTrigger>
+                    <Input placeholder={t('permissionNamePlaceholder')} {...field} />
                   </FormControl>
-                  <SelectContent>
-                    {httpMethods.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>
-                        {method.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <FormField control={form.control} name="module" render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('permissionModule')}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value || 'none'}
-                >
+            <FormField
+              control={form.control}
+              name="apiPath"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('permissionApiPath')}</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('permissionModulePlaceholder')} />
-                    </SelectTrigger>
+                    <Input placeholder={t('permissionApiPathPlaceholder')} {...field} />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">{t('none', 'Không có')}</SelectItem>
-                    {availableModules.map((module) => (
-                      <SelectItem key={module} value={module}>
-                        {module}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="httpMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('permissionHttpMethod')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue>{field.value ? field.value : t('permissionHttpMethodPlaceholder')}</SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {httpMethods.map((method) => (
+                        <SelectItem key={method.value} value={method.value}>
+                          {method.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="module"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('permissionModule')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('permissionModulePlaceholder')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">{t('none', 'Không có')}</SelectItem>
+                      {availableModules.map((module) => (
+                        <SelectItem key={module} value={module}>
+                          {module}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -32,7 +32,12 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
     if (value.trim() !== currentRow.name) return
     try {
       await deleteRole(currentRow.roleId)
-      toast.success(t('roleDeleteSuccess', { roleName: currentRow.name, defaultValue: `Vai trò "${currentRow.name}" đã được xóa thành công` }))
+      toast.success(
+        t('roleDeleteSuccess', {
+          roleName: currentRow.name,
+          defaultValue: `Vai trò "${currentRow.name}" đã được xóa thành công`,
+        }),
+      )
       onOpenChange(false)
       setValue('')
     } catch (error) {
@@ -54,11 +59,12 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             <IconAlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
           </div>
           <div className="text-center">
-            <DialogTitle className="text-lg font-semibold text-foreground">
-              {t('confirmDelete')}
-            </DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-foreground">{t('confirmDelete')}</DialogTitle>
             <DialogDescription className="mt-2 text-sm text-muted-foreground">
-              {t('roleDeleteConfirmation', { roleName: currentRow.name, defaultValue: `Bạn có chắc chắn muốn xóa vai trò "${currentRow.name}"?` })}
+              {t('roleDeleteConfirmation', {
+                roleName: currentRow.name,
+                defaultValue: `Bạn có chắc chắn muốn xóa vai trò "${currentRow.name}"?`,
+              })}
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -66,7 +72,10 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
         <div className="space-y-6 py-4">
           <div>
             <Label htmlFor="role-name-confirm" className="text-sm font-medium mb-2.5 block">
-              {t('enterRoleNameToConfirm', { roleName: currentRow.name, defaultValue: `Nhập tên vai trò "${currentRow.name}" để xác nhận` })}
+              {t('enterRoleNameToConfirm', {
+                roleName: currentRow.name,
+                defaultValue: `Nhập tên vai trò "${currentRow.name}" để xác nhận`,
+              })}
             </Label>
             <Input
               id="role-name-confirm"
@@ -81,7 +90,10 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             <IconAlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
             <AlertTitle className="text-red-700 dark:text-red-300 font-medium">{t('warning')}</AlertTitle>
             <AlertDescription className="text-red-600 dark:text-red-400 text-xs">
-              {t('roleDeleteWarning', 'Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.')}
+              {t(
+                'roleDeleteWarning',
+                'Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.',
+              )}
             </AlertDescription>
           </Alert>
         </div>
@@ -89,7 +101,10 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
         <DialogFooter className="gap-3">
           <Button
             variant="outline"
-            onClick={() => { onOpenChange(false); setValue('') }}
+            onClick={() => {
+              onOpenChange(false)
+              setValue('')
+            }}
             className="flex-1 sm:flex-none"
           >
             {t('cancel')}

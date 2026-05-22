@@ -1,44 +1,35 @@
-import type { UniqueIdentifier } from '@dnd-kit/core';
-import {
-  defaultAnimateLayoutChanges,
-  useSortable,
-} from '@dnd-kit/sortable';
-import type { AnimateLayoutChanges } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import {
-  IconChevronRight,
-  IconGripVertical,
-  IconTrash,
-  IconEdit,
-  IconFolder,
-} from '@tabler/icons-react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import type { Permission } from '../data/schema';
-import { Button } from '@/components/ui/button';
-import { useDroppable } from '@dnd-kit/core';
+import type { UniqueIdentifier } from '@dnd-kit/core'
+import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
+import type { AnimateLayoutChanges } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { IconChevronRight, IconGripVertical, IconTrash, IconEdit, IconFolder } from '@tabler/icons-react'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+import type { Permission } from '../data/schema'
+import { Button } from '@/components/ui/button'
+import { useDroppable } from '@dnd-kit/core'
 
 interface TreeItemProps {
-  id: UniqueIdentifier;
-  children?: React.ReactNode;
-  collapsed?: boolean;
-  onCollapse?(): void;
-  permission: Permission;
-  onDelete: (permission: Permission) => void;
-  onEdit?: (permission: Permission) => void;
-  isModule?: boolean;
-  searchQuery?: string;
+  id: UniqueIdentifier
+  children?: React.ReactNode
+  collapsed?: boolean
+  onCollapse?(): void
+  permission: Permission
+  onDelete: (permission: Permission) => void
+  onEdit?: (permission: Permission) => void
+  isModule?: boolean
+  searchQuery?: string
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = (args) => {
-  const { isSorting, isDragging } = args;
+  const { isSorting, isDragging } = args
 
   if (isSorting || isDragging) {
-    return defaultAnimateLayoutChanges(args);
+    return defaultAnimateLayoutChanges(args)
   }
 
-  return true;
-};
+  return true
+}
 
 export function SortableTreeItem({
   id,
@@ -63,7 +54,7 @@ export function SortableTreeItem({
             </span>
           ) : (
             part
-          )
+          ),
         )}
       </span>
     )
@@ -79,7 +70,7 @@ export function SortableTreeItem({
   } = useSortable({
     id,
     animateLayoutChanges,
-  });
+  })
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: id,
@@ -87,19 +78,19 @@ export function SortableTreeItem({
       isModule,
       module: permission.module,
     },
-  });
+  })
 
   const setRefs = (el: HTMLElement | null) => {
-    setSortableRef(el);
+    setSortableRef(el)
     if (isModule) {
-      setDroppableRef(el);
+      setDroppableRef(el)
     }
-  };
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-  };
+  }
 
   const getMethodColor = (method?: string) => {
     const map: Record<string, string> = {
@@ -108,9 +99,9 @@ export function SortableTreeItem({
       PUT: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
       PATCH: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
       DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    };
-    return map[method || ''] || '';
-  };
+    }
+    return map[method || ''] || ''
+  }
 
   return (
     <div
@@ -119,13 +110,15 @@ export function SortableTreeItem({
       className={cn(
         'flex flex-col rounded-md border transition-colors duration-200 bg-white dark:bg-zinc-900/50',
         isDragging && 'opacity-30 scale-95',
-        isModule ? 'bg-white dark:bg-zinc-800/80 shadow-sm border-slate-200 dark:border-slate-700' : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-zinc-800/50',
+        isModule
+          ? 'bg-white dark:bg-zinc-800/80 shadow-sm border-slate-200 dark:border-slate-700'
+          : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-zinc-800/50',
         isModule && 'hover:bg-slate-100 dark:hover:bg-zinc-800',
         isOver && 'ring-2 ring-primary ring-offset-2 bg-slate-100 dark:bg-zinc-800',
-        isModule && isOver && 'scale-[1.01]'
+        isModule && isOver && 'scale-[1.01]',
       )}
     >
-        <div className={cn("flex items-center justify-between", isModule ? "py-2 px-4" : "py-1.5 pl-3 pr-0")}>
+      <div className={cn('flex items-center justify-between', isModule ? 'py-2 px-4' : 'py-1.5 pl-3 pr-0')}>
         <div className="flex items-center gap-3">
           {!isModule && (
             <button
@@ -138,14 +131,14 @@ export function SortableTreeItem({
           )}
 
           {children && (
-            <button 
-              onClick={onCollapse} 
+            <button
+              onClick={onCollapse}
               className="flex items-center justify-center p-1 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-700"
             >
               <IconChevronRight
                 className={cn(
                   'h-5 w-5 shrink-0 transition-transform duration-200 text-slate-600 dark:text-slate-400',
-                  !collapsed && 'rotate-90'
+                  !collapsed && 'rotate-90',
                 )}
               />
             </button>
@@ -158,7 +151,10 @@ export function SortableTreeItem({
                 <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                   {highlightText(permission.name, searchQuery)}
                 </div>
-                <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[11px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none">
+                <Badge
+                  variant="secondary"
+                  className="rounded-full px-1.5 py-0 text-[11px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none"
+                >
                   {(children as any)?.length || 0}
                 </Badge>
               </div>
@@ -167,9 +163,12 @@ export function SortableTreeItem({
                 <div className="font-medium text-sm text-slate-700 dark:text-slate-200 truncate max-w-[250px]">
                   {highlightText(permission.name, searchQuery)}
                 </div>
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-[10px] font-bold px-1.5 py-0 h-4 border-none flex-shrink-0", getMethodColor(permission.httpMethod))}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[10px] font-bold px-1.5 py-0 h-4 border-none flex-shrink-0',
+                    getMethodColor(permission.httpMethod),
+                  )}
                 >
                   {permission.httpMethod}
                 </Badge>
@@ -203,11 +202,7 @@ export function SortableTreeItem({
         </div>
       </div>
 
-      {!collapsed && children && (
-        <div className="pl-12 pr-4 pb-4 mt-2 space-y-2">
-          {children}
-        </div>
-      )}
+      {!collapsed && children && <div className="pl-12 pr-4 pb-4 mt-2 space-y-2">{children}</div>}
     </div>
-  );
+  )
 }

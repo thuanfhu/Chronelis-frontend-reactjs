@@ -60,7 +60,12 @@ export function VerifyAccountPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="token">{t('auth.verificationCode')}</Label>
-            <Input id="token" value={token} onChange={(event) => setToken(event.target.value)} placeholder={t('auth.enterCodePlaceholder')} />
+            <Input
+              id="token"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder={t('auth.enterCodePlaceholder')}
+            />
           </div>
           <Button className="w-full" onClick={() => verifyMutation.mutate(token)} disabled={!token.trim()}>
             {t('auth.retry')}
@@ -70,7 +75,12 @@ export function VerifyAccountPage() {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="token">{t('auth.verificationCode')}</Label>
-            <Input id="token" value={token} onChange={(event) => setToken(event.target.value)} placeholder={t('auth.enterCodePlaceholder')} />
+            <Input
+              id="token"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder={t('auth.enterCodePlaceholder')}
+            />
           </div>
           <Button className="w-full" onClick={() => verifyMutation.mutate(token)} disabled={!token.trim()}>
             {t('auth.verifyAccount')}

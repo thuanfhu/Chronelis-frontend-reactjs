@@ -39,10 +39,7 @@ export function VerifyEmailChangePage() {
   }, [])
 
   return (
-    <AuthLayout
-      title={t('auth.verifyEmailChangeTitle')}
-      subtitle={t('auth.verifyEmailChangeSubtitle')}
-    >
+    <AuthLayout title={t('auth.verifyEmailChangeTitle')} subtitle={t('auth.verifyEmailChangeSubtitle')}>
       {mutation.isPending ? (
         <div className="flex flex-col items-center gap-3 py-6">
           <Loader2 className="size-8 animate-spin text-primary" />

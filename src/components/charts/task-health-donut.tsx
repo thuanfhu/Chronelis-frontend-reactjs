@@ -17,7 +17,10 @@ interface Props {
 }
 
 type SegmentEntry = { key: string; color: string; value: number }
-interface TipProps { active?: boolean; payload?: Array<{ name: string; value: number; payload: SegmentEntry }> }
+interface TipProps {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; payload: SegmentEntry }>
+}
 
 function CustomTooltip({ active, payload }: TipProps) {
   const { t } = useTranslation()
@@ -30,7 +33,9 @@ function CustomTooltip({ active, payload }: TipProps) {
       <div className="flex items-center gap-2">
         <span className="inline-block size-2.5 rounded-full" style={{ background: entry.color }} />
         <span className="text-sm font-semibold">{label}</span>
-        <span className="ml-2 text-sm text-muted-foreground">{value} {t('dashboard.tasks')}</span>
+        <span className="ml-2 text-sm text-muted-foreground">
+          {value} {t('dashboard.tasks')}
+        </span>
       </div>
     </div>
   )
@@ -40,8 +45,12 @@ function CenterLabel({ total }: { total: number }) {
   const { t } = useTranslation()
   return (
     <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-      <tspan x="50%" dy="-0.4em" fontSize="22" fontWeight="700" fill="currentColor">{total}</tspan>
-      <tspan x="50%" dy="1.4em" fontSize="11" fill="#94a3b8">{t('dashboard.tasks')}</tspan>
+      <tspan x="50%" dy="-0.4em" fontSize="22" fontWeight="700" fill="currentColor">
+        {total}
+      </tspan>
+      <tspan x="50%" dy="1.4em" fontSize="11" fill="#94a3b8">
+        {t('dashboard.tasks')}
+      </tspan>
     </text>
   )
 }
@@ -94,7 +103,9 @@ export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, due
           <Legend
             iconType="circle"
             iconSize={8}
-            formatter={(value) => <span className="text-xs text-muted-foreground">{t(`dashboard.segments.${value}`)}</span>}
+            formatter={(value) => (
+              <span className="text-xs text-muted-foreground">{t(`dashboard.segments.${value}`)}</span>
+            )}
           />
         </PieChart>
       </ResponsiveContainer>

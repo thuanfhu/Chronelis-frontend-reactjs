@@ -6,17 +6,14 @@ import { useRealtimeSubscription } from '@/lib/websocket/use-realtime'
 export function useWorkspaceRealtime(workspaceId: number | null) {
   const queryClient = useQueryClient()
 
-  const handleMessage = useCallback(
-    () => {
-      if (!workspaceId) {
-        return
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) })
-      queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', workspaceId] })
-    },
-    [queryClient, workspaceId],
-  )
+  const handleMessage = useCallback(() => {
+    if (!workspaceId) {
+      return
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) })
+    queryClient.invalidateQueries({ queryKey: ['projects', 'workspace', workspaceId] })
+  }, [queryClient, workspaceId])
 
   const destination = workspaceId ? `/public/workspaces/${workspaceId}/events` : null
   useRealtimeSubscription(destination, handleMessage)
@@ -40,8 +37,10 @@ export function useProjectRealtime(workspaceId: number | null, projectId: number
     queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task'] })
   }, [projectId, queryClient, workspaceId])
 
-  const projectDestination = workspaceId && projectId ? `/public/workspaces/${workspaceId}/projects/${projectId}/events` : null
-  const privateProjectDestination = workspaceId && projectId ? `/client/private/workspaces/${workspaceId}/projects/${projectId}/events` : null
+  const projectDestination =
+    workspaceId && projectId ? `/public/workspaces/${workspaceId}/projects/${projectId}/events` : null
+  const privateProjectDestination =
+    workspaceId && projectId ? `/client/private/workspaces/${workspaceId}/projects/${projectId}/events` : null
 
   useRealtimeSubscription(projectDestination, handleProjectMessage)
   useRealtimeSubscription(privateProjectDestination, handleProjectMessage)
@@ -63,12 +62,14 @@ export function useTaskRealtime(workspaceId: number | null, projectId: number | 
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount })
   }, [projectId, queryClient, taskId, workspaceId])
 
-  const taskDestination = workspaceId && projectId && taskId
-    ? `/public/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/events`
-    : null
-  const privateTaskDestination = workspaceId && projectId && taskId
-    ? `/client/private/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/events`
-    : null
+  const taskDestination =
+    workspaceId && projectId && taskId
+      ? `/public/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/events`
+      : null
+  const privateTaskDestination =
+    workspaceId && projectId && taskId
+      ? `/client/private/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}/events`
+      : null
 
   useRealtimeSubscription(taskDestination, handleTaskMessage)
   useRealtimeSubscription(privateTaskDestination, handleTaskMessage)

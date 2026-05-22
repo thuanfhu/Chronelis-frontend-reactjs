@@ -25,12 +25,7 @@ interface Props {
   }
 }
 
-export function PermissionsDeleteDialog({
-  open,
-  onOpenChange,
-  type,
-  data,
-}: Props) {
+export function PermissionsDeleteDialog({ open, onOpenChange, type, data }: Props) {
   const { refetch } = usePermissions()
   const [isDeleting, setIsDeleting] = useState(false)
   const { t } = useTranslation()
@@ -63,7 +58,10 @@ export function PermissionsDeleteDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             {type === 'module'
-              ? t('moduleDeleteDesc', { moduleName: data.name, defaultValue: `Xóa module "${data.name}" sẽ xóa tất cả permissions trong module này.` })
+              ? t('moduleDeleteDesc', {
+                  moduleName: data.name,
+                  defaultValue: `Xóa module "${data.name}" sẽ xóa tất cả permissions trong module này.`,
+                })
               : t('permissionDeleteDesc', `Bạn có chắc muốn xóa permission "${data.name}"?`)}
           </AlertDialogDescription>
         </AlertDialogHeader>

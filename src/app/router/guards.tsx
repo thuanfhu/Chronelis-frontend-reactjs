@@ -47,12 +47,12 @@ export function PublicOnlyGuard({ children }: PropsWithChildren) {
   const token = useAuthStore((state) => state.accessToken)
   const location = useLocation()
 
-  const isTokenizedAuthRoute = (
-    location.pathname === '/verify-account'
-    || location.pathname === '/auth/verify-active-account'
-    || location.pathname === '/reset-password'
-    || location.pathname === '/auth/reset-password'
-  ) && Boolean(new URLSearchParams(location.search).get('token'))
+  const isTokenizedAuthRoute =
+    (location.pathname === '/verify-account' ||
+      location.pathname === '/auth/verify-active-account' ||
+      location.pathname === '/reset-password' ||
+      location.pathname === '/auth/reset-password') &&
+    Boolean(new URLSearchParams(location.search).get('token'))
 
   if (token && !isTokenizedAuthRoute) {
     return <Navigate to="/dashboard" replace />

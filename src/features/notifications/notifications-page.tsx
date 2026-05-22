@@ -2,8 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
-  Bell, CheckCheck, CheckCircle2, MessageSquare, UserPlus, UserMinus,
-  ListTodo, Target, ArrowRightLeft, CalendarClock, Loader2, RefreshCw,
+  Bell,
+  CheckCheck,
+  CheckCircle2,
+  MessageSquare,
+  UserPlus,
+  UserMinus,
+  ListTodo,
+  Target,
+  ArrowRightLeft,
+  CalendarClock,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -74,17 +84,21 @@ export function NotificationsPage() {
         description={t('notification.unreadCount', { count: unreadCount })}
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void notificationsQuery.refetch()}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void notificationsQuery.refetch()}>
               <RefreshCw className={`size-3.5 ${notificationsQuery.isFetching ? 'animate-spin' : ''}`} />
               {t('common.refresh')}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => markAllReadMutation.mutate()} disabled={markAllReadMutation.isPending || unreadCount === 0}>
-              {markAllReadMutation.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <CheckCheck className="mr-1.5 size-3.5" />}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending || unreadCount === 0}
+            >
+              {markAllReadMutation.isPending ? (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              ) : (
+                <CheckCheck className="mr-1.5 size-3.5" />
+              )}
               {t('notification.markAllRead')}
             </Button>
           </div>
@@ -108,7 +122,9 @@ export function NotificationsPage() {
                 key={notification.id}
                 className={`flex gap-3 rounded-lg border p-4 transition-colors ${notification.isRead ? 'bg-background' : 'border-primary/20 bg-primary/3'}`}
               >
-                <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${notification.isRead ? 'bg-muted' : 'bg-primary/10'}`}>
+                <div
+                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${notification.isRead ? 'bg-muted' : 'bg-primary/10'}`}
+                >
                   <TypeIcon className={`size-4 ${notification.isRead ? 'text-muted-foreground' : 'text-primary'}`} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -132,7 +148,9 @@ export function NotificationsPage() {
                     )}
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">{t(`notification.types.${notification.type}`)}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {t(`notification.types.${notification.type}`)}
+                    </Badge>
                     <span className="text-[10px] text-muted-foreground">{formatDateTime(notification.createdAt)}</span>
                   </div>
                 </div>

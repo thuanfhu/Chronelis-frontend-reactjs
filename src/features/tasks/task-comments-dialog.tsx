@@ -1,30 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  CornerDownRight,
-  Loader2,
-  MessageSquare,
-  MoreHorizontal,
-  Pencil,
-  Send,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { CornerDownRight, Loader2, MessageSquare, MoreHorizontal, Pencil, Send, Trash2, X } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils/cn'
@@ -140,21 +120,27 @@ function ThreadCommentItem({
         <span className="pointer-events-none absolute left-2 top-0 h-full w-px bg-border/70" aria-hidden />
       ) : null}
 
-      <div className={cn(
-        'rounded-2xl border p-3.5 shadow-sm transition-colors',
-        depth === 0 ? 'bg-card/95' : 'bg-muted/28',
-      )}>
+      <div
+        className={cn(
+          'rounded-2xl border p-3.5 shadow-sm transition-colors',
+          depth === 0 ? 'bg-card/95' : 'bg-muted/28',
+        )}
+      >
         <div className="flex items-start gap-3">
           <Avatar className="mt-0.5 size-8 shrink-0">
             <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-              {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
+              {comment.user.firstName.charAt(0)}
+              {comment.user.lastName.charAt(0)}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start gap-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold" title={`${comment.user.firstName} ${comment.user.lastName}`}>
+                <p
+                  className="truncate text-sm font-semibold"
+                  title={`${comment.user.firstName} ${comment.user.lastName}`}
+                >
                   {comment.user.firstName} {comment.user.lastName}
                 </p>
                 <p className="text-[11px] text-muted-foreground">{formatDateTime(comment.createdAt)}</p>
@@ -204,7 +190,12 @@ function ThreadCommentItem({
                   className="text-sm"
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" className="h-8 text-xs" onClick={onUpdateComment} disabled={updateCommentPending || !editingCommentContent.trim()}>
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={onUpdateComment}
+                    disabled={updateCommentPending || !editingCommentContent.trim()}
+                  >
                     {updateCommentPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
                     {t('task.commentSave')}
                   </Button>
@@ -230,7 +221,7 @@ function ThreadCommentItem({
                     className="mt-2 text-xs font-medium text-primary transition-colors hover:text-primary/80"
                     onClick={() => onToggleContent(comment.id)}
                   >
-                      {contentExpanded ? t('task.commentsCollapse') : t('task.commentsShowMore')}
+                    {contentExpanded ? t('task.commentsCollapse') : t('task.commentsShowMore')}
                   </button>
                 ) : null}
               </>
@@ -271,9 +262,9 @@ function ThreadCommentItem({
               className="ml-5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => onToggleReplyBranch(comment.id)}
             >
-                {repliesExpanded
-                  ? t('task.commentsCollapseReplies')
-                  : t('task.commentsShowMoreReplies', { count: replies.length - INITIAL_VISIBLE_REPLIES })}
+              {repliesExpanded
+                ? t('task.commentsCollapseReplies')
+                : t('task.commentsShowMoreReplies', { count: replies.length - INITIAL_VISIBLE_REPLIES })}
             </button>
           ) : null}
         </div>
@@ -310,14 +301,8 @@ export function TaskCommentsDialog({
   const [expandedReplyBranchIds, setExpandedReplyBranchIds] = useState<Set<number>>(new Set())
 
   const repliesByParent = useMemo(() => buildReplyMap(comments), [comments])
-  const topLevelComments = useMemo(
-    () => comments.filter((comment) => comment.parentCommentId == null),
-    [comments],
-  )
-  const commentById = useMemo(
-    () => new Map(comments.map((comment) => [comment.id, comment] as const)),
-    [comments],
-  )
+  const topLevelComments = useMemo(() => comments.filter((comment) => comment.parentCommentId == null), [comments])
+  const commentById = useMemo(() => new Map(comments.map((comment) => [comment.id, comment] as const)), [comments])
 
   useEffect(() => {
     if (!open) {
@@ -353,8 +338,12 @@ export function TaskCommentsDialog({
           {replyParent ? (
             <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-xs">
               <div className="min-w-0">
-                <p className="font-semibold text-primary">{t('task.commentsReplyingTo', { name: `${replyParent.user.firstName} ${replyParent.user.lastName}` })}</p>
-                <p className="mt-1 line-clamp-2 text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>{replyParent.content}</p>
+                <p className="font-semibold text-primary">
+                  {t('task.commentsReplyingTo', { name: `${replyParent.user.firstName} ${replyParent.user.lastName}` })}
+                </p>
+                <p className="mt-1 line-clamp-2 text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>
+                  {replyParent.content}
+                </p>
               </div>
               <Button
                 variant="ghost"
@@ -371,9 +360,13 @@ export function TaskCommentsDialog({
             <Textarea
               value={newComment}
               onChange={(event) => onNewCommentChange(event.target.value)}
-              placeholder={canManageCurrentTask
-                ? (replyParent ? t('task.commentReplyPlaceholder') : t('task.commentPlaceholder'))
-                : t('task.commentNoPermissionPlaceholder')}
+              placeholder={
+                canManageCurrentTask
+                  ? replyParent
+                    ? t('task.commentReplyPlaceholder')
+                    : t('task.commentPlaceholder')
+                  : t('task.commentNoPermissionPlaceholder')
+              }
               rows={3}
               className="min-h-24 flex-1 text-sm"
               disabled={!canManageCurrentTask}
@@ -413,8 +406,12 @@ export function TaskCommentsDialog({
                     canManageCurrentTask={canManageCurrentTask}
                     canModifyComment={canModifyComment}
                     updateCommentPending={updateCommentPending}
-                    onToggleContent={(commentId) => setExpandedContentIds((previous) => toggleSetValue(previous, commentId))}
-                    onToggleReplyBranch={(commentId) => setExpandedReplyBranchIds((previous) => toggleSetValue(previous, commentId))}
+                    onToggleContent={(commentId) =>
+                      setExpandedContentIds((previous) => toggleSetValue(previous, commentId))
+                    }
+                    onToggleReplyBranch={(commentId) =>
+                      setExpandedReplyBranchIds((previous) => toggleSetValue(previous, commentId))
+                    }
                     onReply={(commentId) => {
                       onReplyParentCommentChange(commentId)
                       onCancelEditing()

@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
-import {
-  RefreshCcw,
-} from 'lucide-react'
+import { RefreshCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
@@ -42,7 +40,6 @@ function resolveAdminSection(value: string | undefined): AdminSection | null {
   return null
 }
 
-
 export function AdminDashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -60,9 +57,7 @@ export function AdminDashboardPage() {
   if (!isAdminUser(currentUser)) {
     return (
       <Card className="border-dashed">
-        <CardContent className="py-8 text-sm text-muted-foreground">
-          {t('admin.accessDenied')}
-        </CardContent>
+        <CardContent className="py-8 text-sm text-muted-foreground">{t('admin.accessDenied')}</CardContent>
       </Card>
     )
   }
@@ -81,7 +76,10 @@ export function AdminDashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <LanguageSwitcher showLabel className="rounded-full border border-border/70 bg-background/80 px-3 hover:bg-muted" />
+          <LanguageSwitcher
+            showLabel
+            className="rounded-full border border-border/70 bg-background/80 px-3 hover:bg-muted"
+          />
           <Button variant="outline" onClick={() => navigate(0)}>
             <RefreshCcw className="size-4" />
             {t('common.refresh')}
@@ -120,18 +118,14 @@ function NewUsersTabContent() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>{t('userManagement.title', 'Quản lý người dùng')}</CardTitle>
-            <CardDescription>{t('userManagement.description', 'Quản lý tài khoản người dùng trong hệ thống')}</CardDescription>
+            <CardDescription>
+              {t('userManagement.description', 'Quản lý tài khoản người dùng trong hệ thống')}
+            </CardDescription>
           </div>
           {!isLoading && <UsersPrimaryButtons />}
         </div>
       </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <DataTableSkeleton columns={7} rows={6} />
-        ) : (
-          <UsersTable data={users} />
-        )}
-      </CardContent>
+      <CardContent>{isLoading ? <DataTableSkeleton columns={7} rows={6} /> : <UsersTable data={users} />}</CardContent>
       <UsersDialogs />
     </Card>
   )
@@ -146,18 +140,14 @@ function NewRolesTabContent() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>{t('roleManagement.title', 'Quản lý vai trò')}</CardTitle>
-            <CardDescription>{t('roleManagement.description', 'Quản lý vai trò và quyền hạn trong hệ thống')}</CardDescription>
+            <CardDescription>
+              {t('roleManagement.description', 'Quản lý vai trò và quyền hạn trong hệ thống')}
+            </CardDescription>
           </div>
           {!isLoading && <RolesPrimaryButtons />}
         </div>
       </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <DataTableSkeleton columns={6} rows={5} />
-        ) : (
-          <RolesTable data={roles} />
-        )}
-      </CardContent>
+      <CardContent>{isLoading ? <DataTableSkeleton columns={6} rows={5} /> : <RolesTable data={roles} />}</CardContent>
       <RolesDialogs />
     </Card>
   )
@@ -165,13 +155,14 @@ function NewRolesTabContent() {
 
 function NewPermissionsTabContent() {
   const { t } = useTranslation()
-  const { searchQuery, setSearchQuery, expandAll, collapseAll, collapsedModules, modules, setCollapsedModules } = usePermissions()
-  
+  const { searchQuery, setSearchQuery, expandAll, collapseAll, collapsedModules, modules, setCollapsedModules } =
+    usePermissions()
+
   useEffect(() => {
     setCollapsedModules({})
   }, [setCollapsedModules])
-  
-  const isAllCollapsed = modules.length > 0 && modules.every(m => collapsedModules[m] !== false)
+
+  const isAllCollapsed = modules.length > 0 && modules.every((m) => collapsedModules[m] !== false)
 
   return (
     <Card>
@@ -179,7 +170,9 @@ function NewPermissionsTabContent() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>{t('permissionManagement.title', 'Quản lý phân quyền')}</CardTitle>
-            <CardDescription>{t('permissionManagement.description', 'Quản lý quyền truy cập API trong hệ thống')}</CardDescription>
+            <CardDescription>
+              {t('permissionManagement.description', 'Quản lý quyền truy cập API trong hệ thống')}
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative w-64">
@@ -191,7 +184,7 @@ function NewPermissionsTabContent() {
                 className="pl-10 bg-slate-50 dark:bg-zinc-800"
               />
             </div>
-            
+
             <Button
               variant="outline"
               size="icon"
@@ -203,7 +196,11 @@ function NewPermissionsTabContent() {
                   collapseAll()
                 }
               }}
-              title={isAllCollapsed ? t('permissionManagement.expandAllModules', 'Hiển thị toàn bộ module') : t('permissionManagement.collapseAllModules', 'Đóng toàn bộ module')}
+              title={
+                isAllCollapsed
+                  ? t('permissionManagement.expandAllModules', 'Hiển thị toàn bộ module')
+                  : t('permissionManagement.collapseAllModules', 'Đóng toàn bộ module')
+              }
             >
               {isAllCollapsed ? (
                 <IconChevronsDown className="h-4 w-4 text-slate-600" />

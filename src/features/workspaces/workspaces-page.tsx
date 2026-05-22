@@ -54,30 +54,23 @@ export function WorkspacesPage() {
   const snapshotWorkspaceListQueries = () =>
     queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
 
-  const restoreWorkspaceListQueries = (
-    snapshot: Array<[readonly unknown[], PageResult<Workspace> | undefined]>,
-  ) => {
+  const restoreWorkspaceListQueries = (snapshot: Array<[readonly unknown[], PageResult<Workspace> | undefined]>) => {
     for (const [queryKey, data] of snapshot) {
       queryClient.setQueryData(queryKey, data)
     }
   }
 
-  const patchWorkspaceListQueries = (
-    updater: (workspaces: Workspace[], pageSize: number) => Workspace[],
-  ) => {
-    queryClient.setQueriesData<PageResult<Workspace>>(
-      { queryKey: ['workspaces', 'list'] },
-      (oldData) => {
-        if (!oldData) {
-          return oldData
-        }
+  const patchWorkspaceListQueries = (updater: (workspaces: Workspace[], pageSize: number) => Workspace[]) => {
+    queryClient.setQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] }, (oldData) => {
+      if (!oldData) {
+        return oldData
+      }
 
-        return {
-          ...oldData,
-          content: updater(oldData.content, oldData.meta.pageSize),
-        }
-      },
-    )
+      return {
+        ...oldData,
+        content: updater(oldData.content, oldData.meta.pageSize),
+      }
+    })
   }
 
   const listQuery = useQuery({
@@ -118,9 +111,9 @@ export function WorkspacesPage() {
       setDialogOpen(false)
 
       patchWorkspaceListQueries((workspaces) => {
-        const replacedWorkspaces = workspaces.map((workspace) => (
-          workspace.id === context?.optimisticWorkspaceId ? savedWorkspace : workspace
-        ))
+        const replacedWorkspaces = workspaces.map((workspace) =>
+          workspace.id === context?.optimisticWorkspaceId ? savedWorkspace : workspace,
+        )
 
         return replacedWorkspaces.some((workspace) => workspace.id === savedWorkspace.id)
           ? replacedWorkspaces
@@ -155,15 +148,17 @@ export function WorkspacesPage() {
       const snapshot = snapshotWorkspaceListQueries()
       const workspaceSnapshot = queryClient.getQueryData<Workspace>(queryKeys.workspaces.detail(editWsId))
 
-      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
-        workspace.id === editWsId
-          ? {
-            ...workspace,
-            name: editName.trim(),
-            updatedAt: new Date().toISOString(),
-          }
-          : workspace
-      )))
+      patchWorkspaceListQueries((workspaces) =>
+        workspaces.map((workspace) =>
+          workspace.id === editWsId
+            ? {
+                ...workspace,
+                name: editName.trim(),
+                updatedAt: new Date().toISOString(),
+              }
+            : workspace,
+        ),
+      )
 
       if (workspaceSnapshot) {
         queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(editWsId), {
@@ -182,9 +177,9 @@ export function WorkspacesPage() {
       setEditDialogOpen(false)
       setEditWsId(null)
 
-      patchWorkspaceListQueries((workspaces) => workspaces.map((workspace) => (
-        workspace.id === savedWorkspace.id ? savedWorkspace : workspace
-      )))
+      patchWorkspaceListQueries((workspaces) =>
+        workspaces.map((workspace) => (workspace.id === savedWorkspace.id ? savedWorkspace : workspace)),
+      )
       queryClient.setQueryData(queryKeys.workspaces.detail(savedWorkspace.id), savedWorkspace)
 
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
@@ -216,9 +211,12 @@ export function WorkspacesPage() {
     onFinalizeSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
     },
-    pendingMessage: (entry) => t('workspace.toast.deleteScheduled', { entity: t('workspace.entity.workspace'), name: entry.label }),
-    successMessage: (entry) => t('workspace.toast.deleteSuccess', { entity: t('workspace.entity.workspace'), name: entry.label }),
-    alreadyDeletedMessage: (entry) => t('workspace.toast.alreadyDeleted', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    pendingMessage: (entry) =>
+      t('workspace.toast.deleteScheduled', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    successMessage: (entry) =>
+      t('workspace.toast.deleteSuccess', { entity: t('workspace.entity.workspace'), name: entry.label }),
+    alreadyDeletedMessage: (entry) =>
+      t('workspace.toast.alreadyDeleted', { entity: t('workspace.entity.workspace'), name: entry.label }),
     errorTitle: t('workspace.toast.deleteFailed'),
   })
 
@@ -248,7 +246,11 @@ export function WorkspacesPage() {
     let cumul = 0
     return sorted.map(([month, count]) => {
       cumul += count
-      return { label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), count, cumulative: cumul }
+      return {
+        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        count,
+        cumulative: cumul,
+      }
     })
   }, [visibleWorkspaces])
 
@@ -258,13 +260,16 @@ export function WorkspacesPage() {
       if (!ws.createdAt) continue
       monthMap.set(ws.createdAt.slice(0, 7), (monthMap.get(ws.createdAt.slice(0, 7)) ?? 0) + 1)
     }
-    return [...monthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+    return [...monthMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8)
       .map(([month, count]) => ({ date: month + '-01', created: count, completed: 0 }))
   }, [visibleWorkspaces])
 
-  const workspaceLineData = useMemo(() =>
-    workspaceAreaData.map((d) => ({ ...d, completed: d.created })),
-    [workspaceAreaData])
+  const workspaceLineData = useMemo(
+    () => workspaceAreaData.map((d) => ({ ...d, completed: d.created })),
+    [workspaceAreaData],
+  )
 
   return (
     <div className="space-y-6">
@@ -299,7 +304,9 @@ export function WorkspacesPage() {
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
                 <Button
                   onClick={() => createMutation.mutate({ name: name.trim() })}
                   disabled={createMutation.isPending || !name.trim()}
@@ -319,9 +326,21 @@ export function WorkspacesPage() {
           {/* Totals row */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: t('workspace.charts.total'), value: visibleWorkspaces.length, color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' },
-              { label: t('workspace.charts.owned'), value: ownedCount, color: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300' },
-              { label: t('workspace.charts.joined'), value: joinedCount, color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
+              {
+                label: t('workspace.charts.total'),
+                value: visibleWorkspaces.length,
+                color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300',
+              },
+              {
+                label: t('workspace.charts.owned'),
+                value: ownedCount,
+                color: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300',
+              },
+              {
+                label: t('workspace.charts.joined'),
+                value: joinedCount,
+                color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300',
+              },
             ].map((s) => (
               <div key={s.label} className={`flex flex-col items-center justify-center rounded-xl py-3 ${s.color}`}>
                 <span className="text-2xl font-bold">{s.value}</span>
@@ -345,29 +364,53 @@ export function WorkspacesPage() {
                 {ownershipData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                      <Pie data={ownershipData} cx="50%" cy="50%" innerRadius="46%" outerRadius="68%" paddingAngle={3} dataKey="value" nameKey="name" animationBegin={0} animationDuration={600} strokeWidth={0}>
+                      <Pie
+                        data={ownershipData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="46%"
+                        outerRadius="68%"
+                        paddingAngle={3}
+                        dataKey="value"
+                        nameKey="name"
+                        animationBegin={0}
+                        animationDuration={600}
+                        strokeWidth={0}
+                      >
                         {ownershipData.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip content={(props: any) => {
-                        if (!props.active || !props.payload?.length) return null
-                        const d = props.payload[0]
-                        return (
-                          <div className="rounded-xl border border-border/60 bg-background px-3 py-2 shadow-xl">
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="inline-block size-2.5 rounded-full" style={{ background: d.payload.color }} />
-                              <span className="font-semibold text-foreground">{d.name}</span>
-                              <span className="font-bold text-foreground">{d.value}</span>
+                      <Tooltip
+                        content={(props: any) => {
+                          if (!props.active || !props.payload?.length) return null
+                          const d = props.payload[0]
+                          return (
+                            <div className="rounded-xl border border-border/60 bg-background px-3 py-2 shadow-xl">
+                              <div className="flex items-center gap-2 text-xs">
+                                <span
+                                  className="inline-block size-2.5 rounded-full"
+                                  style={{ background: d.payload.color }}
+                                />
+                                <span className="font-semibold text-foreground">{d.name}</span>
+                                <span className="font-bold text-foreground">{d.value}</span>
+                              </div>
                             </div>
-                          </div>
-                        )
-                      }} />
-                      <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: '11px' }} formatter={(v) => <span style={{ color: 'hsl(var(--muted-foreground))' }}>{v}</span>} />
+                          )
+                        }}
+                      />
+                      <Legend
+                        iconType="circle"
+                        iconSize={7}
+                        wrapperStyle={{ fontSize: '11px' }}
+                        formatter={(v) => <span style={{ color: 'hsl(var(--muted-foreground))' }}>{v}</span>}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-[200px] items-center justify-center"><p className="text-sm text-muted-foreground">{t('workspace.charts.noWorkspaces')}</p></div>
+                  <div className="flex h-[200px] items-center justify-center">
+                    <p className="text-sm text-muted-foreground">{t('workspace.charts.noWorkspaces')}</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -382,7 +425,12 @@ export function WorkspacesPage() {
                 <p className="text-xs text-muted-foreground">{t('workspace.charts.growthDesc')}</p>
               </CardHeader>
               <CardContent className="pb-4 pt-0">
-                <GrowthComposedChart data={workspaceGrowth} barColor="#6366f1" lineColor="#22c55e" emptyMessage={t('workspace.charts.noGrowthHistory')} />
+                <GrowthComposedChart
+                  data={workspaceGrowth}
+                  barColor="#6366f1"
+                  lineColor="#22c55e"
+                  emptyMessage={t('workspace.charts.noGrowthHistory')}
+                />
               </CardContent>
             </Card>
           </div>
@@ -446,7 +494,10 @@ export function WorkspacesPage() {
             <Card key={ws.id} className="group h-full transition-all hover:border-primary/30 hover:shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
-                  <Link to={`/workspaces/${ws.id}`} className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Link
+                    to={`/workspaces/${ws.id}`}
+                    className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+                  >
                     {ws.name.charAt(0).toUpperCase()}
                   </Link>
                   <div className="min-w-0 flex-1">
@@ -455,7 +506,9 @@ export function WorkspacesPage() {
                     </Link>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Users className="size-3" />
-                      <span>{ws.owner.firstName} {ws.owner.lastName}</span>
+                      <span>
+                        {ws.owner.firstName} {ws.owner.lastName}
+                      </span>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -465,12 +518,14 @@ export function WorkspacesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setEditWsId(ws.id)
-                        setEditName(ws.name)
-                        setEditInitialName(ws.name.trim())
-                        setEditDialogOpen(true)
-                      }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditWsId(ws.id)
+                          setEditName(ws.name)
+                          setEditInitialName(ws.name.trim())
+                          setEditDialogOpen(true)
+                        }}
+                      >
                         <Pencil className="mr-2 size-4" />
                         {t('common.edit')}
                       </DropdownMenuItem>
@@ -491,7 +546,13 @@ export function WorkspacesPage() {
               <CardContent>
                 <Link to={`/workspaces/${ws.id}`} className="block">
                   <p className="text-xs text-muted-foreground">
-                    {t('workspace.list.createdAt', { date: new Date(ws.createdAt).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) })}
+                    {t('workspace.list.createdAt', {
+                      date: new Date(ws.createdAt).toLocaleDateString(locale, {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      }),
+                    })}
                   </p>
                 </Link>
               </CardContent>
@@ -527,8 +588,13 @@ export function WorkspacesPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => editMutation.mutate()}
+              disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
+            >
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {t('common.save')}
             </Button>
@@ -559,7 +625,9 @@ export function WorkspacesPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteWorkspace(null)}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => setDeleteWorkspace(null)}>
+              {t('common.cancel')}
+            </Button>
             <Button
               variant="destructive"
               onClick={() => {

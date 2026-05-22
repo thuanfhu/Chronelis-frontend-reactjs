@@ -1,9 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Plus, FolderKanban, Users, Loader2, UserPlus, Trash2, Crown, User, MoreHorizontal, Pencil, Archive, CheckCircle2, RotateCcw, Link2, QrCode, Copy, UsersRound, Search, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Plus,
+  FolderKanban,
+  Users,
+  Loader2,
+  UserPlus,
+  Trash2,
+  Crown,
+  User,
+  MoreHorizontal,
+  Pencil,
+  Archive,
+  CheckCircle2,
+  RotateCcw,
+  Link2,
+  QrCode,
+  Copy,
+  UsersRound,
+  Search,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
@@ -47,7 +69,13 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { useWorkspaceRealtime } from '@/lib/websocket/use-domain-realtime'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useDeferredDelete } from '@/lib/delete/use-deferred-delete'
-import type { Project, ProjectStatusType, Workspace, WorkspaceMemberRoleType, WorkspaceTeamMember } from '@/types/domain'
+import type {
+  Project,
+  ProjectStatusType,
+  Workspace,
+  WorkspaceMemberRoleType,
+  WorkspaceTeamMember,
+} from '@/types/domain'
 import type { PageResult } from '@/types/domain'
 
 /** i18n key suffix for each workspace member role */
@@ -62,9 +90,12 @@ const roleIcon: Record<WorkspaceMemberRoleType, typeof Crown> = {
 }
 
 const roleBadgeClassName: Record<WorkspaceMemberRoleType, string> = {
-  OWNER: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
+  OWNER:
+    'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200',
   MEMBER: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/30 dark:bg-blue-900/20 dark:text-blue-300',
 }
+
+const ROLE_SORT_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, MEMBER: 1 }
 
 function RoleBadge({ role }: { role: WorkspaceMemberRoleType }) {
   const { t } = useTranslation()
@@ -99,6 +130,8 @@ type WorkspaceDetailDeletePayload = {
 }
 
 const TEAM_MEMBER_PREVIEW_COUNT = 5
+type WorkspaceDetailTab = 'projects' | 'members' | 'invites' | 'teams'
+const workspaceDetailTabs: WorkspaceDetailTab[] = ['projects', 'members', 'invites', 'teams']
 
 function buildPageNumbers(current: number, total: number): Array<number | '...'> {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -117,7 +150,12 @@ export function WorkspaceDetailPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const params = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const workspaceId = Number(params.workspaceId)
+  const tabParam = searchParams.get('tab')
+  const activeTab: WorkspaceDetailTab = workspaceDetailTabs.includes(tabParam as WorkspaceDetailTab)
+    ? (tabParam as WorkspaceDetailTab)
+    : 'projects'
   const queryClient = useQueryClient()
 
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
@@ -250,13 +288,22 @@ export function WorkspaceDetailPage() {
         description: projectDescription.trim() || undefined,
         status: 'ACTIVE',
         visibility: 'PUBLIC',
-        createdBy: { userId: user?.userId ?? '', email: user?.email ?? '', firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' },
+        createdBy: {
+          userId: user?.userId ?? '',
+          email: user?.email ?? '',
+          firstName: user?.firstName ?? '',
+          lastName: user?.lastName ?? '',
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
       queryClient.setQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50), (old) => {
         if (!old) return old
-        return { ...old, content: [...old.content, optimistic], meta: { ...old.meta, totalElements: old.meta.totalElements + 1 } }
+        return {
+          ...old,
+          content: [...old.content, optimistic],
+          meta: { ...old.meta, totalElements: old.meta.totalElements + 1 },
+        }
       })
       return { snapshot }
     },
@@ -298,31 +345,30 @@ export function WorkspaceDetailPage() {
       await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
       await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
 
-      const workspaceListSnapshot = queryClient.getQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] })
+      const workspaceListSnapshot = queryClient.getQueriesData<PageResult<Workspace>>({
+        queryKey: ['workspaces', 'list'],
+      })
       const workspaceDetailSnapshot = queryClient.getQueryData<Workspace>(queryKeys.workspaces.detail(workspaceId))
       const optimisticUpdatedAt = new Date().toISOString()
 
-      queryClient.setQueriesData<PageResult<Workspace>>(
-        { queryKey: ['workspaces', 'list'] },
-        (oldData) => {
-          if (!oldData) {
-            return oldData
-          }
+      queryClient.setQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] }, (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
 
-          return {
-            ...oldData,
-            content: oldData.content.map((workspace) => (
-              workspace.id === workspaceId
-                ? {
+        return {
+          ...oldData,
+          content: oldData.content.map((workspace) =>
+            workspace.id === workspaceId
+              ? {
                   ...workspace,
                   name: editWsName.trim(),
                   updatedAt: optimisticUpdatedAt,
                 }
-                : workspace
-            )),
-          }
-        },
-      )
+              : workspace,
+          ),
+        }
+      })
 
       if (workspaceDetailSnapshot) {
         queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(workspaceId), {
@@ -340,21 +386,18 @@ export function WorkspaceDetailPage() {
     onSuccess: (savedWorkspace) => {
       setEditWsDialogOpen(false)
       queryClient.setQueryData(queryKeys.workspaces.detail(workspaceId), savedWorkspace)
-      queryClient.setQueriesData<PageResult<Workspace>>(
-        { queryKey: ['workspaces', 'list'] },
-        (oldData) => {
-          if (!oldData) {
-            return oldData
-          }
+      queryClient.setQueriesData<PageResult<Workspace>>({ queryKey: ['workspaces', 'list'] }, (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
 
-          return {
-            ...oldData,
-            content: oldData.content.map((workspace) => (
-              workspace.id === savedWorkspace.id ? savedWorkspace : workspace
-            )),
-          }
-        },
-      )
+        return {
+          ...oldData,
+          content: oldData.content.map((workspace) =>
+            workspace.id === savedWorkspace.id ? savedWorkspace : workspace,
+          ),
+        }
+      })
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all })
       toast.success(t('workspace.toast.workspaceUpdated'))
@@ -405,7 +448,12 @@ export function WorkspaceDetailPage() {
           ...old,
           content: old.content.map((p) =>
             p.id === editProjectId
-              ? { ...p, name: editProjectName.trim(), description: editProjectDescription.trim() || undefined, updatedAt: new Date().toISOString() }
+              ? {
+                  ...p,
+                  name: editProjectName.trim(),
+                  description: editProjectDescription.trim() || undefined,
+                  updatedAt: new Date().toISOString(),
+                }
               : p,
           ),
         }
@@ -436,7 +484,7 @@ export function WorkspaceDetailPage() {
       const snapshot = queryClient.getQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50))
       queryClient.setQueryData<PageResult<Project>>(queryKeys.projects.byWorkspace(workspaceId, 1, 50), (old) => {
         if (!old) return old
-        return { ...old, content: old.content.map((p) => p.id === projectId ? { ...p, status } : p) }
+        return { ...old, content: old.content.map((p) => (p.id === projectId ? { ...p, status } : p)) }
       })
       return { snapshot }
     },
@@ -500,38 +548,42 @@ export function WorkspaceDetailPage() {
       ])
     },
     pendingMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project'
-        ? t('workspace.entity.project')
-        : entry.payload.kind === 'workspace'
-          ? t('workspace.entity.workspace')
-          : t('workspace.entity.team')
+      const entityName =
+        entry.payload.kind === 'project'
+          ? t('workspace.entity.project')
+          : entry.payload.kind === 'workspace'
+            ? t('workspace.entity.workspace')
+            : t('workspace.entity.team')
       return t('workspace.toast.deleteScheduled', { entity: entityName, name: entry.label })
     },
     successMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project'
-        ? t('workspace.entity.project')
-        : entry.payload.kind === 'workspace'
-          ? t('workspace.entity.workspace')
-          : t('workspace.entity.team')
+      const entityName =
+        entry.payload.kind === 'project'
+          ? t('workspace.entity.project')
+          : entry.payload.kind === 'workspace'
+            ? t('workspace.entity.workspace')
+            : t('workspace.entity.team')
       return t('workspace.toast.deleteSuccess', { entity: entityName, name: entry.label })
     },
     alreadyDeletedMessage: (entry) => {
-      const entityName = entry.payload.kind === 'project'
-        ? t('workspace.entity.project')
-        : entry.payload.kind === 'workspace'
-          ? t('workspace.entity.workspace')
-          : t('workspace.entity.team')
+      const entityName =
+        entry.payload.kind === 'project'
+          ? t('workspace.entity.project')
+          : entry.payload.kind === 'workspace'
+            ? t('workspace.entity.workspace')
+            : t('workspace.entity.team')
       return t('workspace.toast.alreadyDeleted', { entity: entityName, name: entry.label })
     },
     errorTitle: t('workspace.toast.deleteFailed'),
   })
 
   const createInviteMutation = useMutation({
-    mutationFn: () => workspaceInviteApi.create({
-      workspaceId,
-      roleToAssign: inviteRole,
-      maxUses: inviteMaxUses ? Number(inviteMaxUses) : undefined,
-    }),
+    mutationFn: () =>
+      workspaceInviteApi.create({
+        workspaceId,
+        roleToAssign: inviteRole,
+        maxUses: inviteMaxUses ? Number(inviteMaxUses) : undefined,
+      }),
     onSuccess: () => {
       setInviteDialogOpen(false)
       setInviteMaxUses('')
@@ -551,11 +603,12 @@ export function WorkspaceDetailPage() {
   })
 
   const createTeamMutation = useMutation({
-    mutationFn: () => workspaceTeamApi.create({
-      workspaceId,
-      name: teamName.trim(),
-      description: teamDescription.trim() || undefined,
-    }),
+    mutationFn: () =>
+      workspaceTeamApi.create({
+        workspaceId,
+        name: teamName.trim(),
+        description: teamDescription.trim() || undefined,
+      }),
     onSuccess: () => {
       setTeamDialogOpen(false)
       setTeamName('')
@@ -597,10 +650,10 @@ export function WorkspaceDetailPage() {
 
   const isLoading = workspaceQuery.isLoading || membersQuery.isLoading || projectsQuery.isLoading
   const workspace = workspaceQuery.data ?? null
-  const members = membersQuery.data ?? []
-  const projects = projectsQuery.data?.content ?? []
-  const invites = invitesQuery.data ?? []
-  const teams = teamsQuery.data ?? []
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data])
+  const projects = useMemo(() => projectsQuery.data?.content ?? [], [projectsQuery.data?.content])
+  const invites = useMemo(() => invitesQuery.data ?? [], [invitesQuery.data])
+  const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data])
   const pendingProjectIds = new Set<number>()
   const pendingTeamIds = new Set<number>()
   const workspaceDeleteQueued = isWorkspaceDeleteQueued(`workspace-${workspaceId}`)
@@ -621,21 +674,29 @@ export function WorkspaceDetailPage() {
 
   const projectTotalPages = Math.max(1, Math.ceil(visibleProjects.length / PROJECT_PAGE_SIZE))
   const projectCurrentPage = Math.min(projectPage, projectTotalPages)
-  const paginatedProjects = visibleProjects.slice((projectCurrentPage - 1) * PROJECT_PAGE_SIZE, projectCurrentPage * PROJECT_PAGE_SIZE)
+  const paginatedProjects = visibleProjects.slice(
+    (projectCurrentPage - 1) * PROJECT_PAGE_SIZE,
+    projectCurrentPage * PROJECT_PAGE_SIZE,
+  )
 
   const currentMember = members.find((member) => member.user.userId === currentUserId)
-  const currentRole: WorkspaceMemberRoleType = workspace?.owner.userId === currentUserId
-    ? 'OWNER'
-    : currentMember?.role ?? 'MEMBER'
+  const currentRole: WorkspaceMemberRoleType =
+    workspace?.owner.userId === currentUserId ? 'OWNER' : (currentMember?.role ?? 'MEMBER')
   const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
-  const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
-    OWNER: t('workspace.role.owner'),
-    MEMBER: t('workspace.role.member'),
-  }), [t])
-  const roleDescription = useMemo<Record<WorkspaceMemberRoleType, string>>(() => ({
-    OWNER: t('workspace.roleDesc.owner'),
-    MEMBER: t('workspace.roleDesc.member'),
-  }), [t])
+  const roleDisplayName = useMemo<Record<WorkspaceMemberRoleType, string>>(
+    () => ({
+      OWNER: t('workspace.role.owner'),
+      MEMBER: t('workspace.role.member'),
+    }),
+    [t],
+  )
+  const roleDescription = useMemo<Record<WorkspaceMemberRoleType, string>>(
+    () => ({
+      OWNER: t('workspace.roleDesc.owner'),
+      MEMBER: t('workspace.roleDesc.member'),
+    }),
+    [t],
+  )
   const isOwner = currentRole === 'OWNER'
   const canManageWorkspace = isOwner
   const canCreateProject = isOwner
@@ -646,15 +707,12 @@ export function WorkspaceDetailPage() {
   }
 
   const isWorkspaceEditDirty = editWsName.trim() !== editWsInitialName
-  const isProjectEditDirty = (
-    editProjectName.trim() !== editProjectInitialName
-    || editProjectDescription.trim() !== editProjectInitialDescription
-    || (isOwner && editProjectVisibility !== editProjectInitialVisibility)
-    || editProjectManagerUserId !== editProjectInitialManagerUserId
-    || editProjectManagerTeamId !== editProjectInitialManagerTeamId
-  )
-
-  const ROLE_SORT_ORDER: Record<WorkspaceMemberRoleType, number> = { OWNER: 0, MEMBER: 1 }
+  const isProjectEditDirty =
+    editProjectName.trim() !== editProjectInitialName ||
+    editProjectDescription.trim() !== editProjectInitialDescription ||
+    (isOwner && editProjectVisibility !== editProjectInitialVisibility) ||
+    editProjectManagerUserId !== editProjectInitialManagerUserId ||
+    editProjectManagerTeamId !== editProjectInitialManagerTeamId
 
   const filteredMembers = useMemo(() => {
     let list = members.slice()
@@ -670,7 +728,11 @@ export function WorkspaceDetailPage() {
     }
     list.sort((a, b) => {
       if (memberSortKey === 'role') return ROLE_SORT_ORDER[a.role] - ROLE_SORT_ORDER[b.role]
-      if (memberSortKey === 'name') return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
+      if (memberSortKey === 'name')
+        return `${a.user.firstName} ${a.user.lastName}`.localeCompare(
+          `${b.user.firstName} ${b.user.lastName}`,
+          localeTag,
+        )
       return new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
     })
     return list
@@ -678,12 +740,15 @@ export function WorkspaceDetailPage() {
 
   const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBER_PAGE_SIZE))
   const memberCurrentPage = Math.min(memberPage, memberTotalPages)
-  const paginatedMembers = filteredMembers.slice((memberCurrentPage - 1) * MEMBER_PAGE_SIZE, memberCurrentPage * MEMBER_PAGE_SIZE)
+  const paginatedMembers = filteredMembers.slice(
+    (memberCurrentPage - 1) * MEMBER_PAGE_SIZE,
+    memberCurrentPage * MEMBER_PAGE_SIZE,
+  )
 
   const filteredTeams = useMemo(() => {
     const q = teamSearch.trim().toLowerCase()
     if (!q) return visibleTeams
-    return visibleTeams.filter((t) => t.name.toLowerCase().includes(q) || (t.description?.toLowerCase().includes(q)))
+    return visibleTeams.filter((t) => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q))
   }, [visibleTeams, teamSearch])
 
   const teamTotalPages = Math.max(1, Math.ceil(filteredTeams.length / TEAM_PAGE_SIZE))
@@ -698,7 +763,9 @@ export function WorkspaceDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <p className="text-sm text-muted-foreground">{t('workspace.notFound')}</p>
-        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">{t('workspace.backToList')}</Link>
+        <Link to="/workspaces" className="mt-2 text-sm text-primary hover:underline">
+          {t('workspace.backToList')}
+        </Link>
       </div>
     )
   }
@@ -714,11 +781,16 @@ export function WorkspaceDetailPage() {
               memberCount: members.length,
               projectCount: visibleProjects.length,
               role: roleDisplayName[currentRole],
-            }).split('·').map((part, index) => (
-              <span key={index} className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                {part.trim()}
-              </span>
-            ))}
+            })
+              .split('·')
+              .map((part, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  {part.trim()}
+                </span>
+              ))}
           </span>
         }
         actions={
@@ -762,13 +834,19 @@ export function WorkspaceDetailPage() {
                       value={editWsName}
                       onChange={(e) => setEditWsName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editWsName.trim() && isWorkspaceEditDirty) updateWorkspaceMutation.mutate()
+                        if (e.key === 'Enter' && editWsName.trim() && isWorkspaceEditDirty)
+                          updateWorkspaceMutation.mutate()
                       }}
                     />
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>{t('common.cancel')}</Button>
-                    <Button onClick={() => updateWorkspaceMutation.mutate()} disabled={updateWorkspaceMutation.isPending || !editWsName.trim() || !isWorkspaceEditDirty}>
+                    <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      onClick={() => updateWorkspaceMutation.mutate()}
+                      disabled={updateWorkspaceMutation.isPending || !editWsName.trim() || !isWorkspaceEditDirty}
+                    >
                       {updateWorkspaceMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       {t('common.save')}
                     </Button>
@@ -787,30 +865,41 @@ export function WorkspaceDetailPage() {
 
       {/* Workspace analytics - 5 chart types */}
       {visibleProjects.length > 0 && (
-        <WorkspaceChartsSection
-          projects={visibleProjects}
-          members={members}
-          teamsCount={visibleTeams.length}
-        />
+        <WorkspaceChartsSection projects={visibleProjects} members={members} teamsCount={visibleTeams.length} />
       )}
 
-      <Tabs defaultValue="projects">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const next = new URLSearchParams(searchParams)
+          next.set('tab', value)
+          setSearchParams(next, { replace: true })
+        }}
+      >
         <TabsList className="flex w-full bg-muted p-1 h-9 rounded-lg justify-between sm:w-fit sm:justify-start sm:gap-1 sm:p-[3px]">
           <TabsTrigger value="projects" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
             <FolderKanban className="size-3.5 hidden sm:inline-block" />
-            <span className="truncate">{t('workspace.tab.projects')} ({visibleProjects.length})</span>
+            <span className="truncate">
+              {t('workspace.tab.projects')} ({visibleProjects.length})
+            </span>
           </TabsTrigger>
           <TabsTrigger value="members" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
             <Users className="size-3.5 hidden sm:inline-block" />
-            <span className="truncate">{t('workspace.tab.members')} ({members.length})</span>
+            <span className="truncate">
+              {t('workspace.tab.members')} ({members.length})
+            </span>
           </TabsTrigger>
           <TabsTrigger value="invites" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
             <Link2 className="size-3.5 hidden sm:inline-block" />
-            <span className="truncate">{t('workspace.tab.invites')} ({invites.length})</span>
+            <span className="truncate">
+              {t('workspace.tab.invites')} ({invites.length})
+            </span>
           </TabsTrigger>
           <TabsTrigger value="teams" className="flex-1 sm:flex-initial gap-1 text-[11px] sm:text-xs px-1.5 sm:px-3">
             <UsersRound className="size-3.5 hidden sm:inline-block" />
-            <span className="truncate">{t('workspace.tab.teams')} ({visibleTeams.length})</span>
+            <span className="truncate">
+              {t('workspace.tab.teams')} ({visibleTeams.length})
+            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -852,8 +941,13 @@ export function WorkspaceDetailPage() {
                     isOwner={isOwner}
                   />
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>{t('common.cancel')}</Button>
-                    <Button onClick={() => createProjectMutation.mutate()} disabled={createProjectMutation.isPending || !projectName.trim()}>
+                    <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      onClick={() => createProjectMutation.mutate()}
+                      disabled={createProjectMutation.isPending || !projectName.trim()}
+                    >
                       {createProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       {t('common.create')}
                     </Button>
@@ -877,11 +971,17 @@ export function WorkspaceDetailPage() {
                 const canManageCurrentProject = canManageProject(project)
 
                 return (
-                  <Card key={project.id} className="group relative h-full transition-all hover:border-primary/30 hover:shadow-sm">
+                  <Card
+                    key={project.id}
+                    className="group relative h-full transition-all hover:border-primary/30 hover:shadow-sm"
+                  >
                     <CardContent className="p-4">
                       {/* Top Row: Avatar, Title, and Action button */}
                       <div className="flex items-start justify-between gap-3">
-                        <Link to={`/workspaces/${workspaceId}/projects/${project.id}`} className="flex min-w-0 flex-1 items-start gap-3">
+                        <Link
+                          to={`/workspaces/${workspaceId}/projects/${project.id}`}
+                          className="flex min-w-0 flex-1 items-start gap-3"
+                        >
                           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground shadow-sm">
                             {project.name.charAt(0).toUpperCase()}
                           </div>
@@ -901,7 +1001,11 @@ export function WorkspaceDetailPage() {
                           <div className="shrink-0">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="size-8 opacity-60 hover:opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 opacity-60 hover:opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
                                   <MoreHorizontal className="size-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -914,12 +1018,16 @@ export function WorkspaceDetailPage() {
                                     setEditProjectDescription(project.description ?? '')
                                     setEditProjectVisibility(project.visibility ?? 'PUBLIC')
                                     setEditProjectManagerUserId(project.managerUser?.userId ?? '')
-                                    setEditProjectManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                    setEditProjectManagerTeamId(
+                                      project.managerTeamId ? String(project.managerTeamId) : '',
+                                    )
                                     setEditProjectInitialName(project.name.trim())
                                     setEditProjectInitialDescription((project.description ?? '').trim())
                                     setEditProjectInitialVisibility(project.visibility ?? 'PUBLIC')
                                     setEditProjectInitialManagerUserId(project.managerUser?.userId ?? '')
-                                    setEditProjectInitialManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
+                                    setEditProjectInitialManagerTeamId(
+                                      project.managerTeamId ? String(project.managerTeamId) : '',
+                                    )
                                     setEditProjectDialogOpen(true)
                                   }}
                                 >
@@ -928,19 +1036,31 @@ export function WorkspaceDetailPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {project.status !== 'ACTIVE' && (
-                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })}>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ACTIVE' })
+                                    }
+                                  >
                                     <RotateCcw className="mr-2 size-3.5" />
                                     {t('workspace.action.reactivate')}
                                   </DropdownMenuItem>
                                 )}
                                 {project.status !== 'COMPLETED' && (
-                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })}>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      updateProjectStatusMutation.mutate({ projectId: project.id, status: 'COMPLETED' })
+                                    }
+                                  >
                                     <CheckCircle2 className="mr-2 size-3.5" />
                                     {t('workspace.action.complete')}
                                   </DropdownMenuItem>
                                 )}
                                 {project.status !== 'ARCHIVED' && (
-                                  <DropdownMenuItem onClick={() => updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })}>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      updateProjectStatusMutation.mutate({ projectId: project.id, status: 'ARCHIVED' })
+                                    }
+                                  >
                                     <Archive className="mr-2 size-3.5" />
                                     {t('workspace.action.archive')}
                                   </DropdownMenuItem>
@@ -968,19 +1088,36 @@ export function WorkspaceDetailPage() {
 
                       {/* Bottom Row: Metadata badges */}
                       <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-3 border-t border-border/40">
-                        <Badge variant={project.status === 'ACTIVE' ? 'default' : project.status === 'COMPLETED' ? 'secondary' : 'outline'} className="text-[10px] px-2 py-0.5 font-medium">
+                        <Badge
+                          variant={
+                            project.status === 'ACTIVE'
+                              ? 'default'
+                              : project.status === 'COMPLETED'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                          className="text-[10px] px-2 py-0.5 font-medium"
+                        >
                           {t(`project.status.${project.status}`)}
                         </Badge>
                         <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium">
                           {t(`project.visibility.${(project.visibility ?? 'PUBLIC').toLowerCase()}`)}
                         </Badge>
                         {project.managerUser && (
-                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50">
-                            {t('workspace.badge.managerUser', { name: `${project.managerUser.firstName} ${project.managerUser.lastName}` })}
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-2 py-0.5 font-medium bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50"
+                          >
+                            {t('workspace.badge.managerUser', {
+                              name: `${project.managerUser.firstName} ${project.managerUser.lastName}`,
+                            })}
                           </Badge>
                         )}
                         {project.managerTeamName && (
-                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-2 py-0.5 font-medium border-indigo-200 text-indigo-700 dark:border-indigo-800/50 dark:text-indigo-300"
+                          >
                             {t('workspace.badge.managerTeam', { name: project.managerTeamName })}
                           </Badge>
                         )}
@@ -1007,7 +1144,12 @@ export function WorkspaceDetailPage() {
                 </Button>
                 {buildPageNumbers(projectCurrentPage, projectTotalPages).map((p, idx) =>
                   p === '...' ? (
-                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                    <span
+                      key={`dots-${idx}`}
+                      className="flex size-8 items-center justify-center text-xs text-muted-foreground"
+                    >
+                      ⋯
+                    </span>
                   ) : (
                     <Button
                       key={p}
@@ -1018,7 +1160,7 @@ export function WorkspaceDetailPage() {
                     >
                       {p}
                     </Button>
-                  )
+                  ),
                 )}
                 <Button
                   variant="outline"
@@ -1055,9 +1197,7 @@ export function WorkspaceDetailPage() {
               <DialogHeader>
                 <DialogTitle>{t('workspace.dialog.editProjectTitle')}</DialogTitle>
                 <DialogDescription>
-                  {isOwner
-                    ? t('workspace.dialog.editProjectDescOwner')
-                    : t('workspace.dialog.editProjectDescMember')}
+                  {isOwner ? t('workspace.dialog.editProjectDescOwner') : t('workspace.dialog.editProjectDescMember')}
                 </DialogDescription>
               </DialogHeader>
               <ProjectFormFields
@@ -1076,8 +1216,13 @@ export function WorkspaceDetailPage() {
                 isOwner={isOwner}
               />
               <DialogFooter>
-                <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>{t('common.cancel')}</Button>
-                <Button onClick={() => updateProjectMutation.mutate()} disabled={updateProjectMutation.isPending || !editProjectName.trim() || !isProjectEditDirty}>
+                <Button variant="outline" onClick={() => setEditProjectDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={() => updateProjectMutation.mutate()}
+                  disabled={updateProjectMutation.isPending || !editProjectName.trim() || !isProjectEditDirty}
+                >
                   {updateProjectMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                   {t('common.save')}
                 </Button>
@@ -1109,7 +1254,9 @@ export function WorkspaceDetailPage() {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteProjectDialogOpen(false)}>{t('common.cancel')}</Button>
+                <Button variant="outline" onClick={() => setDeleteProjectDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
                 <Button
                   variant="destructive"
                   onClick={() => {
@@ -1152,8 +1299,13 @@ export function WorkspaceDetailPage() {
                 MEMBER: 'border-l-slate-300 dark:border-l-slate-600',
               }[r]
               return (
-                <div key={r} className={`flex flex-col gap-1.5 rounded-lg border border-l-[3px] border-border/50 bg-card px-3 py-2.5 shadow-sm ${accentClass}`}>
-                  <span className={`inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClassName[r]}`}>
+                <div
+                  key={r}
+                  className={`flex flex-col gap-1.5 rounded-lg border border-l-[3px] border-border/50 bg-card px-3 py-2.5 shadow-sm ${accentClass}`}
+                >
+                  <span
+                    className={`inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${roleBadgeClassName[r]}`}
+                  >
                     <Icon className="size-3" />
                     {roleDisplayName[r]}
                   </span>
@@ -1169,12 +1321,21 @@ export function WorkspaceDetailPage() {
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={memberSearch}
-                onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1) }}
+                onChange={(e) => {
+                  setMemberSearch(e.target.value)
+                  setMemberPage(1)
+                }}
                 placeholder={t('workspace.members.searchPlaceholder')}
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <Select value={memberRoleFilter} onValueChange={(v) => { setMemberRoleFilter(v as WorkspaceMemberRoleType | 'ALL'); setMemberPage(1) }}>
+            <Select
+              value={memberRoleFilter}
+              onValueChange={(v) => {
+                setMemberRoleFilter(v as WorkspaceMemberRoleType | 'ALL')
+                setMemberPage(1)
+              }}
+            >
               <SelectTrigger className="h-8 w-36 text-xs">
                 <SelectValue placeholder={t('workspace.members.allRoles')} />
               </SelectTrigger>
@@ -1205,7 +1366,9 @@ export function WorkspaceDetailPage() {
                 <SelectItem value="joined">{t('workspace.sort.byJoinDate')}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="ml-auto text-xs text-muted-foreground">{t('workspace.members.count', { filtered: filteredMembers.length, total: members.length })}</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {t('workspace.members.count', { filtered: filteredMembers.length, total: members.length })}
+            </span>
             {canManageWorkspace && (
               <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
                 <DialogTrigger asChild>
@@ -1248,8 +1411,13 @@ export function WorkspaceDetailPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>{t('common.cancel')}</Button>
-                    <Button onClick={() => addMemberMutation.mutate()} disabled={addMemberMutation.isPending || !memberUserId.trim()}>
+                    <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      onClick={() => addMemberMutation.mutate()}
+                      disabled={addMemberMutation.isPending || !memberUserId.trim()}
+                    >
                       {addMemberMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       {t('workspace.action.addMember')}
                     </Button>
@@ -1279,21 +1447,39 @@ export function WorkspaceDetailPage() {
                 {paginatedMembers.map((member) => {
                   const isOwnerMember = member.role === 'OWNER'
                   const isSelf = member.user.userId === currentUserId
-                  const joinedDate = new Date(member.joinedAt).toLocaleDateString(localeTag, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  const joinedDate = new Date(member.joinedAt).toLocaleDateString(localeTag, {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })
                   return (
-                    <div key={member.id} className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30">
+                    <div
+                      key={member.id}
+                      className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
+                    >
                       <Avatar className="size-9 shrink-0">
                         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                          {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
+                          {member.user.firstName.charAt(0)}
+                          {member.user.lastName.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="truncate text-sm font-medium">{highlightMatch(`${member.user.firstName} ${member.user.lastName}`, memberSearch.trim())}</p>
-                          {isSelf && <Badge variant="outline" className="h-4 px-1 text-[9px]">{t('workspace.badge.you')}</Badge>}
+                          <p className="truncate text-sm font-medium">
+                            {highlightMatch(`${member.user.firstName} ${member.user.lastName}`, memberSearch.trim())}
+                          </p>
+                          {isSelf && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+                              {t('workspace.badge.you')}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="truncate text-xs text-muted-foreground">{highlightMatch(member.user.email, memberSearch.trim())}</p>
-                        <p className="text-[10px] text-muted-foreground/60">{t('workspace.members.joinedAt', { date: joinedDate })}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {highlightMatch(member.user.email, memberSearch.trim())}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60">
+                          {t('workspace.members.joinedAt', { date: joinedDate })}
+                        </p>
                       </div>
                       {canManageWorkspace && !isOwnerMember && !isSelf ? (
                         <DropdownMenu>
@@ -1310,8 +1496,14 @@ export function WorkspaceDetailPage() {
                                 onClick={() => {
                                   workspaceApi
                                     .updateMemberRole(workspaceId, member.user.userId, r)
-                                    .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                                    .catch((err: Error) => toast.error(t('workspace.toast.roleUpdateFailed'), { description: err.message }))
+                                    .then(() =>
+                                      queryClient.invalidateQueries({
+                                        queryKey: queryKeys.workspaces.members(workspaceId),
+                                      }),
+                                    )
+                                    .catch((err: Error) =>
+                                      toast.error(t('workspace.toast.roleUpdateFailed'), { description: err.message }),
+                                    )
                                 }}
                               >
                                 {t('workspace.action.changeRoleTo', { role: roleDisplayName[r] })}
@@ -1323,8 +1515,14 @@ export function WorkspaceDetailPage() {
                               onClick={() => {
                                 workspaceApi
                                   .removeMember(workspaceId, member.user.userId)
-                                  .then(() => queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.members(workspaceId) }))
-                                  .catch((err: Error) => toast.error(t('workspace.toast.memberRemoveFailed'), { description: err.message }))
+                                  .then(() =>
+                                    queryClient.invalidateQueries({
+                                      queryKey: queryKeys.workspaces.members(workspaceId),
+                                    }),
+                                  )
+                                  .catch((err: Error) =>
+                                    toast.error(t('workspace.toast.memberRemoveFailed'), { description: err.message }),
+                                  )
                               }}
                             >
                               <Trash2 className="mr-2 size-3.5" />
@@ -1358,7 +1556,12 @@ export function WorkspaceDetailPage() {
                 </Button>
                 {buildPageNumbers(memberCurrentPage, memberTotalPages).map((p, idx) =>
                   p === '...' ? (
-                    <span key={`dots-${idx}`} className="flex size-8 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                    <span
+                      key={`dots-${idx}`}
+                      className="flex size-8 items-center justify-center text-xs text-muted-foreground"
+                    >
+                      ⋯
+                    </span>
                   ) : (
                     <Button
                       key={p}
@@ -1369,7 +1572,7 @@ export function WorkspaceDetailPage() {
                     >
                       {p}
                     </Button>
-                  )
+                  ),
                 )}
                 <Button
                   variant="outline"
@@ -1412,7 +1615,13 @@ export function WorkspaceDetailPage() {
                       <Label>{t('workspace.field.assignedRole')}</Label>
                       <div className="flex gap-2">
                         {(['OWNER', 'MEMBER'] as const).map((r) => (
-                          <Button key={r} type="button" variant={inviteRole === r ? 'default' : 'outline'} size="sm" onClick={() => setInviteRole(r)}>
+                          <Button
+                            key={r}
+                            type="button"
+                            variant={inviteRole === r ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setInviteRole(r)}
+                          >
                             {roleDisplayName[r]}
                           </Button>
                         ))}
@@ -1430,7 +1639,9 @@ export function WorkspaceDetailPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>{t('common.cancel')}</Button>
+                    <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+                      {t('common.cancel')}
+                    </Button>
                     <Button onClick={() => createInviteMutation.mutate()} disabled={createInviteMutation.isPending}>
                       {createInviteMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       {t('common.create')}
@@ -1454,15 +1665,23 @@ export function WorkspaceDetailPage() {
               {invites.map((invite) => {
                 const inviteUrl = `${window.location.origin}/join?code=${invite.inviteCode}`
                 return (
-                  <div key={invite.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap">
+                  <div
+                    key={invite.id}
+                    className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/30 sm:flex-nowrap"
+                  >
                     <QrCode className="size-8 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <code className="text-xs font-mono">{invite.inviteCode}</code>
-                        <Badge variant="outline" className="text-[10px]">{roleDisplayName[invite.roleToAssign]}</Badge>
+                        <Badge variant="outline" className="text-[10px]">
+                          {roleDisplayName[invite.roleToAssign]}
+                        </Badge>
                       </div>
                       <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        {t('workspace.invites.usageCount', { used: invite.usedCount, max: invite.maxUses ? `/${invite.maxUses}` : '' })}
+                        {t('workspace.invites.usageCount', {
+                          used: invite.usedCount,
+                          max: invite.maxUses ? `/${invite.maxUses}` : '',
+                        })}
                         {invite.expiresAt ? t('workspace.invites.expiresAt', { date: invite.expiresAt }) : ''}
                       </p>
                     </div>
@@ -1502,12 +1721,17 @@ export function WorkspaceDetailPage() {
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={teamSearch}
-                onChange={(e) => { setTeamSearch(e.target.value); setTeamPage(1) }}
+                onChange={(e) => {
+                  setTeamSearch(e.target.value)
+                  setTeamPage(1)
+                }}
                 placeholder={t('workspace.teams.searchPlaceholder')}
                 className="h-8 pl-8 text-xs"
               />
             </div>
-            <span className="text-xs text-muted-foreground">{t('workspace.teams.count', { filtered: filteredTeams.length, total: visibleTeams.length })}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('workspace.teams.count', { filtered: filteredTeams.length, total: visibleTeams.length })}
+            </span>
             {canManageWorkspace && (
               <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
                 <DialogTrigger asChild>
@@ -1524,16 +1748,30 @@ export function WorkspaceDetailPage() {
                   <div className="space-y-3">
                     <div className="space-y-2">
                       <Label>{t('workspace.field.teamName')}</Label>
-                      <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder={t('workspace.placeholder.teamName')} />
+                      <Input
+                        value={teamName}
+                        onChange={(e) => setTeamName(e.target.value)}
+                        placeholder={t('workspace.placeholder.teamName')}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>{t('workspace.field.descriptionOptional')}</Label>
-                      <Textarea value={teamDescription} onChange={(e) => setTeamDescription(e.target.value)} rows={3} placeholder={t('workspace.placeholder.teamDescription')} />
+                      <Textarea
+                        value={teamDescription}
+                        onChange={(e) => setTeamDescription(e.target.value)}
+                        rows={3}
+                        placeholder={t('workspace.placeholder.teamDescription')}
+                      />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>{t('common.cancel')}</Button>
-                    <Button onClick={() => createTeamMutation.mutate()} disabled={createTeamMutation.isPending || !teamName.trim()}>
+                    <Button variant="outline" onClick={() => setTeamDialogOpen(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      onClick={() => createTeamMutation.mutate()}
+                      disabled={createTeamMutation.isPending || !teamName.trim()}
+                    >
                       {createTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                       {t('common.create')}
                     </Button>
@@ -1547,8 +1785,12 @@ export function WorkspaceDetailPage() {
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <UsersRound className="mb-3 size-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium">{visibleTeams.length === 0 ? t('workspace.teams.empty') : t('workspace.teams.notFound')}</p>
-                {visibleTeams.length === 0 && <p className="mt-1 text-xs text-muted-foreground">{t('workspace.teams.emptyHint')}</p>}
+                <p className="text-sm font-medium">
+                  {visibleTeams.length === 0 ? t('workspace.teams.empty') : t('workspace.teams.notFound')}
+                </p>
+                {visibleTeams.length === 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">{t('workspace.teams.emptyHint')}</p>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -1557,9 +1799,7 @@ export function WorkspaceDetailPage() {
                 {paginatedTeams.map((team) => {
                   const teamMembers = teamMembersByTeamId.get(team.id) ?? []
                   const teamMemberIds = new Set(teamMembers.map((member) => member.user.userId))
-                  const availableWorkspaceMembers = members.filter(
-                    (member) => !teamMemberIds.has(member.user.userId),
-                  )
+                  const availableWorkspaceMembers = members.filter((member) => !teamMemberIds.has(member.user.userId))
                   const selectedUserId = teamMemberDraftByTeamId[team.id] ?? ''
                   const isExpanded = teamMemberExpanded[team.id] ?? false
 
@@ -1571,14 +1811,22 @@ export function WorkspaceDetailPage() {
                     const roleB = wsMemberB?.role ?? 'MEMBER'
                     const cmp = ROLE_ORDER[roleA] - ROLE_ORDER[roleB]
                     if (cmp !== 0) return cmp
-                    return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`, localeTag)
+                    return `${a.user.firstName} ${a.user.lastName}`.localeCompare(
+                      `${b.user.firstName} ${b.user.lastName}`,
+                      localeTag,
+                    )
                   })
 
-                  const displayedMembers = isExpanded ? sortedTeamMembers : sortedTeamMembers.slice(0, TEAM_MEMBER_PREVIEW_COUNT)
+                  const displayedMembers = isExpanded
+                    ? sortedTeamMembers
+                    : sortedTeamMembers.slice(0, TEAM_MEMBER_PREVIEW_COUNT)
                   const hiddenCount = sortedTeamMembers.length - TEAM_MEMBER_PREVIEW_COUNT
 
                   return (
-                    <Card key={team.id} className="group mb-4 flex flex-col break-inside-avoid overflow-hidden transition-all hover:border-primary/30 hover:shadow-md">
+                    <Card
+                      key={team.id}
+                      className="group mb-4 flex flex-col break-inside-avoid overflow-hidden transition-all hover:border-primary/30 hover:shadow-md"
+                    >
                       <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
                           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
@@ -1587,9 +1835,13 @@ export function WorkspaceDetailPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-2">
                               <div className="min-w-0 flex-1">
-                                <CardTitle className="text-sm font-semibold leading-tight">{highlightMatch(team.name, teamSearch.trim())}</CardTitle>
+                                <CardTitle className="text-sm font-semibold leading-tight">
+                                  {highlightMatch(team.name, teamSearch.trim())}
+                                </CardTitle>
                                 {team.description && (
-                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{highlightMatch(team.description, teamSearch.trim())}</p>
+                                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                                    {highlightMatch(team.description, teamSearch.trim())}
+                                  </p>
                                 )}
                               </div>
                               {canManageWorkspace && (
@@ -1637,17 +1889,22 @@ export function WorkspaceDetailPage() {
                                   >
                                     <Avatar className="size-7 shrink-0">
                                       <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                        {teamMember.user.firstName.charAt(0)}{teamMember.user.lastName.charAt(0)}
+                                        {teamMember.user.firstName.charAt(0)}
+                                        {teamMember.user.lastName.charAt(0)}
                                       </AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-xs font-medium">
                                         {teamMember.user.firstName} {teamMember.user.lastName}
                                       </p>
-                                      <p className="truncate text-[10px] text-muted-foreground">{teamMember.user.email}</p>
+                                      <p className="truncate text-[10px] text-muted-foreground">
+                                        {teamMember.user.email}
+                                      </p>
                                     </div>
                                     {workspaceMember && (
-                                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold ${roleBadgeClassName[workspaceMember.role]}`}>
+                                      <span
+                                        className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold ${roleBadgeClassName[workspaceMember.role]}`}
+                                      >
                                         {roleDisplayName[workspaceMember.role]}
                                       </span>
                                     )}
@@ -1656,7 +1913,12 @@ export function WorkspaceDetailPage() {
                                         variant="ghost"
                                         size="icon"
                                         className="size-6 shrink-0 text-muted-foreground/40 hover:text-destructive"
-                                        onClick={() => removeTeamMemberMutation.mutate({ teamId: team.id, userId: teamMember.user.userId })}
+                                        onClick={() =>
+                                          removeTeamMemberMutation.mutate({
+                                            teamId: team.id,
+                                            userId: teamMember.user.userId,
+                                          })
+                                        }
                                         disabled={removeTeamMemberMutation.isPending}
                                       >
                                         <Trash2 className="size-3" />
@@ -1671,7 +1933,9 @@ export function WorkspaceDetailPage() {
                                   className="w-full rounded-md py-1.5 text-center text-xs font-medium text-primary transition-colors hover:bg-primary/5"
                                   onClick={() => setTeamMemberExpanded((prev) => ({ ...prev, [team.id]: !isExpanded }))}
                                 >
-                                  {isExpanded ? t('workspace.teams.collapse') : t('workspace.teams.showMore', { count: hiddenCount })}
+                                  {isExpanded
+                                    ? t('workspace.teams.collapse')
+                                    : t('workspace.teams.showMore', { count: hiddenCount })}
                                 </button>
                               )}
                             </>
@@ -1736,15 +2000,30 @@ export function WorkspaceDetailPage() {
               {teamTotalPages > 1 && (
                 <div className="flex items-center justify-between pt-1">
                   <p className="text-xs text-muted-foreground">
-                    {t('workspace.pagination.teamInfo', { current: teamCurrentPage, total: teamTotalPages, count: filteredTeams.length })}
+                    {t('workspace.pagination.teamInfo', {
+                      current: teamCurrentPage,
+                      total: teamTotalPages,
+                      count: filteredTeams.length,
+                    })}
                   </p>
                   <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" className="size-7" disabled={teamCurrentPage === 1} onClick={() => setTeamPage((p) => p - 1)}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-7"
+                      disabled={teamCurrentPage === 1}
+                      onClick={() => setTeamPage((p) => p - 1)}
+                    >
                       <ChevronLeft className="size-3.5" />
                     </Button>
                     {buildPageNumbers(teamCurrentPage, teamTotalPages).map((p, idx) =>
                       p === '...' ? (
-                        <span key={`dots-${idx}`} className="flex size-7 items-center justify-center text-xs text-muted-foreground">⋯</span>
+                        <span
+                          key={`dots-${idx}`}
+                          className="flex size-7 items-center justify-center text-xs text-muted-foreground"
+                        >
+                          ⋯
+                        </span>
                       ) : (
                         <Button
                           key={p}
@@ -1755,9 +2034,15 @@ export function WorkspaceDetailPage() {
                         >
                           {p}
                         </Button>
-                      )
+                      ),
                     )}
-                    <Button variant="outline" size="icon" className="size-7" disabled={teamCurrentPage === teamTotalPages} onClick={() => setTeamPage((p) => p + 1)}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-7"
+                      disabled={teamCurrentPage === teamTotalPages}
+                      onClick={() => setTeamPage((p) => p + 1)}
+                    >
                       <ChevronRight className="size-3.5" />
                     </Button>
                   </div>
@@ -1781,7 +2066,9 @@ export function WorkspaceDetailPage() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>{t('common.cancel')}</Button>
+              <Button variant="outline" onClick={() => setDeleteWorkspaceDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button
                 variant="destructive"
                 onClick={() => {
@@ -1813,13 +2100,13 @@ export function WorkspaceDetailPage() {
         clockMs={workspaceDeleteClockMs}
         undoWindowMs={workspaceDeleteUndoWindowMs}
         onUndo={undoWorkspaceDelete}
-        itemTitle={(entry) => (
+        itemTitle={(entry) =>
           entry.payload.kind === 'project'
             ? t('workspace.toast.deletingProject')
             : entry.payload.kind === 'workspace'
               ? t('workspace.toast.deletingWorkspace')
               : t('workspace.toast.deletingTeam')
-        )}
+        }
       />
     </div>
   )
@@ -1843,11 +2130,17 @@ function WorkspaceChartsSection({ projects, members, teamsCount }: WorkspaceChar
       monthMap.set(m, (monthMap.get(m) ?? 0) + 1)
     }
     const sorted = [...monthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8)
-    let cumul = 0
-    return sorted.map(([month, count]) => {
-      cumul += count
-      return { label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), count, cumulative: cumul }
-    })
+    return sorted.reduce<GrowthPoint[]>((items, [month, count]) => {
+      const cumulative = (items.at(-1)?.cumulative ?? 0) + count
+      return [
+        ...items,
+        {
+          label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          count,
+          cumulative,
+        },
+      ]
+    }, [])
   }, [projects])
 
   const memberRoleData = useMemo(() => {
@@ -1882,10 +2175,30 @@ function WorkspaceChartsSection({ projects, members, teamsCount }: WorkspaceChar
       {/* Summary totals */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: t('workspace.charts.totalProjects'), value: projects.length, color: 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20' },
-          { label: t('workspace.charts.active'), value: activeCount, color: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20' },
-          { label: t('workspace.charts.members'), value: members.length, color: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20' },
-          { label: t('workspace.charts.teams'), value: teamsCount, color: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20' },
+          {
+            label: t('workspace.charts.totalProjects'),
+            value: projects.length,
+            color:
+              'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20',
+          },
+          {
+            label: t('workspace.charts.active'),
+            value: activeCount,
+            color:
+              'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20',
+          },
+          {
+            label: t('workspace.charts.members'),
+            value: members.length,
+            color:
+              'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20',
+          },
+          {
+            label: t('workspace.charts.teams'),
+            value: teamsCount,
+            color:
+              'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20',
+          },
         ].map((s) => (
           <div key={s.label} className={`flex flex-col items-center justify-center rounded-xl py-3 ${s.color}`}>
             <span className="text-2xl font-bold">{s.value}</span>
@@ -1904,7 +2217,11 @@ function WorkspaceChartsSection({ projects, members, teamsCount }: WorkspaceChar
               {t('workspace.charts.projectsByStatus')}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              {t('workspace.charts.statusSummary', { active: activeCount, completed: completedCount, archived: archivedCount })}
+              {t('workspace.charts.statusSummary', {
+                active: activeCount,
+                completed: completedCount,
+                archived: archivedCount,
+              })}
             </p>
           </CardHeader>
           <CardContent className="pb-4 pt-0">
@@ -1981,9 +2298,24 @@ function WorkspaceChartsSection({ projects, members, teamsCount }: WorkspaceChar
           <CardContent className="pb-3 pt-0">
             <div className="space-y-3 pt-1">
               {[
-                { label: t('workspace.charts.completionRate'), value: projects.length > 0 ? `${Math.round(completedCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? completedCount / projects.length : 0, color: 'bg-emerald-500' },
-                { label: t('workspace.charts.activeRatio'), value: projects.length > 0 ? `${Math.round(activeCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? activeCount / projects.length : 0, color: 'bg-indigo-500' },
-                { label: t('workspace.charts.archivedRatio'), value: projects.length > 0 ? `${Math.round(archivedCount / projects.length * 100)}%` : '0%', bar: projects.length > 0 ? archivedCount / projects.length : 0, color: 'bg-slate-400' },
+                {
+                  label: t('workspace.charts.completionRate'),
+                  value: projects.length > 0 ? `${Math.round((completedCount / projects.length) * 100)}%` : '0%',
+                  bar: projects.length > 0 ? completedCount / projects.length : 0,
+                  color: 'bg-emerald-500',
+                },
+                {
+                  label: t('workspace.charts.activeRatio'),
+                  value: projects.length > 0 ? `${Math.round((activeCount / projects.length) * 100)}%` : '0%',
+                  bar: projects.length > 0 ? activeCount / projects.length : 0,
+                  color: 'bg-indigo-500',
+                },
+                {
+                  label: t('workspace.charts.archivedRatio'),
+                  value: projects.length > 0 ? `${Math.round((archivedCount / projects.length) * 100)}%` : '0%',
+                  bar: projects.length > 0 ? archivedCount / projects.length : 0,
+                  color: 'bg-slate-400',
+                },
               ].map((row) => (
                 <div key={row.label} className="space-y-1">
                   <div className="flex justify-between text-xs">

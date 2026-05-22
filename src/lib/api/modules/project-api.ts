@@ -71,7 +71,12 @@ export interface EffectiveProjectAccess {
   canManageWorkspaceSettings: boolean
 }
 
-export interface ProjectDailyTrendPoint { date: string; created: number; completed: number; cumulative: number }
+export interface ProjectDailyTrendPoint {
+  date: string
+  created: number
+  completed: number
+  cumulative: number
+}
 export interface ProjectAnalytics {
   trend: ProjectDailyTrendPoint[]
   completionRate: number

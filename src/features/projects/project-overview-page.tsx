@@ -1,7 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { CheckCircle2, Columns3, Target, CalendarDays, Activity, ArrowRight, TrendingUp, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon } from 'lucide-react'
+import {
+  CheckCircle2,
+  Columns3,
+  Target,
+  CalendarDays,
+  Activity,
+  ArrowRight,
+  TrendingUp,
+  BarChart2,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -74,7 +85,9 @@ export function ProjectOverviewPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <p className="text-sm text-muted-foreground">{t('project.notFound')}</p>
-        <Link to={`/workspaces/${workspaceId}`} className="mt-2 text-sm text-primary hover:underline">{t('project.backToWorkspace')}</Link>
+        <Link to={`/workspaces/${workspaceId}`} className="mt-2 text-sm text-primary hover:underline">
+          {t('project.backToWorkspace')}
+        </Link>
       </div>
     )
   }
@@ -90,8 +103,18 @@ export function ProjectOverviewPage() {
   const quickLinks = [
     { to: `${base}/kanban`, icon: Columns3, label: t('nav.kanban'), desc: t('project.quickLinkKanbanDescription') },
     { to: `${base}/goals`, icon: Target, label: t('nav.goals'), desc: t('project.quickLinkGoalsDescription') },
-    { to: `${base}/calendar`, icon: CalendarDays, label: t('nav.calendar'), desc: t('project.quickLinkCalendarDescription') },
-    { to: `${base}/activity`, icon: Activity, label: t('nav.activity'), desc: t('project.quickLinkActivityDescription') },
+    {
+      to: `${base}/calendar`,
+      icon: CalendarDays,
+      label: t('nav.calendar'),
+      desc: t('project.quickLinkCalendarDescription'),
+    },
+    {
+      to: `${base}/activity`,
+      icon: Activity,
+      label: t('nav.activity'),
+      desc: t('project.quickLinkActivityDescription'),
+    },
   ]
 
   return (
@@ -103,10 +126,10 @@ export function ProjectOverviewPage() {
       />
 
       <div className="flex items-center gap-3">
-        <Badge variant={statusBadgeVariant[project.status] ?? 'outline'}>{t(`project.status.${project.status}`, { defaultValue: project.status })}</Badge>
-        <span className="text-xs text-muted-foreground">
-          {t('project.createdBy', { name: creatorName })}
-        </span>
+        <Badge variant={statusBadgeVariant[project.status] ?? 'outline'}>
+          {t(`project.status.${project.status}`, { defaultValue: project.status })}
+        </Badge>
+        <span className="text-xs text-muted-foreground">{t('project.createdBy', { name: creatorName })}</span>
       </div>
 
       {/* Stats */}
@@ -256,7 +279,9 @@ export function ProjectOverviewPage() {
               {statuses.length > 0 ? (
                 <TaskStatusBarChart statuses={statuses} tasks={tasks} />
               ) : (
-                <div className="flex h-[200px] items-center justify-center"><p className="text-sm text-muted-foreground">{t('project.charts.noStatuses')}</p></div>
+                <div className="flex h-[200px] items-center justify-center">
+                  <p className="text-sm text-muted-foreground">{t('project.charts.noStatuses')}</p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -314,7 +339,9 @@ function ProjectNavTabs({ workspaceId, projectId }: { workspaceId: number; proje
       <TabsList>
         {tabs.map((tab) => (
           <Link key={tab.value} to={tab.to}>
-            <TabsTrigger value={tab.value} className="pointer-events-none">{tab.label}</TabsTrigger>
+            <TabsTrigger value={tab.value} className="pointer-events-none">
+              {tab.label}
+            </TabsTrigger>
           </Link>
         ))}
       </TabsList>

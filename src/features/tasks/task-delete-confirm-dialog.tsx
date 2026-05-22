@@ -77,20 +77,26 @@ export function TaskDeleteConfirmDialog() {
   const hasTargetTask = taskDeleteConfirmTaskId !== null
   const targetTaskId = taskDeleteConfirmTaskId ?? 0
 
-  const restoreCommentSnapshots = useCallback((snapshots: CommentSnapshot) => {
-    for (const [queryKey, data] of snapshots) {
-      queryClient.setQueryData(queryKey, data)
-    }
-  }, [queryClient])
+  const restoreCommentSnapshots = useCallback(
+    (snapshots: CommentSnapshot) => {
+      for (const [queryKey, data] of snapshots) {
+        queryClient.setQueryData(queryKey, data)
+      }
+    },
+    [queryClient],
+  )
 
-  const restorePendingDelete = useCallback((pendingDelete: PendingTaskDelete) => {
-    queryClient.setQueryData(queryKeys.tasks.detail(pendingDelete.taskId), pendingDelete.snapshots.taskDetail)
-    restoreProjectTaskQueries(queryClient, pendingDelete.snapshots.projectTasks)
-    restoreGoalTaskQueries(queryClient, pendingDelete.snapshots.goalTasks)
-    restoreProjectCalendarQueries(queryClient, pendingDelete.snapshots.projectCalendar)
-    restoreTaskScheduleQueries(queryClient, pendingDelete.snapshots.taskSchedules)
-    restoreCommentSnapshots(pendingDelete.snapshots.comments)
-  }, [queryClient, restoreCommentSnapshots])
+  const restorePendingDelete = useCallback(
+    (pendingDelete: PendingTaskDelete) => {
+      queryClient.setQueryData(queryKeys.tasks.detail(pendingDelete.taskId), pendingDelete.snapshots.taskDetail)
+      restoreProjectTaskQueries(queryClient, pendingDelete.snapshots.projectTasks)
+      restoreGoalTaskQueries(queryClient, pendingDelete.snapshots.goalTasks)
+      restoreProjectCalendarQueries(queryClient, pendingDelete.snapshots.projectCalendar)
+      restoreTaskScheduleQueries(queryClient, pendingDelete.snapshots.taskSchedules)
+      restoreCommentSnapshots(pendingDelete.snapshots.comments)
+    },
+    [queryClient, restoreCommentSnapshots],
+  )
 
   const applyOptimisticDelete = (task: Task) => {
     const snapshots: PendingTaskDelete['snapshots'] = {
@@ -130,56 +136,53 @@ export function TaskDeleteConfirmDialog() {
     toast.success(t('task.undoDeleteSuccess', { name: pendingDelete.taskTitle }))
   }
 
-  const finalizePendingDelete = useCallback(async (taskId: number) => {
-    const pendingDelete = pendingDeletesRef.current.find((item) => item.taskId === taskId)
-    if (!pendingDelete || pendingDelete.status !== 'pending') {
-      return
-    }
-
-    if (finalizingTaskIdsRef.current.has(taskId)) {
-      return
-    }
-
-    finalizingTaskIdsRef.current.add(taskId)
-
-    setPendingDeletes((previous) =>
-      previous.map((item) =>
-        item.taskId === taskId
-          ? { ...item, status: 'finalizing' }
-          : item,
-      ),
-    )
-
-    try {
-      await taskApi.remove(taskId)
-      toast.success(t('task.deleteSuccessWithName', { name: pendingDelete.taskTitle }))
-    } catch (error) {
-      if (error instanceof Error && isNotFoundError(error)) {
-        toast.success(t('task.deletedBeforeWithName', { name: pendingDelete.taskTitle }))
-      } else {
-        restorePendingDelete(pendingDelete)
-
-        const descriptionText = error instanceof Error
-          ? error.message
-          : t('task.deleteUnknownError')
-
-        toast.error(t('task.deleteFailed'), { description: descriptionText })
-        removePendingDelete(taskId)
+  const finalizePendingDelete = useCallback(
+    async (taskId: number) => {
+      const pendingDelete = pendingDeletesRef.current.find((item) => item.taskId === taskId)
+      if (!pendingDelete || pendingDelete.status !== 'pending') {
         return
       }
-    }
 
-    removePendingDelete(taskId)
+      if (finalizingTaskIdsRef.current.has(taskId)) {
+        return
+      }
 
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'project', pendingDelete.projectId] }),
-      queryClient.invalidateQueries({ queryKey: ['tasks', 'goal'] }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
-      queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task', taskId] }),
-      queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', pendingDelete.projectId] }),
-      queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] }),
-    ])
-  }, [queryClient, removePendingDelete, restorePendingDelete])
+      finalizingTaskIdsRef.current.add(taskId)
+
+      setPendingDeletes((previous) =>
+        previous.map((item) => (item.taskId === taskId ? { ...item, status: 'finalizing' } : item)),
+      )
+
+      try {
+        await taskApi.remove(taskId)
+        toast.success(t('task.deleteSuccessWithName', { name: pendingDelete.taskTitle }))
+      } catch (error) {
+        if (error instanceof Error && isNotFoundError(error)) {
+          toast.success(t('task.deletedBeforeWithName', { name: pendingDelete.taskTitle }))
+        } else {
+          restorePendingDelete(pendingDelete)
+
+          const descriptionText = error instanceof Error ? error.message : t('task.deleteUnknownError')
+
+          toast.error(t('task.deleteFailed'), { description: descriptionText })
+          removePendingDelete(taskId)
+          return
+        }
+      }
+
+      removePendingDelete(taskId)
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'project', pendingDelete.projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'goal'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) }),
+        queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task', taskId] }),
+        queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', pendingDelete.projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['task-comments', taskId] }),
+      ])
+    },
+    [queryClient, removePendingDelete, restorePendingDelete],
+  )
 
   useEffect(() => {
     if (pendingDeletes.length === 0) {
@@ -211,7 +214,7 @@ export function TaskDeleteConfirmDialog() {
       }
 
       const cachedTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(targetTaskId))
-      const task = cachedTask ?? await taskApi.detail(targetTaskId)
+      const task = cachedTask ?? (await taskApi.detail(targetTaskId))
 
       const existingPendingDelete = pendingDeletesRef.current.find((item) => item.taskId === task.id)
       if (existingPendingDelete) {
@@ -246,7 +249,12 @@ export function TaskDeleteConfirmDialog() {
 
   return (
     <>
-      <Dialog open={hasTargetTask} onOpenChange={(open) => { if (!open) closeTaskDeleteConfirm() }}>
+      <Dialog
+        open={hasTargetTask}
+        onOpenChange={(open) => {
+          if (!open) closeTaskDeleteConfirm()
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
             <DialogTitle className="flex items-center gap-2">
@@ -262,11 +270,7 @@ export function TaskDeleteConfirmDialog() {
           </DialogHeader>
 
           <DialogFooter className="pt-4">
-            <Button
-              variant="outline"
-              onClick={() => closeTaskDeleteConfirm()}
-              disabled={deleteTaskMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => closeTaskDeleteConfirm()} disabled={deleteTaskMutation.isPending}>
               {t('common.cancel')}
             </Button>
             <Button

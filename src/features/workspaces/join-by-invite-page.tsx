@@ -74,7 +74,12 @@ export function JoinByInvitePage() {
         <LanguageSwitcher />
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-9 rounded-full bg-white/50 backdrop-blur-sm dark:bg-slate-800/50" onClick={toggleTheme}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-full bg-white/50 backdrop-blur-sm dark:bg-slate-800/50"
+              onClick={toggleTheme}
+            >
               <Sun className="size-4 dark:hidden" />
               <Moon className="hidden size-4 dark:block" />
             </Button>
@@ -99,14 +104,8 @@ export function JoinByInvitePage() {
               <h1 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
                 {t('workspace.join.invalidCode')}
               </h1>
-              <p className="mb-8 text-sm text-slate-500 dark:text-slate-400">
-                {t('workspace.join.invalidInvite')}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl"
-                onClick={() => navigate('/dashboard')}
-              >
+              <p className="mb-8 text-sm text-slate-500 dark:text-slate-400">{t('workspace.join.invalidInvite')}</p>
+              <Button variant="outline" className="w-full rounded-xl" onClick={() => navigate('/dashboard')}>
                 {t('workspace.join.backHome')}
               </Button>
             </motion.div>
@@ -137,14 +136,8 @@ export function JoinByInvitePage() {
               <h1 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
                 {t('workspace.join.invalidInvite')}
               </h1>
-              <p className="mb-8 text-sm text-slate-500 dark:text-slate-400">
-                {t('workspace.join.invalidInvite')}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full rounded-xl"
-                onClick={() => navigate('/dashboard')}
-              >
+              <p className="mb-8 text-sm text-slate-500 dark:text-slate-400">{t('workspace.join.invalidInvite')}</p>
+              <Button variant="outline" className="w-full rounded-xl" onClick={() => navigate('/dashboard')}>
                 {t('workspace.join.backHome')}
               </Button>
             </motion.div>
@@ -164,7 +157,9 @@ export function JoinByInvitePage() {
                 className="absolute top-10 left-8 z-30 hidden md:block"
               >
                 <img
-                  src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
+                  src={
+                    theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
+                  }
                   alt="Chronelis"
                   className={`h-22 w-auto drop-shadow-md lg:h-28 origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
                 />
@@ -192,11 +187,17 @@ export function JoinByInvitePage() {
                 </motion.div>
 
                 <div className="text-center">
-                  <motion.h2 variants={itemVariants} className="text-xl font-bold text-slate-900 dark:text-white md:text-3xl">
+                  <motion.h2
+                    variants={itemVariants}
+                    className="text-xl font-bold text-slate-900 dark:text-white md:text-3xl"
+                  >
                     {invite.workspaceName}
                   </motion.h2>
                   <motion.div variants={itemVariants} className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Badge variant="secondary" className="h-7 bg-primary/10 px-3 text-sm text-primary hover:bg-primary/20">
+                    <Badge
+                      variant="secondary"
+                      className="h-7 bg-primary/10 px-3 text-sm text-primary hover:bg-primary/20"
+                    >
                       {t(`workspace.role.${invite.roleToAssign.toLowerCase()}`)}
                     </Badge>
                   </motion.div>
@@ -209,9 +210,7 @@ export function JoinByInvitePage() {
                   <h1 className="text-xl font-bold text-slate-900 dark:text-white md:text-3xl">
                     {t('workspace.join.title')}
                   </h1>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {t('workspace.join.reviewInfo')}
-                  </p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('workspace.join.reviewInfo')}</p>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="mb-10 space-y-4">
@@ -224,7 +223,9 @@ export function JoinByInvitePage() {
                         {t('workspace.join.yourRole')}
                       </p>
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        {invite.roleToAssign === 'OWNER' ? t('workspace.join.roleOwnerDesc') : t('workspace.join.roleMemberDesc')}
+                        {invite.roleToAssign === 'OWNER'
+                          ? t('workspace.join.roleOwnerDesc')
+                          : t('workspace.join.roleMemberDesc')}
                       </p>
                     </div>
                   </div>

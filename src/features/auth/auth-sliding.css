@@ -22,11 +22,15 @@
   right: 50%;
   transform: translate3d(0, -50%, 0);
   border-radius: 50%;
-  background: linear-gradient(135deg,
-      color-mix(in oklab, var(--primary) 45%, transparent) 0%,
-      color-mix(in oklab, var(--accent) 35%, transparent) 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 45%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 35%, transparent) 100%
+  );
   backdrop-filter: blur(24px);
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 0 60px rgba(0, 0, 0, 0.15),
+    inset 0 0 20px rgba(255, 255, 255, 0.15);
   border: 1px solid color-mix(in oklab, var(--background) 30%, transparent);
   transition: transform var(--auth-slide-duration) var(--auth-ease);
   will-change: transform;
@@ -41,10 +45,12 @@
   width: min(82vw, 520px);
   height: min(82vw, 520px);
   border-radius: 50%;
-  background: radial-gradient(circle,
-      color-mix(in oklab, var(--primary) 24%, transparent) 0%,
-      color-mix(in oklab, var(--accent) 20%, transparent) 52%,
-      transparent 74%);
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--primary) 24%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 20%, transparent) 52%,
+    transparent 74%
+  );
   filter: blur(6px);
   opacity: 0;
   pointer-events: none;
@@ -249,23 +255,23 @@
   transition: background 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.chronelis-auth-strength-bar[data-level="weak"] .chronelis-auth-strength-seg.active {
+.chronelis-auth-strength-bar[data-level='weak'] .chronelis-auth-strength-seg.active {
   background: #ef4444;
 }
 
-.chronelis-auth-strength-bar[data-level="fair"] .chronelis-auth-strength-seg.active {
+.chronelis-auth-strength-bar[data-level='fair'] .chronelis-auth-strength-seg.active {
   background: #f97316;
 }
 
-.chronelis-auth-strength-bar[data-level="good"] .chronelis-auth-strength-seg.active {
+.chronelis-auth-strength-bar[data-level='good'] .chronelis-auth-strength-seg.active {
   background: #eab308;
 }
 
-.chronelis-auth-strength-bar[data-level="strong"] .chronelis-auth-strength-seg.active {
+.chronelis-auth-strength-bar[data-level='strong'] .chronelis-auth-strength-seg.active {
   background: #22c55e;
 }
 
-.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-seg.active {
+.chronelis-auth-strength-bar[data-level='very-strong'] .chronelis-auth-strength-seg.active {
   background: #16a34a;
 }
 
@@ -275,23 +281,23 @@
   flex-shrink: 0;
 }
 
-.chronelis-auth-strength-bar[data-level="weak"] .chronelis-auth-strength-lbl {
+.chronelis-auth-strength-bar[data-level='weak'] .chronelis-auth-strength-lbl {
   color: #ef4444;
 }
 
-.chronelis-auth-strength-bar[data-level="fair"] .chronelis-auth-strength-lbl {
+.chronelis-auth-strength-bar[data-level='fair'] .chronelis-auth-strength-lbl {
   color: #f97316;
 }
 
-.chronelis-auth-strength-bar[data-level="good"] .chronelis-auth-strength-lbl {
+.chronelis-auth-strength-bar[data-level='good'] .chronelis-auth-strength-lbl {
   color: #ca8a04;
 }
 
-.chronelis-auth-strength-bar[data-level="strong"] .chronelis-auth-strength-lbl {
+.chronelis-auth-strength-bar[data-level='strong'] .chronelis-auth-strength-lbl {
   color: #16a34a;
 }
 
-.chronelis-auth-strength-bar[data-level="very-strong"] .chronelis-auth-strength-lbl {
+.chronelis-auth-strength-bar[data-level='very-strong'] .chronelis-auth-strength-lbl {
   color: #15803d;
 }
 
@@ -406,7 +412,9 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
 }
 
 .chronelis-auth-btn:hover {
@@ -415,9 +423,11 @@
 
 .chronelis-auth-btn--solid {
   color: #fff;
-  background: linear-gradient(135deg,
-      color-mix(in oklab, var(--primary) 88%, white 12%),
-      color-mix(in oklab, var(--accent) 88%, white 12%));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 88%, white 12%),
+    color-mix(in oklab, var(--accent) 88%, white 12%)
+  );
 }
 
 .chronelis-auth-btn--solid:disabled {
@@ -605,9 +615,11 @@
 }
 
 .dark .chronelis-auth-page::before {
-  background: linear-gradient(-35deg,
-      color-mix(in oklab, var(--primary) 35%, transparent) 0%,
-      color-mix(in oklab, var(--accent) 30%, transparent) 100%);
+  background: linear-gradient(
+    -35deg,
+    color-mix(in oklab, var(--primary) 35%, transparent) 0%,
+    color-mix(in oklab, var(--accent) 30%, transparent) 100%
+  );
 }
 
 .dark .chronelis-auth-input-field {
@@ -725,11 +737,9 @@
     top: 5%;
     transform: translate3d(-50%, 0, 0);
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .chronelis-auth-page::before,
   .chronelis-auth-signin-signup,
   .chronelis-auth-form,
@@ -749,18 +759,22 @@
     background:
       radial-gradient(circle at 8% 10%, color-mix(in oklab, var(--primary) 20%, transparent), transparent 55%),
       radial-gradient(circle at 90% 88%, color-mix(in oklab, var(--accent) 25%, transparent), transparent 48%),
-      linear-gradient(158deg,
+      linear-gradient(
+        158deg,
         color-mix(in oklab, var(--background) 84%, var(--primary) 16%) 0%,
-        color-mix(in oklab, var(--background) 90%, var(--accent) 10%) 100%);
+        color-mix(in oklab, var(--background) 90%, var(--accent) 10%) 100%
+      );
   }
 
   .chronelis-auth-page.forgot-password-mode {
     background:
       radial-gradient(circle at 8% 10%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 52%),
       radial-gradient(circle at 95% 92%, color-mix(in oklab, var(--accent) 27%, transparent), transparent 44%),
-      linear-gradient(158deg,
+      linear-gradient(
+        158deg,
         color-mix(in oklab, var(--background) 80%, var(--primary) 20%) 0%,
-        color-mix(in oklab, var(--background) 88%, var(--accent) 12%) 100%);
+        color-mix(in oklab, var(--background) 88%, var(--accent) 12%) 100%
+      );
   }
 
   .chronelis-auth-page::before {
@@ -806,10 +820,11 @@
     padding: 1rem 0.95rem 1.2rem;
     border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
     border-radius: 1.1rem;
-    background:
-      linear-gradient(180deg,
-        color-mix(in oklab, var(--card) 94%, transparent),
-        color-mix(in oklab, var(--card) 88%, var(--muted) 12%));
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--card) 94%, transparent),
+      color-mix(in oklab, var(--card) 88%, var(--muted) 12%)
+    );
     backdrop-filter: blur(10px);
     box-shadow:
       0 14px 34px color-mix(in oklab, var(--foreground) 10%, transparent),
@@ -919,5 +934,4 @@
   .chronelis-auth-mobile-switch-trigger {
     font-size: 0.73rem;
   }
-
 }

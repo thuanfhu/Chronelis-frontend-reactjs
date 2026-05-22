@@ -11,9 +11,7 @@ interface DataTableToolbarProps<TData> {
   table: Table<TData>
 }
 
-export function DataTableToolbar<TData>({
-  table,
-}: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   const isFiltered = table.getState().columnFilters.length > 0
 
@@ -25,9 +23,7 @@ export function DataTableToolbar<TData>({
           <Input
             placeholder={t('searchByEmail')}
             value={(table.getColumn('email')?.getFilterValue() as string) ?? ''}
-            onChange={(event) =>
-              table.getColumn('email')?.setFilterValue(event.target.value)
-            }
+            onChange={(event) => table.getColumn('email')?.setFilterValue(event.target.value)}
             className="h-8 w-[150px] lg:w-[250px] pl-8 truncate"
           />
         </div>
@@ -44,11 +40,7 @@ export function DataTableToolbar<TData>({
           )}
         </div>
         {isFiltered && (
-          <Button
-            variant="ghost"
-            onClick={() => table.resetColumnFilters()}
-            className="h-8 px-2 lg:px-3 truncate"
-          >
+          <Button variant="ghost" onClick={() => table.resetColumnFilters()} className="h-8 px-2 lg:px-3 truncate">
             {t('reset')}
             <Cross2Icon className="ml-2 h-4 w-4 flex-shrink-0" />
           </Button>

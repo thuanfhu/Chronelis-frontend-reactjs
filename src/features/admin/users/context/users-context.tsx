@@ -45,30 +45,32 @@ export const UsersProvider = ({ children }: Props) => {
     queryFn: async () => {
       const result = await adminUserApi.list({ page: 1, size: 100 })
       // Map AdminUser -> User shape
-      return (result.content || []).map((u: any): User => ({
-        userId: u.userId,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        nickname: u.nickname,
-        phoneNumber: u.phoneNumber,
-        avatar: u.avatarUrl || u.avatar,
-        avatarUrl: u.avatarUrl,
-        birthDate: u.birthDate,
-        gender: u.gender,
-        nationality: u.nationality,
-        isVerified: u.isVerified ?? false,
-        roles: (u.roles || []).map((r: any) => ({
-          roleId: r.roleId,
-          id: r.roleId,
-          name: r.name,
-          description: r.description || '',
-          active: r.active ?? true,
-          permissions: r.permissions || [],
-        })),
-        createdAt: u.createdAt || new Date().toISOString(),
-        provider: u.provider,
-      })) as User[]
+      return (result.content || []).map(
+        (u: any): User => ({
+          userId: u.userId,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          nickname: u.nickname,
+          phoneNumber: u.phoneNumber,
+          avatar: u.avatarUrl || u.avatar,
+          avatarUrl: u.avatarUrl,
+          birthDate: u.birthDate,
+          gender: u.gender,
+          nationality: u.nationality,
+          isVerified: u.isVerified ?? false,
+          roles: (u.roles || []).map((r: any) => ({
+            roleId: r.roleId,
+            id: r.roleId,
+            name: r.name,
+            description: r.description || '',
+            active: r.active ?? true,
+            permissions: r.permissions || [],
+          })),
+          createdAt: u.createdAt || new Date().toISOString(),
+          provider: u.provider,
+        }),
+      ) as User[]
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -143,21 +145,21 @@ export const UsersProvider = ({ children }: Props) => {
     async (data: any) => {
       await createUserMutation.mutateAsync(data)
     },
-    [createUserMutation]
+    [createUserMutation],
   )
 
   const updateUser = useCallback(
     async (id: string, data: any) => {
       await updateUserMutation.mutateAsync({ id, data })
     },
-    [updateUserMutation]
+    [updateUserMutation],
   )
 
   const deleteUser = useCallback(
     async (id: string) => {
       await deleteUserMutation.mutateAsync(id)
     },
-    [deleteUserMutation]
+    [deleteUserMutation],
   )
 
   return (
