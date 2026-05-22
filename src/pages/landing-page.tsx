@@ -6,6 +6,7 @@ import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle';
 import { useTranslation } from 'react-i18next';
 import TrueFocus from '@/components/TrueFocus';
 import { useAuthStore } from '@/app/store/auth-store';
+import { useUiStore } from '@/app/store/ui-store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -22,6 +23,8 @@ export function LandingPage() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const clearSession = useAuthStore((state) => state.clearSession);
   const navigate = useNavigate();
+  const theme = useUiStore((state) => state.theme);
+  const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png';
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground selection:bg-primary/30 font-sans overflow-x-hidden transition-colors duration-300">
@@ -54,9 +57,9 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center relative h-10 w-32">
             <img
-              src="/favicon/chronelis-logo.png"
+              src={logoSrc}
               alt="Chronelis"
-              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 drop-shadow-sm pointer-events-none max-w-none"
+              className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 drop-shadow-sm pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
             />
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
@@ -354,9 +357,9 @@ export function LandingPage() {
             <div className="col-span-2 lg:col-span-2">
               <div className="flex items-center mb-6 relative h-9 w-32">
                 <img
-                  src="/favicon/chronelis-logo.png"
+                  src={logoSrc}
                   alt="Chronelis"
-                  className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+                  className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
                 />
               </div>
               <p className="text-muted-foreground max-w-xs mb-6">

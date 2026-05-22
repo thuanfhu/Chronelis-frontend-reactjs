@@ -3,9 +3,11 @@ import { Menu } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AdminSidebar } from '@/features/admin/layout/admin-sidebar'
+import { useUiStore } from '@/app/store/ui-store'
 
 export function AdminShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const theme = useUiStore((state) => state.theme)
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -38,9 +40,9 @@ export function AdminShell() {
           <div className="flex flex-col gap-1">
             <div className="relative h-4 w-32">
               <img
-                src="/favicon/chronelis-logo.png"
+                src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
                 alt="Chronelis"
-                className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+                className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
               />
             </div>
             <p className="text-sm font-semibold leading-none">Admin Console</p>
