@@ -14,7 +14,7 @@ import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
 import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle'
 import { Button } from '@/components/ui/button'
-import { marketingFooterGroups, marketingFooterUtilityLinks, type LocaleText } from '@/pages/marketing-links'
+import { marketingFooterGroups, type LocaleText } from '@/pages/marketing-links'
 
 export type MarketingPageKey =
   | 'features'
@@ -199,14 +199,29 @@ function MarketingFooter({ isVi }: { isVi: boolean }) {
           </div>
         ))}
       </div>
-      <div className="mx-auto mt-12 flex max-w-7xl flex-col items-center justify-between gap-4 border-t border-border/60 pt-8 text-sm text-muted-foreground md:flex-row">
-        <p>© 2026 Chronelis Inc. {isVi ? 'Bản quyền thuộc về Chronelis.' : 'All rights reserved.'}</p>
-        <div className="flex gap-5">
-          {marketingFooterUtilityLinks.map((link) => (
-            <Link key={link.to} to={link.to} className="transition-colors hover:text-foreground">
-              {tText(link.label, isVi)}
-            </Link>
-          ))}
+      <div className="mx-auto mt-12 grid max-w-7xl grid-cols-2 gap-10 border-t border-border/60 pt-8 text-sm text-muted-foreground md:grid-cols-4 lg:grid-cols-5 items-center">
+        <p className="col-span-2 md:col-span-3 lg:col-span-4">© 2026 Chronelis Inc. {isVi ? 'Bản quyền thuộc về Chronelis.' : 'All rights reserved.'}</p>
+        <div className="col-span-2 md:col-span-1 lg:col-span-1 flex items-center gap-4 justify-start">
+          <a
+            href="https://github.com/thuanfhu/Chronelis-frontend-reactjs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 text-xs font-semibold group"
+            title={isVi ? "Kho lưu trữ Frontend" : "Frontend Repository"}
+          >
+            <i className="fa-brands fa-github text-base group-hover:scale-110 transition-transform duration-200" />
+            <span>Frontend</span>
+          </a>
+          <a
+            href="https://github.com/thuanfhu/Chronelis-backend-spring-boot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 text-xs font-semibold group"
+            title={isVi ? "Kho lưu trữ Backend" : "Backend Repository"}
+          >
+            <i className="fa-brands fa-github text-base group-hover:scale-110 transition-transform duration-200" />
+            <span>Backend</span>
+          </a>
         </div>
       </div>
     </footer>
@@ -748,6 +763,8 @@ function RoadmapPage({ isVi }: { isVi: boolean }) {
       subtitle: isVi ? 'Các phần cần ổn định trước' : 'Stabilize first',
       tone: 'border-primary/30 bg-primary/5',
       dot: 'bg-primary',
+      icon: 'fa-bolt',
+      iconColor: 'text-primary',
       items: isVi
         ? ['Làm rõ quyền truy cập dự án', 'Hoàn thiện lịch làm việc của công việc', 'Ổn định trải nghiệm không gian làm việc']
         : ['Clarify project access', 'Polish task scheduling', 'Stabilize workspace experience'],
@@ -757,6 +774,8 @@ function RoadmapPage({ isVi }: { isVi: boolean }) {
       subtitle: isVi ? 'Giúp người dùng bắt đầu nhanh hơn' : 'Help users start faster',
       tone: 'border-accent/35 bg-accent/10',
       dot: 'bg-emerald-500',
+      icon: 'fa-arrow-trend-up',
+      iconColor: 'text-emerald-500',
       items: isVi
         ? ['Hướng dẫn bắt đầu tốt hơn', 'Báo cáo tiến độ dự án rõ hơn', 'Nhập và xuất dữ liệu có cấu trúc']
         : ['Better onboarding guides', 'Clearer project reporting', 'Structured import and export'],
@@ -766,6 +785,8 @@ function RoadmapPage({ isVi }: { isVi: boolean }) {
       subtitle: isVi ? 'Mở rộng khi nhu cầu đủ rõ' : 'Expand when needs are clearer',
       tone: 'border-warning/35 bg-warning/10',
       dot: 'bg-warning',
+      icon: 'fa-lightbulb',
+      iconColor: 'text-warning',
       items: isVi
         ? ['Kết nối bên thứ ba', 'Nhật ký kiểm tra nâng cao', 'Gói dành cho nhóm lớn nếu cần']
         : ['Third-party connectors', 'Advanced audit logs', 'Large-team packaging if needed'],
@@ -775,18 +796,18 @@ function RoadmapPage({ isVi }: { isVi: boolean }) {
   return (
     <section className="px-5 py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 lg:grid-cols-[0.75fr_1fr] lg:items-end">
-          <div>
-            <p className="mb-5 inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/15 px-3 py-1 text-sm font-semibold text-accent-foreground">
-              <FaIcon name="fa-map-location-dot" />
-              {isVi ? 'Lộ trình sản phẩm' : 'Product roadmap'}
-            </p>
-            <h1 className="text-4xl font-bold leading-tight sm:text-5xl">{isVi ? 'Ưu tiên rõ ràng, không hứa quá mức.' : 'Clear priorities without overpromising.'}</h1>
-          </div>
-          <p className="text-base leading-8 text-muted-foreground">
+        <div className="max-w-3xl">
+          <p className="mb-5 inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/15 px-3 py-1 text-sm font-semibold text-accent-foreground">
+            <FaIcon name="fa-map-location-dot" />
+            {isVi ? 'Lộ trình sản phẩm' : 'Product roadmap'}
+          </p>
+          <h1 className="text-4xl font-bold leading-tight sm:text-5xl tracking-tight mb-5">
+            {isVi ? 'Định hướng sản phẩm & Lộ trình phát triển' : 'Product Vision & Strategic Roadmap'}
+          </h1>
+          <p className="text-base sm:text-lg leading-relaxed text-muted-foreground">
             {isVi
-              ? 'Dưới đây là những nhóm việc có cơ sở triển khai rõ ràng. Chronelis chưa gắn mốc thời gian cố định khi phạm vi chưa đủ chắc chắn.'
-              : 'The roadmap is grouped by priority: current focus, next improvements, and future possibilities as the product matures.'}
+              ? 'Lộ trình phát triển của Chronelis được phân chia theo thứ tự ưu tiên rõ ràng: Tập trung cải thiện hiện tại, lên kế hoạch cho tương lai gần và chuẩn bị mở rộng dài hạn.'
+              : 'The Chronelis roadmap is structured by priority: active current focus, upcoming enhancements, and long-term expansion plans as our workspace ecosystem matures.'}
           </p>
         </div>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
@@ -794,7 +815,12 @@ function RoadmapPage({ isVi }: { isVi: boolean }) {
             <article key={phase.title} className={`rounded-md border ${phase.tone} p-1 shadow-sm`}>
               <div className="h-full rounded-[calc(var(--radius)-2px)] bg-card/95 p-6">
                 <div className="mb-6">
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">0{index + 1}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">0{index + 1}</p>
+                    <span className="flex size-7 items-center justify-center rounded-md border border-border bg-background shadow-sm text-xs">
+                      <FaIcon name={phase.icon} className={phase.iconColor} />
+                    </span>
+                  </div>
                   <h2 className="mt-2 text-2xl font-bold">{phase.title}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{phase.subtitle}</p>
                 </div>
@@ -959,9 +985,14 @@ function PolicyPage({ pageKey, isVi }: { pageKey: PolicyPageKey; isVi: boolean }
         <article className="rounded-md border border-border bg-card p-6 shadow-sm sm:p-8">
           <div className="space-y-10">
             {policy.sections.map((section) => (
-              <section key={section.title}>
-                <h2 className="text-2xl font-bold">{section.title}</h2>
-                <div className="mt-4 space-y-4">
+              <section key={section.title} className="group">
+                <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground transition-colors group-hover:text-primary">
+                  <span className="flex size-9 items-center justify-center rounded-lg border border-border/80 bg-muted/50 text-base text-muted-foreground group-hover:border-primary/20 group-hover:bg-primary/5 group-hover:text-primary transition-all duration-300">
+                    <FaIcon name={section.fa} className="w-4 h-4 flex items-center justify-center" />
+                  </span>
+                  <span>{section.title}</span>
+                </h2>
+                <div className="mt-4 space-y-4 pl-12">
                   {section.body.map((paragraph) => (
                     <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
                       {paragraph}
@@ -987,6 +1018,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
         : 'Focused on account data, workspace content, and technical signals needed to operate Chronelis.',
       sections: [
         {
+          fa: 'fa-database',
           title: isVi ? 'Dữ liệu được xử lý' : 'Data processed',
           body: [
             isVi
@@ -998,6 +1030,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-bullseye',
           title: isVi ? 'Mục đích sử dụng' : 'Purpose of use',
           body: [
             isVi
@@ -1009,6 +1042,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-user-shield',
           title: isVi ? 'Quyền kiểm soát' : 'User control',
           body: [
             isVi
@@ -1027,6 +1061,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
       description: isVi ? 'Đặt kỳ vọng rõ về tài khoản, nội dung trong không gian làm việc và cách dùng dịch vụ có trách nhiệm.' : 'Sets clear expectations for accounts, workspace content, and responsible service use.',
       sections: [
         {
+          fa: 'fa-user-check',
           title: isVi ? 'Sử dụng tài khoản' : 'Account use',
           body: [
             isVi ? 'Người dùng chịu trách nhiệm giữ thông tin đăng nhập an toàn và đảm bảo dữ liệu tài khoản chính xác.' : 'Users are responsible for keeping login credentials secure and account information accurate.',
@@ -1034,6 +1069,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-briefcase',
           title: isVi ? 'Nội dung trong không gian làm việc' : 'Workspace content',
           body: [
             isVi ? 'Người dùng và tổ chức của họ chịu trách nhiệm với nội dung tạo trong không gian làm việc, dự án, mục tiêu, công việc và bình luận.' : 'Users and their organizations are responsible for content created in workspaces, projects, goals, tasks, and comments.',
@@ -1041,6 +1077,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-rotate',
           title: isVi ? 'Thay đổi dịch vụ' : 'Service changes',
           body: [
             isVi ? 'Tính năng, giới hạn và cách đóng gói sản phẩm có thể thay đổi khi sản phẩm phát triển.' : 'Features, limits, and packaging may change as the product evolves.',
@@ -1055,6 +1092,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
       description: isVi ? 'Giải thích cách Cookie và lưu trữ trình duyệt hỗ trợ đăng nhập, tùy chọn và độ tin cậy.' : 'Explains how cookies and browser storage support login, preferences, and reliability.',
       sections: [
         {
+          fa: 'fa-cookie-bite',
           title: isVi ? 'Lưu trữ thiết yếu' : 'Essential storage',
           body: [
             isVi ? 'Cookie hoặc lưu trữ cục bộ có thể cần cho đăng nhập, bảo mật phiên và trạng thái ứng dụng.' : 'Cookies or local storage may be needed for login, session security, and application state.',
@@ -1062,6 +1100,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-palette',
           title: isVi ? 'Tùy chọn giao diện' : 'Interface preferences',
           body: [
             isVi ? 'Lưu trữ trình duyệt có thể ghi nhớ giao diện sáng hoặc tối, ngôn ngữ và một số lựa chọn giao diện để trải nghiệm nhất quán hơn.' : 'Browser storage may remember theme, language, and UI choices for a more consistent experience.',
@@ -1069,6 +1108,7 @@ function getPolicy(pageKey: PolicyPageKey, isVi: boolean) {
           ],
         },
         {
+          fa: 'fa-cookie',
           title: isVi ? 'Quản lý Cookie' : 'Managing cookies',
           body: [
             isVi ? 'Người dùng có thể chặn hoặc xóa Cookie bằng cài đặt trình duyệt.' : 'Users can block or delete cookies through browser settings.',

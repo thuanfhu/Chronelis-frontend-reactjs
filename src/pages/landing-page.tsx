@@ -10,7 +10,7 @@ import { useAuthStore } from '@/app/store/auth-store';
 import { isAdminUser } from '@/lib/auth/role-utils';
 import { useUiStore } from '@/app/store/ui-store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { marketingFooterGroups, marketingFooterUtilityLinks } from '@/pages/marketing-links';
+import { marketingFooterGroups } from '@/pages/marketing-links';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,111 @@ export function LandingPage() {
   const canAccessAdmin = isAdminUser(currentUser);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const kanbanCols = [
+    {
+      bg: "bg-red-500/10",
+      border: "border-red-500/20 text-red-600 dark:text-red-400",
+      title: isVi ? "Cần làm" : "To Do",
+      count: 3,
+      items: [
+        {
+          title: isVi ? "Thiết kế màn hình đăng nhập" : "Design Login Screen",
+          subtasks: "0/3",
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80",
+          tags: [isVi ? "Thiết kế" : "Design", isVi ? "Giao diện" : "UI/UX"],
+          tagColors: ["bg-pink-500/10 text-pink-600 dark:text-pink-400", "bg-purple-500/10 text-purple-600 dark:text-purple-400"]
+        },
+        {
+          title: isVi ? "Cập nhật API tài liệu" : "Update API Docs",
+          subtasks: "1/4",
+          avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80",
+          tags: ["API", isVi ? "Tài liệu" : "Docs"],
+          tagColors: ["bg-blue-500/10 text-blue-600 dark:text-blue-400", "bg-amber-500/10 text-amber-600 dark:text-amber-400"]
+        }
+      ]
+    },
+    {
+      bg: "bg-yellow-500/10",
+      border: "border-yellow-500/20 text-yellow-600 dark:text-yellow-400",
+      title: isVi ? "Đang tiến hành" : "In Progress",
+      count: 2,
+      items: [
+        {
+          title: isVi ? "Sửa lỗi thanh toán Stripe" : "Fix Stripe Payment Bug",
+          subtasks: "2/2",
+          avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&h=100&q=80",
+          tags: [isVi ? "Lỗi" : "Bug", isVi ? "Thanh toán" : "Stripe"],
+          tagColors: ["bg-red-500/10 text-red-600 dark:text-red-400", "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"]
+        }
+      ]
+    },
+    {
+      bg: "bg-green-500/10",
+      border: "border-green-500/20 text-green-600 dark:text-green-400",
+      title: isVi ? "Hoàn thành" : "Done",
+      count: 5,
+      items: [
+        {
+          title: "Review code PR #102",
+          subtasks: "3/3",
+          avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&h=100&q=80",
+          tags: ["GitHub", "Review"],
+          tagColors: ["bg-zinc-500/10 text-zinc-600 dark:text-zinc-400", "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"]
+        },
+        {
+          title: isVi ? "Họp kế hoạch tuần" : "Weekly Planning Meeting",
+          subtasks: "1/1",
+          avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=100&h=100&q=80",
+          tags: [isVi ? "Hội họp" : "Meeting", isVi ? "Kế hoạch" : "Planning"],
+          tagColors: ["bg-teal-500/10 text-teal-600 dark:text-teal-400", "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"]
+        }
+      ]
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: "Sarah Jenkins",
+      role: isVi ? "Quản lý sản phẩm" : "Product Manager",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
+      text: isVi 
+        ? "Thực sự mà nói, chúng tôi đã thử qua đủ loại công cụ quản lý dự án, nhưng Chronelis ở một đẳng cấp hoàn toàn khác. Giao diện siêu nhanh và mượt đến mức mọi người trong đội giờ đây tự giác cập nhật công việc mà không cần nhắc nhở."
+        : "Honestly, we've tried every project tool out there, but Chronelis is on another level. The UI is so fast and fluid that my team actually enjoys updating their tasks now!"
+    },
+    {
+      name: "David Chen",
+      role: "CTO",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+      text: isVi
+        ? "Với vai trò CTO, tôi đề cao nhất là sự ổn định và tốc độ. Khả năng đồng bộ thời gian thực của Chronelis hoạt động mượt như nhung, còn bộ đếm Pomodoro tích hợp là một bước ngoặt lớn giúp các kỹ sư tập trung cao độ."
+        : "As a CTO, stability and speed are everything. The real-time sync in Chronelis works like magic, and the built-in Pomodoro timer is a game-changer for our engineers."
+    },
+    {
+      name: "Elena Rodriguez",
+      role: isVi ? "Trưởng nhóm Thiết kế" : "Lead Designer",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
+      text: isVi
+        ? "Tính thẩm mỹ trong thiết kế của Chronelis thực sự rất tuyệt vời. Thật hiếm thấy một công cụ nào cân bằng được giữa tính năng mạnh mẽ với một giao diện tối giản, hiện đại và tràn đầy cảm hứng như thế này."
+        : "The design aesthetics of Chronelis are absolutely brilliant. It's rare to find a tool that balances robust features with such a clean, modern, and inspiring visual design."
+    },
+    {
+      name: "Minh Tuấn",
+      role: isVi ? "Kỹ sư Phần mềm" : "Software Engineer",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80",
+      text: isVi
+        ? "Mình cực kỳ thích việc có thể theo dõi mục tiêu chung của cả đội rồi bắt đầu ngay các phiên tập trung Pomodoro trên cùng một công cụ. Nó giúp mình duy trì dòng tập trung mà không bị phân tâm bởi hàng tá tab trình duyệt."
+        : "I love how I can transition from looking at our team goals down to doing Pomodoro focus blocks in the same tool. It keeps me in the zone without distracting browser tabs."
+    },
+    {
+      name: "Sophia Gallagher",
+      role: isVi ? "Giám đốc Sáng tạo" : "Creative Director",
+      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
+      text: isVi
+        ? "Chronelis đã loại bỏ hoàn toàn những thứ rườm rà của các trình quản lý công việc truyền thống. Mình chỉ mất chưa đầy năm phút để thiết lập không gian làm việc cho các dự án freelance của mình, và việc kéo thả trên Kanban thực sự mang lại niềm vui."
+        : "Chronelis does away with all the clutter of traditional task managers. Setting up workspaces for my freelance projects took less than five minutes, and the drag-and-drop Kanban is pure joy."
+    }
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -338,21 +443,17 @@ export function LandingPage() {
                       <span className="text-lg font-bold">{isVi ? "Dự án Q3 - Phát triển ứng dụng" : "Q3 Project - Mobile App"}</span>
                     </div>
                     <div className="flex -space-x-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/80 border-2 border-background"></div>
-                      <div className="w-8 h-8 rounded-full bg-purple-500/80 border-2 border-background"></div>
-                      <div className="w-8 h-8 rounded-full bg-green-500/80 border-2 border-background flex items-center justify-center text-[10px] font-bold text-white">+3</div>
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80" alt="Member 1" className="w-8 h-8 rounded-full border-2 border-background object-cover" />
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80" alt="Member 2" className="w-8 h-8 rounded-full border-2 border-background object-cover" />
+                      <div className="w-8 h-8 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">+3</div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 overflow-hidden">
-                    {[
-                      { bg: "bg-red-500/10", border: "border-red-500/20", title: isVi ? "Cần làm" : "To Do", count: 3, items: [isVi ? "Thiết kế màn hình đăng nhập" : "Design Login Screen", isVi ? "Cập nhật API tài liệu" : "Update API Docs"] },
-                      { bg: "bg-yellow-500/10", border: "border-yellow-500/20", title: isVi ? "Đang tiến hành" : "In Progress", count: 2, items: [isVi ? "Sửa lỗi thanh toán Stripe" : "Fix Stripe Payment Bug"] },
-                      { bg: "bg-green-500/10", border: "border-green-500/20", title: isVi ? "Hoàn thành" : "Done", count: 5, items: [isVi ? "Review code PR #102" : "Review code PR #102", isVi ? "Họp kế hoạch tuần" : "Weekly Planning Meeting"] }
-                    ].map((col, i) => (
-                      <div key={i} className={`rounded-xl border ${col.border} p-4 flex flex-col gap-3 bg-card/50`}>
+                    {kanbanCols.map((col, i) => (
+                      <div key={i} className={`rounded-xl border ${col.bg.replace('/10', '/20')} p-4 flex flex-col gap-3 bg-card/50`}>
                         <div className="flex justify-between items-center mb-1">
-                          <div className={`px-2.5 py-1 text-xs font-bold ${col.bg} rounded-md flex items-center gap-2`}>
+                          <div className={`px-2.5 py-1 text-xs font-bold ${col.bg} ${col.border} rounded-md flex items-center gap-2`}>
                             {col.title} <span className="opacity-50">{col.count}</span>
                           </div>
                           <div className="font-bold text-muted-foreground tracking-widest cursor-pointer hover:text-foreground">...</div>
@@ -360,14 +461,17 @@ export function LandingPage() {
                         
                         {col.items.map((item, j) => (
                           <div key={j} className="p-4 bg-background rounded-lg border border-border shadow-sm flex flex-col gap-3 group hover:border-primary/50 transition-colors cursor-grab">
-                            <div className="text-sm font-medium leading-tight">{item}</div>
-                            <div className="flex gap-2">
-                              <div className="h-1.5 w-8 rounded-full bg-primary/40"></div>
-                              <div className="h-1.5 w-12 rounded-full bg-blue-500/40"></div>
+                            <div className="text-sm font-medium leading-tight">{item.title}</div>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {item.tags.map((tag, tIdx) => (
+                                <span key={tIdx} className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide ${item.tagColors[tIdx]}`}>
+                                  {tag}
+                                </span>
+                              ))}
                             </div>
                             <div className="mt-2 flex justify-between items-center">
-                              <div className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium"><CheckCircle2 className="w-3.5 h-3.5"/> 0/3</div>
-                              <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">JD</div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1 font-medium"><CheckCircle2 className="w-3.5 h-3.5"/> {item.subtasks}</div>
+                              <img src={item.avatar} alt="JD" className="h-6 w-6 rounded-full object-cover border border-border/50" />
                             </div>
                           </div>
                         ))}
@@ -381,44 +485,60 @@ export function LandingPage() {
         </section>
 
         {/* Testimonials */}
-        <section id="testimonials" className="py-32 px-6 bg-background border-t border-border/40">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
-                {isVi ? "Được yêu thích bởi các đội ngũ hiện đại" : "Loved by modern teams"}
-              </h2>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { 
-                  name: "Sarah Jenkins", role: isVi ? "Quản lý sản phẩm" : "Product Manager", 
-                  text: isVi ? "Chronelis đã thay đổi hoàn toàn cách đội kỹ thuật và thiết kế cộng tác. Giao diện tuyệt đẹp và tốc độ không thể sánh bằng." : "Chronelis completely transformed how our engineering and design teams collaborate. The interface is stunning and the speed is unmatched." 
-                },
-                { 
-                  name: "David Chen", role: "CTO", 
-                  text: isVi ? "Chúng tôi chuyển từ Jira sang và không bao giờ nhìn lại. Sự đơn giản ẩn chứa một động cơ mạnh mẽ xử lý các quy trình agile phức tạp một cách hoàn hảo." : "We migrated from Jira and never looked back. The simplicity hides a powerful engine that handles our complex agile workflows flawlessly." 
-                },
-                { 
-                  name: "Elena Rodriguez", role: isVi ? "Trưởng nhóm Thiết kế" : "Lead Designer", 
-                  text: isVi ? "Cuối cùng cũng có một công cụ vừa đẹp lại vừa hoạt động tốt. Sự tỉ mỉ trong UI làm cho việc dành hàng giờ trong Chronelis thực sự thú vị." : "Finally, a tool that looks as good as it works. The attention to detail in the UI makes spending hours in Chronelis actually enjoyable." 
-                }
-              ].map((t, i) => (
-                <div key={i} className="p-8 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex gap-1 mb-6 text-yellow-500">
-                    {[1,2,3,4,5].map(star => <Star key={star} className="w-4 h-4 fill-current" />)}
-                  </div>
-                  <p className="text-muted-foreground mb-8 leading-relaxed">"{t.text}"</p>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                      {t.name.charAt(0)}
-                    </div>
+        <section id="testimonials" className="py-32 px-6 bg-background border-t border-border/40 overflow-hidden">
+          <div className="max-w-7xl mx-auto mb-16 text-center">
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              {isVi ? "Được yêu thích bởi các đội ngũ hiện đại" : "Loved by modern teams"}
+            </h2>
+          </div>
+          
+          <div className="relative w-full overflow-hidden py-4">
+            {/* Fade-out masks */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-background via-background/80 to-transparent z-10" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-background via-background/80 to-transparent z-10" />
+            
+            <div className="flex gap-6 animate-marquee hover:[animation-play-state:paused] w-max">
+              {/* First list copy */}
+              <div className="flex gap-6 shrink-0">
+                {testimonials.map((t, idx) => (
+                  <div key={`t1-${idx}`} className="w-[320px] md:w-[380px] shrink-0 p-8 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300 flex flex-col justify-between whitespace-normal">
                     <div>
-                      <div className="font-bold">{t.name}</div>
-                      <div className="text-sm text-muted-foreground">{t.role}</div>
+                      <div className="flex gap-1 mb-6 text-yellow-500">
+                        {[1,2,3,4,5].map(star => <Star key={star} className="w-4 h-4 fill-current" />)}
+                      </div>
+                      <p className="text-muted-foreground mb-8 leading-relaxed text-sm md:text-base">"{t.text}"</p>
+                    </div>
+                    <div className="flex items-center gap-4 border-t border-border/40 pt-4 mt-auto">
+                      <img src={t.avatar} alt={t.name} className="w-11 h-11 rounded-full object-cover border border-border/50 animate-in fade-in zoom-in duration-300" />
+                      <div>
+                        <div className="font-bold text-sm text-foreground">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.role}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              
+              {/* Second list copy for seamless looping */}
+              <div className="flex gap-6 shrink-0" aria-hidden="true">
+                {testimonials.map((t, idx) => (
+                  <div key={`t2-${idx}`} className="w-[320px] md:w-[380px] shrink-0 p-8 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300 flex flex-col justify-between whitespace-normal">
+                    <div>
+                      <div className="flex gap-1 mb-6 text-yellow-500">
+                        {[1,2,3,4,5].map(star => <Star key={star} className="w-4 h-4 fill-current" />)}
+                      </div>
+                      <p className="text-muted-foreground mb-8 leading-relaxed text-sm md:text-base">"{t.text}"</p>
+                    </div>
+                    <div className="flex items-center gap-4 border-t border-border/40 pt-4 mt-auto">
+                      <img src={t.avatar} alt={t.name} className="w-11 h-11 rounded-full object-cover border border-border/50 animate-in fade-in zoom-in duration-300" />
+                      <div>
+                        <div className="font-bold text-sm text-foreground">{t.name}</div>
+                        <div className="text-xs text-muted-foreground">{t.role}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -457,14 +577,29 @@ export function LandingPage() {
             ))}
           </div>
           
-          <div className="max-w-7xl mx-auto pt-8 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© 2026 Chronelis Inc. {isVi ? "Bản quyền thuộc về Chronelis." : "All rights reserved."}</p>
-            <div className="flex gap-6">
-              {marketingFooterUtilityLinks.map((link) => (
-                <Link key={link.to} to={link.to} className="hover:text-foreground transition-colors">
-                  {isVi ? link.label.vi : link.label.en}
-                </Link>
-              ))}
+          <div className="max-w-7xl mx-auto pt-8 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 items-center text-sm text-muted-foreground">
+            <p className="col-span-2 md:col-span-3 lg:col-span-4">© 2026 Chronelis Inc. {isVi ? "Bản quyền thuộc về Chronelis." : "All rights reserved."}</p>
+            <div className="col-span-2 md:col-span-1 lg:col-span-1 flex items-center gap-4 justify-start">
+              <a
+                href="https://github.com/thuanfhu/Chronelis-frontend-reactjs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 text-xs font-semibold group"
+                title={isVi ? "Kho lưu trữ Frontend" : "Frontend Repository"}
+              >
+                <i className="fa-brands fa-github text-base group-hover:scale-110 transition-transform duration-200" />
+                <span>Frontend</span>
+              </a>
+              <a
+                href="https://github.com/thuanfhu/Chronelis-backend-spring-boot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 text-xs font-semibold group"
+                title={isVi ? "Kho lưu trữ Backend" : "Backend Repository"}
+              >
+                <i className="fa-brands fa-github text-base group-hover:scale-110 transition-transform duration-200" />
+                <span>Backend</span>
+              </a>
             </div>
           </div>
         </footer>
