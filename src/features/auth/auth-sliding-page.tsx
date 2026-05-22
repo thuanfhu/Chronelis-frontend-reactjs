@@ -9,6 +9,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { useAuthStore } from '@/app/store/auth-store'
+import { useUiStore } from '@/app/store/ui-store'
 import { authApi, type RegisterPayload } from '@/lib/api/modules/auth-api'
 import { forgotPasswordSchema, loginSchema, registerSchema } from '@/features/auth/auth-schemas'
 import { AuthSharedShell } from '@/features/auth/auth-shared-shell'
@@ -137,6 +138,8 @@ interface AuthPanelContentProps {
 }
 
 function AuthPanelContent({ side, content }: AuthPanelContentProps) {
+  const theme = useUiStore((state) => state.theme)
+  const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
   return (
     <AnimatePresence initial={false}>
       <motion.div
@@ -150,9 +153,9 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
         {content.showBrand ? (
           <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--desktop relative h-8 w-32 flex items-center justify-center">
             <img
-              src="/favicon/chronelis-logo.png"
+              src={logoSrc}
               alt="Chronelis"
-              className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+              className={`chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto origin-center transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
             />
           </Link>
         ) : null}
@@ -170,6 +173,8 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const theme = useUiStore((state) => state.theme)
+  const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
   const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
@@ -383,9 +388,9 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
           >
             <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
               <img
-                src="/favicon/chronelis-logo.png"
+                src={logoSrc}
                 alt="Chronelis"
-                className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+                className={`chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto origin-center transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
               />
             </Link>
 
@@ -612,9 +617,9 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
           >
             <Link to="/login" className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4">
               <img
-                src="/favicon/chronelis-logo.png"
+                src={logoSrc}
                 alt="Chronelis"
-                className="chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto"
+                className={`chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto origin-center transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
               />
             </Link>
 

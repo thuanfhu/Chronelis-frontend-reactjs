@@ -103,6 +103,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed)
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed)
+  const theme = useUiStore((s) => s.theme)
 
   const clearSession = useAuthStore((s) => s.clearSession)
   const currentUser = useAuthStore((s) => s.currentUser)
@@ -850,11 +851,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         >
           <Link to="/dashboard" className={cn('flex items-center overflow-visible relative h-7', !collapsed ? 'gap-2.5 w-32' : 'w-10 justify-center')}>
             <img
-              src="/favicon/chronelis-logo.png"
+              src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
               alt="Chronelis"
               className={cn(
-                'absolute top-1/2 -translate-y-1/2 pointer-events-none max-w-none h-28 w-auto transition-all',
-                collapsed ? 'left-1/2 -translate-x-1/2' : 'left-0'
+                'absolute top-1/2 -translate-y-1/2 pointer-events-none max-w-none h-28 w-auto transition-all duration-300',
+                collapsed ? 'left-1/2 -translate-x-1/2 origin-center' : 'left-0 origin-left',
+                theme === 'dark' && 'scale-[0.78]'
               )}
             />
           </Link>

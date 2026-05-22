@@ -101,7 +101,7 @@ export const useColumns = (): ColumnDef<User>[] => {
       ),
       cell: ({ row }) => {
         const roles = row.getValue('roles') as Array<any>
-        if (!roles || roles.length === 0) return <div className="flex justify-center"><span className="text-muted-foreground text-xs">—</span></div>
+        if (!roles || roles.length === 0) return <div className="flex justify-center"><span className="text-muted-foreground text-xs">-</span></div>
         return (
           <div className="flex flex-wrap gap-1 justify-center">
             {roles.slice(0, 2).map((role: any) => (
@@ -150,7 +150,7 @@ export const useColumns = (): ColumnDef<User>[] => {
             </div>
           )
         } catch {
-          return dateStr || '—'
+          return dateStr || '-'
         }
       },
     },

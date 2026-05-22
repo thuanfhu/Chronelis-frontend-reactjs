@@ -785,7 +785,7 @@ export function WorkspaceDetailPage() {
         }
       />
 
-      {/* Workspace analytics — 5 chart types */}
+      {/* Workspace analytics - 5 chart types */}
       {visibleProjects.length > 0 && (
         <WorkspaceChartsSection
           projects={visibleProjects}

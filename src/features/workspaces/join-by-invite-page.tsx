@@ -164,9 +164,9 @@ export function JoinByInvitePage() {
                 className="absolute top-10 left-8 z-30 hidden md:block"
               >
                 <img
-                  src="/favicon/chronelis-logo.png"
+                  src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
                   alt="Chronelis"
-                  className="h-22 w-auto drop-shadow-md lg:h-28"
+                  className={`h-22 w-auto drop-shadow-md lg:h-28 origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
                 />
               </motion.div>
 

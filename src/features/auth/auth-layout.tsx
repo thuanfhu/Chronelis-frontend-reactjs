@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useUiStore } from '@/app/store/ui-store'
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   const { t } = useTranslation()
+  const theme = useUiStore((state) => state.theme)
+  const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
   return (
     <div className="flex min-h-dvh">
-      {/* Left panel — brand */}
+      {/* Left panel - brand */}
       <div className="hidden flex-1 flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
         <Link to="/login" className="flex items-center relative h-8 w-32">
           <img
-            src="/favicon/chronelis-logo.png"
+            src={logoSrc}
             alt="Chronelis"
-            className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+            className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
           />
         </Link>
 
@@ -28,14 +31,14 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <p className="text-xs text-primary-foreground/50">© 2025 Chronelis. All rights reserved.</p>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel - form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-[420px]">
           <Link to="/login" className="mb-6 flex items-center lg:hidden relative h-7 w-32">
             <img
-              src="/favicon/chronelis-logo.png"
+              src={logoSrc}
               alt="Chronelis"
-              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+              className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
             />
           </Link>
 

@@ -172,6 +172,10 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   html,
   body,
   #root {
@@ -687,3 +691,20 @@
   background-color: var(--muted) !important;
   color: var(--foreground) !important;
 }
+
+/* ─── Testimonials Infinite Scrolling Marquee ─── */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+

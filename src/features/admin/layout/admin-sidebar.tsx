@@ -39,6 +39,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const clearSession = useAuthStore((state) => state.clearSession)
   const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
   const selectedProjectId = useUiStore((state) => state.selectedProjectId)
+  const theme = useUiStore((state) => state.theme)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const fullName = `${currentUser?.firstName ?? ''} ${currentUser?.lastName ?? ''}`.trim()
@@ -97,9 +98,9 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
         >
           <div className="relative h-7 w-32 flex items-center">
             <img
-              src="/favicon/chronelis-logo.png"
+              src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
               alt="Chronelis"
-              className="h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none"
+              className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
             />
           </div>
         </Link>

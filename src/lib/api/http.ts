@@ -37,7 +37,7 @@ http.interceptors.response.use(
       // Only redirect to login if the access token is actually expired or missing.
       // The backend may return 401 for "insufficient workspace permissions" on some endpoints
       // (e.g. /workspace-teams/:id/members). In that case, the user IS authenticated but
-      // lacks the required role — we must not log them out.
+      // lacks the required role - we must not log them out.
       const accessToken = useAuthStore.getState().accessToken
       let tokenIsExpiredOrMissing = !accessToken
       if (accessToken) {

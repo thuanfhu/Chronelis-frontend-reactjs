@@ -313,7 +313,7 @@ export function WorkspacesPage() {
         }
       />
 
-      {/* Workspace overview — 5 chart types */}
+      {/* Workspace overview - 5 chart types */}
       {!listQuery.isLoading && visibleWorkspaces.length > 0 && (
         <div className="space-y-5">
           {/* Totals row */}

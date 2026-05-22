@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2, ShieldCheck } from 'lucide-react'
+import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2, ShieldCheck, Layout } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -39,7 +39,8 @@ import { LanguageSwitcher } from '@/components/shared/language-switcher'
 
 export function AppTopbar() {
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isVi = i18n.language === 'vi'
   const params = useParams()
   const parsedWorkspaceId = params.workspaceId ? Number(params.workspaceId) : undefined
   const workspaceIdFromRoute = Number.isFinite(parsedWorkspaceId) ? parsedWorkspaceId : undefined
@@ -250,7 +251,7 @@ export function AppTopbar() {
         <Separator orientation="vertical" className="mx-1 h-6" />
 
         {/* User menu */}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
               <Avatar className="size-7">
@@ -270,27 +271,31 @@ export function AppTopbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/profile')}>
-              <User className="mr-2 size-4" />
-              {t('profile.title')}
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard" className="w-full flex items-center">
+                <Layout className="mr-2 size-4" />
+                Dashboard
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-              <User className="mr-2 size-4" />
-              Dashboard
+            <DropdownMenuItem asChild>
+              <Link to="/profile" className="w-full flex items-center">
+                <User className="mr-2 size-4" />
+                {isVi ? "Hồ sơ" : "Profile"}
+              </Link>
             </DropdownMenuItem>
             {canAccessAdmin && (
               <DropdownMenuItem
                 onClick={() => navigate('/admin/users')}
-                className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100 dark:text-amber-950"
+                className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100/10 dark:text-amber-400 dark:hover:bg-amber-100/20 cursor-pointer"
               >
                 <ShieldCheck className="mr-2 size-4" />
-                Admin dashboard
+                {isVi ? "Dashboard admin" : "Admin dashboard"}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 size-4" />
-              {t('common.logout')}
+              {isVi ? "Đăng xuất" : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -109,7 +109,7 @@ export const useColumns = (): ColumnDef<Role>[] => {
       ),
       cell: ({ row }) => {
         const dateStr = row.getValue('createdAt') as string
-        if (!dateStr) return <div className="text-center">—</div>
+        if (!dateStr) return <div className="text-center">-</div>
         try {
           const cleanDateStr = dateStr.replace(' PM', '').replace(' AM', '')
           const date = new Date(cleanDateStr.includes('T') ? cleanDateStr : cleanDateStr.replace(' ', 'T'))
@@ -136,7 +136,7 @@ export const useColumns = (): ColumnDef<Role>[] => {
       ),
       cell: ({ row }) => (
         <div className="text-center text-sm text-muted-foreground">
-          {row.getValue('createdBy') || '—'}
+          {row.getValue('createdBy') || '-'}
         </div>
       ),
       size: 150,
