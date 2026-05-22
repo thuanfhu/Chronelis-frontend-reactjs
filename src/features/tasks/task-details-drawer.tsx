@@ -46,10 +46,17 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { resolveTaskTypeIcon } from '@/lib/task-types/task-type-icons'
 import { playTaskCompleteSound } from '@/lib/audio/play-task-complete-sound'
 import {
+  applyScheduleUpdate,
   applyTaskCompletion,
+  patchProjectCalendarQueries,
   patchProjectTaskQueries,
+  patchTaskScheduleQueries,
+  restoreProjectCalendarQueries,
   restoreProjectTaskQueries,
+  restoreTaskScheduleQueries,
+  snapshotProjectCalendarQueries,
   snapshotProjectTaskQueries,
+  snapshotTaskScheduleQueries,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
@@ -59,7 +66,7 @@ import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
 import { TaskBlockerBadge } from '@/features/tasks/task-blocker-badge'
 import { TaskPriorityBadge } from '@/features/tasks/task-priority-badge'
-import type { Task, TaskComment, TaskDependencyTask, TaskPriorityType, TaskType } from '@/types/domain'
+import type { Task, TaskComment, TaskDependencyTask, TaskPriorityType, TaskSchedule, TaskType } from '@/types/domain'
 
 function areNumberArraysEqual(left: number[], right: number[]): boolean {
   if (left.length !== right.length) {
@@ -101,6 +108,13 @@ function toIsoDateTime(value: string): string | undefined {
   }
 
   return toLocalDateTimePayload(value)
+}
+
+interface SaveTaskOptimisticContext {
+  taskDetailSnapshot?: Task
+  projectTasksSnapshot?: ReturnType<typeof snapshotProjectTaskQueries>
+  projectCalendarSnapshot?: ReturnType<typeof snapshotProjectCalendarQueries>
+  taskScheduleSnapshot?: ReturnType<typeof snapshotTaskScheduleQueries>
 }
 
 export function TaskDetailsDrawer() {
@@ -422,7 +436,7 @@ export function TaskDetailsDrawer() {
     },
   })
 
-  const saveTaskMutation = useMutation({
+  const saveTaskMutation = useMutation<Task, Error, void, SaveTaskOptimisticContext | undefined>({
     mutationFn: async () => {
       if (!taskQuery.data) throw new Error(t('task.notFound'))
 
@@ -522,6 +536,114 @@ export function TaskDetailsDrawer() {
 
       return updatedTask
     },
+    onMutate: async () => {
+      if (!taskQuery.data || taskDrawerMode === 'duplicate') {
+        return undefined
+      }
+
+      const currentTask = taskQuery.data
+      const nextTitle = (editTitle ?? currentTask.title).trim()
+      const nextDescription = (editDescription ?? currentTask.description ?? '').trim() || undefined
+      const nextPriority = editPriority ?? currentTask.priority
+      const nextGoalId = editGoalId
+      const nextAssigneeId = editAssigneeId
+      const dueDateIso = toIsoDateTime(editDueDate)
+      const startIso = toIsoDateTime(editScheduleStart)
+      const endIso = toIsoDateTime(editScheduleEnd)
+
+      if (!nextTitle) {
+        return undefined
+      }
+
+      if ((startIso && !endIso) || (!startIso && endIso)) {
+        return undefined
+      }
+
+      if (startIso && endIso && new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+        return undefined
+      }
+
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: queryKeys.tasks.detail(currentTask.id) }),
+        queryClient.cancelQueries({ queryKey: ['tasks', 'project', currentTask.projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', currentTask.projectId] }),
+        queryClient.cancelQueries({ queryKey: queryKeys.schedules.byTask(currentTask.id) }),
+      ])
+
+      const taskDetailSnapshot = queryClient.getQueryData<Task>(queryKeys.tasks.detail(currentTask.id))
+      const projectTasksSnapshot = snapshotProjectTaskQueries(queryClient, currentTask.projectId)
+      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, currentTask.projectId)
+      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, currentTask.id)
+      const nowIso = new Date().toISOString()
+      const nextAssignee = nextAssigneeId
+        ? membersQuery.data?.find((member) => member.user.userId === nextAssigneeId)?.user
+        : undefined
+
+      const optimisticTask: Task = {
+        ...currentTask,
+        title: nextTitle,
+        description: nextDescription,
+        goalId: nextGoalId ?? undefined,
+        priority: nextPriority,
+        assignee: nextAssignee,
+        dueDate: dueDateIso,
+        updatedAt: nowIso,
+      }
+
+      queryClient.setQueryData(queryKeys.tasks.detail(currentTask.id), optimisticTask)
+      patchProjectTaskQueries(queryClient, currentTask.projectId, (tasks) =>
+        tasks.map((task) => (task.id === currentTask.id ? optimisticTask : task)),
+      )
+
+      if (startIso && endIso) {
+        if (activeScheduleId) {
+          patchProjectCalendarQueries(queryClient, currentTask.projectId, (schedules) =>
+            applyScheduleUpdate(schedules, {
+              scheduleId: activeScheduleId,
+              scheduledStart: startIso,
+              scheduledEnd: endIso,
+            }),
+          )
+          patchTaskScheduleQueries(queryClient, currentTask.id, (schedules) =>
+            applyScheduleUpdate(schedules, {
+              scheduleId: activeScheduleId,
+              scheduledStart: startIso,
+              scheduledEnd: endIso,
+            }),
+          )
+        } else {
+          const optimisticScheduleId = -Date.now()
+          const createdBy = currentUser
+            ? {
+                userId: currentUser.userId,
+                email: currentUser.email,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName,
+              }
+            : currentTask.createdBy
+          const optimisticSchedule: TaskSchedule = {
+            id: optimisticScheduleId,
+            taskId: currentTask.id,
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+            scheduledDate: startIso.slice(0, 10),
+            createdBy,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          }
+
+          patchProjectCalendarQueries(queryClient, currentTask.projectId, (schedules) => [...schedules, optimisticSchedule])
+          patchTaskScheduleQueries(queryClient, currentTask.id, (schedules) => [...schedules, optimisticSchedule])
+        }
+      }
+
+      return {
+        taskDetailSnapshot,
+        projectTasksSnapshot,
+        projectCalendarSnapshot,
+        taskScheduleSnapshot,
+      }
+    },
     onSuccess: (savedTask) => {
       upsertProjectTaskCache(savedTask)
       setEditTitle(null)
@@ -549,7 +671,20 @@ export function TaskDetailsDrawer() {
         void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(savedTask.id) })
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.taskDetailSnapshot) {
+        queryClient.setQueryData(queryKeys.tasks.detail(context.taskDetailSnapshot.id), context.taskDetailSnapshot)
+      }
+      if (context?.projectTasksSnapshot) {
+        restoreProjectTaskQueries(queryClient, context.projectTasksSnapshot)
+      }
+      if (context?.projectCalendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
+      }
+      if (context?.taskScheduleSnapshot) {
+        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
+      }
+
       if (isNotFoundError(error)) {
         handleCloseDrawer()
         toast.success(t('task.deletedBefore'))
