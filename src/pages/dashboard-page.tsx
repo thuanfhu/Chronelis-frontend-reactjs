@@ -21,21 +21,14 @@ import { PageHeader } from '@/components/shared/page-header'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { notificationApi } from '@/lib/api/modules/notification-api'
 import { taskApi } from '@/lib/api/modules/task-api'
-import { projectApi } from '@/lib/api/modules/project-api'
-import { goalApi } from '@/lib/api/modules/goal-api'
-import { workspaceInviteApi } from '@/lib/api/modules/workspace-invite-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useAuthStore } from '@/app/store/auth-store'
-import { useUiStore } from '@/app/store/ui-store'
 import { useTranslation } from 'react-i18next'
 import { TaskHealthDonut } from '@/components/charts/task-health-donut'
 import { PriorityBarChart } from '@/components/charts/priority-bar-chart'
-import { DashboardOnboardingHub } from '@/features/onboarding/dashboard-onboarding-hub'
 
 export function DashboardPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
-  const selectedWorkspaceId = useUiStore((state) => state.selectedWorkspaceId)
-  const selectedProjectId = useUiStore((state) => state.selectedProjectId)
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
 
@@ -58,86 +51,16 @@ export function DashboardPage() {
   const workspaceCount = workspaceQuery.data?.meta.totalElements ?? 0
   const unreadCount = notificationCountQuery.data?.unreadCount ?? 0
   const myWork = myWorkQuery.data
-  const onboardingWorkspaceId =
-    (selectedWorkspaceId && workspaces.some((workspace) => workspace.id === selectedWorkspaceId)
-      ? selectedWorkspaceId
-      : workspaces[0]?.id) ?? null
-
-  const onboardingProjectsQuery = useQuery({
-    queryKey: queryKeys.projects.byWorkspace(onboardingWorkspaceId ?? 0, 1, 20),
-    queryFn: () => projectApi.listByWorkspace(onboardingWorkspaceId as number, { page: 1, size: 20 }),
-    enabled: onboardingWorkspaceId != null,
-    staleTime: 60_000,
-  })
-
-  const onboardingProjects = onboardingProjectsQuery.data?.content ?? []
-  const onboardingProjectId =
-    (selectedProjectId && onboardingProjects.some((project) => project.id === selectedProjectId)
-      ? selectedProjectId
-      : onboardingProjects[0]?.id) ?? null
-
-  const onboardingGoalsQuery = useQuery({
-    queryKey: queryKeys.goals.byProject(onboardingProjectId ?? 0, 1, 10),
-    queryFn: () => goalApi.listByProject(onboardingProjectId as number, { page: 1, size: 10 }),
-    enabled: onboardingProjectId != null,
-    staleTime: 60_000,
-  })
-
-  const onboardingTasksQuery = useQuery({
-    queryKey: queryKeys.tasks.byProject(onboardingProjectId ?? 0, 1, 10),
-    queryFn: () => taskApi.listByProject(onboardingProjectId as number, { page: 1, size: 10 }),
-    enabled: onboardingProjectId != null,
-    staleTime: 60_000,
-  })
-
-  const onboardingMembersQuery = useQuery({
-    queryKey: queryKeys.workspaces.members(onboardingWorkspaceId ?? 0),
-    queryFn: () => workspaceApi.members(onboardingWorkspaceId as number),
-    enabled: onboardingWorkspaceId != null,
-    staleTime: 60_000,
-  })
-
-  const onboardingInvitesQuery = useQuery({
-    queryKey: queryKeys.invites.byWorkspace(onboardingWorkspaceId ?? 0),
-    queryFn: () => workspaceInviteApi.listActive(onboardingWorkspaceId as number),
-    enabled: onboardingWorkspaceId != null,
-    staleTime: 60_000,
-  })
-
   const assignedTasks = useMemo(() => myWork?.assignedTasks ?? [], [myWork])
 
   const isLoading = workspaceQuery.isLoading || myWorkQuery.isLoading
-  const onboardingLoading =
-    workspaceQuery.isLoading ||
-    onboardingProjectsQuery.isLoading ||
-    onboardingGoalsQuery.isLoading ||
-    onboardingTasksQuery.isLoading ||
-    onboardingMembersQuery.isLoading ||
-    onboardingInvitesQuery.isLoading
 
   return (
     <div className="space-y-8">
       <PageHeader
         title={t('dashboard.greeting', { name: currentUser?.firstName ?? t('dashboard.userFallback') }) + ' 👋'}
         description={t('dashboard.recentWorkspaces')}
-      />
-
-      <DashboardOnboardingHub
-        userId={currentUser?.userId}
-        workspaces={workspaces}
-        workspaceCount={workspaceCount}
-        projects={onboardingProjects}
-        goals={onboardingGoalsQuery.data?.content ?? []}
-        tasks={onboardingTasksQuery.data?.content ?? []}
-        members={onboardingMembersQuery.data ?? []}
-        invites={onboardingInvitesQuery.data ?? []}
-        unreadNotificationCount={unreadCount}
-        selectedWorkspaceId={onboardingWorkspaceId}
-        selectedProjectId={onboardingProjectId}
-        loading={onboardingLoading}
-      />
-
-      {/* Overview panel */}
+      />      {/* Overview panel */}
       {isLoading ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <Skeleton className="h-[280px] rounded-2xl lg:col-span-1" />

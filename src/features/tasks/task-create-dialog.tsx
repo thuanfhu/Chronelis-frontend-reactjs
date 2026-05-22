@@ -538,7 +538,7 @@ export function TaskCreateDialog({
                 </div>
 
                 {/* 3-column row: Deadline + Estimated + Task Type */}
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5 text-sm font-medium">
                       <Calendar className="size-3.5 text-muted-foreground" /> {t('task.deadline')}

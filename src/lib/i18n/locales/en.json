@@ -560,89 +560,6 @@
       "onTrack": "On Track"
     }
   },
-  "onboarding": {
-    "dashboard": {
-      "title": "Get started with Chronelis",
-      "description": "Complete the key steps to set up a workspace, create a project, and begin managing work with your team.",
-      "progressLabel": "{{completed}}/{{total}} steps",
-      "nextHint": "{{remaining}} steps left to explore the main workflow.",
-      "dataHint": "Completion is checked from real account data. Interface exploration steps are stored only in this browser.",
-      "dismissedText": "The getting started guide is hidden on your dashboard."
-    },
-    "groups": {
-      "setup": "Initial setup",
-      "projects": "Project structure",
-      "work": "Work management",
-      "collaboration": "Tracking and collaboration"
-    },
-    "status": {
-      "completed": "Completed",
-      "recommended": "Recommended",
-      "locked": "Locked",
-      "explore": "Explore",
-      "next": "Next step"
-    },
-    "actions": {
-      "showAll": "Show all steps",
-      "showLess": "Show fewer steps",
-      "hide": "Hide guide",
-      "restore": "Restore guide",
-      "collapse": "Collapse",
-      "expand": "Expand"
-    },
-    "reason": {
-      "needsWorkspace": "Create a workspace first.",
-      "needsProject": "Create a project first."
-    },
-    "steps": {
-      "createWorkspace": {
-        "title": "Create your first workspace",
-        "description": "A workspace keeps members, projects, and team-level settings together.",
-        "cta": "Create workspace"
-      },
-      "createProject": {
-        "title": "Create your first project",
-        "description": "A project brings goals, tasks, and progress tracking into one place.",
-        "cta": "Create project"
-      },
-      "createGoal": {
-        "title": "Add a project goal",
-        "description": "Goals help the team understand outcomes and prioritize work more clearly.",
-        "cta": "Create goal"
-      },
-      "createTask": {
-        "title": "Create your first task",
-        "description": "Turn plans into specific work with an assignee, due date, and clear status.",
-        "cta": "Create task"
-      },
-      "inviteMember": {
-        "title": "Invite a team member",
-        "description": "Bring people in so you can grant access, assign work, and track progress together.",
-        "cta": "Invite member"
-      },
-      "openKanban": {
-        "title": "View work on Kanban",
-        "description": "Track progress across status columns and move tasks as work changes.",
-        "cta": "Open Kanban"
-      },
-      "openTodo": {
-        "title": "View the to-do list",
-        "description": "Focus on work that needs attention and update status quickly.",
-        "cta": "Open list"
-      },
-      "openCalendar": {
-        "title": "View the work calendar",
-        "description": "Review schedules, due dates, and planned work time.",
-        "cta": "Open calendar"
-      },
-      "notifications": {
-        "title": "Track notifications and activity",
-        "description": "Stay aware of important updates across tasks, projects, and teams.",
-        "ctaNotifications": "Open notifications",
-        "ctaActivity": "View activity"
-      }
-    }
-  },
   "command": {
     "inputPlaceholder": "Type a command or search...",
     "empty": "No results found.",
@@ -964,8 +881,8 @@
     "blockerNotePlaceholderLong": "Example: waiting for data from client or decision from management",
     "draftBadge": "Draft",
     "removeDependency": "Remove",
-    "markIncomplete": "Mark incomplete",
-    "markComplete": "Mark as complete",
+    "markIncomplete": "Mark as not done",
+    "markComplete": "Mark as completed",
     "notesButton": "Notes",
     "aiBreakdownButton": "AI breakdown",
     "info": "Information",
@@ -1068,8 +985,6 @@
     "focusChecklistStartSessionTitle": "Start a work session",
     "focusChecklistStartSessionDescription": "Use Pomodoro to keep momentum and return cleanly when the session ends.",
     "focusNotFound": "Unable to find the task for Focus Mode.",
-    "markComplete": "Mark as completed",
-    "markIncomplete": "Mark as not done",
     "pomodoroTitle": "Pomodoro",
     "pomodoroDescription": "Use pomodoro timer",
     "notesTitle": "Notes",
@@ -1969,15 +1884,15 @@
   "permissionModule": "Module",
   "permissionModulePlaceholder": "Select module",
   "permissionUpdating": "Saving...",
-  "addNewRole": "Add Role",
+  "addNewRole": "Add New Role",
   "editRole": "Edit Role",
-  "editRoleDesc": "Update role info and permission assignments",
-  "addNewRoleDesc": "Create a new role and assign access permissions",
+  "editRoleDesc": "Update role information",
+  "addNewRoleDesc": "Add a new role to the system",
   "basicInfo": "Basic Info",
   "roleName": "Role Name",
-  "enterRoleName": "e.g. Administrator",
+  "enterRoleName": "Enter role name",
   "description": "Description",
-  "enterRoleDescription": "Brief description of this role",
+  "enterRoleDescription": "Enter role description",
   "status": "Status",
   "role": "Role",
   "active": "Active",
@@ -2072,12 +1987,5 @@
   "enterRoleNameToConfirm": "Enter role name \"{{roleName}}\" to confirm",
   "enterRoleNamePlaceholder": "Enter role name",
   "roleDeleteWarning": "This action cannot be undone and may affect users holding this role.",
-  "roleDeleteError": "Error deleting role",
-  "editRole": "Edit Role",
-  "addNewRole": "Add New Role",
-  "editRoleDesc": "Update role information",
-  "addNewRoleDesc": "Add a new role to the system",
-  "roleName": "Role Name",
-  "enterRoleName": "Enter role name",
-  "enterRoleDescription": "Enter role description"
+  "roleDeleteError": "Error deleting role"
 }

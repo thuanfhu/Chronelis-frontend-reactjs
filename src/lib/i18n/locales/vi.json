@@ -403,89 +403,6 @@
       "onTrack": "Đúng tiến độ"
     }
   },
-  "onboarding": {
-    "dashboard": {
-      "title": "Bắt đầu nhanh với Chronelis",
-      "description": "Hoàn thành các bước quan trọng để thiết lập không gian làm việc, tạo dự án và bắt đầu quản lý công việc cùng nhóm.",
-      "progressLabel": "{{completed}}/{{total}} bước",
-      "nextHint": "Còn {{remaining}} bước để bạn khám phá đầy đủ quy trình làm việc chính.",
-      "dataHint": "Trạng thái hoàn thành được kiểm tra từ dữ liệu thật của tài khoản. Các bước khám phá giao diện được lưu riêng trên trình duyệt này.",
-      "dismissedText": "Hướng dẫn bắt đầu nhanh đang được ẩn trên bảng điều khiển."
-    },
-    "groups": {
-      "setup": "Thiết lập ban đầu",
-      "projects": "Tổ chức dự án",
-      "work": "Quản lý công việc",
-      "collaboration": "Theo dõi và cộng tác"
-    },
-    "status": {
-      "completed": "Hoàn thành",
-      "recommended": "Khuyến nghị",
-      "locked": "Bị khóa",
-      "explore": "Khám phá",
-      "next": "Nên làm tiếp"
-    },
-    "actions": {
-      "showAll": "Xem tất cả bước",
-      "showLess": "Thu gọn danh sách",
-      "hide": "Ẩn hướng dẫn",
-      "restore": "Mở lại hướng dẫn",
-      "collapse": "Thu gọn",
-      "expand": "Mở rộng"
-    },
-    "reason": {
-      "needsWorkspace": "Cần tạo không gian làm việc trước.",
-      "needsProject": "Cần tạo dự án trước."
-    },
-    "steps": {
-      "createWorkspace": {
-        "title": "Tạo không gian làm việc đầu tiên",
-        "description": "Đây là nơi tập hợp thành viên, dự án và các thiết lập chung của nhóm.",
-        "cta": "Tạo không gian làm việc"
-      },
-      "createProject": {
-        "title": "Tạo dự án đầu tiên",
-        "description": "Dự án giúp bạn gom mục tiêu, công việc và tiến độ vào cùng một nơi.",
-        "cta": "Tạo dự án"
-      },
-      "createGoal": {
-        "title": "Thêm mục tiêu cho dự án",
-        "description": "Mục tiêu giúp nhóm hiểu kết quả cần đạt và ưu tiên công việc tốt hơn.",
-        "cta": "Tạo mục tiêu"
-      },
-      "createTask": {
-        "title": "Tạo công việc đầu tiên",
-        "description": "Biến kế hoạch thành việc cụ thể, có người phụ trách, hạn xử lý và trạng thái rõ ràng.",
-        "cta": "Tạo công việc"
-      },
-      "inviteMember": {
-        "title": "Mời thành viên vào nhóm",
-        "description": "Thêm người cùng làm để phân quyền, giao việc và theo dõi tiến độ chung.",
-        "cta": "Mời thành viên"
-      },
-      "openKanban": {
-        "title": "Xem công việc bằng bảng Kanban",
-        "description": "Theo dõi tiến độ qua các cột trạng thái và kéo thả công việc khi cần.",
-        "cta": "Mở Kanban"
-      },
-      "openTodo": {
-        "title": "Xem danh sách việc cần làm",
-        "description": "Tập trung vào các công việc cần xử lý và cập nhật nhanh trạng thái.",
-        "cta": "Mở danh sách"
-      },
-      "openCalendar": {
-        "title": "Xem lịch công việc",
-        "description": "Kiểm tra lịch làm việc, hạn xử lý và các khoảng thời gian đã lên kế hoạch.",
-        "cta": "Mở lịch"
-      },
-      "notifications": {
-        "title": "Theo dõi thông báo và hoạt động",
-        "description": "Nắm các cập nhật quan trọng của công việc, dự án và nhóm.",
-        "ctaNotifications": "Mở thông báo",
-        "ctaActivity": "Xem hoạt động"
-      }
-    }
-  },
   "command": {
     "inputPlaceholder": "Nhập lệnh hoặc tìm kiếm...",
     "empty": "Không tìm thấy kết quả nào.",
@@ -807,7 +724,7 @@
     "blockerNotePlaceholderLong": "Ví dụ: đang chờ dữ liệu từ khách hàng hoặc quyết định từ quản lý",
     "draftBadge": "Bản nháp",
     "removeDependency": "Gỡ",
-    "markIncomplete": "Bỏ hoàn thành",
+    "markIncomplete": "Đánh dấu chưa xong",
     "markComplete": "Đánh dấu hoàn thành",
     "notesButton": "Ghi chú",
     "aiBreakdownButton": "Phân rã với AI",
@@ -911,8 +828,6 @@
     "focusChecklistStartSessionTitle": "Bắt đầu phiên làm việc",
     "focusChecklistStartSessionDescription": "Dùng Pomodoro để giữ nhịp và quay lại task này khi phiên kết thúc.",
     "focusNotFound": "Không tìm thấy task để mở Focus Mode.",
-    "markComplete": "Đánh dấu hoàn thành",
-    "markIncomplete": "Đánh dấu chưa xong",
     "pomodoroTitle": "Pomodoro",
     "pomodoroDescription": "Sử dụng pomodoro timer",
     "notesTitle": "Ghi chú",
@@ -1949,15 +1864,15 @@
   "permissionModule": "Module",
   "permissionModulePlaceholder": "Chọn module",
   "permissionUpdating": "Đang lưu...",
-  "addNewRole": "Thêm Vai trò",
-  "editRole": "Sửa Vai trò",
-  "editRoleDesc": "Cập nhật thông tin vai trò và phân quyền",
-  "addNewRoleDesc": "Tạo vai trò mới và gán quyền truy cập",
+  "addNewRole": "Thêm vai trò mới",
+  "editRole": "Sửa vai trò",
+  "editRoleDesc": "Cập nhật thông tin vai trò",
+  "addNewRoleDesc": "Thêm vai trò mới vào hệ thống",
   "basicInfo": "Thông tin cơ bản",
   "roleName": "Tên vai trò",
-  "enterRoleName": "Ví dụ: Quản trị viên",
+  "enterRoleName": "Nhập tên vai trò",
   "description": "Mô tả",
-  "enterRoleDescription": "Mô tả ngắn về vai trò này",
+  "enterRoleDescription": "Nhập mô tả vai trò",
   "status": "Trạng thái",
   "role": "Vai trò",
   "active": "Đang hoạt động",
@@ -2052,12 +1967,5 @@
   "enterRoleNameToConfirm": "Nhập tên vai trò \"{{roleName}}\" để xác nhận",
   "enterRoleNamePlaceholder": "Nhập tên vai trò",
   "roleDeleteWarning": "Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.",
-  "roleDeleteError": "Lỗi khi xóa vai trò",
-  "editRole": "Sửa vai trò",
-  "addNewRole": "Thêm vai trò mới",
-  "editRoleDesc": "Cập nhật thông tin vai trò",
-  "addNewRoleDesc": "Thêm vai trò mới vào hệ thống",
-  "roleName": "Tên vai trò",
-  "enterRoleName": "Nhập tên vai trò",
-  "enterRoleDescription": "Nhập mô tả vai trò"
+  "roleDeleteError": "Lỗi khi xóa vai trò"
 }
