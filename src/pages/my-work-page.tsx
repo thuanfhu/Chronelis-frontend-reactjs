@@ -319,7 +319,7 @@ export function MyWorkPage() {
             </Card>
           </motion.div>
 
-          {/* Task queues — adaptive */}
+          {/* Task queues - adaptive */}
           <div className={cn('grid gap-4', hasBlocked && hasReady && 'xl:grid-cols-2 xl:items-start')}>
             {hasBlocked && (
               <QueueSection title={t('myWork.blockedQueue')} tone="rose" icon={AlertTriangle} desc={t('myWork.blockedQueueDesc')} empty={t('myWork.emptyBlocked')} tasks={blockedPg.items} total={filtBlocked.length} page={blockedPg.page} pages={blockedPg.pages} onPage={setBlockedPage} names={projectDirQuery.data} search={search} onOpen={(t) => openTaskDrawer(t.id, 'view')} />

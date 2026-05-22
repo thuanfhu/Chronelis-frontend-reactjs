@@ -1,13 +1,16 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import ColorBends from '@/components/ColorBends';
-import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star, LogOut } from 'lucide-react';
+import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star, LogOut, ArrowUp, User, ShieldCheck } from 'lucide-react';
 import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle';
 import { useTranslation } from 'react-i18next';
 import TrueFocus from '@/components/TrueFocus';
 import { useAuthStore } from '@/app/store/auth-store';
+import { isAdminUser } from '@/lib/auth/role-utils';
 import { useUiStore } from '@/app/store/ui-store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { marketingFooterGroups, marketingFooterUtilityLinks } from '@/pages/marketing-links';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +28,28 @@ export function LandingPage() {
   const navigate = useNavigate();
   const theme = useUiStore((state) => state.theme);
   const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png';
+  const canAccessAdmin = isAdminUser(currentUser);
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-background text-foreground selection:bg-primary/30 font-sans overflow-x-hidden transition-colors duration-300">
@@ -70,7 +95,7 @@ export function LandingPage() {
           <div className="flex items-center gap-4">
             <ThemeLanguageToggle />
             {currentUser ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
                     <Avatar className="size-7">
@@ -93,11 +118,26 @@ export function LandingPage() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="w-full flex items-center">Dashboard</Link>
+                    <Link to="/dashboard" className="w-full flex items-center">
+                      <Layout className="mr-2 size-4" />
+                      {isVi ? "Bảng điều khiển" : "Dashboard"}
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile" className="w-full flex items-center">{isVi ? "Hồ sơ" : "Profile"}</Link>
+                    <Link to="/profile" className="w-full flex items-center">
+                      <User className="mr-2 size-4" />
+                      {isVi ? "Hồ sơ" : "Profile"}
+                    </Link>
                   </DropdownMenuItem>
+                  {canAccessAdmin && (
+                    <DropdownMenuItem
+                      onClick={() => navigate('/admin/users')}
+                      className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100/10 dark:text-amber-400 dark:hover:bg-amber-100/20 cursor-pointer"
+                    >
+                      <ShieldCheck className="mr-2 size-4" />
+                      {isVi ? "Khu quản trị" : "Admin dashboard"}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => { clearSession(); navigate('/'); }} className="text-destructive focus:text-destructive">
                     <LogOut className="mr-2 size-4" />
@@ -126,46 +166,79 @@ export function LandingPage() {
         
         {/* Hero Section */}
         <section className="flex min-h-screen flex-col items-center justify-center px-4 pt-20 text-center">
-          <div className="space-y-8 max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-1000 relative z-10">
+          <div className="space-y-8 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-1000 relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-background/50 border border-border/50 text-xs font-medium text-primary mb-4 backdrop-blur-md shadow-sm">
               <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
               {isVi ? "Chronelis 2.0 đã chính thức ra mắt" : "Chronelis 2.0 is now live"}
             </div>
-            <h1 className="bg-gradient-to-br from-foreground via-foreground/90 to-foreground/50 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-7xl md:text-8xl drop-shadow-sm leading-[1.1]">
-              {isVi ? <>Quản lý thời gian.<br/>Nâng tầm đội ngũ.</> : <>Master your time.<br/>Elevate your team.</>}
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl drop-shadow-sm leading-[1.15] text-foreground">
+              {isVi ? (
+                <>
+                  <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent block pb-3 pt-1 px-1">Hợp nhất dự án & mục tiêu</span>
+                  <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent block pb-3 pt-1 px-1">Bứt phá mọi giới hạn</span>
+                </>
+              ) : (
+                <>
+                  <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent block pb-3 pt-1 px-1">Unify projects & goals</span>
+                  <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent block pb-3 pt-1 px-1">Unleash your focus</span>
+                </>
+              )}
             </h1>
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl md:text-2xl font-light leading-relaxed">
+            <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-lg md:text-xl font-light leading-relaxed">
               {isVi 
-                ? "Nền tảng quản lý công việc thông minh, đẹp mắt giúp các đội ngũ hiện đại vận hành nhanh hơn và cộng tác mượt mà hơn."
-                : "The beautiful, intelligent task management platform designed to help modern teams ship faster and collaborate seamlessly."}
+                ? "Không gian làm việc cộng tác mượt mà. Quản lý mục tiêu, nhiệm vụ và phiên tập trung Pomodoro với dữ liệu đồng bộ tức thì trên giao diện Kanban, Danh sách và Lịch."
+                : "A beautiful, unified workspace designed for seamless collaboration. Manage your goals, tasks, and Pomodoro sessions with real-time sync across Kanban, List, and Calendar views."}
             </p>
             
             <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg" 
                 asChild 
-                className="rounded-full shadow-xl shadow-primary/20 transition-all hover:scale-105 px-8 h-14 text-lg font-medium group"
+                className="rounded-full shadow-lg shadow-primary/10 transition-all hover:scale-105 px-8 h-12 text-sm font-semibold group flex items-center justify-center"
               >
                 <Link to="/register">
                   {isVi ? "Bắt đầu miễn phí" : "Start for free"}
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </Button>
               <Button 
                 size="lg" 
                 variant="outline" 
                 asChild 
-                className="rounded-full bg-background/50 backdrop-blur-md transition-all hover:scale-105 px-8 h-14 text-lg font-medium"
+                className="rounded-full border border-border/60 bg-background/50 backdrop-blur-md transition-all hover:scale-105 px-8 h-12 text-sm font-semibold flex items-center justify-center"
               >
-                <Link to="/login">
-                  {isVi ? "Đặt lịch demo" : "Book a demo"}
-                </Link>
+                <a href="#features">
+                  {isVi ? "Tìm hiểu thêm" : "Learn more"}
+                </a>
               </Button>
             </div>
             
-            <p className="mt-6 text-sm text-muted-foreground/70">
-              {isVi ? "Không cần thẻ tín dụng • Dùng thử 14 ngày • Hủy bất cứ lúc nào" : "No credit card required • Free 14-day trial • Cancel anytime"}
-            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {[
+                {
+                  vi: "100% Miễn phí",
+                  en: "100% Free",
+                  color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                },
+                {
+                  vi: "Cộng tác theo thời gian thực",
+                  en: "Real-time Collaboration",
+                  color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                },
+                {
+                  vi: "Không giới hạn dự án",
+                  en: "Unlimited Projects",
+                  color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                }
+              ].map((badge, idx) => (
+                <span 
+                  key={idx} 
+                  className={`inline-flex items-center px-4 py-1.5 rounded-full border text-sm font-medium backdrop-blur-sm shadow-sm transition-all duration-300 hover:scale-105 ${badge.color}`}
+                >
+                  {isVi ? badge.vi : badge.en}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -184,7 +257,7 @@ export function LandingPage() {
                 />
               </div>
               <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mt-4">
-                {isVi ? "Chronelis mang tất cả luồng công việc, nhiệm vụ và giao tiếp nhóm vào một không gian thống nhất, đẹp mắt." : "Chronelis brings all your workflows, tasks, and team communications into one unified, beautiful workspace."}
+                {isVi ? "Chronelis gom luồng công việc, nhiệm vụ và trao đổi nhóm vào một không gian thống nhất, dễ nhìn." : "Chronelis brings all your workflows, tasks, and team communications into one unified, beautiful workspace."}
               </p>
             </div>
             
@@ -203,7 +276,7 @@ export function LandingPage() {
                 {
                   icon: <Users className="h-8 w-8 text-blue-500" />,
                   title: isVi ? "Cộng tác mượt mà" : "Seamless Collaboration",
-                  desc: isVi ? "Cập nhật realtime, bình luận trực tiếp và thông báo thông minh giúp cả đội ngũ luôn đồng bộ và tiến lên." : "Real-time updates, inline commenting, and smart notifications keep your entire team aligned and moving forward."
+                  desc: isVi ? "Cập nhật theo thời gian thực, bình luận trực tiếp và thông báo thông minh giúp cả đội ngũ luôn đồng bộ." : "Real-time updates, inline commenting, and smart notifications keep your entire team aligned and moving forward."
                 }
               ].map((feature, i) => (
                 <div key={i} className="p-8 rounded-3xl bg-card border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all group">
@@ -262,7 +335,7 @@ export function LandingPage() {
                 <div className="flex-1 p-6 md:p-8 flex flex-col gap-6 overflow-hidden">
                   <div className="flex justify-between items-center">
                     <div className="h-10 px-4 bg-muted/50 rounded-lg flex items-center border border-border/50">
-                      <span className="text-lg font-bold">{isVi ? "Dự án Q3 - Phát triển App" : "Q3 Project - Mobile App"}</span>
+                      <span className="text-lg font-bold">{isVi ? "Dự án Q3 - Phát triển ứng dụng" : "Q3 Project - Mobile App"}</span>
                     </div>
                     <div className="flex -space-x-2">
                       <div className="w-8 h-8 rounded-full bg-blue-500/80 border-2 border-background"></div>
@@ -350,7 +423,6 @@ export function LandingPage() {
           </div>
         </section>
 
-
         {/* Footer */}
         <footer className="border-t border-border/40 bg-card pt-20 pb-10 px-6">
           <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-16">
@@ -364,51 +436,49 @@ export function LandingPage() {
               </div>
               <p className="text-muted-foreground max-w-xs mb-6">
                 {isVi 
-                  ? "Xây dựng tương lai của cộng tác nhóm và quản lý dự án, bắt đầu từ từng component tuyệt đẹp." 
+                  ? "Giúp nhóm quản lý dự án, mục tiêu, công việc và thời gian tập trung trong một không gian rõ ràng."
                   : "Building the future of team collaboration and project management, one beautiful component at a time."}
               </p>
             </div>
             
-            <div>
-              <h4 className="font-bold mb-4">{isVi ? "Sản phẩm" : "Product"}</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Tính năng" : "Features"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Tích hợp" : "Integrations"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Bảng giá" : "Pricing"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Cập nhật" : "Changelog"}</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-bold mb-4">{isVi ? "Công ty" : "Company"}</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Về chúng tôi" : "About Us"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Tuyển dụng" : "Careers"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Blog" : "Blog"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Liên hệ" : "Contact"}</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-bold mb-4">{isVi ? "Pháp lý" : "Legal"}</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Chính sách bảo mật" : "Privacy Policy"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Điều khoản dịch vụ" : "Terms of Service"}</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">{isVi ? "Chính sách Cookie" : "Cookie Policy"}</a></li>
-              </ul>
-            </div>
+            {marketingFooterGroups.map((group) => (
+              <div key={group.title.en}>
+                <h4 className="font-bold mb-4">{isVi ? group.title.vi : group.title.en}</h4>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {group.links.map((link) => (
+                    <li key={link.to}>
+                      <Link to={link.to} className="hover:text-foreground transition-colors">
+                        {isVi ? link.label.vi : link.label.en}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
           
           <div className="max-w-7xl mx-auto pt-8 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© 2026 Chronelis Inc. {isVi ? "Bản quyền thuộc về." : "All rights reserved."}</p>
+            <p>© 2026 Chronelis Inc. {isVi ? "Bản quyền thuộc về Chronelis." : "All rights reserved."}</p>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-foreground transition-colors">Twitter</a>
-              <a href="#" className="hover:text-foreground transition-colors">GitHub</a>
-              <a href="#" className="hover:text-foreground transition-colors">Discord</a>
+              {marketingFooterUtilityLinks.map((link) => (
+                <Link key={link.to} to={link.to} className="hover:text-foreground transition-colors">
+                  {isVi ? link.label.vi : link.label.en}
+                </Link>
+              ))}
             </div>
           </div>
         </footer>
 
+        {showScrollTop && (
+          <Button
+            onClick={scrollToTop}
+            size="icon"
+            className="fixed bottom-6 right-6 z-50 rounded-full h-12 w-12 bg-background/60 hover:bg-primary hover:text-primary-foreground text-foreground backdrop-blur-md border border-border shadow-xl transition-all duration-300 hover:scale-110 hover:shadow-primary/20 hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-4 duration-300"
+            aria-label="Scroll to top"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </Button>
+        )}
       </div>
     </div>
   );

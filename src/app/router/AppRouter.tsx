@@ -25,6 +25,7 @@ import { AdminShell } from '@/features/admin/layout/admin-shell'
 import { MyWorkPage } from '@/pages/my-work-page'
 
 import { LandingPage } from '@/pages/landing-page'
+import { MarketingStaticPage } from '@/pages/marketing-static-page'
 
 export function AppRouter() {
   return (
@@ -107,6 +108,19 @@ export function AppRouter() {
         />
 
         <Route path="/forbidden" element={<ForbiddenPage />} />
+        <Route path="/features" element={<MarketingStaticPage pageKey="features" />} />
+        <Route path="/integrations" element={<MarketingStaticPage pageKey="integrations" />} />
+        <Route path="/pricing" element={<MarketingStaticPage pageKey="pricing" />} />
+        <Route path="/changelog" element={<MarketingStaticPage pageKey="changelog" />} />
+        <Route path="/about" element={<MarketingStaticPage pageKey="about" />} />
+        <Route path="/roadmap" element={<MarketingStaticPage pageKey="roadmap" />} />
+        <Route path="/guides" element={<MarketingStaticPage pageKey="guides" />} />
+        <Route path="/contact" element={<MarketingStaticPage pageKey="contact" />} />
+        <Route path="/privacy" element={<MarketingStaticPage pageKey="privacy" />} />
+        <Route path="/terms" element={<MarketingStaticPage pageKey="terms" />} />
+        <Route path="/cookies" element={<MarketingStaticPage pageKey="cookies" />} />
+        <Route path="/careers" element={<Navigate to="/roadmap" replace />} />
+        <Route path="/blog" element={<Navigate to="/guides" replace />} />
 
         <Route
           element={

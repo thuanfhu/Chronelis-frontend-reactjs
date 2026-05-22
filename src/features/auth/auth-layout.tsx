@@ -9,7 +9,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
   const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
   return (
     <div className="flex min-h-dvh">
-      {/* Left panel — brand */}
+      {/* Left panel - brand */}
       <div className="hidden flex-1 flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
         <Link to="/login" className="flex items-center relative h-8 w-32">
           <img
@@ -31,7 +31,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <p className="text-xs text-primary-foreground/50">© 2025 Chronelis. All rights reserved.</p>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right panel - form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-[420px]">
           <Link to="/login" className="mb-6 flex items-center lg:hidden relative h-7 w-32">

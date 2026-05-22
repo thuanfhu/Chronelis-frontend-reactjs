@@ -119,7 +119,7 @@ export function GoalTasksPage() {
     enabled: Number.isFinite(goalId),
   })
 
-  // Load all tasks for this goal — API supports pagination but we page client-side for filter+sort
+  // Load all tasks for this goal - API supports pagination but we page client-side for filter+sort
   const tasksQuery = useQuery({
     queryKey: queryKeys.tasks.byGoal(goalId, 1, 500),
     queryFn: () => taskApi.listByGoal(goalId, { page: 1, size: 500 }),
