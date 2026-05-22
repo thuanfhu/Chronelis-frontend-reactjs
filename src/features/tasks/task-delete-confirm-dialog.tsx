@@ -20,6 +20,7 @@ import { queryKeys } from '@/lib/api/query-keys'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import {
   applyTaskDelete,
+  markOptimisticTaskCreateDiscarded,
   patchGoalTaskQueries,
   patchProjectCalendarQueries,
   patchProjectTaskQueries,
@@ -213,6 +214,22 @@ export function TaskDeleteConfirmDialog() {
         throw new Error(t('task.notFound'))
       }
 
+      if (targetTaskId < 0) {
+        markOptimisticTaskCreateDiscarded(queryClient, targetTaskId)
+
+        const optimisticTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(targetTaskId))
+        if (taskDrawerTaskId === targetTaskId) {
+          closeTaskDrawer()
+        }
+        closeTaskDeleteConfirm()
+
+        if (optimisticTask) {
+          applyOptimisticDelete(optimisticTask)
+        }
+
+        return
+      }
+
       const cachedTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(targetTaskId))
       const task = cachedTask ?? (await taskApi.detail(targetTaskId))
 
@@ -243,6 +260,14 @@ export function TaskDeleteConfirmDialog() {
       ])
     },
     onError: (error: Error) => {
+      if (isNotFoundError(error)) {
+        if (taskDrawerTaskId === targetTaskId) {
+          closeTaskDrawer()
+        }
+        closeTaskDeleteConfirm()
+        return
+      }
+
       toast.error(t('task.deleteFailed'), { description: error.message })
     },
   })

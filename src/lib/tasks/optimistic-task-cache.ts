@@ -8,6 +8,7 @@ import {
 
 type TaskPage = PageResult<Task>
 type SchedulePage = PageResult<TaskSchedule>
+const DISCARDED_OPTIMISTIC_TASK_CREATES_KEY = ['tasks', 'optimistic-create-discarded'] as const
 
 export type TaskProjectSnapshot = Array<[QueryKey, TaskPage | undefined]>
 export type GoalTaskSnapshot = Array<[QueryKey, TaskPage | undefined]>
@@ -255,6 +256,26 @@ export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Ta
 export function applyTaskDelete(tasks: Task[], taskId: number): Task[] {
   clearRememberedTaskOpenStatus(taskId)
   return tasks.filter((task) => task.id !== taskId)
+}
+
+export function markOptimisticTaskCreateDiscarded(queryClient: QueryClient, taskId: number): void {
+  if (taskId >= 0) {
+    return
+  }
+
+  queryClient.setQueryData<number[]>(DISCARDED_OPTIMISTIC_TASK_CREATES_KEY, (current = []) =>
+    current.includes(taskId) ? current : [...current, taskId],
+  )
+}
+
+export function isOptimisticTaskCreateDiscarded(queryClient: QueryClient, taskId: number): boolean {
+  return queryClient.getQueryData<number[]>(DISCARDED_OPTIMISTIC_TASK_CREATES_KEY)?.includes(taskId) ?? false
+}
+
+export function clearOptimisticTaskCreateDiscarded(queryClient: QueryClient, taskId: number): void {
+  queryClient.setQueryData<number[]>(DISCARDED_OPTIMISTIC_TASK_CREATES_KEY, (current = []) =>
+    current.filter((item) => item !== taskId),
+  )
 }
 
 export function snapshotProjectTaskQueries(queryClient: QueryClient, projectId: number): TaskProjectSnapshot {

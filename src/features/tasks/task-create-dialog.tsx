@@ -29,6 +29,8 @@ import { taskTypeApi } from '@/lib/api/modules/task-type-api'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
 import { resolveTaskTypeIcon } from '@/lib/task-types/task-type-icons'
 import {
+  clearOptimisticTaskCreateDiscarded,
+  isOptimisticTaskCreateDiscarded,
   patchProjectCalendarQueries,
   patchProjectTaskQueries,
   patchTaskScheduleQueries,
@@ -442,6 +444,7 @@ export function TaskCreateDialog({
       }
 
       patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+      queryClient.setQueryData(queryKeys.tasks.detail(optimisticTaskId), optimisticTask)
 
       if (form.scheduleStart && form.scheduleEnd) {
         const scheduledStart = toLocalDateTimePayload(form.scheduleStart)
@@ -472,6 +475,40 @@ export function TaskCreateDialog({
       }
     },
     onSuccess: async (createdTask, _variables, context) => {
+      if (
+        context?.optimisticTaskId != null &&
+        isOptimisticTaskCreateDiscarded(queryClient, context.optimisticTaskId)
+      ) {
+        queryClient.setQueryData(queryKeys.tasks.detail(context.optimisticTaskId), undefined)
+        queryClient.setQueryData(queryKeys.tasks.detail(createdTask.id), undefined)
+        patchProjectTaskQueries(queryClient, projectId, (tasks) =>
+          tasks.filter((task) => task.id !== context.optimisticTaskId && task.id !== createdTask.id),
+        )
+        patchProjectCalendarQueries(queryClient, projectId, (schedules) =>
+          schedules.filter(
+            (schedule) =>
+              schedule.id !== context.optimisticScheduleId &&
+              schedule.taskId !== context.optimisticTaskId &&
+              schedule.taskId !== createdTask.id,
+          ),
+        )
+        clearOptimisticTaskCreateDiscarded(queryClient, context.optimisticTaskId)
+
+        try {
+          await taskApi.remove(createdTask.id)
+        } catch {
+          // The user already removed the optimistic item locally; a later refetch/realtime event will reconcile.
+        }
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork }),
+          queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(createdTask.id) }),
+        ])
+        return
+      }
+
       queryClient.setQueryData(queryKeys.tasks.detail(createdTask.id), createdTask)
 
       if (context?.optimisticTaskId) {
@@ -507,6 +544,14 @@ export function TaskCreateDialog({
       onOpenChange(false)
     },
     onError: (error: Error, _variables, context) => {
+      if (
+        context?.optimisticTaskId != null &&
+        isOptimisticTaskCreateDiscarded(queryClient, context.optimisticTaskId)
+      ) {
+        clearOptimisticTaskCreateDiscarded(queryClient, context.optimisticTaskId)
+        return
+      }
+
       if (context?.projectTasksSnapshot) {
         restoreProjectTaskQueries(queryClient, context.projectTasksSnapshot)
       }
