@@ -461,6 +461,8 @@ export function TaskCreateDialog({
         patchTaskScheduleQueries(queryClient, optimisticTaskId, (schedules) => [...schedules, optimisticSchedule])
       }
 
+      onOpenChange(false)
+
       return {
         optimisticTaskId,
         optimisticScheduleId: form.scheduleStart && form.scheduleEnd ? optimisticScheduleId : undefined,

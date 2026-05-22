@@ -637,6 +637,19 @@ export function TaskDetailsDrawer() {
         }
       }
 
+      setTaskDrawerMode('view')
+      setEditTitle(null)
+      setEditDescription(null)
+      setEditPriority(null)
+      setEditGoalId(null)
+      setEditAssigneeId(null)
+      setEditDueDate('')
+      setEditScheduleStart('')
+      setEditScheduleEnd('')
+      setActiveScheduleId(null)
+      setEditorSnapshot(null)
+      setEditorInitKey(null)
+
       return {
         taskDetailSnapshot,
         projectTasksSnapshot,
