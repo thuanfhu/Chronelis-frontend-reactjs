@@ -82,12 +82,9 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
     return taskTypes.filter((type) => {
       const goal = type.goalId ? goals.find((item) => item.id === type.goalId) : null
-      return [
-        type.name,
-        type.description ?? '',
-        type.icon ?? '',
-        goal?.title ?? '',
-      ].some((value) => value.toLowerCase().includes(normalizedQuery))
+      return [type.name, type.description ?? '', type.icon ?? '', goal?.title ?? ''].some((value) =>
+        value.toLowerCase().includes(normalizedQuery),
+      )
     })
   }, [goals, query, taskTypes])
 
@@ -250,7 +247,9 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
               <div>
                 <p className="font-semibold">Chưa có task type phù hợp</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {isOwnerOrManager ? 'Tạo task type đầu tiên để phân loại công việc tốt hơn.' : 'Project chưa cấu hình task type.'}
+                  {isOwnerOrManager
+                    ? 'Tạo task type đầu tiên để phân loại công việc tốt hơn.'
+                    : 'Project chưa cấu hình task type.'}
                 </p>
               </div>
             </div>
@@ -262,7 +261,10 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                 const color = type.color ?? '#3B82F6'
 
                 return (
-                  <div key={type.id} className="grid gap-4 p-4 transition-colors hover:bg-muted/25 md:grid-cols-[1fr_auto] md:items-center">
+                  <div
+                    key={type.id}
+                    className="grid gap-4 p-4 transition-colors hover:bg-muted/25 md:grid-cols-[1fr_auto] md:items-center"
+                  >
                     <div className="flex min-w-0 gap-4">
                       <div
                         className="flex size-11 shrink-0 items-center justify-center rounded-xl border"
@@ -277,9 +279,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                             <Palette className="size-3" />
                             {color}
                           </Badge>
-                          <Badge variant={goal ? 'secondary' : 'outline'}>
-                            {goal ? goal.title : 'Toàn project'}
-                          </Badge>
+                          <Badge variant={goal ? 'secondary' : 'outline'}>{goal ? goal.title : 'Toàn project'}</Badge>
                         </div>
                         {type.description ? (
                           <p className="line-clamp-2 text-sm text-muted-foreground">{type.description}</p>
@@ -295,7 +295,12 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                           <Edit3 className="size-4" />
                           Sửa
                         </Button>
-                        <Button variant="ghost" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(type)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(type)}
+                        >
                           <Trash2 className="size-4" />
                           Xóa
                         </Button>
@@ -309,7 +314,13 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setIsDialogOpen(true) }}>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeDialog()
+          else setIsDialogOpen(true)
+        }}
+      >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingTaskType ? 'Sửa task type' : 'Tạo task type'}</DialogTitle>
@@ -349,13 +360,20 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                   <Input
                     type="color"
                     value={form.color}
-                    onChange={(event) => setForm((current) => ({ ...current, color: event.target.value.toUpperCase() }))}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, color: event.target.value.toUpperCase() }))
+                    }
                     className="h-10 w-14 cursor-pointer p-1"
                   />
                   <Input
                     value={form.color}
-                    onChange={(event) => setForm((current) => ({ ...current, color: event.target.value.toUpperCase() }))}
-                    className={cn('font-mono uppercase', !isValidHexColor(form.color) && 'border-destructive focus-visible:ring-destructive')}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, color: event.target.value.toUpperCase() }))
+                    }
+                    className={cn(
+                      'font-mono uppercase',
+                      !isValidHexColor(form.color) && 'border-destructive focus-visible:ring-destructive',
+                    )}
                     maxLength={7}
                   />
                 </div>
@@ -364,7 +382,10 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                     <button
                       key={color}
                       type="button"
-                      className={cn('size-6 rounded-full border-2 border-background ring-1 ring-border transition-transform hover:scale-110', form.color === color && 'ring-2 ring-primary')}
+                      className={cn(
+                        'size-6 rounded-full border-2 border-background ring-1 ring-border transition-transform hover:scale-110',
+                        form.color === color && 'ring-2 ring-primary',
+                      )}
                       style={{ backgroundColor: color }}
                       onClick={() => setForm((current) => ({ ...current, color }))}
                       aria-label={`Chọn màu ${color}`}
@@ -400,7 +421,10 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
             <div className="grid gap-2">
               <Label>Phạm vi goal</Label>
-              <Select value={form.goalId} onValueChange={(value) => setForm((current) => ({ ...current, goalId: value }))}>
+              <Select
+                value={form.goalId}
+                onValueChange={(value) => setForm((current) => ({ ...current, goalId: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phạm vi" />
                 </SelectTrigger>
@@ -417,7 +441,10 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
             <div className="rounded-xl border border-border bg-muted/30 p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
-              <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold" style={{ backgroundColor: `${form.color}18`, borderColor: `${form.color}55`, color: form.color }}>
+              <div
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold"
+                style={{ backgroundColor: `${form.color}18`, borderColor: `${form.color}55`, color: form.color }}
+              >
                 <SelectedIcon className="size-4" />
                 {form.name.trim() || 'Task type name'}
               </div>
@@ -425,7 +452,9 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>Hủy</Button>
+            <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>
+              Hủy
+            </Button>
             <Button onClick={submitForm} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
               Lưu task type
@@ -437,16 +466,21 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
       <ConfirmModal
         open={deleteTarget != null}
         title="Xóa task type"
-        description={(
+        description={
           <>
-            Task type <strong>{deleteTarget?.name}</strong> sẽ bị xóa. Các task đang dùng type này sẽ được bỏ liên kết type.
+            Task type <strong>{deleteTarget?.name}</strong> sẽ bị xóa. Các task đang dùng type này sẽ được bỏ liên kết
+            type.
           </>
-        )}
+        }
         confirmText="Xóa"
         confirmVariant="destructive"
         loading={deleteMutation.isPending}
-        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.id) }}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget.id)
+        }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
       />
     </div>
   )

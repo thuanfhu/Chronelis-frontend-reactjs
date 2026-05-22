@@ -260,10 +260,18 @@
 }
 
 @keyframes icon-subtle-bounce {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.18); }
-  70% { transform: scale(0.95); }
-  100% { transform: scale(1.05); }
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1.05);
+  }
 }
 
 /* ─── Custom thin scrollbars (works without plugin, Tailwind v4 compatible) ─── */
@@ -320,9 +328,11 @@
   }
 
   .chronelis-task-card {
-    background-image: linear-gradient(180deg,
+    background-image: linear-gradient(
+      180deg,
       color-mix(in oklab, var(--card) 92%, #fff 8%),
-      color-mix(in oklab, var(--card) 96%, #000 4%));
+      color-mix(in oklab, var(--card) 96%, #000 4%)
+    );
     border-color: color-mix(in oklab, var(--border) 85%, transparent);
   }
 
@@ -391,9 +401,11 @@
   }
 
   .dark .chronelis-task-card {
-    background-image: linear-gradient(180deg,
+    background-image: linear-gradient(
+      180deg,
       color-mix(in oklab, var(--card) 84%, #000 16%),
-      color-mix(in oklab, var(--card) 90%, #000 10%));
+      color-mix(in oklab, var(--card) 90%, #000 10%)
+    );
     border-color: color-mix(in oklab, var(--border) 85%, transparent);
   }
 
@@ -467,7 +479,8 @@
     border-style: solid !important;
     border-radius: 0.52rem !important;
     opacity: 1 !important;
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--foreground) 16%, transparent),
+    box-shadow:
+      0 1px 0 color-mix(in oklab, var(--foreground) 16%, transparent),
       0 2px 8px color-mix(in oklab, var(--foreground) 12%, transparent);
     background-image: none !important;
     background-clip: padding-box;
@@ -603,7 +616,10 @@
     cursor: pointer;
     border-radius: 0.55rem;
     padding: 0.15rem 0.35rem;
-    transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease,
+      box-shadow 0.16s ease;
   }
 
   .chronelis-day-header--clickable:hover {
@@ -707,4 +723,3 @@
   width: max-content;
   animation: marquee 35s linear infinite;
 }
-

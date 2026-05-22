@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react'
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/react-table'
+import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/react-table'
 import {
   flexRender,
   getCoreRowModel,
@@ -15,14 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/ui/data-table-pagination'
 import { DataTableToolbar } from './data-table-toolbar'
 import { useRoles } from '../context/roles-context'
@@ -81,9 +69,7 @@ export function RolesTable({ data }: DataTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="h-24 text-center">
-                  {t('tableLoading')}
-                </TableHead>
+                <TableHead className="h-24 text-center">{t('tableLoading')}</TableHead>
               </TableRow>
             </TableHeader>
           </Table>
@@ -102,12 +88,7 @@ export function RolesTable({ data }: DataTableProps) {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -116,26 +97,15 @@ export function RolesTable({ data }: DataTableProps) {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   {t('tableNoData')}
                 </TableCell>
               </TableRow>
@@ -143,11 +113,7 @@ export function RolesTable({ data }: DataTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination
-        table={table}
-        totalPages={meta?.totalPages || 1}
-        onPageChange={(page) => fetchRoles(page)}
-      />
+      <DataTablePagination table={table} totalPages={meta?.totalPages || 1} onPageChange={(page) => fetchRoles(page)} />
     </div>
   )
 }

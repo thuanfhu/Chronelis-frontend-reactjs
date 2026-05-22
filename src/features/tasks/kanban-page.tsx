@@ -177,10 +177,14 @@ function KanbanColumn({
       <div className="flex items-center justify-between border-b px-3 py-2.5">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold">{status.name}</h3>
-          <Badge variant="secondary" className="text-[10px]">{tasks.length}</Badge>
+          <Badge variant="secondary" className="text-[10px]">
+            {tasks.length}
+          </Badge>
         </div>
         {status.isClosed && (
-          <Badge variant="outline" className="text-[9px]">{t('kanban.closed')}</Badge>
+          <Badge variant="outline" className="text-[9px]">
+            {t('kanban.closed')}
+          </Badge>
         )}
       </div>
 
@@ -235,9 +239,7 @@ export function KanbanPage() {
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   // Custom collision detection: prefer pointerWithin first (catches empty columns),
   // then fall back to closestCorners for task-level precision
@@ -294,7 +296,15 @@ export function KanbanPage() {
   const reorderTaskMutation = useMutation({
     mutationFn: ({ taskId, targetPosition }: { taskId: number; statusId: number; targetPosition: number }) =>
       taskApi.reorder(taskId, targetPosition),
-    onMutate: async ({ taskId, statusId, targetPosition }: { taskId: number; statusId: number; targetPosition: number }) => {
+    onMutate: async ({
+      taskId,
+      statusId,
+      targetPosition,
+    }: {
+      taskId: number
+      statusId: number
+      targetPosition: number
+    }) => {
       await queryClient.cancelQueries({ queryKey: ['tasks', 'project', projectId] })
 
       const snapshot = snapshotProjectTaskQueries(queryClient, projectId)
@@ -363,8 +373,6 @@ export function KanbanPage() {
     const y = Math.min(event.clientY, window.innerHeight - 196)
     setTaskContextMenu({ x, y, task })
   }
-
-
 
   function handleDragOver(event: DragOverEvent) {
     const { over } = event
@@ -470,7 +478,9 @@ export function KanbanPage() {
                 void queryClient.invalidateQueries({ queryKey: queryKeys.statuses.byProject(projectId) })
               }}
             >
-              <RefreshCw className={cn('size-3.5', (tasksQuery.isFetching || statusesQuery.isFetching) && 'animate-spin')} />
+              <RefreshCw
+                className={cn('size-3.5', (tasksQuery.isFetching || statusesQuery.isFetching) && 'animate-spin')}
+              />
               {t('common.refresh')}
             </Button>
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
@@ -488,16 +498,31 @@ export function KanbanPage() {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label>{t('kanban.columnName')}</Label>
-                    <Input value={statusName} onChange={(e) => setStatusName(e.target.value)} placeholder={t('kanban.columnNamePlaceholder')} />
+                    <Input
+                      value={statusName}
+                      onChange={(e) => setStatusName(e.target.value)}
+                      placeholder={t('kanban.columnNamePlaceholder')}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>{t('kanban.columnCode')}</Label>
-                    <Input value={statusCode} onChange={(e) => setStatusCode(e.target.value)} placeholder={t('kanban.columnCodePlaceholder')} />
+                    <Input
+                      value={statusCode}
+                      onChange={(e) => setStatusCode(e.target.value)}
+                      placeholder={t('kanban.columnCodePlaceholder')}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>{t('common.cancel')}</Button>
-                  <Button onClick={() => createStatusMutation.mutate()} disabled={createStatusMutation.isPending || !statusName.trim() || !statusCode.trim() || !canManageProject}>
+                  <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    onClick={() => createStatusMutation.mutate()}
+                    disabled={
+                      createStatusMutation.isPending || !statusName.trim() || !statusCode.trim() || !canManageProject
+                    }
+                  >
                     {createStatusMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                     {t('common.create')}
                   </Button>
@@ -583,7 +608,6 @@ export function KanbanPage() {
             openTaskDrawer(task.id, 'edit')
           }
         }}
-
         onDelete={() => {
           const task = taskContextMenu?.task
           if (task) {

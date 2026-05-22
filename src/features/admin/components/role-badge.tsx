@@ -14,7 +14,7 @@ function stableHash(value: string): number {
   let hash = 0
 
   for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash << 5) - hash) + value.charCodeAt(index)
+    hash = (hash << 5) - hash + value.charCodeAt(index)
     hash |= 0
   }
 
@@ -56,7 +56,11 @@ export function RoleBadge({ roleName, className }: RoleBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={cn('inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold tracking-tight', resolveRoleBadgeClass(roleName), className)}
+      className={cn(
+        'inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold tracking-tight',
+        resolveRoleBadgeClass(roleName),
+        className,
+      )}
     >
       {roleName}
     </Badge>

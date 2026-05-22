@@ -89,5 +89,12 @@ export function TasksLayout() {
 }
 
 function isTaskViewTab(value: string | null): value is TaskViewTab {
-  return value === 'calendar' || value === 'kanban' || value === 'todo' || value === 'goals' || value === 'activity' || value === 'settings'
+  return (
+    value === 'calendar' ||
+    value === 'kanban' ||
+    value === 'todo' ||
+    value === 'goals' ||
+    value === 'activity' ||
+    value === 'settings'
+  )
 }

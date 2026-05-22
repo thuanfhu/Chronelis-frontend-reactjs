@@ -1,7 +1,18 @@
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
-  FolderKanban, ChevronRight, Search, LogOut, Menu,
-  ChevronsLeft, ChevronDown, Target, LayoutGrid, Plus, Loader2, Trash2, Briefcase,
+  FolderKanban,
+  ChevronRight,
+  Search,
+  LogOut,
+  Menu,
+  ChevronsLeft,
+  ChevronDown,
+  Target,
+  LayoutGrid,
+  Plus,
+  Loader2,
+  Trash2,
+  Briefcase,
 } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -25,13 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
 import { projectApi } from '@/lib/api/modules/project-api'
@@ -71,16 +76,18 @@ function highlightMatch(text: string, keyword: string): ReactNode {
   const parts = text.split(matcher)
   const normalizedKeyword = trimmedKeyword.toLowerCase()
 
-  return parts.map((part, index) => (
-    part.toLowerCase() === normalizedKeyword
-      ? <mark key={`${text}-${index}`} className="rounded bg-primary/20 px-0.5 text-foreground">{part}</mark>
-      : <span key={`${text}-${index}`}>{part}</span>
-  ))
+  return parts.map((part, index) =>
+    part.toLowerCase() === normalizedKeyword ? (
+      <mark key={`${text}-${index}`} className="rounded bg-primary/20 px-0.5 text-foreground">
+        {part}
+      </mark>
+    ) : (
+      <span key={`${text}-${index}`}>{part}</span>
+    ),
+  )
 }
 
-type SidebarContextTarget =
-  | { kind: 'project'; project: Project }
-  | { kind: 'goal'; goal: Goal; project: Project }
+type SidebarContextTarget = { kind: 'project'; project: Project } | { kind: 'goal'; goal: Goal; project: Project }
 
 type SidebarDeletePayload = {
   kind: 'project' | 'goal'
@@ -111,9 +118,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
   const [workspaceSearch, setWorkspaceSearch] = useState('')
   const [projectsExpanded, setProjectsExpanded] = useState(true)
-  const [expandedProjects, setExpandedProjects] = useState<Set<number>>(
-    () => new Set(projectId ? [projectId] : []),
-  )
+  const [expandedProjects, setExpandedProjects] = useState<Set<number>>(() => new Set(projectId ? [projectId] : []))
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{
     x: number
     y: number
@@ -197,23 +202,21 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     }
   }, [projects, hasExpandedAll])
 
-  const projectFormDirty = projectDialogMode === 'create'
-    ? Boolean(projectFormName.trim())
-    : (
-      projectFormName.trim() !== projectInitialName
-      || projectFormDescription.trim() !== projectInitialDescription
-      || (isOwner && projectFormVisibility !== projectInitialVisibility)
-      || (isOwner && projectFormManagerUserId !== projectInitialManagerUserId)
-      || (isOwner && projectFormManagerTeamId !== projectInitialManagerTeamId)
-    )
+  const projectFormDirty =
+    projectDialogMode === 'create'
+      ? Boolean(projectFormName.trim())
+      : projectFormName.trim() !== projectInitialName ||
+        projectFormDescription.trim() !== projectInitialDescription ||
+        (isOwner && projectFormVisibility !== projectInitialVisibility) ||
+        (isOwner && projectFormManagerUserId !== projectInitialManagerUserId) ||
+        (isOwner && projectFormManagerTeamId !== projectInitialManagerTeamId)
 
-  const goalFormDirty = goalDialogMode === 'create'
-    ? Boolean(goalFormTitle.trim())
-    : (
-      goalFormTitle.trim() !== goalInitialTitle
-      || goalFormType !== goalInitialType
-      || goalFormStatus !== goalInitialStatus
-    )
+  const goalFormDirty =
+    goalDialogMode === 'create'
+      ? Boolean(goalFormTitle.trim())
+      : goalFormTitle.trim() !== goalInitialTitle ||
+        goalFormType !== goalInitialType ||
+        goalFormStatus !== goalInitialStatus
 
   const openProjectCreateDialog = () => {
     setProjectDialogMode('create')
@@ -347,7 +350,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
       await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
 
-      const snapshot = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
+      const snapshot = queryClient.getQueriesData<PageResult<Project>>({
+        queryKey: ['projects', 'workspace', workspaceId],
+      })
       const optimisticProjectId = -Date.now()
       const nowIso = new Date().toISOString()
       const optimisticProject: Project = {
@@ -402,9 +407,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               return oldData
             }
 
-            const replacedProjects = oldData.content.map((project) => (
-              project.id === context?.optimisticProjectId ? savedProject : project
-            ))
+            const replacedProjects = oldData.content.map((project) =>
+              project.id === context?.optimisticProjectId ? savedProject : project,
+            )
 
             return {
               ...oldData,
@@ -464,7 +469,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
       await queryClient.cancelQueries({ queryKey: ['projects', 'workspace', workspaceId] })
 
-      const snapshot = queryClient.getQueriesData<PageResult<Project>>({ queryKey: ['projects', 'workspace', workspaceId] })
+      const snapshot = queryClient.getQueriesData<PageResult<Project>>({
+        queryKey: ['projects', 'workspace', workspaceId],
+      })
 
       queryClient.setQueriesData<PageResult<Project>>(
         { queryKey: ['projects', 'workspace', workspaceId] },
@@ -475,16 +482,16 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
           return {
             ...oldData,
-            content: oldData.content.map((project) => (
+            content: oldData.content.map((project) =>
               project.id === projectDialogTargetId
                 ? {
-                  ...project,
-                  name: projectFormName.trim(),
-                  description: projectFormDescription.trim() || undefined,
-                  updatedAt: new Date().toISOString(),
-                }
-                : project
-            )),
+                    ...project,
+                    name: projectFormName.trim(),
+                    description: projectFormDescription.trim() || undefined,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : project,
+            ),
           }
         },
       )
@@ -507,9 +514,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
             return {
               ...oldData,
-              content: oldData.content.map((project) => (
-                project.id === savedProject.id ? savedProject : project
-              )),
+              content: oldData.content.map((project) => (project.id === savedProject.id ? savedProject : project)),
             }
           },
         )
@@ -571,19 +576,16 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         updatedAt: nowIso,
       }
 
-      queryClient.setQueriesData<PageResult<Goal>>(
-        { queryKey: ['goals', goalDialogProjectId] },
-        (oldData) => {
-          if (!oldData) {
-            return oldData
-          }
+      queryClient.setQueriesData<PageResult<Goal>>({ queryKey: ['goals', goalDialogProjectId] }, (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
 
-          return {
-            ...oldData,
-            content: [optimisticGoal, ...oldData.content],
-          }
-        },
-      )
+        return {
+          ...oldData,
+          content: [optimisticGoal, ...oldData.content],
+        }
+      })
 
       return {
         snapshot,
@@ -595,25 +597,22 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       setGoalDialogOpen(false)
       setGoalDialogTargetId(null)
       if (currentProjectId) {
-        queryClient.setQueriesData<PageResult<Goal>>(
-          { queryKey: ['goals', currentProjectId] },
-          (oldData) => {
-            if (!oldData) {
-              return oldData
-            }
+        queryClient.setQueriesData<PageResult<Goal>>({ queryKey: ['goals', currentProjectId] }, (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
 
-            const replacedGoals = oldData.content.map((goal) => (
-              goal.id === context?.optimisticGoalId ? savedGoal : goal
-            ))
+          const replacedGoals = oldData.content.map((goal) =>
+            goal.id === context?.optimisticGoalId ? savedGoal : goal,
+          )
 
-            return {
-              ...oldData,
-              content: replacedGoals.some((goal) => goal.id === savedGoal.id)
-                ? replacedGoals
-                : [savedGoal, ...replacedGoals],
-            }
-          },
-        )
+          return {
+            ...oldData,
+            content: replacedGoals.some((goal) => goal.id === savedGoal.id)
+              ? replacedGoals
+              : [savedGoal, ...replacedGoals],
+          }
+        })
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
       toast.success(t('goals.toast.createSuccess'))
@@ -650,29 +649,26 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
       const snapshot = queryClient.getQueriesData<PageResult<Goal>>({ queryKey: ['goals', goalDialogProjectId] })
 
-      queryClient.setQueriesData<PageResult<Goal>>(
-        { queryKey: ['goals', goalDialogProjectId] },
-        (oldData) => {
-          if (!oldData) {
-            return oldData
-          }
+      queryClient.setQueriesData<PageResult<Goal>>({ queryKey: ['goals', goalDialogProjectId] }, (oldData) => {
+        if (!oldData) {
+          return oldData
+        }
 
-          return {
-            ...oldData,
-            content: oldData.content.map((goal) => (
-              goal.id === goalDialogTargetId
-                ? {
+        return {
+          ...oldData,
+          content: oldData.content.map((goal) =>
+            goal.id === goalDialogTargetId
+              ? {
                   ...goal,
                   title: goalFormTitle.trim(),
                   goalType: goalFormType,
                   status: goalFormStatus,
                   updatedAt: new Date().toISOString(),
                 }
-                : goal
-            )),
-          }
-        },
-      )
+              : goal,
+          ),
+        }
+      })
 
       return {
         snapshot,
@@ -683,21 +679,16 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       setGoalDialogOpen(false)
       setGoalDialogTargetId(null)
       if (currentProjectId) {
-        queryClient.setQueriesData<PageResult<Goal>>(
-          { queryKey: ['goals', currentProjectId] },
-          (oldData) => {
-            if (!oldData) {
-              return oldData
-            }
+        queryClient.setQueriesData<PageResult<Goal>>({ queryKey: ['goals', currentProjectId] }, (oldData) => {
+          if (!oldData) {
+            return oldData
+          }
 
-            return {
-              ...oldData,
-              content: oldData.content.map((goal) => (
-                goal.id === savedGoal.id ? savedGoal : goal
-              )),
-            }
-          },
-        )
+          return {
+            ...oldData,
+            content: oldData.content.map((goal) => (goal.id === savedGoal.id ? savedGoal : goal)),
+          }
+        })
         void queryClient.invalidateQueries({ queryKey: queryKeys.goals.byProject(currentProjectId, 1, 50) })
       }
       toast.success(t('goals.toast.updateSuccess'))
@@ -849,14 +840,20 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               : 'justify-between border-sidebar-border bg-sidebar px-3',
           )}
         >
-          <Link to="/dashboard" className={cn('flex items-center overflow-visible relative h-7', !collapsed ? 'gap-2.5 w-32' : 'w-10 justify-center')}>
+          <Link
+            to="/dashboard"
+            className={cn(
+              'flex items-center overflow-visible relative h-7',
+              !collapsed ? 'gap-2.5 w-32' : 'w-10 justify-center',
+            )}
+          >
             <img
               src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
               alt="Chronelis"
               className={cn(
                 'absolute top-1/2 -translate-y-1/2 pointer-events-none max-w-none h-28 w-auto transition-all duration-300',
                 collapsed ? 'left-1/2 -translate-x-1/2 origin-center' : 'left-0 origin-left',
-                theme === 'dark' && 'scale-[0.78]'
+                theme === 'dark' && 'scale-[0.78]',
               )}
             />
           </Link>
@@ -891,12 +888,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           )}
 
           <div className="absolute right-1 flex items-center lg:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={() => setSidebarOpen(false)}
-            >
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => setSidebarOpen(false)}>
               <Menu className="size-4" />
             </Button>
           </div>
@@ -921,9 +913,10 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   to={`/workspaces/${workspaceId}`}
                   end
                   className={({ isActive }) =>
-                    `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${isActive
-                      ? 'border-primary/30 bg-primary/10 text-primary'
-                      : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+                      isActive
+                        ? 'border-primary/30 bg-primary/10 text-primary'
+                        : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                     }`
                   }
                   title={t('sidebar.workspaceOverview')}
@@ -936,9 +929,10 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               <NavLink
                 to="/my-work"
                 className={({ isActive }) =>
-                  `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${isActive
-                    ? 'border-primary/30 bg-primary/10 text-primary'
-                    : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  `inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+                    isActive
+                      ? 'border-primary/30 bg-primary/10 text-primary'
+                      : 'border-sidebar-border bg-sidebar-accent/35 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`
                 }
                 title={t('nav.myWork')}
@@ -988,7 +982,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   onClick={() => setProjectsExpanded(!projectsExpanded)}
                   className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 transition-colors hover:text-muted-foreground"
                 >
-                  <ChevronDown className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')} />
+                  <ChevronDown
+                    className={cn('size-3 transition-transform duration-200', !projectsExpanded && '-rotate-90')}
+                  />
                   {t('sidebar.projectsSection')}
                 </button>
 
@@ -1108,7 +1104,6 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           onClick={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
         >
-
           {sidebarContextMenu.target.kind === 'project' && (
             <button
               type="button"
@@ -1169,7 +1164,11 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{projectDialogMode === 'create' ? t('sidebar.projectDialogCreateTitle') : t('sidebar.projectDialogEditTitle')}</DialogTitle>
+            <DialogTitle>
+              {projectDialogMode === 'create'
+                ? t('sidebar.projectDialogCreateTitle')
+                : t('sidebar.projectDialogEditTitle')}
+            </DialogTitle>
             <DialogDescription>{t('sidebar.projectDialogDescription')}</DialogDescription>
           </DialogHeader>
 
@@ -1190,7 +1189,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           />
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
             <Button
               onClick={() => {
                 if (projectDialogMode === 'create') {
@@ -1200,13 +1201,15 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 }
               }}
               disabled={
-                !projectFormName.trim()
-                || !projectFormDirty
-                || createProjectMutation.isPending
-                || updateProjectMutation.isPending
+                !projectFormName.trim() ||
+                !projectFormDirty ||
+                createProjectMutation.isPending ||
+                updateProjectMutation.isPending
               }
             >
-              {(createProjectMutation.isPending || updateProjectMutation.isPending) && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              {(createProjectMutation.isPending || updateProjectMutation.isPending) && (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              )}
               {projectDialogMode === 'create' ? t('common.create') : t('common.save')}
             </Button>
           </DialogFooter>
@@ -1216,8 +1219,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{goalDialogMode === 'create' ? t('sidebar.goalDialogCreateTitle') : t('sidebar.goalDialogEditTitle')}</DialogTitle>
-            <DialogDescription>{goalDialogMode === 'create' ? t('sidebar.goalDialogCreateDescription') : t('sidebar.goalDialogEditDescription')}</DialogDescription>
+            <DialogTitle>
+              {goalDialogMode === 'create' ? t('sidebar.goalDialogCreateTitle') : t('sidebar.goalDialogEditTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {goalDialogMode === 'create'
+                ? t('sidebar.goalDialogCreateDescription')
+                : t('sidebar.goalDialogEditDescription')}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -1264,7 +1273,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>
+              {t('common.cancel')}
+            </Button>
             <Button
               onClick={() => {
                 if (goalDialogMode === 'create') {
@@ -1274,13 +1285,12 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 }
               }}
               disabled={
-                !goalFormTitle.trim()
-                || !goalFormDirty
-                || createGoalMutation.isPending
-                || updateGoalMutation.isPending
+                !goalFormTitle.trim() || !goalFormDirty || createGoalMutation.isPending || updateGoalMutation.isPending
               }
             >
-              {(createGoalMutation.isPending || updateGoalMutation.isPending) && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              {(createGoalMutation.isPending || updateGoalMutation.isPending) && (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              )}
               {goalDialogMode === 'create' ? t('common.create') : t('common.save')}
             </Button>
           </DialogFooter>
@@ -1296,20 +1306,20 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         }}
         title={deleteTarget?.kind === 'project' ? t('sidebar.deleteProjectTitle') : t('sidebar.deleteGoalTitle')}
         description={
-          deleteTarget
-            ? (
-              <div className="space-y-3 text-left leading-relaxed text-muted-foreground">
-                <p>
-                  {deleteTarget.kind === 'project'
-                    ? t('sidebar.deleteProjectDescription', { name: deleteTarget.label })
-                    : t('sidebar.deleteGoalDescription', { name: deleteTarget.label })}
-                </p>
-                <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
-                  {deleteTarget.kind === 'project' ? t('sidebar.deleteProjectWarning') : t('sidebar.deleteGoalWarning')}
-                </div>
+          deleteTarget ? (
+            <div className="space-y-3 text-left leading-relaxed text-muted-foreground">
+              <p>
+                {deleteTarget.kind === 'project'
+                  ? t('sidebar.deleteProjectDescription', { name: deleteTarget.label })
+                  : t('sidebar.deleteGoalDescription', { name: deleteTarget.label })}
+              </p>
+              <div className="rounded-2xl border border-destructive/12 bg-destructive/5 px-3 py-3 text-sm text-foreground/80">
+                {deleteTarget.kind === 'project' ? t('sidebar.deleteProjectWarning') : t('sidebar.deleteGoalWarning')}
               </div>
-            )
-            : ''
+            </div>
+          ) : (
+            ''
+          )
         }
         confirmText={t('common.delete')}
         confirmVariant="destructive"
@@ -1321,11 +1331,9 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         clockMs={sidebarDeleteClockMs}
         undoWindowMs={sidebarDeleteUndoWindowMs}
         onUndo={undoSidebarDelete}
-        itemTitle={(entry) => (
-          entry.payload.kind === 'project'
-            ? t('sidebar.deletingProject')
-            : t('sidebar.deletingGoal')
-        )}
+        itemTitle={(entry) =>
+          entry.payload.kind === 'project' ? t('sidebar.deletingProject') : t('sidebar.deletingGoal')
+        }
       />
     </>
   )
@@ -1405,7 +1413,9 @@ function ProjectItem({
           onContextMenu={(event) => onOpenContextMenu(event, { kind: 'project', project })}
         >
           <FolderKanban className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate" title={project.name}>{highlightMatch(project.name, searchKeyword)}</span>
+          <span className="min-w-0 flex-1 truncate" title={project.name}>
+            {highlightMatch(project.name, searchKeyword)}
+          </span>
           <span
             className={cn(
               'shrink-0 text-right text-[10px] font-semibold tabular-nums',
@@ -1447,16 +1457,20 @@ function ProjectItem({
                   <NavLink
                     key={goal.id}
                     to={`/workspaces/${workspaceId}/projects/${project.id}/goals/${goal.id}/tasks`}
-                    className={({ isActive }) => cn(
-                      'group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] transition-colors',
-                      isActive
-                        ? 'bg-sidebar-primary/14 font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-primary/20'
-                        : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
-                    )}
+                    className={({ isActive }) =>
+                      cn(
+                        'group grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_2.75rem] items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-[12px] transition-colors',
+                        isActive
+                          ? 'bg-sidebar-primary/14 font-medium text-sidebar-accent-foreground ring-1 ring-sidebar-primary/20'
+                          : 'text-sidebar-foreground/85 hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground',
+                      )
+                    }
                     onContextMenu={(event) => onOpenContextMenu(event, { kind: 'goal', goal, project })}
                   >
                     <Target className="size-3 shrink-0 text-muted-foreground/80" />
-                    <span className="min-w-0 flex-1 truncate" title={goal.title}>{highlightMatch(goal.title, searchKeyword)}</span>
+                    <span className="min-w-0 flex-1 truncate" title={goal.title}>
+                      {highlightMatch(goal.title, searchKeyword)}
+                    </span>
                     <span
                       className={cn(
                         'shrink-0 text-right text-[10px] font-semibold tabular-nums',

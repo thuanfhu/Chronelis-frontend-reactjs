@@ -12,25 +12,14 @@ export function PermissionsPrimaryButtons() {
 
   return (
     <div className="flex gap-2">
-      <Button
-        variant="outline"
-        className="space-x-1"
-        onClick={() => setAddModuleOpen(true)}
-      >
+      <Button variant="outline" className="space-x-1" onClick={() => setAddModuleOpen(true)}>
         <span>{t('moduleAdd')}</span> <IconFolder size={18} />
       </Button>
       <Button className="space-x-1" onClick={() => setAddPermOpen(true)}>
         <span>{t('permissionAddTitle')}</span> <IconPlus size={18} />
       </Button>
-      <PermissionsFormDialog
-        open={addPermOpen}
-        onOpenChange={setAddPermOpen}
-        currentRow={null}
-      />
-      <CreateModuleDialog
-        open={addModuleOpen}
-        onOpenChange={setAddModuleOpen}
-      />
+      <PermissionsFormDialog open={addPermOpen} onOpenChange={setAddPermOpen} currentRow={null} />
+      <CreateModuleDialog open={addModuleOpen} onOpenChange={setAddModuleOpen} />
     </div>
   )
 }

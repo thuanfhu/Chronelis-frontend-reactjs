@@ -37,28 +37,25 @@ export default function PermissionsProvider({ children }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentRow, setCurrentRow] = useState<Permission | null>(null)
 
-  const {
-    data: permissionsData,
-    isLoading,
-  } = useQuery({
+  const { data: permissionsData, isLoading } = useQuery({
     queryKey: ['admin-permissions'],
     queryFn: async () => {
       const result = await adminPermissionApi.list({ page: 1, size: 500 })
-      const mapped: Permission[] = (result.content || []).map((p: any) => ({
-        permissionId: p.permissionId,
-        name: p.name,
-        apiPath: p.apiPath || '',
-        httpMethod: p.httpMethod || 'GET',
-        module: p.module || '',
-        createdAt: p.createdAt || '',
-        updatedAt: p.updatedAt || '',
-        createdBy: p.createdBy || '',
-      })).sort((a, b) => a.name.localeCompare(b.name))
+      const mapped: Permission[] = (result.content || [])
+        .map((p: any) => ({
+          permissionId: p.permissionId,
+          name: p.name,
+          apiPath: p.apiPath || '',
+          httpMethod: p.httpMethod || 'GET',
+          module: p.module || '',
+          createdAt: p.createdAt || '',
+          updatedAt: p.updatedAt || '',
+          createdBy: p.createdBy || '',
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
 
       // Extract unique modules
-      const uniqueModules = Array.from(
-        new Set(mapped.map((p) => p.module).filter(Boolean))
-      ).sort() as string[]
+      const uniqueModules = Array.from(new Set(mapped.map((p) => p.module).filter(Boolean))).sort() as string[]
 
       return { permissions: mapped, modules: uniqueModules }
     },

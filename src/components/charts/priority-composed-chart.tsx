@@ -1,7 +1,16 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  ComposedChart, Bar, Cell, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Cell,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from 'recharts'
 import type { PriorityEstimatePoint } from '@/lib/api/modules/task-api'
 

@@ -22,13 +22,7 @@ function CircularCountdownUndo({ progress, remainingSeconds, onUndo, disabled }:
     <div className="flex items-center gap-2">
       <div className="relative grid size-11 place-items-center">
         <svg className="size-11 -rotate-90" viewBox="0 0 48 48" aria-hidden>
-          <circle
-            cx="24"
-            cy="24"
-            r={radius}
-            strokeWidth={strokeWidth}
-            className="fill-none stroke-muted/40"
-          />
+          <circle cx="24" cy="24" r={radius} strokeWidth={strokeWidth} className="fill-none stroke-muted/40" />
           <circle
             cx="24"
             cy="24"
@@ -89,10 +83,7 @@ export function DeferredDeleteStack<TPayload>({
       <AnimatePresence initial={false}>
         {pendingDeletes.map((entry) => {
           const remainingMs = Math.max(0, entry.expiresAt - clockMs)
-          const progress = Math.max(
-            0,
-            Math.min(100, (remainingMs / undoWindowMs) * 100),
-          )
+          const progress = Math.max(0, Math.min(100, (remainingMs / undoWindowMs) * 100))
           const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
 
           return (
@@ -122,7 +113,9 @@ export function DeferredDeleteStack<TPayload>({
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {entry.status === 'finalizing'
                   ? resolvedFinalizingText
-                  : (countdownText ? countdownText(remainingSeconds) : t('deferredDelete.countdown', { seconds: remainingSeconds }))}
+                  : countdownText
+                    ? countdownText(remainingSeconds)
+                    : t('deferredDelete.countdown', { seconds: remainingSeconds })}
               </p>
             </motion.div>
           )

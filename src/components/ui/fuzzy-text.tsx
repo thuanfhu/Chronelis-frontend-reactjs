@@ -37,7 +37,7 @@ export default function FuzzyText({
   const [isHovering, setIsHovering] = useState(false)
   const activeIntensity = useMemo(
     () => (enableHover && isHovering ? hoverIntensity : baseIntensity),
-    [enableHover, hoverIntensity, baseIntensity, isHovering]
+    [enableHover, hoverIntensity, baseIntensity, isHovering],
   )
   const [shadow, setShadow] = useState(() => buildShadow(activeIntensity))
 

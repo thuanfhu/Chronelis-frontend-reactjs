@@ -3,12 +3,7 @@ import { IconEdit, IconTrash, IconUserSearch } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { useUsers } from '../context/users-context'
 import type { User } from '../data/schema'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslation } from 'react-i18next'
 
 interface DataTableRowActionsProps {

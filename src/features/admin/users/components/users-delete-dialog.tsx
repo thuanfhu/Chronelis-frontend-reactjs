@@ -36,8 +36,7 @@ export function UsersDeleteDialog({ currentRow, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>{t('userManagement.deleteUser')}</DialogTitle>
           <DialogDescription>
-            {t('userManagement.deleteConfirmation')}{' '}
-            <span className="font-medium">{currentRow?.email}</span>
+            {t('userManagement.deleteConfirmation')} <span className="font-medium">{currentRow?.email}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -48,11 +47,7 @@ export function UsersDeleteDialog({ currentRow, open, onOpenChange }: Props) {
           />
         </div>
         <DialogFooter>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={value.trim() !== currentRow?.email}
-          >
+          <Button variant="destructive" onClick={handleDelete} disabled={value.trim() !== currentRow?.email}>
             {t('userManagement.delete')}
           </Button>
         </DialogFooter>

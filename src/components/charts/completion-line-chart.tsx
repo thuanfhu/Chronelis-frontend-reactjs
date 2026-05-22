@@ -1,8 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
-} from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 import type { DailyTrendPoint } from '@/lib/api/modules/task-api'
 import type { ProjectDailyTrendPoint } from '@/lib/api/modules/project-api'
 
@@ -28,9 +26,7 @@ export function CompletionLineChart({ data, mode = 'cumulative', height = 200 }:
     })
   }, [data, mode])
 
-  const avg = chartData.length > 0
-    ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length)
-    : 0
+  const avg = chartData.length > 0 ? Math.round(chartData.reduce((s, d) => s + d.value, 0) / chartData.length) : 0
 
   const hasData = chartData.some((d) => d.value > 0)
 
@@ -73,9 +69,7 @@ export function CompletionLineChart({ data, mode = 'cumulative', height = 200 }:
                   <span className="text-muted-foreground">
                     {mode === 'rate' ? t('charts.completionRate') : t('charts.cumulativeCompleted')}:
                   </span>
-                  <span className="font-bold text-foreground">
-                    {mode === 'rate' ? `${entry.value}%` : entry.value}
-                  </span>
+                  <span className="font-bold text-foreground">{mode === 'rate' ? `${entry.value}%` : entry.value}</span>
                 </div>
               </div>
             )
@@ -86,7 +80,12 @@ export function CompletionLineChart({ data, mode = 'cumulative', height = 200 }:
           stroke="#a855f7"
           strokeDasharray="4 4"
           strokeOpacity={0.6}
-          label={{ value: mode === 'rate' ? `avg ${avg}%` : `avg ${avg}`, position: 'insideTopRight', fontSize: 9, fill: '#a855f7' }}
+          label={{
+            value: mode === 'rate' ? `avg ${avg}%` : `avg ${avg}`,
+            position: 'insideTopRight',
+            fontSize: 9,
+            fill: '#a855f7',
+          }}
         />
         <Line
           type="monotone"

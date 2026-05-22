@@ -12,15 +12,7 @@ interface TaskContextMenuProps {
   onDelete: () => void
 }
 
-export function TaskContextMenu({
-  open,
-  x,
-  y,
-  onClose,
-  onDuplicate,
-  onEdit,
-  onDelete,
-}: TaskContextMenuProps) {
+export function TaskContextMenu({ open, x, y, onClose, onDuplicate, onEdit, onDelete }: TaskContextMenuProps) {
   const { t } = useTranslation()
   const menuRef = useRef<HTMLDivElement | null>(null)
 

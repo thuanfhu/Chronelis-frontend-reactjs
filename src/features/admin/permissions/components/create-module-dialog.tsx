@@ -10,14 +10,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -51,7 +44,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
   const { t } = useTranslation()
 
   const availablePermissions = permissions.filter(
-    (p) => !p.module || p.module === '' || p.module === null || p.module === undefined
+    (p) => !p.module || p.module === '' || p.module === null || p.module === undefined,
   )
 
   const filteredPermissions = availablePermissions.filter(
@@ -59,7 +52,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
       searchTerm === '' ||
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.apiPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.httpMethod.toLowerCase().includes(searchTerm.toLowerCase())
+      p.httpMethod.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -189,9 +182,7 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
                                   <p className={`font-medium leading-tight ${isSelected ? 'text-primary' : ''}`}>
                                     {permission.name}
                                   </p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {permission.apiPath}
-                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">{permission.apiPath}</p>
                                 </div>
                               </div>
                             </div>

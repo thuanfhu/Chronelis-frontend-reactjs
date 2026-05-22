@@ -14,9 +14,9 @@ export function ThemeLanguageToggle({ className = '' }: { className?: string }) 
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Button 
-        variant="ghost" 
-        size="sm" 
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={toggleLanguage}
         className="h-9 px-3 font-semibold bg-background/50 backdrop-blur-md border border-border/50 hover:bg-background/80 rounded-full flex items-center gap-2"
         title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
@@ -24,10 +24,10 @@ export function ThemeLanguageToggle({ className = '' }: { className?: string }) 
         <Globe className="h-4 w-4" />
         <span className="text-xs">{i18n.language.toUpperCase()}</span>
       </Button>
-      
-      <Button 
-        variant="ghost" 
-        size="icon" 
+
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={toggleTheme}
         className="h-9 w-9 bg-background/50 backdrop-blur-md border border-border/50 hover:bg-background/80 rounded-full"
       >

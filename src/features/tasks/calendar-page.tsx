@@ -10,9 +10,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import viLocale from '@fullcalendar/core/locales/vi'
 import type { EventInput } from '@fullcalendar/core'
 import { motion, useAnimationControls } from 'framer-motion'
-import {
-  ChevronLeft, ChevronRight, RefreshCw,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LoadingPanel } from '@/components/shared/loading-panel'
@@ -214,9 +212,7 @@ function getRangeForView(view: CalendarView, referenceDate: Date): { fromDate: s
 function resolveEventRange(start: Date | null, end: Date | null): { start: Date; end: Date } | null {
   if (!start) return null
 
-  const resolvedEnd = end && end > start
-    ? end
-    : addMinutes(start, 15)
+  const resolvedEnd = end && end > start ? end : addMinutes(start, 15)
 
   return {
     start,
@@ -278,12 +274,22 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
   const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
-  const headerTitle = view === 'week' ? formatWeekRange(startOfWeek(currentDate), localeTag) : formatMonthYear(currentDate, localeTag)
+  const headerTitle =
+    view === 'week' ? formatWeekRange(startOfWeek(currentDate), localeTag) : formatMonthYear(currentDate, localeTag)
 
   // Context menu for calendar events
-  const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; taskId: number; canManage: boolean } | null>(null)
+  const [taskContextMenu, setTaskContextMenu] = useState<{
+    x: number
+    y: number
+    taskId: number
+    canManage: boolean
+  } | null>(null)
 
-  const openCalendarTaskContextMenu = (event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>, taskId: number, canManage: boolean) => {
+  const openCalendarTaskContextMenu = (
+    event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>,
+    taskId: number,
+    canManage: boolean,
+  ) => {
     event.preventDefault()
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -665,11 +671,7 @@ export function CalendarPage() {
     const fromDate = toDateKey(arg.start)
     const toDate = toDateKey(addDays(arg.end, -1))
 
-    setVisibleRange((prev) =>
-      prev.fromDate === fromDate && prev.toDate === toDate
-        ? prev
-        : { fromDate, toDate },
-    )
+    setVisibleRange((prev) => (prev.fromDate === fromDate && prev.toDate === toDate ? prev : { fromDate, toDate }))
 
     setCurrentDate(new Date(arg.view.currentStart))
   }
@@ -733,7 +735,9 @@ export function CalendarPage() {
           className="gap-1.5 shrink-0"
           onClick={() => void invalidateTaskAndCalendarQueries()}
         >
-          <RefreshCw className={cn('size-3.5', (schedulesQuery.isFetching || tasksQuery.isFetching) && 'animate-spin')} />
+          <RefreshCw
+            className={cn('size-3.5', (schedulesQuery.isFetching || tasksQuery.isFetching) && 'animate-spin')}
+          />
           {t('common.refresh')}
         </Button>
       </div>
@@ -759,8 +763,12 @@ export function CalendarPage() {
         <div className="justify-self-start sm:justify-self-end">
           <Tabs value={view} onValueChange={(v) => handleViewChange(v as CalendarView)}>
             <TabsList className="h-8 bg-muted/70">
-              <TabsTrigger value="week" className="px-3 text-xs">{t('calendar.week')}</TabsTrigger>
-              <TabsTrigger value="month" className="px-3 text-xs">{t('calendar.month')}</TabsTrigger>
+              <TabsTrigger value="week" className="px-3 text-xs">
+                {t('calendar.week')}
+              </TabsTrigger>
+              <TabsTrigger value="month" className="px-3 text-xs">
+                {t('calendar.month')}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -814,7 +822,9 @@ export function CalendarPage() {
                         }}
                         title={t('calendar.openTodoForDay')}
                       >
-                        <span className="chronelis-day-header__weekday">{formatWeekdayCompact(arg.date, localeTag)}</span>
+                        <span className="chronelis-day-header__weekday">
+                          {formatWeekdayCompact(arg.date, localeTag)}
+                        </span>
                         <span className="chronelis-day-header__date">{arg.date.getDate()}</span>
                       </button>
                     )
@@ -869,7 +879,9 @@ export function CalendarPage() {
                       }
                     }}
                   >
-                    <span className="fc-event-title truncate text-[11px] font-medium leading-tight">{arg.event.title}</span>
+                    <span className="fc-event-title truncate text-[11px] font-medium leading-tight">
+                      {arg.event.title}
+                    </span>
                     {arg.view.type !== 'dayGridMonth' && arg.timeText ? (
                       <span className="fc-event-time truncate text-[10px]">{arg.timeText}</span>
                     ) : null}
@@ -895,11 +907,15 @@ export function CalendarPage() {
         submitLabel={t('calendar.createTaskSubmit')}
         defaultSourceView="CALENDAR"
         requireSchedule
-        initialValues={createDialog ? {
-          scheduleStart: toInputDateTimeValue(createDialog.start),
-          scheduleEnd: toInputDateTimeValue(createDialog.end),
-          dueDate: toInputDateTimeValue(createDialog.end),
-        } : undefined}
+        initialValues={
+          createDialog
+            ? {
+                scheduleStart: toInputDateTimeValue(createDialog.start),
+                scheduleEnd: toInputDateTimeValue(createDialog.end),
+                dueDate: toInputDateTimeValue(createDialog.end),
+              }
+            : undefined
+        }
         onCreated={async (task) => {
           await invalidateTaskAndCalendarQueries(task.id)
           setCreateDialog(null)
@@ -929,7 +945,6 @@ export function CalendarPage() {
           }
           openTaskDrawer(menu.taskId, 'edit')
         }}
-
         onDelete={() => {
           const menu = taskContextMenu
           if (!menu) {

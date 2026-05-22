@@ -124,14 +124,12 @@ export function applyTaskMove(tasks: Task[], params: MoveTaskParams): Task[] {
 
   const movedTask: Task = {
     ...movingTask,
-    status: targetStatus
-      ? { ...targetStatus }
-      : movingTask.status,
+    status: targetStatus ? { ...targetStatus } : movingTask.status,
     isCompleted: targetStatus ? Boolean(targetStatus.isClosed) : movingTask.isCompleted,
     completedAt: targetStatus
-      ? (Boolean(targetStatus.isClosed)
-          ? (movingTask.completedAt ?? new Date().toISOString())
-          : undefined)
+      ? Boolean(targetStatus.isClosed)
+        ? (movingTask.completedAt ?? new Date().toISOString())
+        : undefined
       : movingTask.completedAt,
   }
 
@@ -215,14 +213,13 @@ export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Ta
     }
   } else {
     const rememberedOpenStatusId = getRememberedTaskOpenStatus(movingTask.id)
-    const rememberedOpenStatus = rememberedOpenStatusId != null
-      ? statusById.get(rememberedOpenStatusId)
-      : null
+    const rememberedOpenStatus = rememberedOpenStatusId != null ? statusById.get(rememberedOpenStatusId) : null
     const defaultOpenStatus = resolveDefaultOpenStatus(params.statuses)
 
-    targetStatus = rememberedOpenStatus && !Boolean(rememberedOpenStatus.isClosed)
-      ? rememberedOpenStatus
-      : (defaultOpenStatus ?? sourceStatus)
+    targetStatus =
+      rememberedOpenStatus && !Boolean(rememberedOpenStatus.isClosed)
+        ? rememberedOpenStatus
+        : (defaultOpenStatus ?? sourceStatus)
 
     if (!Boolean(targetStatus.isClosed)) {
       rememberTaskOpenStatus(movingTask.id, targetStatus.id)
@@ -285,32 +282,23 @@ export function patchProjectTaskQueries(
   projectId: number,
   updater: (tasks: Task[]) => Task[],
 ): void {
-  queryClient.setQueriesData<TaskPage>(
-    { queryKey: ['tasks', 'project', projectId] },
-    (oldData) => {
-      if (!oldData) return oldData
-      return {
-        ...oldData,
-        content: updater(oldData.content),
-      }
-    },
-  )
+  queryClient.setQueriesData<TaskPage>({ queryKey: ['tasks', 'project', projectId] }, (oldData) => {
+    if (!oldData) return oldData
+    return {
+      ...oldData,
+      content: updater(oldData.content),
+    }
+  })
 }
 
-export function patchGoalTaskQueries(
-  queryClient: QueryClient,
-  updater: (tasks: Task[]) => Task[],
-): void {
-  queryClient.setQueriesData<TaskPage>(
-    { queryKey: ['tasks', 'goal'] },
-    (oldData) => {
-      if (!oldData) return oldData
-      return {
-        ...oldData,
-        content: updater(oldData.content),
-      }
-    },
-  )
+export function patchGoalTaskQueries(queryClient: QueryClient, updater: (tasks: Task[]) => Task[]): void {
+  queryClient.setQueriesData<TaskPage>({ queryKey: ['tasks', 'goal'] }, (oldData) => {
+    if (!oldData) return oldData
+    return {
+      ...oldData,
+      content: updater(oldData.content),
+    }
+  })
 }
 
 export function snapshotProjectCalendarQueries(queryClient: QueryClient, projectId: number): ProjectCalendarSnapshot {
@@ -355,13 +343,10 @@ export function patchTaskScheduleQueries(
   taskId: number,
   updater: (schedules: TaskSchedule[]) => TaskSchedule[],
 ): void {
-  queryClient.setQueriesData<TaskSchedule[]>(
-    { queryKey: ['task-schedules', 'task', taskId] },
-    (oldData) => {
-      if (!oldData) return oldData
-      return updater(oldData)
-    },
-  )
+  queryClient.setQueriesData<TaskSchedule[]>({ queryKey: ['task-schedules', 'task', taskId] }, (oldData) => {
+    if (!oldData) return oldData
+    return updater(oldData)
+  })
 }
 
 export function applyScheduleUpdate(schedules: TaskSchedule[], params: ScheduleUpdateParams): TaskSchedule[] {

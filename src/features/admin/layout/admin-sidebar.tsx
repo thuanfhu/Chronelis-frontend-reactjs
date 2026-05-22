@@ -28,7 +28,10 @@ function getInitials(fullName: string): string {
   }
 
   const words = fullName.trim().split(/\s+/)
-  const initials = words.slice(0, 2).map((word) => word[0] ?? '').join('')
+  const initials = words
+    .slice(0, 2)
+    .map((word) => word[0] ?? '')
+    .join('')
   return initials.toUpperCase() || 'AD'
 }
 
@@ -91,11 +94,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        <Link
-          to="/admin/users"
-          className="inline-flex items-center gap-2.5 relative"
-          onClick={onCloseMobile}
-        >
+        <Link to="/admin/users" className="inline-flex items-center gap-2.5 relative" onClick={onCloseMobile}>
           <div className="relative h-7 w-32 flex items-center">
             <img
               src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
@@ -105,13 +104,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
           </div>
         </Link>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-8 md:hidden"
-          onClick={onCloseMobile}
-        >
+        <Button type="button" variant="ghost" size="icon" className="size-8 md:hidden" onClick={onCloseMobile}>
           <X className="size-4" />
         </Button>
       </div>
@@ -177,7 +170,9 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
             </Avatar>
             <span className="min-w-0 text-left">
               <span className="block truncate text-sm font-medium">{fullName || t('admin.sidebar.defaultName')}</span>
-              <span className="block truncate text-xs text-muted-foreground">{currentUser?.email || 'admin@chronelis.local'}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {currentUser?.email || 'admin@chronelis.local'}
+              </span>
             </span>
           </button>
 

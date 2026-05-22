@@ -20,12 +20,7 @@ interface RolesContextType {
     totalElements: number
   }
   fetchRoles: (page?: number) => Promise<void>
-  createRole: (data: {
-    name: string
-    description: string
-    active: boolean
-    permissionIds: string[]
-  }) => Promise<void>
+  createRole: (data: { name: string; description: string; active: boolean; permissionIds: string[] }) => Promise<void>
   updateRole: (
     roleId: string,
     data: {
@@ -33,7 +28,7 @@ interface RolesContextType {
       description?: string
       active?: boolean
       permissionIds?: string[]
-    }
+    },
   ) => Promise<void>
   deleteRole: (roleId: string) => Promise<void>
   updateRolePermissions: (roleId: string, permissions: string[]) => Promise<void>
@@ -55,12 +50,9 @@ export default function RolesProvider({ children }: Props) {
   const queryClient = useQueryClient()
   const { t } = useTranslation()
   const [open, setOpenState] = useState<RolesDialogType | null>(null)
-  const setOpen: SetOpenType = useCallback(
-    (type) => {
-      setOpenState(type)
-    },
-    []
-  )
+  const setOpen: SetOpenType = useCallback((type) => {
+    setOpenState(type)
+  }, [])
   const [currentRow, setCurrentRow] = useState<Role | null>(null)
 
   const {
@@ -108,9 +100,12 @@ export default function RolesProvider({ children }: Props) {
   const roles = rolesData?.roles || []
   const meta = rolesData?.meta || { totalPages: 1, currentPage: 1, totalElements: 0 }
 
-  const fetchRoles = useCallback(async (_page: number = 1) => {
-    await refetch()
-  }, [refetch])
+  const fetchRoles = useCallback(
+    async (_page: number = 1) => {
+      await refetch()
+    },
+    [refetch],
+  )
 
   const createRoleMutation = useMutation({
     mutationFn: async (data: { name: string; description: string; active: boolean; permissionIds: string[] }) => {
@@ -164,21 +159,21 @@ export default function RolesProvider({ children }: Props) {
     async (data: { name: string; description: string; active: boolean; permissionIds: string[] }) => {
       await createRoleMutation.mutateAsync(data)
     },
-    [createRoleMutation]
+    [createRoleMutation],
   )
 
   const updateRole = useCallback(
     async (roleId: string, data: any) => {
       await updateRoleMutation.mutateAsync({ roleId, data })
     },
-    [updateRoleMutation]
+    [updateRoleMutation],
   )
 
   const deleteRole = useCallback(
     async (roleId: string) => {
       await deleteRoleMutation.mutateAsync(roleId)
     },
-    [deleteRoleMutation]
+    [deleteRoleMutation],
   )
 
   const updateRolePermissions = useCallback(
@@ -187,11 +182,13 @@ export default function RolesProvider({ children }: Props) {
         await adminRoleApi.update(roleId, { permissionIds })
         queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : t('notification.permissionUpdateError', 'Lỗi khi cập nhật quyền'))
+        toast.error(
+          err instanceof Error ? err.message : t('notification.permissionUpdateError', 'Lỗi khi cập nhật quyền'),
+        )
         throw err
       }
     },
-    [queryClient, t]
+    [queryClient, t],
   )
 
   const removePermissions = useCallback(
@@ -204,7 +201,7 @@ export default function RolesProvider({ children }: Props) {
         throw err
       }
     },
-    [queryClient, t]
+    [queryClient, t],
   )
 
   const handleCloseDialog = useCallback(() => {

@@ -1,9 +1,4 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CaretSortIcon,
-  EyeNoneIcon,
-} from '@radix-ui/react-icons'
+import { ArrowDownIcon, ArrowUpIcon, CaretSortIcon, EyeNoneIcon } from '@radix-ui/react-icons'
 import type { Column } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -16,8 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 
-interface DataTableColumnHeaderProps<TData, TValue>
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableColumnHeaderProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<TData, TValue>
   title: string
 }
@@ -44,7 +38,7 @@ export function DataTableColumnHeader<TData, TValue>({
             size="sm"
             className={cn(
               'h-8 data-[state=open]:bg-accent relative',
-              isCentered ? 'w-full flex justify-center' : '-ml-3'
+              isCentered ? 'w-full flex justify-center' : '-ml-3',
             )}
           >
             <span className={cn(isCentered ? 'mx-auto' : '')}>{title}</span>

@@ -1,9 +1,22 @@
 import { useTranslation } from 'react-i18next'
 import {
-  ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from 'recharts'
 
-export interface GrowthPoint { label: string; count: number; cumulative: number }
+export interface GrowthPoint {
+  label: string
+  count: number
+  cumulative: number
+}
 
 interface Props {
   data: GrowthPoint[]

@@ -6,18 +6,8 @@ import { CreateModuleDialog } from './create-module-dialog'
 import { PermissionsDeleteDialog } from './permissions-delete-dialog'
 import { PermissionsFormDialog } from './permissions-form-dialog'
 import type { Permission } from '../data/schema'
-import type {
-  DragEndEvent,
-  DragStartEvent,
-} from '@dnd-kit/core'
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  useDroppable,
-} from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
 import { SortableContext, arrayMove } from '@dnd-kit/sortable'
 import { SortableTreeItem } from './sortable-tree'
 import { toast } from 'sonner'
@@ -37,11 +27,11 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
       ref={setNodeRef}
       className={cn(
         'space-y-3 p-6 rounded-xl border-2 border-dashed transition-all duration-200',
-        isOver 
-          ? 'border-primary bg-primary/5 dark:bg-primary/10 scale-[1.01] shadow-inner' 
+        isOver
+          ? 'border-primary bg-primary/5 dark:bg-primary/10 scale-[1.01] shadow-inner'
           : 'border-slate-200 dark:border-slate-800',
         !children &&
-          'min-h-[150px] flex flex-col items-center justify-center text-muted-foreground bg-slate-50/50 dark:bg-zinc-900/30'
+          'min-h-[150px] flex flex-col items-center justify-center text-muted-foreground bg-slate-50/50 dark:bg-zinc-900/30',
       )}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -64,7 +54,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
 export function PermissionsTable() {
   const queryClient = useQueryClient()
   const { permissions, isLoading, refetch, searchQuery, collapsedModules, setCollapsedModules } = usePermissions()
-  
+
   const filteredPermissions = permissions.filter((p) => {
     const query = searchQuery.toLowerCase()
     return (
@@ -74,18 +64,16 @@ export function PermissionsTable() {
     )
   })
 
-  const filteredModules = Array.from(
-    new Set(filteredPermissions.map((p) => p.module).filter(Boolean))
-  ) as string[]
+  const filteredModules = Array.from(new Set(filteredPermissions.map((p) => p.module).filter(Boolean))) as string[]
 
-  const allModules = Array.from(
-    new Set(permissions.map((p) => p.module).filter(Boolean))
-  ).sort() as string[]
+  const allModules = Array.from(new Set(permissions.map((p) => p.module).filter(Boolean))).sort() as string[]
 
-  const sortedModules = searchQuery ? [
-    ...allModules.filter(m => filteredModules.includes(m)),
-    ...allModules.filter(m => !filteredModules.includes(m))
-  ] : allModules
+  const sortedModules = searchQuery
+    ? [
+        ...allModules.filter((m) => filteredModules.includes(m)),
+        ...allModules.filter((m) => !filteredModules.includes(m)),
+      ]
+    : allModules
 
   const [openCreateModule, setOpenCreateModule] = useState(false)
   const [deleteData, setDeleteData] = useState<{
@@ -95,13 +83,13 @@ export function PermissionsTable() {
   const [openCreatePermission, setOpenCreatePermission] = useState(false)
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   )
 
   useEffect(() => {
@@ -187,36 +175,36 @@ export function PermissionsTable() {
       if (overPermission && active.id !== over.id) {
         const activeIndex = permissions.findIndex((p) => p.permissionId === active.id)
         const overIndex = permissions.findIndex((p) => p.permissionId === over.id)
-        
+
         const reorderedPermissions = arrayMove(permissions, activeIndex, overIndex)
-        
+
         queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
           if (!oldData) return oldData
           return {
             ...oldData,
-            permissions: reorderedPermissions
+            permissions: reorderedPermissions,
           }
         })
       }
     } else {
       // Move to a different module
       const previousPermissions = permissions
-      
-      const optimisticPermissions = permissions.map(p => {
+
+      const optimisticPermissions = permissions.map((p) => {
         if (p.permissionId === draggedPermission.permissionId) {
           return { ...p, module: newModule }
         }
         return p
       })
-      
+
       queryClient.setQueryData(['admin-permissions'], (oldData: any) => {
         if (!oldData) return oldData
         return {
           ...oldData,
-          permissions: optimisticPermissions
+          permissions: optimisticPermissions,
         }
       })
-      
+
       if (newModule && collapsedModules[newModule]) {
         toggleCollapse(newModule)
       }
@@ -225,7 +213,7 @@ export function PermissionsTable() {
         await adminPermissionApi.update(draggedPermission.permissionId, {
           module: newModule || '',
         })
-        
+
         toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
         refetch()
       } catch (error) {
@@ -233,7 +221,7 @@ export function PermissionsTable() {
           if (!oldData) return oldData
           return {
             ...oldData,
-            permissions: previousPermissions
+            permissions: previousPermissions,
           }
         })
         const message = error instanceof Error ? error.message : t('notification.genericError')
@@ -247,24 +235,15 @@ export function PermissionsTable() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="space-y-6">
         {/* Modules và Permissions */}
         <div className="grid gap-3 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2 pb-10">
           {sortedModules.map((moduleName) => {
-            const modulePermissions = filteredPermissions.filter(
-              (p) => p.module === moduleName
-            )
+            const modulePermissions = filteredPermissions.filter((p) => p.module === moduleName)
 
             return (
-              <SortableContext
-                key={moduleName}
-                items={modulePermissions.map((p) => p.permissionId)}
-              >
+              <SortableContext key={moduleName} items={modulePermissions.map((p) => p.permissionId)}>
                 <SortableTreeItem
                   id={moduleName}
                   searchQuery={searchQuery}
@@ -335,10 +314,7 @@ export function PermissionsTable() {
           )}
         </div>
 
-        <CreateModuleDialog
-          open={openCreateModule}
-          onOpenChange={setOpenCreateModule}
-        />
+        <CreateModuleDialog open={openCreateModule} onOpenChange={setOpenCreateModule} />
 
         <PermissionsFormDialog
           key={selectedPermission ? `perm-edit-${selectedPermission.permissionId}` : 'perm-add'}

@@ -5,8 +5,19 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
-  Plus, Loader2, Circle, CheckCircle2, ChevronDown, ListTodo, Calendar as CalendarIcon,
-  Target, GripVertical, Timer, NotebookText, Clock3, X,
+  Plus,
+  Loader2,
+  Circle,
+  CheckCircle2,
+  ChevronDown,
+  ListTodo,
+  Calendar as CalendarIcon,
+  Target,
+  GripVertical,
+  Timer,
+  NotebookText,
+  Clock3,
+  X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -24,9 +35,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as DatePickerCalendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils/cn'
@@ -98,7 +107,9 @@ function formatDisplayDate(iso: string, locale: string): string {
 
 function isToday(date: Date): boolean {
   const now = new Date()
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()
+  return (
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate()
+  )
 }
 
 function isThisWeek(date: Date): boolean {
@@ -135,11 +146,11 @@ const DAY_GROUP_ORDER = ['__overdue', '__today', '__week', '__later', '__nodate'
 
 function getDayGroupLabels(t: TFunction): Record<string, string> {
   return {
-    '__overdue': t('todo.dayGroupOverdue'),
-    '__today': t('todo.dayGroupToday'),
-    '__week': t('todo.dayGroupWeek'),
-    '__later': t('todo.dayGroupLater'),
-    '__nodate': t('todo.dayGroupNoDueDate'),
+    __overdue: t('todo.dayGroupOverdue'),
+    __today: t('todo.dayGroupToday'),
+    __week: t('todo.dayGroupWeek'),
+    __later: t('todo.dayGroupLater'),
+    __nodate: t('todo.dayGroupNoDueDate'),
   }
 }
 
@@ -169,7 +180,10 @@ function buildDayGroups(tasks: Task[]): Map<string, Task[]> {
   return map
 }
 
-function buildGoalGroups(tasks: Task[], resolveLabel: (task: Task) => string): Map<string, { label: string; tasks: Task[] }> {
+function buildGoalGroups(
+  tasks: Task[],
+  resolveLabel: (task: Task) => string,
+): Map<string, { label: string; tasks: Task[] }> {
   const map = new Map<string, { label: string; tasks: Task[] }>()
   for (const task of tasks) {
     const key = task.goalId ? String(task.goalId) : '__nogoal'
@@ -207,7 +221,10 @@ export function TodoPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
-  const dateLocale = useMemo(() => resolveDateLocale(i18n.resolvedLanguage ?? i18n.language), [i18n.language, i18n.resolvedLanguage])
+  const dateLocale = useMemo(
+    () => resolveDateLocale(i18n.resolvedLanguage ?? i18n.language),
+    [i18n.language, i18n.resolvedLanguage],
+  )
   const dayGroupLabels = useMemo(() => getDayGroupLabels(t), [t])
 
   const selectedDateParam = searchParams.get('todoDate')
@@ -215,9 +232,7 @@ export function TodoPage() {
   const selectedDateKey = useMemo(() => (selectedDate ? toDateKey(selectedDate) : null), [selectedDate])
   const isDateFiltered = Boolean(selectedDateKey)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const tasksQuery = useQuery({
     queryKey: queryKeys.tasks.byProject(projectId, 1, 500),
@@ -241,7 +256,8 @@ export function TodoPage() {
     queryKey: selectedDateKey
       ? queryKeys.schedules.projectCalendar(projectId, selectedDateKey, selectedDateKey, 1, 500)
       : ['task-schedules', 'calendar', 'project', projectId, 'todoDate:none'],
-    queryFn: () => taskScheduleApi.projectCalendar(projectId, selectedDateKey!, selectedDateKey!, { page: 1, size: 500 }),
+    queryFn: () =>
+      taskScheduleApi.projectCalendar(projectId, selectedDateKey!, selectedDateKey!, { page: 1, size: 500 }),
     enabled: Number.isFinite(projectId) && Boolean(selectedDateKey),
   })
 
@@ -341,15 +357,12 @@ export function TodoPage() {
 
   if (tasksQuery.isLoading || !permissionsReady) return <LoadingPanel />
 
-  const goalTitleById = new Map(
-    (goalsQuery.data?.content ?? []).map((goal) => [goal.id, goal.title] as const),
-  )
+  const goalTitleById = new Map((goalsQuery.data?.content ?? []).map((goal) => [goal.id, goal.title] as const))
 
   const allTasks = tasksQuery.data?.content ?? []
   const filteredTasks = allTasks.filter((task) => {
     const matchesGoal =
-      goalFilter === 'all'
-      || (goalFilter === '__nogoal' ? !task.goalId : task.goalId === Number(goalFilter))
+      goalFilter === 'all' || (goalFilter === '__nogoal' ? !task.goalId : task.goalId === Number(goalFilter))
 
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
 
@@ -399,9 +412,7 @@ export function TodoPage() {
       })
     }
 
-    dateFilteredEntries.sort((a, b) =>
-      new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime(),
-    )
+    dateFilteredEntries.sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
   }
 
   const dateFilteredPendingEntries = dateFilteredEntries.filter((entry) => !entry.task.isCompleted)
@@ -410,23 +421,24 @@ export function TodoPage() {
   const pendingTaskIds = pendingTasks.map((t) => `todo-${t.id}`)
 
   const dayGroups = groupMode === 'day' ? buildDayGroups(pendingTasks) : null
-  const goalGroups = groupMode === 'goal'
-    ? buildGoalGroups(pendingTasks, (task) => {
-      if (task.goalId) {
-        return goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })
-      }
+  const goalGroups =
+    groupMode === 'goal'
+      ? buildGoalGroups(pendingTasks, (task) => {
+          if (task.goalId) {
+            return goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })
+          }
 
-      return t('task.goalNoneOption')
-    })
-    : null
+          return t('task.goalNoneOption')
+        })
+      : null
 
   const selectedDateLabel = selectedDate
     ? selectedDate.toLocaleDateString(dateLocale, {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
     : t('todo.selectDate')
 
   const setTodoDateFilter = (date: Date | undefined) => {
@@ -466,8 +478,6 @@ export function TodoPage() {
     })
   }
 
-
-
   const handleToggleCompletion = (task: Task, isCompleted: boolean) => {
     if (!canManageTask()) {
       toast.error(t('todo.noManagePermission'))
@@ -491,10 +501,7 @@ export function TodoPage() {
 
   return (
     <div className="space-y-5 min-w-0">
-      <PageHeader
-        title={t('todo.title')}
-        description={t('todo.pageDescription')}
-      />
+      <PageHeader title={t('todo.title')} description={t('todo.pageDescription')} />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1.5">
@@ -507,8 +514,18 @@ export function TodoPage() {
               onClick={() => setGroupMode(mode)}
             >
               {mode === 'none' && t('common.all')}
-              {mode === 'day' && <><CalendarIcon className="mr-1 size-3" />{t('todo.groupDay')}</>}
-              {mode === 'goal' && <><Target className="mr-1 size-3" />{t('todo.groupGoal')}</>}
+              {mode === 'day' && (
+                <>
+                  <CalendarIcon className="mr-1 size-3" />
+                  {t('todo.groupDay')}
+                </>
+              )}
+              {mode === 'goal' && (
+                <>
+                  <Target className="mr-1 size-3" />
+                  {t('todo.groupGoal')}
+                </>
+              )}
             </Button>
           ))}
         </div>
@@ -523,7 +540,9 @@ export function TodoPage() {
               <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
               {(goalsQuery.data?.content ?? []).map((goal) => (
                 <SelectItem key={goal.id} value={String(goal.id)}>
-                  <span className="block max-w-60 truncate" title={goal.title}>{goal.title}</span>
+                  <span className="block max-w-60 truncate" title={goal.title}>
+                    {goal.title}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -540,16 +559,24 @@ export function TodoPage() {
                 </span>
               </SelectItem>
               <SelectItem value="LOW">
-                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">{getPriorityLabel(t, 'LOW')}</span>
+                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">
+                  {getPriorityLabel(t, 'LOW')}
+                </span>
               </SelectItem>
               <SelectItem value="MEDIUM">
-                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">{getPriorityLabel(t, 'MEDIUM')}</span>
+                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">
+                  {getPriorityLabel(t, 'MEDIUM')}
+                </span>
               </SelectItem>
               <SelectItem value="HIGH">
-                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">{getPriorityLabel(t, 'HIGH')}</span>
+                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">
+                  {getPriorityLabel(t, 'HIGH')}
+                </span>
               </SelectItem>
               <SelectItem value="URGENT">
-                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">{getPriorityLabel(t, 'URGENT')}</span>
+                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">
+                  {getPriorityLabel(t, 'URGENT')}
+                </span>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -567,16 +594,18 @@ export function TodoPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-auto p-0">
-              <DatePickerCalendar
-                mode="single"
-                selected={selectedDate ?? undefined}
-                onSelect={setTodoDateFilter}
-              />
+              <DatePickerCalendar mode="single" selected={selectedDate ?? undefined} onSelect={setTodoDateFilter} />
             </PopoverContent>
           </Popover>
 
           {isDateFiltered ? (
-            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={clearTodoDateFilter}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={clearTodoDateFilter}
+            >
               <X className="size-3" />
               {t('todo.clearDate')}
             </Button>
@@ -595,7 +624,9 @@ export function TodoPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
               }}
-              placeholder={canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')}
+              placeholder={
+                canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')
+              }
               disabled={!canManageProject}
               className="pl-9"
             />
@@ -608,9 +639,7 @@ export function TodoPage() {
             {t('todo.createDetailed')}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {t('todo.quickCreateHint')}
-        </p>
+        <p className="text-xs text-muted-foreground">{t('todo.quickCreateHint')}</p>
       </div>
 
       <TaskCreateDialog
@@ -657,9 +686,11 @@ export function TodoPage() {
                 onContextAction={(event) => openTaskContextMenu(event, entry.task)}
                 onPomodoro={() => openTaskPomodoro(entry.task.id)}
                 onNotebook={() => openTaskNotebook(entry.task.id)}
-                scheduleLabel={entry.scheduleId > 0
-                  ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
-                  : undefined}
+                scheduleLabel={
+                  entry.scheduleId > 0
+                    ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -793,7 +824,9 @@ export function TodoPage() {
             className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronDown className={cn('size-4 transition-transform', !showCompleted && '-rotate-90')} />
-            {t('todo.completedSection', { count: isDateFiltered ? dateFilteredCompletedEntries.length : completedTasks.length })}
+            {t('todo.completedSection', {
+              count: isDateFiltered ? dateFilteredCompletedEntries.length : completedTasks.length,
+            })}
           </button>
           <AnimatePresence initial={false}>
             {showCompleted && (
@@ -806,30 +839,32 @@ export function TodoPage() {
               >
                 {isDateFiltered
                   ? dateFilteredCompletedEntries.map((entry) => (
-                    <TodoItem
-                      key={`todo-date-completed-${entry.scheduleId}-${entry.task.id}`}
-                      task={entry.task}
-                      onToggle={() => handleToggleCompletion(entry.task, false)}
-                      onClick={() => openTaskDrawer(entry.task.id, 'view')}
-                      onContextAction={(event) => openTaskContextMenu(event, entry.task)}
-                      onPomodoro={() => openTaskPomodoro(entry.task.id)}
-                      onNotebook={() => openTaskNotebook(entry.task.id)}
-                      scheduleLabel={entry.scheduleId > 0
-                        ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
-                        : undefined}
-                    />
-                  ))
+                      <TodoItem
+                        key={`todo-date-completed-${entry.scheduleId}-${entry.task.id}`}
+                        task={entry.task}
+                        onToggle={() => handleToggleCompletion(entry.task, false)}
+                        onClick={() => openTaskDrawer(entry.task.id, 'view')}
+                        onContextAction={(event) => openTaskContextMenu(event, entry.task)}
+                        onPomodoro={() => openTaskPomodoro(entry.task.id)}
+                        onNotebook={() => openTaskNotebook(entry.task.id)}
+                        scheduleLabel={
+                          entry.scheduleId > 0
+                            ? formatScheduleTimeRangeForLocale(entry.scheduledStart, entry.scheduledEnd, dateLocale)
+                            : undefined
+                        }
+                      />
+                    ))
                   : completedTasks.map((task) => (
-                    <TodoItem
-                      key={task.id}
-                      task={task}
-                      onToggle={() => handleToggleCompletion(task, false)}
-                      onClick={() => openTaskDrawer(task.id, 'view')}
-                      onContextAction={(event) => openTaskContextMenu(event, task)}
-                      onPomodoro={() => openTaskPomodoro(task.id)}
-                      onNotebook={() => openTaskNotebook(task.id)}
-                    />
-                  ))}
+                      <TodoItem
+                        key={task.id}
+                        task={task}
+                        onToggle={() => handleToggleCompletion(task, false)}
+                        onClick={() => openTaskDrawer(task.id, 'view')}
+                        onContextAction={(event) => openTaskContextMenu(event, task)}
+                        onPomodoro={() => openTaskPomodoro(task.id)}
+                        onNotebook={() => openTaskNotebook(task.id)}
+                      />
+                    ))}
               </motion.div>
             )}
           </AnimatePresence>
@@ -867,7 +902,6 @@ export function TodoPage() {
 
           openTaskDrawer(selectedTask.id, 'edit')
         }}
-
         onDelete={() => {
           const selectedTask = taskContextMenu?.task
           if (selectedTask) {
@@ -933,14 +967,13 @@ function SortableTodoItem({
         <GripVertical className="size-4" />
       </button>
       <button
-        onClick={(e) => { e.stopPropagation(); onToggle() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle()
+        }}
         className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
       >
-        {task.isCompleted ? (
-          <CheckCircle2 className="size-5 text-primary" />
-        ) : (
-          <Circle className="size-5" />
-        )}
+        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
@@ -953,9 +986,7 @@ function SortableTodoItem({
           </p>
         )}
         {task.dueDate && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatDisplayDate(task.dueDate, dateLocale)}
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{formatDisplayDate(task.dueDate, dateLocale)}</p>
         )}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
@@ -1003,14 +1034,13 @@ function TodoItem({
       }}
     >
       <button
-        onClick={(e) => { e.stopPropagation(); onToggle() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle()
+        }}
         className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
       >
-        {task.isCompleted ? (
-          <CheckCircle2 className="size-5 text-primary" />
-        ) : (
-          <Circle className="size-5" />
-        )}
+        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
@@ -1023,13 +1053,9 @@ function TodoItem({
           </p>
         )}
         {task.dueDate && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatDisplayDate(task.dueDate, dateLocale)}
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{formatDisplayDate(task.dueDate, dateLocale)}</p>
         )}
-        {task.description && (
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
-        )}
+        {task.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
       <TodoRowMetaActions
@@ -1058,10 +1084,12 @@ function TodoRowMetaActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5 sm:grid sm:grid-cols-[auto_minmax(5.5rem,7rem)_1.75rem_1.75rem] sm:items-center sm:gap-2">
-      <span className={cn(
-        'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
-        TODO_PRIORITY_CHIP_CLASSNAMES[priority],
-      )}>
+      <span
+        className={cn(
+          'inline-flex h-5 min-w-18 items-center justify-center rounded border px-2 text-[10px] font-semibold uppercase tracking-wide',
+          TODO_PRIORITY_CHIP_CLASSNAMES[priority],
+        )}
+      >
         {getPriorityLabel(t, priority)}
       </span>
       <span

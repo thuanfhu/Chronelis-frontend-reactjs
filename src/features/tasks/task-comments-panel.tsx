@@ -68,10 +68,7 @@ export function TaskCommentsPanel({
   )
   const featuredComments = orderedComments.slice(0, 3)
 
-  const commentById = useMemo(
-    () => new Map(comments.map((comment) => [comment.id, comment] as const)),
-    [comments],
-  )
+  const commentById = useMemo(() => new Map(comments.map((comment) => [comment.id, comment] as const)), [comments])
 
   const replyParent = replyParentCommentId != null ? commentById.get(replyParentCommentId) : null
 
@@ -84,10 +81,10 @@ export function TaskCommentsPanel({
               <MessageSquare className="size-3.5" />
               {t('task.comments')}
             </div>
-            <h3 className="mt-3 text-sm font-semibold" style={{ overflowWrap: 'anywhere' }}>{taskTitle}</h3>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              {t('task.commentsDialogDescription')}
-            </p>
+            <h3 className="mt-3 text-sm font-semibold" style={{ overflowWrap: 'anywhere' }}>
+              {taskTitle}
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('task.commentsDialogDescription')}</p>
           </div>
 
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onBack}>
@@ -109,9 +106,7 @@ export function TaskCommentsPanel({
                   {t('task.commentsCount', { count: comments.length })}
                 </span>
               </div>
-              <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                {t('task.commentsFeedDescription')}
-              </p>
+              <p className="mt-1 text-xs leading-6 text-muted-foreground">{t('task.commentsFeedDescription')}</p>
 
               {featuredComments.length > 0 ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -121,7 +116,8 @@ export function TaskCommentsPanel({
                       className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground shadow-sm dark:bg-background/15"
                     >
                       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                        {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
+                        {comment.user.firstName.charAt(0)}
+                        {comment.user.lastName.charAt(0)}
                       </span>
                       <span className="truncate" style={{ maxWidth: '10rem' }}>
                         {comment.user.firstName} {comment.user.lastName}
@@ -167,7 +163,9 @@ export function TaskCommentsPanel({
 
             <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-5 text-muted-foreground">
-                {comments.length === 0 ? t('task.commentsFirstThreadHint') : t('task.commentsVisibleCount', { count: comments.length })}
+                {comments.length === 0
+                  ? t('task.commentsFirstThreadHint')
+                  : t('task.commentsVisibleCount', { count: comments.length })}
               </p>
               <Button
                 className="gap-1.5 sm:h-9"
@@ -187,9 +185,7 @@ export function TaskCommentsPanel({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{t('task.commentsReadOnlyTitle')}</p>
-                <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                  {t('task.commentsReadOnlyDescription')}
-                </p>
+                <p className="mt-1 text-xs leading-6 text-muted-foreground">{t('task.commentsReadOnlyDescription')}</p>
               </div>
             </div>
           </div>
@@ -201,126 +197,141 @@ export function TaskCommentsPanel({
           <div className="rounded-[30px] border border-dashed bg-muted/15 px-5 py-10 text-center">
             <MessageSquare className="mx-auto size-10 text-muted-foreground/30" />
             <p className="mt-3 text-sm font-semibold">{t('task.noComments')}</p>
-            <p className="mt-1 text-xs leading-6 text-muted-foreground">
-              {t('task.commentsEmptyDescription')}
-            </p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">{t('task.commentsEmptyDescription')}</p>
           </div>
         ) : (
           <div className="space-y-4">
             {orderedComments.map((comment, index) => {
-            const replyTarget = comment.parentCommentId != null ? commentById.get(comment.parentCommentId) : null
-            const isEditing = editingCommentId === comment.id
+              const replyTarget = comment.parentCommentId != null ? commentById.get(comment.parentCommentId) : null
+              const isEditing = editingCommentId === comment.id
 
-            return (
-              <div key={comment.id} className="relative pl-14">
-                {index < orderedComments.length - 1 ? (
-                  <span className="absolute left-[1.2rem] top-11 -bottom-5 w-px rounded-full bg-[linear-gradient(180deg,rgba(148,163,184,0.45),rgba(148,163,184,0.08))]" />
-                ) : null}
+              return (
+                <div key={comment.id} className="relative pl-14">
+                  {index < orderedComments.length - 1 ? (
+                    <span className="absolute left-[1.2rem] top-11 -bottom-5 w-px rounded-full bg-[linear-gradient(180deg,rgba(148,163,184,0.45),rgba(148,163,184,0.08))]" />
+                  ) : null}
 
-                <Avatar className="absolute left-0 top-0 size-10 shrink-0 border border-border/70 shadow-sm">
-                  <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
-                    {comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+                  <Avatar className="absolute left-0 top-0 size-10 shrink-0 border border-border/70 shadow-sm">
+                    <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
+                      {comment.user.firstName.charAt(0)}
+                      {comment.user.lastName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
 
-                <article className="overflow-hidden rounded-[28px] border border-border/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(248,250,252,0.92))] p-4 shadow-[0_24px_52px_-36px_rgba(15,23,42,0.35)] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(10,18,32,0.82))]">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold">
-                          {comment.user.firstName} {comment.user.lastName}
-                        </p>
-                        <span className="text-[11px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
-                        {replyTarget ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
-                            <CornerDownRight className="size-3" />
-                            {t('task.commentReplyTo', { name: replyTarget.user.firstName })}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {replyTarget ? (
-                        <div className="mt-3 rounded-[22px] border border-border/70 bg-muted/25 px-3 py-2.5">
-                          <p className="text-[11px] font-medium text-muted-foreground">
-                            {replyTarget.user.firstName} {replyTarget.user.lastName}
+                  <article className="overflow-hidden rounded-[28px] border border-border/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(248,250,252,0.92))] p-4 shadow-[0_24px_52px_-36px_rgba(15,23,42,0.35)] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(10,18,32,0.82))]">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold">
+                            {comment.user.firstName} {comment.user.lastName}
                           </p>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>
-                            {replyTarget.content}
-                          </p>
+                          <span className="text-[11px] text-muted-foreground">{formatDateTime(comment.createdAt)}</span>
+                          {replyTarget ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary">
+                              <CornerDownRight className="size-3" />
+                              {t('task.commentReplyTo', { name: replyTarget.user.firstName })}
+                            </span>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
-                  </div>
 
-                  {isEditing ? (
-                    <div className="mt-4 space-y-2">
-                      <Textarea
-                        value={editingCommentContent}
-                        onChange={(event) => onEditingCommentContentChange(event.target.value)}
-                        rows={3}
-                        className="rounded-[20px] border-border/70 bg-background/80 text-sm"
-                      />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button size="sm" className="h-8 rounded-full px-3 text-xs" onClick={onUpdateComment} disabled={updateCommentPending || !editingCommentContent.trim()}>
-                          {updateCommentPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
-                          {t('task.commentSave')}
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={onCancelEditing}>
-                          {t('task.commentCancelEdit')}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-foreground/90" style={{ overflowWrap: 'anywhere' }}>
-                        {comment.content}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {canManageCurrentTask ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs shadow-sm hover:border-border/70 hover:bg-background"
-                            onClick={() => {
-                              onReplyParentCommentChange(comment.id)
-                              onCancelEditing()
-                            }}
-                          >
-                            <CornerDownRight className="mr-1.5 size-3.5" />
-                            {t('task.commentReply')}
-                          </Button>
-                        ) : null}
-
-                        {canModifyComment(comment) ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs shadow-sm hover:border-border/70 hover:bg-background"
-                            onClick={() => onStartEditing(comment)}
-                          >
-                            <Pencil className="mr-1.5 size-3.5" />
-                            {t('task.commentEdit')}
-                          </Button>
-                        ) : null}
-
-                        {canModifyComment(comment) ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs text-destructive shadow-sm hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
-                            onClick={() => onDeleteComment(comment.id)}
-                          >
-                            <Trash2 className="mr-1.5 size-3.5" />
-                            {t('task.commentDelete')}
-                          </Button>
+                        {replyTarget ? (
+                          <div className="mt-3 rounded-[22px] border border-border/70 bg-muted/25 px-3 py-2.5">
+                            <p className="text-[11px] font-medium text-muted-foreground">
+                              {replyTarget.user.firstName} {replyTarget.user.lastName}
+                            </p>
+                            <p
+                              className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground"
+                              style={{ overflowWrap: 'anywhere' }}
+                            >
+                              {replyTarget.content}
+                            </p>
+                          </div>
                         ) : null}
                       </div>
-                    </>
-                  )}
-                </article>
-              </div>
-            )
+                    </div>
+
+                    {isEditing ? (
+                      <div className="mt-4 space-y-2">
+                        <Textarea
+                          value={editingCommentContent}
+                          onChange={(event) => onEditingCommentContentChange(event.target.value)}
+                          rows={3}
+                          className="rounded-[20px] border-border/70 bg-background/80 text-sm"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8 rounded-full px-3 text-xs"
+                            onClick={onUpdateComment}
+                            disabled={updateCommentPending || !editingCommentContent.trim()}
+                          >
+                            {updateCommentPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : null}
+                            {t('task.commentSave')}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full px-3 text-xs"
+                            onClick={onCancelEditing}
+                          >
+                            {t('task.commentCancelEdit')}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p
+                          className="mt-4 whitespace-pre-wrap text-sm leading-7 text-foreground/90"
+                          style={{ overflowWrap: 'anywhere' }}
+                        >
+                          {comment.content}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          {canManageCurrentTask ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs shadow-sm hover:border-border/70 hover:bg-background"
+                              onClick={() => {
+                                onReplyParentCommentChange(comment.id)
+                                onCancelEditing()
+                              }}
+                            >
+                              <CornerDownRight className="mr-1.5 size-3.5" />
+                              {t('task.commentReply')}
+                            </Button>
+                          ) : null}
+
+                          {canModifyComment(comment) ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs shadow-sm hover:border-border/70 hover:bg-background"
+                              onClick={() => onStartEditing(comment)}
+                            >
+                              <Pencil className="mr-1.5 size-3.5" />
+                              {t('task.commentEdit')}
+                            </Button>
+                          ) : null}
+
+                          {canModifyComment(comment) ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-full border border-transparent bg-background/60 px-3 text-xs text-destructive shadow-sm hover:border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+                              onClick={() => onDeleteComment(comment.id)}
+                            >
+                              <Trash2 className="mr-1.5 size-3.5" />
+                              {t('task.commentDelete')}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </>
+                    )}
+                  </article>
+                </div>
+              )
             })}
           </div>
         )}

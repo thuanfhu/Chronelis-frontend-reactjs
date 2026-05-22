@@ -2,14 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  LayoutDashboard,
-  PanelsTopLeft,
-  Bell,
-  FolderKanban,
-  Moon,
-  Sun,
-} from 'lucide-react'
+import { LayoutDashboard, PanelsTopLeft, Bell, FolderKanban, Moon, Sun } from 'lucide-react'
 import {
   CommandDialog,
   CommandEmpty,

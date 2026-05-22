@@ -68,7 +68,12 @@ export function ResetPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
               <div className="relative">
-                <Input id="newPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('newPassword')} />
+                <Input
+                  id="newPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...form.register('newPassword')}
+                />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
@@ -77,13 +82,20 @@ export function ResetPasswordPage() {
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              {form.formState.errors.newPassword && <p className="text-xs text-destructive">{form.formState.errors.newPassword.message}</p>}
+              {form.formState.errors.newPassword && (
+                <p className="text-xs text-destructive">{form.formState.errors.newPassword.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
               <div className="relative">
-                <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" {...form.register('confirmPassword')} />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...form.register('confirmPassword')}
+                />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 inline-flex w-9 items-center justify-center text-muted-foreground"
@@ -92,7 +104,9 @@ export function ResetPasswordPage() {
                   {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
-              {form.formState.errors.confirmPassword && <p className="text-xs text-destructive">{form.formState.errors.confirmPassword.message}</p>}
+              {form.formState.errors.confirmPassword && (
+                <p className="text-xs text-destructive">{form.formState.errors.confirmPassword.message}</p>
+              )}
             </div>
 
             <Button className="w-full" type="submit" disabled={mutation.isPending}>

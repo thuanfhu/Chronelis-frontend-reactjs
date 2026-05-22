@@ -20,12 +20,8 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         </Link>
 
         <div className="max-w-md">
-          <h2 className="text-3xl font-bold leading-tight whitespace-pre-line">
-            {t('auth.layoutHeading')}
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-primary-foreground/70">
-            {t('auth.layoutDescription')}
-          </p>
+          <h2 className="text-3xl font-bold leading-tight whitespace-pre-line">{t('auth.layoutHeading')}</h2>
+          <p className="mt-3 text-sm leading-relaxed text-primary-foreground/70">{t('auth.layoutDescription')}</p>
         </div>
 
         <p className="text-xs text-primary-foreground/50">© 2025 Chronelis. All rights reserved.</p>

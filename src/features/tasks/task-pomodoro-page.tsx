@@ -276,36 +276,38 @@ export function TaskPomodoroPage() {
     }
   }, [taskQuery.data])
 
-  const moveToNextMode = useCallback((countFocusSession: boolean) => {
-    const currentMode = modeRef.current
+  const moveToNextMode = useCallback(
+    (countFocusSession: boolean) => {
+      const currentMode = modeRef.current
 
-    if (currentMode === 'focus') {
-      const nextCompleted = completedRef.current + (countFocusSession ? 1 : 0)
-      if (countFocusSession) {
-        setCompletedFocusSessions(nextCompleted)
-        const endedAt = new Date()
-        const startedAt = focusStartedAtRef.current
-          ?? new Date(endedAt.getTime() - durationsRef.current.focus * 1000)
+      if (currentMode === 'focus') {
+        const nextCompleted = completedRef.current + (countFocusSession ? 1 : 0)
+        if (countFocusSession) {
+          setCompletedFocusSessions(nextCompleted)
+          const endedAt = new Date()
+          const startedAt = focusStartedAtRef.current ?? new Date(endedAt.getTime() - durationsRef.current.focus * 1000)
 
-        saveSessionMutation.mutate({
-          durationMinutes: Math.round(durationsRef.current.focus / 60),
-          startedAt: startedAt.toISOString(),
-          endedAt: endedAt.toISOString(),
-        })
-        focusStartedAtRef.current = null
+          saveSessionMutation.mutate({
+            durationMinutes: Math.round(durationsRef.current.focus / 60),
+            startedAt: startedAt.toISOString(),
+            endedAt: endedAt.toISOString(),
+          })
+          focusStartedAtRef.current = null
+        }
+
+        const useLongBreak = countFocusSession && nextCompleted > 0 && nextCompleted % 4 === 0
+        const nextMode: PomodoroMode = useLongBreak ? 'long-break' : 'short-break'
+
+        setMode(nextMode)
+        setSecondsLeft(durationsRef.current[nextMode])
+        return
       }
 
-      const useLongBreak = countFocusSession && nextCompleted > 0 && nextCompleted % 4 === 0
-      const nextMode: PomodoroMode = useLongBreak ? 'long-break' : 'short-break'
-
-      setMode(nextMode)
-      setSecondsLeft(durationsRef.current[nextMode])
-      return
-    }
-
-    setMode('focus')
-    setSecondsLeft(durationsRef.current.focus)
-  }, [saveSessionMutation])
+      setMode('focus')
+      setSecondsLeft(durationsRef.current.focus)
+    },
+    [saveSessionMutation],
+  )
 
   useEffect(() => {
     if (!isRunning) {
@@ -387,7 +389,7 @@ export function TaskPomodoroPage() {
   }
 
   const adjustFocusMinutes = (deltaMinutes: number) => {
-    const nextFocusSeconds = clamp(durationsRef.current.focus + (deltaMinutes * 60), 10 * 60, 90 * 60)
+    const nextFocusSeconds = clamp(durationsRef.current.focus + deltaMinutes * 60, 10 * 60, 90 * 60)
 
     setDurations((prev) => ({
       ...prev,
@@ -443,7 +445,7 @@ export function TaskPomodoroPage() {
       <PageHeader
         title={t('pomodoro.pageTitle')}
         description={t('pomodoro.pageDescription')}
-        actions={(
+        actions={
           <>
             <Button variant="outline" size="sm" onClick={handleBack}>
               <ArrowLeft className="size-4" />
@@ -453,7 +455,7 @@ export function TaskPomodoroPage() {
               {t('pomodoro.openTaskDetail')}
             </Button>
           </>
-        )}
+        }
       />
 
       <Card>
@@ -505,9 +507,23 @@ export function TaskPomodoroPage() {
 
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-2">
-            <Button variant={mode === 'focus' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('focus')}>{t('pomodoro.actions.focus')}</Button>
-            <Button variant={mode === 'short-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('short-break')}>{t('pomodoro.actions.shortBreak')}</Button>
-            <Button variant={mode === 'long-break' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('long-break')}>{t('pomodoro.actions.longBreak')}</Button>
+            <Button variant={mode === 'focus' ? 'default' : 'outline'} size="sm" onClick={() => switchMode('focus')}>
+              {t('pomodoro.actions.focus')}
+            </Button>
+            <Button
+              variant={mode === 'short-break' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => switchMode('short-break')}
+            >
+              {t('pomodoro.actions.shortBreak')}
+            </Button>
+            <Button
+              variant={mode === 'long-break' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => switchMode('long-break')}
+            >
+              {t('pomodoro.actions.longBreak')}
+            </Button>
           </div>
 
           <div className="flex items-center justify-center">
@@ -573,18 +589,20 @@ export function TaskPomodoroPage() {
               </Button>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {(Object.entries(POMODORO_ALARM_PRESETS) as [PomodoroAlarmId, PomodoroAlarmPreset][]).map(([alarmId, preset]) => (
-                <Button
-                  key={alarmId}
-                  type="button"
-                  variant={alarmSoundId === alarmId ? 'default' : 'outline'}
-                  size="sm"
-                  className="justify-start"
-                  onClick={() => setAlarmSoundId(alarmId)}
-                >
-                  {t(`pomodoro.alarms.${preset.translationKey}.label`)}
-                </Button>
-              ))}
+              {(Object.entries(POMODORO_ALARM_PRESETS) as [PomodoroAlarmId, PomodoroAlarmPreset][]).map(
+                ([alarmId, preset]) => (
+                  <Button
+                    key={alarmId}
+                    type="button"
+                    variant={alarmSoundId === alarmId ? 'default' : 'outline'}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => setAlarmSoundId(alarmId)}
+                  >
+                    {t(`pomodoro.alarms.${preset.translationKey}.label`)}
+                  </Button>
+                ),
+              )}
             </div>
           </div>
 
@@ -592,11 +610,17 @@ export function TaskPomodoroPage() {
             <p className="mb-2 text-xs font-medium text-muted-foreground">{t('pomodoro.focusDurationTitle')}</p>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(-5)}>-5m</Button>
+                <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(-5)}>
+                  -5m
+                </Button>
                 <span className="min-w-16 text-center text-sm font-semibold">{focusMinutes} phút</span>
-                <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(5)}>+5m</Button>
+                <Button variant="outline" size="sm" onClick={() => adjustFocusMinutes(5)}>
+                  +5m
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">{t('pomodoro.estimatedDuration', { minutes: taskQuery.data?.estimatedMinutes ?? 0 })}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('pomodoro.estimatedDuration', { minutes: taskQuery.data?.estimatedMinutes ?? 0 })}
+              </p>
             </div>
           </div>
 

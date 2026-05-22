@@ -1,5 +1,20 @@
 import { useState } from 'react'
-import { Bell, Moon, Sun, Menu, Search, User, LogOut, ChevronsUpDown, Check, Plus, Pencil, Loader2, ShieldCheck, Layout } from 'lucide-react'
+import {
+  Bell,
+  Moon,
+  Sun,
+  Menu,
+  Search,
+  User,
+  LogOut,
+  ChevronsUpDown,
+  Check,
+  Plus,
+  Pencil,
+  Loader2,
+  ShieldCheck,
+  Layout,
+} from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -138,250 +153,278 @@ export function AppTopbar() {
 
   return (
     <>
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-lg dark:border-border/85 dark:bg-background/92">
-      {/* Mobile menu toggle */}
-      <Button variant="ghost" size="icon" className="size-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
-        <Menu className="size-4" />
-      </Button>
+      <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-lg dark:border-border/85 dark:bg-background/92">
+        {/* Mobile menu toggle */}
+        <Button variant="ghost" size="icon" className="size-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <Menu className="size-4" />
+        </Button>
 
-      {/* Breadcrumb area / search */}
-      <div className="flex flex-1 items-center gap-3">
-        <button
-          onClick={() => setCommandPaletteOpen(true)}
-          className="hidden items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75 sm:flex"
-        >
-          <Search className="size-3.5" />
-          <span>{t('common.searchPlaceholder')}</span>
-          <kbd className="ml-4 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
-        </button>
-      </div>
+        {/* Breadcrumb area / search */}
+        <div className="flex flex-1 items-center gap-3">
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="hidden items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75 sm:flex"
+          >
+            <Search className="size-3.5" />
+            <span>{t('common.searchPlaceholder')}</span>
+            <kbd className="ml-4 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
 
-      {/* Right actions */}
-      <div className="flex items-center gap-1">
-        {/* Workspace selector dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75">
-              <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
-              </div>
-              <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
-                {currentWorkspace?.name ?? (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : t('workspace.title'))}
-              </span>
-              <ChevronsUpDown className="size-3 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {workspaces.map((ws) => (
-              <DropdownMenuItem
-                key={ws.id}
-                onClick={() => handleWorkspaceSelect(ws.id)}
-                className="group flex items-center gap-2 pr-1"
-              >
+        {/* Right actions */}
+        <div className="flex items-center gap-1">
+          {/* Workspace selector dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75">
                 <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                  {ws.name.charAt(0).toUpperCase()}
+                  {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
                 </div>
-                <span className="flex-1 truncate text-sm">{ws.name}</span>
-                {ws.id === activeWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
-                <button
-                  className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    openEdit(ws.id, ws.name)
-                  }}
-                  title={t('common.edit')}
+                <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
+                  {currentWorkspace?.name ??
+                    (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : t('workspace.title'))}
+                </span>
+                <ChevronsUpDown className="size-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {workspaces.map((ws) => (
+                <DropdownMenuItem
+                  key={ws.id}
+                  onClick={() => handleWorkspaceSelect(ws.id)}
+                  className="group flex items-center gap-2 pr-1"
                 >
-                  <Pencil className="size-3 text-muted-foreground" />
-                </button>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => { e.preventDefault(); setCreateOpen(true) }}
-              className="text-primary focus:text-primary"
-            >
-              <Plus className="mr-2 size-4" />
-              {t('workspace.create')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* Theme toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="group size-8" onClick={toggleTheme}>
-              <Sun className="size-4 icon-hover-rotate dark:hidden" />
-              <Moon className="hidden size-4 icon-hover-rotate dark:block" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
-        </Tooltip>
-
-        {/* Language toggle */}
-        <LanguageSwitcher />
-
-        {/* Notifications */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link to="/notifications" className="relative">
-              <Button variant="ghost" size="icon" className="group size-8">
-                <Bell
-                  className={cn(
-                    'size-4',
-                    unreadCount > 0
-                      ? 'motion-safe:animate-[icon-subtle-bounce_1.6s_ease-in-out_infinite]'
-                      : 'icon-hover-bounce',
-                  )}
-                />
-              </Button>
-              {unreadCount > 0 && (
-                <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Badge>
-              )}
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent>{unreadCount > 0 ? `${unreadCount} ${t('notification.title').toLowerCase()}` : t('notification.title')}</TooltipContent>
-        </Tooltip>
-
-        <Separator orientation="vertical" className="mx-1 h-6" />
-
-        {/* User menu */}
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
-              <Avatar className="size-7">
-                {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.firstName} />}
-                <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials}</AvatarFallback>
-              </Avatar>
-              <span className="hidden text-sm font-medium md:inline-block">
-                {currentUser?.firstName ?? 'Guest'}
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{currentUser?.firstName} {currentUser?.lastName}</p>
-                <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/dashboard" className="w-full flex items-center">
-                <Layout className="mr-2 size-4" />
-                Dashboard
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/profile" className="w-full flex items-center">
-                <User className="mr-2 size-4" />
-                {isVi ? "Hồ sơ" : "Profile"}
-              </Link>
-            </DropdownMenuItem>
-            {canAccessAdmin && (
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+                    {ws.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 truncate text-sm">{ws.name}</span>
+                  {ws.id === activeWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
+                  <button
+                    className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openEdit(ws.id, ws.name)
+                    }}
+                    title={t('common.edit')}
+                  >
+                    <Pencil className="size-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => navigate('/admin/users')}
-                className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100/10 dark:text-amber-400 dark:hover:bg-amber-100/20 cursor-pointer"
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setCreateOpen(true)
+                }}
+                className="text-primary focus:text-primary"
               >
-                <ShieldCheck className="mr-2 size-4" />
-                {isVi ? "Dashboard admin" : "Admin dashboard"}
+                <Plus className="mr-2 size-4" />
+                {t('workspace.create')}
               </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setLogoutConfirmOpen(true)} className="text-destructive focus:text-destructive">
-              <LogOut className="mr-2 size-4" />
-              {isVi ? "Đăng xuất" : "Log out"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-    {/* Create workspace dialog */}
-    <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setCreateName('') }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('workspace.create')}</DialogTitle>
-          <DialogDescription>{t('workspace.title')}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="create-ws-name">{t('workspace.title')}</Label>
-          <Input
-            id="create-ws-name"
-            value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
-            placeholder="e.g. Team Product"
-            onKeyDown={(e) => { if (e.key === 'Enter' && createName.trim()) createMutation.mutate(createName.trim()) }}
-            autoFocus
-          />
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* Theme toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="group size-8" onClick={toggleTheme}>
+                <Sun className="size-4 icon-hover-rotate dark:hidden" />
+                <Moon className="hidden size-4 icon-hover-rotate dark:block" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+          </Tooltip>
+
+          {/* Language toggle */}
+          <LanguageSwitcher />
+
+          {/* Notifications */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link to="/notifications" className="relative">
+                <Button variant="ghost" size="icon" className="group size-8">
+                  <Bell
+                    className={cn(
+                      'size-4',
+                      unreadCount > 0
+                        ? 'motion-safe:animate-[icon-subtle-bounce_1.6s_ease-in-out_infinite]'
+                        : 'icon-hover-bounce',
+                    )}
+                  />
+                </Button>
+                {unreadCount > 0 && (
+                  <Badge className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full p-0 text-[10px]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              {unreadCount > 0 ? `${unreadCount} ${t('notification.title').toLowerCase()}` : t('notification.title')}
+            </TooltipContent>
+          </Tooltip>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/* User menu */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
+                <Avatar className="size-7">
+                  {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.firstName} />}
+                  <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden text-sm font-medium md:inline-block">{currentUser?.firstName ?? 'Guest'}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">
+                    {currentUser?.firstName} {currentUser?.lastName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard" className="w-full flex items-center">
+                  <Layout className="mr-2 size-4" />
+                  Dashboard
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/profile" className="w-full flex items-center">
+                  <User className="mr-2 size-4" />
+                  {isVi ? 'Hồ sơ' : 'Profile'}
+                </Link>
+              </DropdownMenuItem>
+              {canAccessAdmin && (
+                <DropdownMenuItem
+                  onClick={() => navigate('/admin/users')}
+                  className="bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 focus:bg-amber-100 focus:text-amber-900 dark:bg-amber-100/10 dark:text-amber-400 dark:hover:bg-amber-100/20 cursor-pointer"
+                >
+                  <ShieldCheck className="mr-2 size-4" />
+                  {isVi ? 'Dashboard admin' : 'Admin dashboard'}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setLogoutConfirmOpen(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="mr-2 size-4" />
+                {isVi ? 'Đăng xuất' : 'Log out'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            onClick={() => createMutation.mutate(createName.trim())}
-            disabled={createMutation.isPending || !createName.trim()}
-          >
-            {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            {t('common.create')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </header>
 
-    {/* Edit workspace dialog */}
-    <Dialog open={editOpen} onOpenChange={(open) => {
-      setEditOpen(open)
-      if (!open) {
-        setEditWsId(null)
-        setEditInitialName('')
-      }
-    }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('common.edit')} workspace</DialogTitle>
-          <DialogDescription>{t('workspace.title')}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="edit-ws-name">{t('workspace.title')}</Label>
-          <Input
-            id="edit-ws-name"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) {
-                editMutation.mutate(editName.trim())
-              }
-            }}
-            autoFocus
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditOpen(false)}>{t('common.cancel')}</Button>
-          <Button
-            onClick={() => editMutation.mutate(editName.trim())}
-            disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
-          >
-            {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            {t('common.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Create workspace dialog */}
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open)
+          if (!open) setCreateName('')
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('workspace.create')}</DialogTitle>
+            <DialogDescription>{t('workspace.title')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="create-ws-name">{t('workspace.title')}</Label>
+            <Input
+              id="create-ws-name"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder="e.g. Team Product"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && createName.trim()) createMutation.mutate(createName.trim())
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => createMutation.mutate(createName.trim())}
+              disabled={createMutation.isPending || !createName.trim()}
+            >
+              {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {t('common.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-    <ConfirmModal
-      open={logoutConfirmOpen}
-      onOpenChange={setLogoutConfirmOpen}
-      title={t('admin.sidebar.logoutTitle')}
-      description={t('admin.sidebar.logoutDescription')}
-      confirmText={t('common.logout')}
-      confirmVariant="destructive"
-      onConfirm={handleLogout}
-    />
+      {/* Edit workspace dialog */}
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open)
+          if (!open) {
+            setEditWsId(null)
+            setEditInitialName('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('common.edit')} workspace</DialogTitle>
+            <DialogDescription>{t('workspace.title')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ws-name">{t('workspace.title')}</Label>
+            <Input
+              id="edit-ws-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) {
+                  editMutation.mutate(editName.trim())
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => editMutation.mutate(editName.trim())}
+              disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
+            >
+              {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        title={t('admin.sidebar.logoutTitle')}
+        description={t('admin.sidebar.logoutDescription')}
+        confirmText={t('common.logout')}
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+      />
     </>
   )
 }

@@ -64,44 +64,45 @@ export function useDeferredDelete<TPayload>(options: UseDeferredDeleteOptions<TP
     setPendingDeletes((previous) => previous.filter((entry) => entry.key !== key))
   }, [])
 
-  const finalizeDelete = useCallback(async (key: string) => {
-    const pendingEntry = pendingDeletesRef.current.find((entry) => entry.key === key)
-    if (!pendingEntry || pendingEntry.status !== 'pending') {
-      return
-    }
-
-    if (finalizingKeysRef.current.has(key)) {
-      return
-    }
-
-    finalizingKeysRef.current.add(key)
-    setPendingDeletes((previous) => previous.map((entry) => (
-      entry.key === key
-        ? { ...entry, status: 'finalizing' }
-        : entry
-    )))
-
-    try {
-      await options.onFinalize(pendingEntry.payload)
-      toast.success(resolveMessage(options.successMessage, pendingEntry, `Đã xóa "${pendingEntry.label}"`))
-      await options.onFinalizeSuccess?.(pendingEntry.payload)
-    } catch (error) {
-      if (error instanceof Error && isNotFoundError(error)) {
-        toast.success(resolveMessage(options.alreadyDeletedMessage, pendingEntry, `"${pendingEntry.label}" đã được xóa trước đó`))
-        await options.onFinalizeSuccess?.(pendingEntry.payload)
-      } else {
-        const resolvedError = error instanceof Error
-          ? error
-          : new Error('Đã xảy ra lỗi không xác định')
-
-        options.onUndo?.(pendingEntry.payload)
-        options.onFinalizeError?.(pendingEntry.payload, resolvedError)
-        toast.error(options.errorTitle ?? 'Xóa dữ liệu thất bại', { description: resolvedError.message })
+  const finalizeDelete = useCallback(
+    async (key: string) => {
+      const pendingEntry = pendingDeletesRef.current.find((entry) => entry.key === key)
+      if (!pendingEntry || pendingEntry.status !== 'pending') {
+        return
       }
-    } finally {
-      removePendingDelete(key)
-    }
-  }, [options, removePendingDelete])
+
+      if (finalizingKeysRef.current.has(key)) {
+        return
+      }
+
+      finalizingKeysRef.current.add(key)
+      setPendingDeletes((previous) =>
+        previous.map((entry) => (entry.key === key ? { ...entry, status: 'finalizing' } : entry)),
+      )
+
+      try {
+        await options.onFinalize(pendingEntry.payload)
+        toast.success(resolveMessage(options.successMessage, pendingEntry, `Đã xóa "${pendingEntry.label}"`))
+        await options.onFinalizeSuccess?.(pendingEntry.payload)
+      } catch (error) {
+        if (error instanceof Error && isNotFoundError(error)) {
+          toast.success(
+            resolveMessage(options.alreadyDeletedMessage, pendingEntry, `"${pendingEntry.label}" đã được xóa trước đó`),
+          )
+          await options.onFinalizeSuccess?.(pendingEntry.payload)
+        } else {
+          const resolvedError = error instanceof Error ? error : new Error('Đã xảy ra lỗi không xác định')
+
+          options.onUndo?.(pendingEntry.payload)
+          options.onFinalizeError?.(pendingEntry.payload, resolvedError)
+          toast.error(options.errorTitle ?? 'Xóa dữ liệu thất bại', { description: resolvedError.message })
+        }
+      } finally {
+        removePendingDelete(key)
+      }
+    },
+    [options, removePendingDelete],
+  )
 
   useEffect(() => {
     if (pendingDeletes.length === 0) {
@@ -126,41 +127,45 @@ export function useDeferredDelete<TPayload>(options: UseDeferredDeleteOptions<TP
     }
   }, [finalizeDelete, pendingDeletes.length])
 
-  const scheduleDelete = useCallback((params: ScheduleDeleteParams<TPayload>): boolean => {
-    const existing = pendingDeletesRef.current.find((entry) => entry.key === params.key)
-    if (existing) {
-      toast.error(options.duplicateMessage ?? 'Mục này đang chờ xóa. Bạn có thể hoàn tác hoặc đợi xử lý xong.')
-      return false
-    }
+  const scheduleDelete = useCallback(
+    (params: ScheduleDeleteParams<TPayload>): boolean => {
+      const existing = pendingDeletesRef.current.find((entry) => entry.key === params.key)
+      if (existing) {
+        toast.error(options.duplicateMessage ?? 'Mục này đang chờ xóa. Bạn có thể hoàn tác hoặc đợi xử lý xong.')
+        return false
+      }
 
-    const createdAt = Date.now()
-    const pendingEntry: DeferredDeleteEntry<TPayload> = {
-      key: params.key,
-      label: params.label,
-      payload: params.payload,
-      createdAt,
-      expiresAt: createdAt + undoWindowMs,
-      status: 'pending',
-    }
+      const createdAt = Date.now()
+      const pendingEntry: DeferredDeleteEntry<TPayload> = {
+        key: params.key,
+        label: params.label,
+        payload: params.payload,
+        createdAt,
+        expiresAt: createdAt + undoWindowMs,
+        status: 'pending',
+      }
 
-    setPendingDeletes((previous) => [...previous, pendingEntry])
-    return true
-  }, [options, undoWindowMs])
+      setPendingDeletes((previous) => [...previous, pendingEntry])
+      return true
+    },
+    [options, undoWindowMs],
+  )
 
-  const undoDelete = useCallback((key: string) => {
-    const pendingEntry = pendingDeletesRef.current.find((entry) => entry.key === key)
-    if (!pendingEntry || pendingEntry.status !== 'pending') {
-      return
-    }
+  const undoDelete = useCallback(
+    (key: string) => {
+      const pendingEntry = pendingDeletesRef.current.find((entry) => entry.key === key)
+      if (!pendingEntry || pendingEntry.status !== 'pending') {
+        return
+      }
 
-    options.onUndo?.(pendingEntry.payload)
-    removePendingDelete(key)
-    toast.success(`Đã hoàn tác xóa "${pendingEntry.label}"`)
-  }, [options, removePendingDelete])
+      options.onUndo?.(pendingEntry.payload)
+      removePendingDelete(key)
+      toast.success(`Đã hoàn tác xóa "${pendingEntry.label}"`)
+    },
+    [options, removePendingDelete],
+  )
 
-  const isQueued = useCallback((key: string) => (
-    pendingDeletesRef.current.some((entry) => entry.key === key)
-  ), [])
+  const isQueued = useCallback((key: string) => pendingDeletesRef.current.some((entry) => entry.key === key), [])
 
   return {
     pendingDeletes,

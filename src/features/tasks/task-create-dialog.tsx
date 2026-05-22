@@ -1,18 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  AlignLeft,
-  Calendar,
-  CalendarClock,
-  Clock3,
-  Flag,
-  Loader2,
-  Rows3,
-  Shapes,
-  Target,
-  User,
-  X,
-} from 'lucide-react'
+import { AlignLeft, Calendar, CalendarClock, Clock3, Flag, Loader2, Rows3, Shapes, Target, User, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -28,13 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
 import { goalApi } from '@/lib/api/modules/goal-api'
@@ -54,27 +36,31 @@ const PRIORITY_OPTIONS: Array<{
   labelKey: string
   className: string
 }> = [
-    {
-      value: 'LOW',
-      labelKey: 'task.priorityLow',
-      className: 'border-slate-300 text-slate-700 data-[active=true]:border-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white dark:border-slate-600 dark:text-slate-200',
-    },
-    {
-      value: 'MEDIUM',
-      labelKey: 'task.priorityMedium',
-      className: 'border-sky-300 text-sky-700 data-[active=true]:border-sky-500 data-[active=true]:bg-sky-500 data-[active=true]:text-white dark:border-sky-500/40 dark:text-sky-200',
-    },
-    {
-      value: 'HIGH',
-      labelKey: 'task.priorityHigh',
-      className: 'border-amber-300 text-amber-700 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-500 data-[active=true]:text-white dark:border-amber-500/40 dark:text-amber-200',
-    },
-    {
-      value: 'URGENT',
-      labelKey: 'task.priorityUrgent',
-      className: 'border-rose-300 text-rose-700 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-500 data-[active=true]:text-white dark:border-rose-500/40 dark:text-rose-200',
-    },
-  ]
+  {
+    value: 'LOW',
+    labelKey: 'task.priorityLow',
+    className:
+      'border-slate-300 text-slate-700 data-[active=true]:border-slate-600 data-[active=true]:bg-slate-600 data-[active=true]:text-white dark:border-slate-600 dark:text-slate-200',
+  },
+  {
+    value: 'MEDIUM',
+    labelKey: 'task.priorityMedium',
+    className:
+      'border-sky-300 text-sky-700 data-[active=true]:border-sky-500 data-[active=true]:bg-sky-500 data-[active=true]:text-white dark:border-sky-500/40 dark:text-sky-200',
+  },
+  {
+    value: 'HIGH',
+    labelKey: 'task.priorityHigh',
+    className:
+      'border-amber-300 text-amber-700 data-[active=true]:border-amber-500 data-[active=true]:bg-amber-500 data-[active=true]:text-white dark:border-amber-500/40 dark:text-amber-200',
+  },
+  {
+    value: 'URGENT',
+    labelKey: 'task.priorityUrgent',
+    className:
+      'border-rose-300 text-rose-700 data-[active=true]:border-rose-500 data-[active=true]:bg-rose-500 data-[active=true]:text-white dark:border-rose-500/40 dark:text-rose-200',
+  },
+]
 
 const SOURCE_VIEW_LABELS: Record<SourceViewType, string> = {
   KANBAN: 'task.sourceKanban',
@@ -215,10 +201,12 @@ export function TaskCreateDialog({
       return
     }
 
-    setForm(buildInitialFormState({
-      initialValues,
-      defaultStatusId: initialValues?.statusId ?? defaultStatusId,
-    }))
+    setForm(
+      buildInitialFormState({
+        initialValues,
+        defaultStatusId: initialValues?.statusId ?? defaultStatusId,
+      }),
+    )
   }, [defaultStatusId, initialValues, open])
 
   useEffect(() => {
@@ -248,7 +236,8 @@ export function TaskCreateDialog({
         prefix: (
           <Avatar className="size-6">
             <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-              {member.user.firstName.charAt(0)}{member.user.lastName.charAt(0)}
+              {member.user.firstName.charAt(0)}
+              {member.user.lastName.charAt(0)}
             </AvatarFallback>
           </Avatar>
         ),
@@ -258,25 +247,24 @@ export function TaskCreateDialog({
   )
 
   const dependencyOptions = useMemo(
-    () => (projectTasksQuery.data?.content ?? [])
-      .filter((task) => !form.dependencyTaskIds.includes(task.id))
-      .map((task) => ({
-        value: String(task.id),
-        label: task.title,
-        description: `${task.status.name} • ${task.priority}${task.goalId ? ` • ${t('task.goalShort', { id: task.goalId })}` : ''}`,
-        searchText: `${task.description ?? ''} ${task.priority} ${task.status.name}`,
-        statusName: task.status.name,
-        priority: task.priority,
-        goalId: task.goalId,
-      })),
+    () =>
+      (projectTasksQuery.data?.content ?? [])
+        .filter((task) => !form.dependencyTaskIds.includes(task.id))
+        .map((task) => ({
+          value: String(task.id),
+          label: task.title,
+          description: `${task.status.name} • ${task.priority}${task.goalId ? ` • ${t('task.goalShort', { id: task.goalId })}` : ''}`,
+          searchText: `${task.description ?? ''} ${task.priority} ${task.status.name}`,
+          statusName: task.status.name,
+          priority: task.priority,
+          goalId: task.goalId,
+        })),
     [projectTasksQuery.data?.content, t, form.dependencyTaskIds],
   )
 
   const selectedDependencyTasks = useMemo(() => {
     const taskById = new Map((projectTasksQuery.data?.content ?? []).map((task) => [task.id, task] as const))
-    return form.dependencyTaskIds
-      .map((taskId) => taskById.get(taskId))
-      .filter((task): task is Task => Boolean(task))
+    return form.dependencyTaskIds.map((taskId) => taskById.get(taskId)).filter((task): task is Task => Boolean(task))
   }, [form.dependencyTaskIds, projectTasksQuery.data?.content])
 
   const createTaskMutation = useMutation({
@@ -290,9 +278,7 @@ export function TaskCreateDialog({
         throw new Error(t('task.statusError'))
       }
 
-      const estimatedMinutes = form.estimatedMinutes.trim()
-        ? Number(form.estimatedMinutes)
-        : undefined
+      const estimatedMinutes = form.estimatedMinutes.trim() ? Number(form.estimatedMinutes) : undefined
 
       if (estimatedMinutes != null && (!Number.isFinite(estimatedMinutes) || estimatedMinutes < 0)) {
         throw new Error(t('task.estimatedError'))
@@ -385,9 +371,7 @@ export function TaskCreateDialog({
             </div>
             <div className="flex-1">
               <DialogTitle className="text-base">{resolvedTitle}</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs leading-5">
-                {resolvedDescription}
-              </DialogDescription>
+              <DialogDescription className="mt-0.5 text-xs leading-5">{resolvedDescription}</DialogDescription>
             </div>
             <span className="rounded-full border border-border/70 bg-muted/50 px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
               {t(SOURCE_VIEW_LABELS[defaultSourceView])}
@@ -407,9 +391,7 @@ export function TaskCreateDialog({
               type="button"
               className={cn(
                 'relative px-3 py-2.5 text-sm font-medium transition-colors',
-                activeTab === tab.key
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground/80',
+                activeTab === tab.key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80',
               )}
               onClick={() => setActiveTab(tab.key)}
             >
@@ -463,7 +445,10 @@ export function TaskCreateDialog({
                         key={option.value}
                         type="button"
                         data-active={form.priority === option.value}
-                        className={cn('h-8 flex-1 rounded-lg border text-sm font-semibold transition-all', option.className)}
+                        className={cn(
+                          'h-8 flex-1 rounded-lg border text-sm font-semibold transition-all',
+                          option.className,
+                        )}
                         onClick={() => setForm((current) => ({ ...current, priority: option.value }))}
                       >
                         {t(option.labelKey)}
@@ -483,11 +468,15 @@ export function TaskCreateDialog({
                       onValueChange={(value) => setForm((current) => ({ ...current, statusId: Number(value) }))}
                     >
                       <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder={statusesQuery.isLoading ? t('common.loading') : t('task.statusPlaceholder')} />
+                        <SelectValue
+                          placeholder={statusesQuery.isLoading ? t('common.loading') : t('task.statusPlaceholder')}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {statusOptions.map((status) => (
-                          <SelectItem key={status.id} value={String(status.id)}>{status.name}</SelectItem>
+                          <SelectItem key={status.id} value={String(status.id)}>
+                            {status.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -499,7 +488,9 @@ export function TaskCreateDialog({
                     </Label>
                     <Select
                       value={form.goalId != null ? String(form.goalId) : '__none'}
-                      onValueChange={(value) => setForm((current) => ({ ...current, goalId: value === '__none' ? null : Number(value) }))}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, goalId: value === '__none' ? null : Number(value) }))
+                      }
                     >
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder={t('task.goalNone')} />
@@ -508,7 +499,9 @@ export function TaskCreateDialog({
                         <SelectItem value="__none">{t('task.goalNone')}</SelectItem>
                         {goals.map((goal) => (
                           <SelectItem key={goal.id} value={String(goal.id)}>
-                            <span className="block max-w-52 truncate" title={goal.title}>{goal.title}</span>
+                            <span className="block max-w-52 truncate" title={goal.title}>
+                              {goal.title}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -519,7 +512,9 @@ export function TaskCreateDialog({
                 {/* Divider with section label */}
                 <div className="flex items-center gap-3 pt-1">
                   <div className="h-px flex-1 bg-border/60" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t('task.assignment')}</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('task.assignment')}
+                  </span>
                   <div className="h-px flex-1 bg-border/60" />
                 </div>
 
@@ -536,7 +531,9 @@ export function TaskCreateDialog({
                     emptyLabel={t('task.assigneeEmpty')}
                     disabled={membersQuery.isLoading || membersQuery.isError}
                     triggerClassName="h-9"
-                    onValueChange={(value) => setForm((current) => ({ ...current, assigneeId: value === '__unassigned' ? null : value }))}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, assigneeId: value === '__unassigned' ? null : value }))
+                    }
                   />
                 </div>
 
@@ -577,7 +574,9 @@ export function TaskCreateDialog({
                     </Label>
                     <Select
                       value={form.taskTypeId != null ? String(form.taskTypeId) : '__none'}
-                      onValueChange={(value) => setForm((current) => ({ ...current, taskTypeId: value === '__none' ? null : Number(value) }))}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, taskTypeId: value === '__none' ? null : Number(value) }))
+                      }
                     >
                       <SelectTrigger className="h-9 text-sm">
                         <SelectValue placeholder={t('task.taskTypeNone')} />
@@ -589,7 +588,10 @@ export function TaskCreateDialog({
                           return (
                             <SelectItem key={taskType.id} value={String(taskType.id)}>
                               <span className="flex items-center gap-1.5">
-                                <TaskTypeIcon className="size-3.5" style={taskType.color ? { color: taskType.color } : undefined} />
+                                <TaskTypeIcon
+                                  className="size-3.5"
+                                  style={taskType.color ? { color: taskType.color } : undefined}
+                                />
                                 <span>{taskType.name}</span>
                               </span>
                             </SelectItem>
@@ -611,9 +613,7 @@ export function TaskCreateDialog({
                     <div>
                       <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">{t('task.scheduleTitle')}</p>
                       <p className="mt-0.5 text-xs leading-5 text-sky-700/80 dark:text-sky-300/80">
-                        {requireSchedule
-                          ? t('task.scheduleRequired')
-                          : t('task.scheduleOptional')}
+                        {requireSchedule ? t('task.scheduleRequired') : t('task.scheduleOptional')}
                       </p>
                     </div>
                   </div>
@@ -643,9 +643,7 @@ export function TaskCreateDialog({
                 </div>
 
                 {form.scheduleStart && form.scheduleEnd && !isAfter(form.scheduleEnd, form.scheduleStart) && (
-                  <p className="text-xs text-destructive">
-                    {t('task.scheduleEndValidation')}
-                  </p>
+                  <p className="text-xs text-destructive">{t('task.scheduleEndValidation')}</p>
                 )}
                 {form.scheduleStart && form.scheduleEnd && isAfter(form.scheduleEnd, form.scheduleStart) && (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-200">
@@ -694,37 +692,54 @@ export function TaskCreateDialog({
                         >
                           <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium truncate" title={task.title}>{task.title}</span>
-                              <span className="text-xs text-muted-foreground/70 font-normal shrink-0 ml-auto">#{task.id}</span>
+                              <span className="font-medium truncate" title={task.title}>
+                                {task.title}
+                              </span>
+                              <span className="text-xs text-muted-foreground/70 font-normal shrink-0 ml-auto">
+                                #{task.id}
+                              </span>
                             </div>
                             <div className="grid grid-cols-[80px_80px_auto] gap-1.5 text-xs items-center">
-                              <span className={cn(
-                                "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
-                                (() => {
-                                  const name = task.status.name.toLowerCase()
-                                  if (name.includes('todo') || name.includes('to do')) return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                  if (name.includes('progress') || name.includes('doing')) return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
-                                  if (name.includes('done') || name.includes('complete')) return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800'
-                                  return 'bg-background text-muted-foreground border-border/70'
-                                })()
-                              )}>
+                              <span
+                                className={cn(
+                                  'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full',
+                                  (() => {
+                                    const name = task.status.name.toLowerCase()
+                                    if (name.includes('todo') || name.includes('to do'))
+                                      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                    if (name.includes('progress') || name.includes('doing'))
+                                      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800'
+                                    if (name.includes('done') || name.includes('complete'))
+                                      return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800'
+                                    return 'bg-background text-muted-foreground border-border/70'
+                                  })(),
+                                )}
+                              >
                                 {task.status.name}
                               </span>
-                              
-                              <span className={cn(
-                                "inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full",
-                                task.priority === 'LOW' && 'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
-                                task.priority === 'MEDIUM' && 'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
-                                task.priority === 'HIGH' && 'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
-                                task.priority === 'URGENT' && 'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50'
-                              )}>
-                                <span className={cn(
-                                  "inline-block size-1 rounded-full",
-                                  task.priority === 'LOW' && 'bg-emerald-800 dark:bg-emerald-200',
-                                  task.priority === 'MEDIUM' && 'bg-blue-700 dark:bg-blue-300',
-                                  task.priority === 'HIGH' && 'bg-orange-700 dark:bg-orange-300',
-                                  task.priority === 'URGENT' && 'bg-rose-700 dark:bg-rose-300'
-                                )} />
+
+                              <span
+                                className={cn(
+                                  'inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full',
+                                  task.priority === 'LOW' &&
+                                    'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
+                                  task.priority === 'MEDIUM' &&
+                                    'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
+                                  task.priority === 'HIGH' &&
+                                    'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
+                                  task.priority === 'URGENT' &&
+                                    'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50',
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'inline-block size-1 rounded-full',
+                                    task.priority === 'LOW' && 'bg-emerald-800 dark:bg-emerald-200',
+                                    task.priority === 'MEDIUM' && 'bg-blue-700 dark:bg-blue-300',
+                                    task.priority === 'HIGH' && 'bg-orange-700 dark:bg-orange-300',
+                                    task.priority === 'URGENT' && 'bg-rose-700 dark:bg-rose-300',
+                                  )}
+                                />
                                 {task.priority}
                               </span>
 
@@ -732,7 +747,9 @@ export function TaskCreateDialog({
                                 <span className="inline-flex items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 w-fit justify-self-start">
                                   {t('task.goalShort', { id: task.goalId })}
                                 </span>
-                              ) : <div />}
+                              ) : (
+                                <div />
+                              )}
                             </div>
                           </div>
                           <Button
@@ -740,10 +757,12 @@ export function TaskCreateDialog({
                             variant="ghost"
                             size="icon"
                             className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full shrink-0 transition-colors"
-                            onClick={() => setForm((current) => ({
-                              ...current,
-                              dependencyTaskIds: current.dependencyTaskIds.filter((taskId) => taskId !== task.id),
-                            }))}
+                            onClick={() =>
+                              setForm((current) => ({
+                                ...current,
+                                dependencyTaskIds: current.dependencyTaskIds.filter((taskId) => taskId !== task.id),
+                              }))
+                            }
                           >
                             <X className="size-3.5" />
                           </Button>
@@ -776,14 +795,24 @@ export function TaskCreateDialog({
           <div className="flex w-full items-center justify-between">
             <div className="flex gap-1">
               {form.scheduleStart && form.scheduleEnd && (
-                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{t('task.scheduled')}</span>
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                  {t('task.scheduled')}
+                </span>
               )}
               {form.dependencyTaskIds.length > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">{t('task.dependencyCount', { count: form.dependencyTaskIds.length })}</span>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  {t('task.dependencyCount', { count: form.dependencyTaskIds.length })}
+                </span>
               )}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={createTaskMutation.isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                disabled={createTaskMutation.isPending}
+              >
                 {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" onClick={() => createTaskMutation.mutate()} disabled={!canSubmit}>

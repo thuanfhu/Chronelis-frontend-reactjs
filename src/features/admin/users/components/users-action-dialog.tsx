@@ -8,35 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
-import {
-  IconCalendar,
-  IconFlag,
-  IconMail,
-  IconPhone,
-  IconShield,
-  IconUser,
-  IconUserCircle,
-} from '@tabler/icons-react'
+import { IconCalendar, IconFlag, IconMail, IconPhone, IconShield, IconUser, IconUserCircle } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -88,9 +67,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
 
   const defaultRoleIds = useMemo(() => {
     if (currentRow?.roles && Array.isArray(currentRow.roles) && currentRow.roles.length > 0) {
-      return (currentRow.roles as any[])
-        .map((role) => role.roleId || role.id || '')
-        .filter(Boolean)
+      return (currentRow.roles as any[]).map((role) => role.roleId || role.id || '').filter(Boolean)
     }
     return []
   }, [currentRow])
@@ -145,14 +122,19 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
         }
 
         if (hasChanged(values.email, currentRow.email)) changedFields.email = values.email
-        if (hasChanged(values.phoneNumber, currentRow.phoneNumber) && !isEmpty(values.phoneNumber)) changedFields.phoneNumber = values.phoneNumber
+        if (hasChanged(values.phoneNumber, currentRow.phoneNumber) && !isEmpty(values.phoneNumber))
+          changedFields.phoneNumber = values.phoneNumber
         if (hasChanged(values.firstName, currentRow.firstName)) changedFields.firstName = values.firstName
         if (hasChanged(values.lastName, currentRow.lastName)) changedFields.lastName = values.lastName
-        if (hasChanged(values.nickname, currentRow.nickname) && !isEmpty(values.nickname)) changedFields.nickname = values.nickname
+        if (hasChanged(values.nickname, currentRow.nickname) && !isEmpty(values.nickname))
+          changedFields.nickname = values.nickname
         if (hasChanged(avatarUrl, currentRow.avatar) && !isEmpty(avatarUrl)) changedFields.avatar = avatarUrl
-        if (hasChanged(values.birthDate, currentRow.birthDate) && !isEmpty(values.birthDate)) changedFields.birthDate = values.birthDate
-        if (hasChanged(values.gender, currentRow.gender) && !isEmpty(values.gender)) changedFields.gender = values.gender
-        if (hasChanged(values.nationality, currentRow.nationality) && !isEmpty(values.nationality)) changedFields.nationality = values.nationality
+        if (hasChanged(values.birthDate, currentRow.birthDate) && !isEmpty(values.birthDate))
+          changedFields.birthDate = values.birthDate
+        if (hasChanged(values.gender, currentRow.gender) && !isEmpty(values.gender))
+          changedFields.gender = values.gender
+        if (hasChanged(values.nationality, currentRow.nationality) && !isEmpty(values.nationality))
+          changedFields.nationality = values.nationality
         if (hasChanged(values.isVerified, currentRow.isVerified)) changedFields.isVerified = values.isVerified
 
         const currentRoleIds = (currentRow.roles || []).map((r: any) => r.roleId || r.id || '').filter(Boolean)
@@ -206,14 +188,18 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
         >
           <DialogHeader className="p-6 pb-2 border-b bg-slate-50 dark:bg-zinc-800">
             <DialogTitle className="text-xl">
-              {isView 
-                ? t('userManagement.viewUser', 'Xem thông tin người dùng') 
-                : isEdit ? t('userManagement.editUser') : t('userManagement.addUser')}
+              {isView
+                ? t('userManagement.viewUser', 'Xem thông tin người dùng')
+                : isEdit
+                  ? t('userManagement.editUser')
+                  : t('userManagement.addUser')}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              {isView 
+              {isView
                 ? t('userManagement.viewUserDesc', 'Chi tiết thông tin người dùng')
-                : isEdit ? t('userManagement.editUserDesc') : t('userManagement.addUserDesc')}
+                : isEdit
+                  ? t('userManagement.editUserDesc')
+                  : t('userManagement.addUserDesc')}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[65vh] px-6 py-4">
@@ -221,216 +207,294 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <fieldset disabled={isView} className="space-y-6 w-full border-0 p-0 m-0">
                   <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="bg-white dark:border-zinc-800 dark:bg-zinc-800 p-5 rounded-md border border-slate-200 shadow-sm"
-                >
-                  <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
-                    {t('userManagement.basicInfo')}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.columns.email')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconMail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input placeholder="example@email.com" {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.phoneNumber')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconPhone className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input placeholder={t('userManagement.phoneNumberPlaceholder')} {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="lastName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.columns.lastName')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input placeholder={t('userManagement.lastNamePlaceholder')} {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="firstName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.columns.firstName')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input placeholder={t('userManagement.firstNamePlaceholder')} {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                  className="bg-white dark:bg-zinc-800 dark:border-zinc-800 p-5 rounded-md border border-slate-200 shadow-sm"
-                >
-                  <h3 className="text-md font-medium dark:text-slate-100 text-slate-900 mb-4">
-                    {t('userManagement.additionalInfo')}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="nickname" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.nickname')}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t('userManagement.nicknamePlaceholder')} {...field} className="bg-slate-50 dark:bg-zinc-800" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="birthDate" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.birthDate')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconCalendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input type="date" {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="gender" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.gender')}</FormLabel>
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger className="bg-slate-50 dark:bg-zinc-800">
-                              <SelectValue placeholder={t('userManagement.genderPlaceholder')} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">{t('userManagement.genderOptions.male')}</SelectItem>
-                            <SelectItem value="female">{t('userManagement.genderOptions.female')}</SelectItem>
-                            <SelectItem value="other">{t('userManagement.genderOptions.other')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="nationality" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.nationality')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IconFlag className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                            <Input placeholder={t('userManagement.nationalityPlaceholder')} {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
-                  className="bg-white dark:bg-zinc-800 dark:border-zinc-800 dark:text-slate-100 p-5 rounded-md border border-slate-200 shadow-sm"
-                >
-                  <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
-                    {t('userManagement.imageAndPermissions')}
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <FormField control={form.control} name="avatar" render={({ field }) => {
-                      const [previewUrl, setPreviewUrl] = useState<string>(field.value || '')
-                      return (
-                        <FormItem>
-                          <FormLabel>{t('userManagement.avatar')}</FormLabel>
-                          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                            <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
-                              <AvatarImage src={previewUrl || `https://ui-avatars.com/api/?name=${form.watch('firstName')}+${form.watch('lastName')}&size=80&background=random`} alt="Avatar preview" />
-                              <AvatarFallback className="rounded-md bg-slate-100 dark:bg-slate-600">
-                                <IconUserCircle className="h-10 w-10 text-slate-400" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-2">
-                              <FormControl>
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                    className="bg-white dark:border-zinc-800 dark:bg-zinc-800 p-5 rounded-md border border-slate-200 shadow-sm"
+                  >
+                    <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
+                      {t('userManagement.basicInfo')}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.columns.email')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconMail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                                 <Input
-                                  placeholder="https://example.com/avatar.jpg"
+                                  placeholder="example@email.com"
                                   {...field}
-                                  className="bg-slate-50 dark:bg-zinc-800"
-                                  onChange={(e) => {
-                                    field.onChange(e)
-                                    setPreviewUrl(e.target.value)
-                                  }}
+                                  className="bg-slate-50 dark:bg-zinc-800 pl-10"
                                 />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.phoneNumber')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconPhone className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input
+                                  placeholder={t('userManagement.phoneNumberPlaceholder')}
+                                  {...field}
+                                  className="bg-slate-50 dark:bg-zinc-800 pl-10"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.columns.lastName')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input
+                                  placeholder={t('userManagement.lastNamePlaceholder')}
+                                  {...field}
+                                  className="bg-slate-50 dark:bg-zinc-800 pl-10"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.columns.firstName')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconUser className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input
+                                  placeholder={t('userManagement.firstNamePlaceholder')}
+                                  {...field}
+                                  className="bg-slate-50 dark:bg-zinc-800 pl-10"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="bg-white dark:bg-zinc-800 dark:border-zinc-800 p-5 rounded-md border border-slate-200 shadow-sm"
+                  >
+                    <h3 className="text-md font-medium dark:text-slate-100 text-slate-900 mb-4">
+                      {t('userManagement.additionalInfo')}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="nickname"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.nickname')}</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder={t('userManagement.nicknamePlaceholder')}
+                                {...field}
+                                className="bg-slate-50 dark:bg-zinc-800"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="birthDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.birthDate')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconCalendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input type="date" {...field} className="bg-slate-50 dark:bg-zinc-800 pl-10" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="gender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.gender')}</FormLabel>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger className="bg-slate-50 dark:bg-zinc-800">
+                                  <SelectValue placeholder={t('userManagement.genderPlaceholder')} />
+                                </SelectTrigger>
                               </FormControl>
-                              <p className="text-xs text-slate-500">{t('userManagement.avatarFormat')}</p>
+                              <SelectContent>
+                                <SelectItem value="male">{t('userManagement.genderOptions.male')}</SelectItem>
+                                <SelectItem value="female">{t('userManagement.genderOptions.female')}</SelectItem>
+                                <SelectItem value="other">{t('userManagement.genderOptions.other')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="nationality"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.nationality')}</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IconFlag className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                                <Input
+                                  placeholder={t('userManagement.nationalityPlaceholder')}
+                                  {...field}
+                                  className="bg-slate-50 dark:bg-zinc-800 pl-10"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}
+                    className="bg-white dark:bg-zinc-800 dark:border-zinc-800 dark:text-slate-100 p-5 rounded-md border border-slate-200 shadow-sm"
+                  >
+                    <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 mb-4">
+                      {t('userManagement.imageAndPermissions')}
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="avatar"
+                        render={({ field }) => {
+                          const [previewUrl, setPreviewUrl] = useState<string>(field.value || '')
+                          return (
+                            <FormItem>
+                              <FormLabel>{t('userManagement.avatar')}</FormLabel>
+                              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
+                                  <AvatarImage
+                                    src={
+                                      previewUrl ||
+                                      `https://ui-avatars.com/api/?name=${form.watch('firstName')}+${form.watch('lastName')}&size=80&background=random`
+                                    }
+                                    alt="Avatar preview"
+                                  />
+                                  <AvatarFallback className="rounded-md bg-slate-100 dark:bg-slate-600">
+                                    <IconUserCircle className="h-10 w-10 text-slate-400" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 space-y-2">
+                                  <FormControl>
+                                    <Input
+                                      placeholder="https://example.com/avatar.jpg"
+                                      {...field}
+                                      className="bg-slate-50 dark:bg-zinc-800"
+                                      onChange={(e) => {
+                                        field.onChange(e)
+                                        setPreviewUrl(e.target.value)
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-slate-500">{t('userManagement.avatarFormat')}</p>
+                                </div>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )
+                        }}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="roleIds"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('userManagement.role')}</FormLabel>
+                            <Select
+                              value={field.value?.length > 0 ? field.value[0] : ''}
+                              onValueChange={(value) => {
+                                if (value) field.onChange([value])
+                              }}
+                            >
+                              <FormControl>
+                                <div className="relative">
+                                  <IconShield className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10" />
+                                  <SelectTrigger className="bg-slate-50 dark:bg-zinc-800 pl-10">
+                                    <SelectValue placeholder={t('userManagement.rolePlaceholder')} />
+                                  </SelectTrigger>
+                                </div>
+                              </FormControl>
+                              <SelectContent>
+                                {roles.map((role: any) => (
+                                  <SelectItem key={role.roleId} value={role.roleId || ''}>
+                                    {role.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <FormField
+                        control={form.control}
+                        name="isVerified"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-zinc-800">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">{t('userManagement.emailVerification')}</FormLabel>
+                              <div className="text-sm text-slate-500">
+                                {field.value ? t('userManagement.userVerified') : t('userManagement.userUnverified')}
+                              </div>
                             </div>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )
-                    }} />
-                    <FormField control={form.control} name="roleIds" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('userManagement.role')}</FormLabel>
-                        <Select
-                          value={field.value?.length > 0 ? field.value[0] : ''}
-                          onValueChange={(value) => {
-                            if (value) field.onChange([value])
-                          }}
-                        >
-                          <FormControl>
-                            <div className="relative">
-                              <IconShield className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10" />
-                              <SelectTrigger className="bg-slate-50 dark:bg-zinc-800 pl-10">
-                                <SelectValue placeholder={t('userManagement.rolePlaceholder')} />
-                              </SelectTrigger>
-                            </div>
-                          </FormControl>
-                          <SelectContent>
-                            {roles.map((role: any) => (
-                              <SelectItem key={role.roleId} value={role.roleId || ''}>
-                                {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                  <div className="mt-4">
-                    <FormField control={form.control} name="isVerified" render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-zinc-800">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">{t('userManagement.emailVerification')}</FormLabel>
-                          <div className="text-sm text-slate-500">
-                            {field.value ? t('userManagement.userVerified') : t('userManagement.userUnverified')}
-                          </div>
-                        </div>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:bg-slate-900" />
-                        </FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
-                </motion.div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-slate-900"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </motion.div>
                 </fieldset>
               </form>
             </Form>

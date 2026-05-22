@@ -42,16 +42,19 @@ export const userSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   isVerified: z.boolean(),
-  roles: z.array(
-    z.object({
-      id: z.string().optional(),
-      roleId: z.string().optional(),
-      name: z.string(),
-      description: z.string().optional().default(''),
-      active: z.boolean().optional().default(true),
-      permissions: z.array(z.any()).optional().default([]),
-    })
-  ).optional().default([]),
+  roles: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        roleId: z.string().optional(),
+        name: z.string(),
+        description: z.string().optional().default(''),
+        active: z.boolean().optional().default(true),
+        permissions: z.array(z.any()).optional().default([]),
+      }),
+    )
+    .optional()
+    .default([]),
   createdAt: z.string(),
   provider: z.string().optional(),
 })

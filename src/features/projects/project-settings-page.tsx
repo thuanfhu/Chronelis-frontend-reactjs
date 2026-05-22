@@ -2,7 +2,22 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { Shield, ShieldCheck, ShieldAlert, Globe, Lock, Info, Settings, Settings2, Fingerprint, Save, Users, BookOpen, Check, X } from 'lucide-react'
+import {
+  Shield,
+  ShieldCheck,
+  ShieldAlert,
+  Globe,
+  Lock,
+  Info,
+  Settings,
+  Settings2,
+  Fingerprint,
+  Save,
+  Users,
+  BookOpen,
+  Check,
+  X,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -51,11 +66,7 @@ export function ProjectSettingsPage() {
     enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
   })
 
-  const {
-    canChangeVisibility,
-    isOwner,
-    effectiveAccess,
-  } = permissions
+  const { canChangeVisibility, isOwner, effectiveAccess } = permissions
 
   const projectQuery = useQuery({
     queryKey: queryKeys.projects.detail(projectId),
@@ -96,7 +107,8 @@ export function ProjectSettingsPage() {
 
   const effectiveRole = effectiveAccess?.effectiveRole ?? 'NO_ACCESS'
   const RoleIcon = roleIcon[effectiveRole as EffectiveProjectAccessRoleType]
-  const hasChanges = name !== project.name || description !== (project.description || '') || visibility !== project.visibility
+  const hasChanges =
+    name !== project.name || description !== (project.description || '') || visibility !== project.visibility
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 pb-12 px-4 md:px-0">
@@ -109,9 +121,7 @@ export function ProjectSettingsPage() {
             </div>
             {t('project.settings.title')}
           </h1>
-          <p className="text-base font-medium text-muted-foreground max-w-2xl">
-            {t('project.settings.description')}
-          </p>
+          <p className="text-base font-medium text-muted-foreground max-w-2xl">{t('project.settings.description')}</p>
         </div>
       </div>
 
@@ -123,8 +133,10 @@ export function ProjectSettingsPage() {
               <Button
                 variant={activeTab === 'general' ? 'secondary' : 'ghost'}
                 className={cn(
-                  "w-full justify-start gap-3 h-11 transition-all duration-200", 
-                  activeTab === 'general' ? "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                  'w-full justify-start gap-3 h-11 transition-all duration-200',
+                  activeTab === 'general'
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20'
+                    : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setActiveTab('general')}
               >
@@ -134,8 +146,10 @@ export function ProjectSettingsPage() {
               <Button
                 variant={activeTab === 'access' ? 'secondary' : 'ghost'}
                 className={cn(
-                  "w-full justify-start gap-3 h-11 transition-all duration-200", 
-                  activeTab === 'access' ? "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                  'w-full justify-start gap-3 h-11 transition-all duration-200',
+                  activeTab === 'access'
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20'
+                    : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setActiveTab('access')}
               >
@@ -145,8 +159,10 @@ export function ProjectSettingsPage() {
               <Button
                 variant={activeTab === 'roles' ? 'secondary' : 'ghost'}
                 className={cn(
-                  "w-full justify-start gap-3 h-11 transition-all duration-200", 
-                  activeTab === 'roles' ? "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                  'w-full justify-start gap-3 h-11 transition-all duration-200',
+                  activeTab === 'roles'
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20'
+                    : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setActiveTab('roles')}
               >
@@ -156,8 +172,10 @@ export function ProjectSettingsPage() {
               <Button
                 variant={activeTab === 'taskTypes' ? 'secondary' : 'ghost'}
                 className={cn(
-                  "w-full justify-start gap-3 h-11 transition-all duration-200", 
-                  activeTab === 'taskTypes' ? "bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                  'w-full justify-start gap-3 h-11 transition-all duration-200',
+                  activeTab === 'taskTypes'
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15 shadow-sm ring-1 ring-primary/20'
+                    : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setActiveTab('taskTypes')}
               >
@@ -165,7 +183,7 @@ export function ProjectSettingsPage() {
                 <span className="text-[13px] font-bold">Loại công việc</span>
               </Button>
             </nav>
-            
+
             <Separator className="opacity-50" />
 
             {/* Personal Role Card */}
@@ -177,7 +195,12 @@ export function ProjectSettingsPage() {
               </h4>
               <div className="flex flex-col gap-2 relative z-10">
                 <div className="flex items-center gap-3">
-                  <div className={cn("flex size-10 items-center justify-center rounded-lg shadow-sm border", roleBadgeColor[effectiveRole as EffectiveProjectAccessRoleType])}>
+                  <div
+                    className={cn(
+                      'flex size-10 items-center justify-center rounded-lg shadow-sm border',
+                      roleBadgeColor[effectiveRole as EffectiveProjectAccessRoleType],
+                    )}
+                  >
                     <RoleIcon className="size-5" />
                   </div>
                   <div>
@@ -185,7 +208,10 @@ export function ProjectSettingsPage() {
                       {t(`project.role.${effectiveRole.toLowerCase()}`)}
                     </h3>
                     {isOwner && (
-                      <Badge variant="outline" className="h-[18px] border-primary/30 bg-primary/10 px-1.5 text-[9px] font-black uppercase text-primary tracking-tighter mt-0.5">
+                      <Badge
+                        variant="outline"
+                        className="h-[18px] border-primary/30 bg-primary/10 px-1.5 text-[9px] font-black uppercase text-primary tracking-tighter mt-0.5"
+                      >
                         {t('workspace.role.owner')}
                       </Badge>
                     )}
@@ -205,7 +231,7 @@ export function ProjectSettingsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
                 className="space-y-8"
               >
                 {/* Basic Info Card */}
@@ -217,13 +243,17 @@ export function ProjectSettingsPage() {
                       </div>
                       {t('project.settings.editBasicInfo')}
                     </CardTitle>
-                    <CardDescription className="text-sm">{t('project.settings.editBasicInfoDescription')}</CardDescription>
+                    <CardDescription className="text-sm">
+                      {t('project.settings.editBasicInfoDescription')}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6 bg-muted/20">
                     <div className="space-y-2.5">
-                      <label className="text-sm font-bold text-foreground/90">{t('project.settings.projectNameLabel')}</label>
-                      <Input 
-                        value={name} 
+                      <label className="text-sm font-bold text-foreground/90">
+                        {t('project.settings.projectNameLabel')}
+                      </label>
+                      <Input
+                        value={name}
                         onChange={(e) => setName(e.target.value)}
                         className="bg-background h-11 border-border/60 font-medium focus-visible:ring-primary shadow-sm text-base transition-shadow hover:shadow-md focus-visible:shadow-md"
                         placeholder={t('project.settings.projectNameLabel')}
@@ -231,9 +261,11 @@ export function ProjectSettingsPage() {
                       />
                     </div>
                     <div className="space-y-2.5">
-                      <label className="text-sm font-bold text-foreground/90">{t('project.settings.projectDescriptionLabel')}</label>
-                      <Textarea 
-                        value={description} 
+                      <label className="text-sm font-bold text-foreground/90">
+                        {t('project.settings.projectDescriptionLabel')}
+                      </label>
+                      <Textarea
+                        value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         className="bg-background min-h-[140px] border-border/60 font-medium focus-visible:ring-primary shadow-sm resize-none text-base transition-shadow hover:shadow-md focus-visible:shadow-md"
                         placeholder={t('project.settings.projectDescriptionLabel')}
@@ -256,19 +288,28 @@ export function ProjectSettingsPage() {
                   </CardHeader>
                   <CardContent className="p-6 bg-muted/20">
                     <div className="grid gap-5 sm:grid-cols-2">
-                      <div 
+                      <div
                         onClick={() => isOwner && canChangeVisibility && setVisibility('PUBLIC')}
                         className={cn(
-                          "relative flex cursor-pointer flex-col gap-3 rounded-2xl border-2 p-5 transition-all duration-200 shadow-sm",
-                          visibility === 'PUBLIC' ? "border-primary bg-primary/[0.03] shadow-primary/10 ring-4 ring-primary/5" : "border-border/60 bg-background hover:bg-muted/50 hover:border-border",
-                          (!isOwner || !canChangeVisibility) && "cursor-not-allowed opacity-50"
+                          'relative flex cursor-pointer flex-col gap-3 rounded-2xl border-2 p-5 transition-all duration-200 shadow-sm',
+                          visibility === 'PUBLIC'
+                            ? 'border-primary bg-primary/[0.03] shadow-primary/10 ring-4 ring-primary/5'
+                            : 'border-border/60 bg-background hover:bg-muted/50 hover:border-border',
+                          (!isOwner || !canChangeVisibility) && 'cursor-not-allowed opacity-50',
                         )}
                       >
                         <div className="flex items-center justify-between">
-                          <div className={cn("p-2 rounded-xl", visibility === 'PUBLIC' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                          <div
+                            className={cn(
+                              'p-2 rounded-xl',
+                              visibility === 'PUBLIC' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                            )}
+                          >
                             <Globe className="size-6" />
                           </div>
-                          {visibility === 'PUBLIC' && <div className="size-2.5 rounded-full bg-primary ring-4 ring-primary/20" />}
+                          {visibility === 'PUBLIC' && (
+                            <div className="size-2.5 rounded-full bg-primary ring-4 ring-primary/20" />
+                          )}
                         </div>
                         <div>
                           <h4 className="font-extrabold text-base mb-1">{t('project.visibility.public')}</h4>
@@ -278,19 +319,30 @@ export function ProjectSettingsPage() {
                         </div>
                       </div>
 
-                      <div 
+                      <div
                         onClick={() => isOwner && canChangeVisibility && setVisibility('PRIVATE')}
                         className={cn(
-                          "relative flex cursor-pointer flex-col gap-3 rounded-2xl border-2 p-5 transition-all duration-200 shadow-sm",
-                          visibility === 'PRIVATE' ? "border-primary bg-primary/[0.03] shadow-primary/10 ring-4 ring-primary/5" : "border-border/60 bg-background hover:bg-muted/50 hover:border-border",
-                          (!isOwner || !canChangeVisibility) && "cursor-not-allowed opacity-50"
+                          'relative flex cursor-pointer flex-col gap-3 rounded-2xl border-2 p-5 transition-all duration-200 shadow-sm',
+                          visibility === 'PRIVATE'
+                            ? 'border-primary bg-primary/[0.03] shadow-primary/10 ring-4 ring-primary/5'
+                            : 'border-border/60 bg-background hover:bg-muted/50 hover:border-border',
+                          (!isOwner || !canChangeVisibility) && 'cursor-not-allowed opacity-50',
                         )}
                       >
                         <div className="flex items-center justify-between">
-                          <div className={cn("p-2 rounded-xl", visibility === 'PRIVATE' ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                          <div
+                            className={cn(
+                              'p-2 rounded-xl',
+                              visibility === 'PRIVATE'
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-muted text-muted-foreground',
+                            )}
+                          >
                             <Lock className="size-6" />
                           </div>
-                          {visibility === 'PRIVATE' && <div className="size-2.5 rounded-full bg-primary ring-4 ring-primary/20" />}
+                          {visibility === 'PRIVATE' && (
+                            <div className="size-2.5 rounded-full bg-primary ring-4 ring-primary/20" />
+                          )}
                         </div>
                         <div>
                           <h4 className="font-extrabold text-base mb-1">{t('project.visibility.private')}</h4>
@@ -305,7 +357,7 @@ export function ProjectSettingsPage() {
 
                 {isOwner && (
                   <div className="flex justify-end pt-2">
-                    <Button 
+                    <Button
                       onClick={() => updateProjectMutation.mutate({ name, description, visibility })}
                       disabled={updateProjectMutation.isPending || !name.trim() || !hasChanges}
                       className="gap-2 shadow-md hover:shadow-lg transition-all min-w-36 h-11 font-bold rounded-xl"
@@ -324,10 +376,10 @@ export function ProjectSettingsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
                 className="h-[750px] flex flex-col"
               >
-                 <ProjectAccessManagement workspaceId={workspaceId} projectId={projectId} />
+                <ProjectAccessManagement workspaceId={workspaceId} projectId={projectId} />
               </motion.div>
             )}
 
@@ -337,7 +389,7 @@ export function ProjectSettingsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
                 className="space-y-6"
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -347,15 +399,21 @@ export function ProjectSettingsPage() {
                       <div className="size-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center mb-4 shadow-inner">
                         <ShieldCheck className="size-6" />
                       </div>
-                      <CardTitle className="text-xl font-extrabold text-foreground">{t('project.role.manager')}</CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-purple-600/80">{t('project.settings.managerRestricted', { defaultValue: 'Full Access' })}</CardDescription>
+                      <CardTitle className="text-xl font-extrabold text-foreground">
+                        {t('project.role.manager')}
+                      </CardTitle>
+                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-purple-600/80">
+                        {t('project.settings.managerRestricted', { defaultValue: 'Full Access' })}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 space-y-6">
                       <p className="text-[13px] font-medium leading-relaxed text-muted-foreground/90 italic border-l-2 border-purple-200 pl-4 py-1 min-h-[80px]">
                         "{t('project.settings.roleManagerFullDescription')}"
                       </p>
                       <div className="space-y-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">{t('project.settings.whatsIncluded')}</p>
+                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">
+                          {t('project.settings.whatsIncluded')}
+                        </p>
                         <ul className="space-y-2.5">
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <Check className="size-4 text-green-500 shrink-0 mt-0.5" />
@@ -371,7 +429,9 @@ export function ProjectSettingsPage() {
                           </li>
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <X className="size-4 text-red-400 shrink-0 mt-0.5" />
-                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">{t('project.settings.permDeleteProject')}</span>
+                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">
+                              {t('project.settings.permDeleteProject')}
+                            </span>
                           </li>
                         </ul>
                       </div>
@@ -384,15 +444,21 @@ export function ProjectSettingsPage() {
                       <div className="size-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-4 shadow-inner">
                         <Shield className="size-6" />
                       </div>
-                      <CardTitle className="text-xl font-extrabold text-foreground">{t('project.role.contributor')}</CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-blue-600/80">{t('project.settings.standardMember', { defaultValue: 'Member' })}</CardDescription>
+                      <CardTitle className="text-xl font-extrabold text-foreground">
+                        {t('project.role.contributor')}
+                      </CardTitle>
+                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-blue-600/80">
+                        {t('project.settings.standardMember', { defaultValue: 'Member' })}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 space-y-6">
                       <p className="text-[13px] font-medium leading-relaxed text-muted-foreground/90 italic border-l-2 border-blue-200 pl-4 py-1 min-h-[80px]">
                         "{t('project.settings.roleContributorFullDescription')}"
                       </p>
                       <div className="space-y-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">{t('project.settings.whatsIncluded')}</p>
+                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">
+                          {t('project.settings.whatsIncluded')}
+                        </p>
                         <ul className="space-y-2.5">
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <Check className="size-4 text-green-500 shrink-0 mt-0.5" />
@@ -404,11 +470,15 @@ export function ProjectSettingsPage() {
                           </li>
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <X className="size-4 text-red-400 shrink-0 mt-0.5" />
-                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">{t('project.settings.permInviteOthers')}</span>
+                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">
+                              {t('project.settings.permInviteOthers')}
+                            </span>
                           </li>
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <X className="size-4 text-red-400 shrink-0 mt-0.5" />
-                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">{t('project.settings.permSettings')}</span>
+                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">
+                              {t('project.settings.permSettings')}
+                            </span>
                           </li>
                         </ul>
                       </div>
@@ -421,15 +491,21 @@ export function ProjectSettingsPage() {
                       <div className="size-12 rounded-2xl bg-slate-500/10 text-slate-600 flex items-center justify-center mb-4 shadow-inner">
                         <ShieldAlert className="size-6" />
                       </div>
-                      <CardTitle className="text-xl font-extrabold text-foreground">{t('project.role.viewer')}</CardTitle>
-                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-slate-600/80">{t('project.settings.readOnly', { defaultValue: 'Read Only' })}</CardDescription>
+                      <CardTitle className="text-xl font-extrabold text-foreground">
+                        {t('project.role.viewer')}
+                      </CardTitle>
+                      <CardDescription className="text-xs font-bold uppercase tracking-wider text-slate-600/80">
+                        {t('project.settings.readOnly', { defaultValue: 'Read Only' })}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-1 space-y-6">
                       <p className="text-[13px] font-medium leading-relaxed text-muted-foreground/90 italic border-l-2 border-slate-200 pl-4 py-1 min-h-[80px]">
                         "{t('project.settings.roleViewerFullDescription')}"
                       </p>
                       <div className="space-y-3">
-                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">{t('project.settings.whatsIncluded')}</p>
+                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-foreground/40">
+                          {t('project.settings.whatsIncluded')}
+                        </p>
                         <ul className="space-y-2.5">
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <Check className="size-4 text-green-500 shrink-0 mt-0.5" />
@@ -441,11 +517,15 @@ export function ProjectSettingsPage() {
                           </li>
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <X className="size-4 text-red-400 shrink-0 mt-0.5" />
-                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">{t('project.settings.permEditTasks')}</span>
+                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">
+                              {t('project.settings.permEditTasks')}
+                            </span>
                           </li>
                           <li className="flex items-start gap-2.5 text-[13px] font-bold text-foreground/80">
                             <X className="size-4 text-red-400 shrink-0 mt-0.5" />
-                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">{t('project.settings.permComment')}</span>
+                            <span className="text-muted-foreground/60 line-through decoration-red-400/40">
+                              {t('project.settings.permComment')}
+                            </span>
                           </li>
                         </ul>
                       </div>
@@ -461,13 +541,13 @@ export function ProjectSettingsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
                 className="space-y-6"
               >
-                <ProjectTaskTypesTab 
-                  workspaceId={workspaceId} 
-                  projectId={projectId} 
-                  isOwnerOrManager={isOwner || effectiveRole === 'MANAGER'} 
+                <ProjectTaskTypesTab
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                  isOwnerOrManager={isOwner || effectiveRole === 'MANAGER'}
                 />
               </motion.div>
             )}

@@ -1,12 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface DataTableSkeletonProps {
   columns?: number
@@ -14,11 +7,7 @@ interface DataTableSkeletonProps {
   showToolbar?: boolean
 }
 
-export function DataTableSkeleton({
-  columns = 5,
-  rows = 8,
-  showToolbar = true,
-}: DataTableSkeletonProps) {
+export function DataTableSkeleton({ columns = 5, rows = 8, showToolbar = true }: DataTableSkeletonProps) {
   return (
     <div className="space-y-4">
       {showToolbar && (
@@ -49,11 +38,7 @@ export function DataTableSkeleton({
                   <TableCell key={colIndex}>
                     <Skeleton
                       className={`h-4 ${
-                        colIndex === 0
-                          ? 'w-[180px]'
-                          : colIndex === columns - 1
-                            ? 'w-[60px]'
-                            : 'w-[120px]'
+                        colIndex === 0 ? 'w-[180px]' : colIndex === columns - 1 ? 'w-[60px]' : 'w-[120px]'
                       }`}
                     />
                   </TableCell>
