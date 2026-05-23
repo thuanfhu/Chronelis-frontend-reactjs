@@ -29,6 +29,8 @@ import {
   snapshotProjectCalendarQueries,
   snapshotTaskScheduleQueries,
   upsertById,
+  markScheduleMutationPending,
+  clearScheduleMutationPending,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
@@ -74,6 +76,12 @@ function roundToQuarter(date: Date): Date {
 
 function formatMonthYear(date: Date, localeTag: string): string {
   return new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(date)
+}
+
+function formatScheduleTime(date: Date, localeTag: string): string {
+  const time = new Intl.DateTimeFormat(localeTag, { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
+  const dateStr = new Intl.DateTimeFormat(localeTag, { day: 'numeric', month: 'short' }).format(date)
+  return `${time}, ${dateStr}`
 }
 
 function formatWeekRange(start: Date, localeTag: string): string {
@@ -371,7 +379,7 @@ export function CalendarPage() {
   }
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) => {
+    mutationFn: async ({ scheduleId, taskId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) => {
       const payload = {
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
@@ -383,6 +391,7 @@ export function CalendarPage() {
     },
     onMutate: async ({ scheduleId, taskId, start, end }) => {
       setScheduleUpdating(scheduleId, true)
+      markScheduleMutationPending(scheduleId)
 
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
@@ -423,7 +432,7 @@ export function CalendarPage() {
         restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
       }
       if (isNotFoundError(error)) {
-        toast.info(t('calendar.scheduleSynced'))
+        toast.info(t('calendar.scheduleSynced', 'Lịch đã được đồng bộ lại'))
         void syncScheduleQueries(variables.taskId)
         return
       }
@@ -433,9 +442,13 @@ export function CalendarPage() {
     onSuccess: (savedSchedule, variables) => {
       patchProjectCalendarQueries(queryClient, projectId, (schedules) => upsertById(schedules, savedSchedule))
       patchTaskScheduleQueries(queryClient, variables.taskId, (schedules) => upsertById(schedules, savedSchedule))
+
+      const timeStr = formatScheduleTime(variables.start, localeTag)
+      toast.success(t('calendar.scheduleUpdatedWithTime', `Đã lên lịch lại cho sự kiện lúc ${timeStr}`))
     },
     onSettled: (_data, _error, variables) => {
       setScheduleUpdating(variables.scheduleId, false)
+      clearScheduleMutationPending(variables.scheduleId)
     },
   })
 
@@ -676,9 +689,25 @@ export function CalendarPage() {
     openCreateDialog(arg.start, arg.end, arg.allDay)
     arg.view.calendar.unselect()
   }
+  const handleEventDragStart = (arg: CalendarEventInteractionArg) => {
+    const el = arg.el
+    if (!el || !el.parentNode) return
 
+    // Clone the DOM node to act as a pure visual ghost
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.id = 'manual-drag-ghost'
+    clone.style.visibility = 'visible'
+    
+    el.parentNode.appendChild(clone)
+  }
+
+  const handleEventDragStop = () => {
+    const clone = document.getElementById('manual-drag-ghost')
+    if (clone) clone.remove()
+  }
   const handleEventClick = (arg: CalendarEventInteractionArg) => {
     arg.jsEvent?.preventDefault?.()
+    if (arg.event.extendedProps.isDragOriginGhost) return
     if (arg.event.extendedProps.isOptimistic) {
       toast.info(t('calendar.scheduleSaving'))
       return
@@ -1001,9 +1030,12 @@ export function CalendarPage() {
                 dateClick={handleDateClick}
                 select={handleSelect}
                 eventClick={handleEventClick}
+                eventDragStart={handleEventDragStart}
+                eventDragStop={handleEventDragStop}
                 eventDrop={handleEventDrop}
                 eventResize={handleEventResize}
                 eventDidMount={(arg: CalendarEventMountArg) => {
+                  if (arg.event.extendedProps.isDragOriginGhost) return
                   arg.el.oncontextmenu = (event) => {
                     const taskId = Number(arg.event.extendedProps.taskId)
                     const scheduleId = readFiniteNumber(arg.event.extendedProps.scheduleId)
@@ -1032,6 +1064,7 @@ export function CalendarPage() {
                   <div
                     className="flex min-w-0 flex-col px-1 py-0.5"
                     onContextMenu={(event) => {
+                      if (arg.event.extendedProps.isDragOriginGhost) return
                       const taskId = Number(arg.event.extendedProps.taskId)
                       const scheduleId = readFiniteNumber(arg.event.extendedProps.scheduleId)
                       const canManage = Boolean(arg.event.extendedProps.canDelete)

@@ -9,6 +9,7 @@ import {
   removeById,
   removeMatchingOptimisticSchedules,
   upsertById,
+  isScheduleMutationPending,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useRealtimeSubscription } from '@/lib/websocket/use-realtime'
 import type { PageResult, RealtimeEvent, Task, TaskSchedule } from '@/types/domain'
@@ -161,6 +162,11 @@ export function useProjectRealtime(workspaceId: number | null, projectId: number
 
     if (event?.eventType === 'task-schedule.updated' && isTaskSchedule(event.data)) {
       const schedule = event.data
+      
+      if (isScheduleMutationPending(schedule.id)) {
+        return
+      }
+
       patchProjectCalendarQueriesByRange(
         queryClient,
         projectId,

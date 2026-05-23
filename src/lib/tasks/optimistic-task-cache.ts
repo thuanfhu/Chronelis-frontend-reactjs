@@ -15,6 +15,20 @@ export type GoalTaskSnapshot = Array<[QueryKey, TaskPage | undefined]>
 export type ProjectCalendarSnapshot = Array<[QueryKey, SchedulePage | undefined]>
 export type TaskScheduleSnapshot = Array<[QueryKey, TaskSchedule[] | undefined]>
 
+const pendingScheduleMutations = new Set<number>()
+
+export function markScheduleMutationPending(scheduleId: number): void {
+  pendingScheduleMutations.add(scheduleId)
+}
+
+export function clearScheduleMutationPending(scheduleId: number): void {
+  pendingScheduleMutations.delete(scheduleId)
+}
+
+export function isScheduleMutationPending(scheduleId: number): boolean {
+  return pendingScheduleMutations.has(scheduleId)
+}
+
 interface MoveTaskParams {
   taskId: number
   targetStatusId: number
