@@ -152,6 +152,7 @@ interface CalendarSelectArg {
 }
 
 interface CalendarEventInteractionArg {
+  el?: HTMLElement
   event: {
     id: string
     start: Date | null
@@ -379,7 +380,7 @@ export function CalendarPage() {
   }
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ scheduleId, taskId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) => {
+    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) => {
       const payload = {
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
