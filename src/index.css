@@ -486,6 +486,56 @@
     background-clip: padding-box;
   }
 
+  .chronelis-calendar-frame .fc .fc-event,
+  .chronelis-calendar-frame .fc .fc-daygrid-event,
+  .chronelis-calendar-frame .fc .fc-timegrid-event,
+  .chronelis-calendar-frame .fc .chronelis-event {
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      box-shadow 0.12s ease,
+      color 0.12s ease,
+      opacity 0.12s ease !important;
+  }
+
+  .chronelis-calendar-frame .fc .fc-event.fc-event-dragging,
+  .chronelis-calendar-frame .fc .fc-event.fc-event-resizing,
+  .chronelis-calendar-frame .fc .fc-event-mirror {
+    transition: none !important;
+  }
+
+  /* Make the dragging mirror event pop out */
+  .chronelis-calendar-frame .fc .fc-event-mirror {
+    opacity: 1 !important;
+    z-index: 1000 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Hide original dragging event since we use manual DOM clone */
+  .chronelis-calendar-frame .fc .fc-event.fc-event-dragging:not(.fc-event-mirror) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  #manual-drag-ghost {
+    opacity: 0.38 !important;
+    pointer-events: none !important;
+    border-style: solid !important;
+    filter: saturate(0.85) !important;
+    z-index: 1 !important;
+    visibility: visible !important;
+  }
+
+  .dark #manual-drag-ghost {
+    opacity: 0.42 !important;
+  }
+
+
+  .chronelis-calendar-frame .fc .chronelis-event--saving {
+    cursor: progress !important;
+    opacity: 0.72 !important;
+  }
+
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-main,
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-title,
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-time {

@@ -1,14 +1,25 @@
 import { AppError } from '@/lib/errors/app-error'
 
-const NOT_FOUND_MESSAGE_PATTERN = /(khong\s+ton\s+tai|không\s+tồn\s+tại|not\s+found)/i
+function isNotFoundMessage(message: string): boolean {
+  const normalizedMessage = message
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+  return (
+    /\bnot\s+found\b/i.test(message) ||
+    normalizedMessage.includes('khong ton tai') ||
+    normalizedMessage.includes('khong tim thay')
+  )
+}
 
 export function isNotFoundError(error: unknown): boolean {
   if (error instanceof AppError) {
-    return error.status === 404 || NOT_FOUND_MESSAGE_PATTERN.test(error.message)
+    return error.status === 404 || isNotFoundMessage(error.message)
   }
 
   if (error instanceof Error) {
-    return NOT_FOUND_MESSAGE_PATTERN.test(error.message)
+    return isNotFoundMessage(error.message)
   }
 
   return false

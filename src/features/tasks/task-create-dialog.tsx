@@ -34,12 +34,15 @@ import {
   patchProjectCalendarQueries,
   patchProjectTaskQueries,
   patchTaskScheduleQueries,
+  removeById,
+  removeOptimisticSchedulesForTask,
   restoreProjectCalendarQueries,
   restoreProjectTaskQueries,
   restoreTaskScheduleQueries,
   snapshotProjectCalendarQueries,
   snapshotProjectTaskQueries,
   snapshotTaskScheduleQueries,
+  upsertById,
 } from '@/lib/tasks/optimistic-task-cache'
 import { cn } from '@/lib/utils/cn'
 import { toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
@@ -135,6 +138,16 @@ interface TaskCreateOptimisticContext {
   projectTasksSnapshot: ReturnType<typeof snapshotProjectTaskQueries>
   projectCalendarSnapshot: ReturnType<typeof snapshotProjectCalendarQueries>
   taskScheduleSnapshot: ReturnType<typeof snapshotTaskScheduleQueries>
+}
+
+interface CreateTaskResult {
+  task: Task
+  schedule?: TaskSchedule
+  scheduleError?: string
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 function buildInitialFormState(args: {
@@ -290,7 +303,7 @@ export function TaskCreateDialog({
     return form.dependencyTaskIds.map((taskId) => taskById.get(taskId)).filter((task): task is Task => Boolean(task))
   }, [form.dependencyTaskIds, projectTasksQuery.data?.content])
 
-  const createTaskMutation = useMutation<Task, Error, void, TaskCreateOptimisticContext | undefined>({
+  const createTaskMutation = useMutation<CreateTaskResult, Error, void, TaskCreateOptimisticContext | undefined>({
     mutationFn: async () => {
       const titleValue = form.title.trim()
       if (!titleValue) {
@@ -323,7 +336,11 @@ export function TaskCreateDialog({
         }
       }
 
-      let createdTask = await taskApi.create({
+      let createdTask: Task
+      let createdSchedule: TaskSchedule | undefined
+      let scheduleError: string | undefined
+
+      createdTask = await taskApi.create({
         projectId,
         title: titleValue,
         description: form.description.trim() || undefined,
@@ -341,11 +358,15 @@ export function TaskCreateDialog({
       }
 
       if (form.scheduleStart && form.scheduleEnd) {
-        await taskScheduleApi.create({
-          taskId: createdTask.id,
-          scheduledStart: toLocalDateTimePayload(form.scheduleStart),
-          scheduledEnd: toLocalDateTimePayload(form.scheduleEnd),
-        })
+        try {
+          createdSchedule = await taskScheduleApi.create({
+            taskId: createdTask.id,
+            scheduledStart: toLocalDateTimePayload(form.scheduleStart),
+            scheduledEnd: toLocalDateTimePayload(form.scheduleEnd),
+          })
+        } catch (error) {
+          scheduleError = getErrorMessage(error)
+        }
       }
 
       if (form.dependencyTaskIds.length > 0 || form.blockerNote.trim()) {
@@ -355,7 +376,7 @@ export function TaskCreateDialog({
         })
       }
 
-      return createdTask
+      return { task: createdTask, schedule: createdSchedule, scheduleError }
     },
     onMutate: async () => {
       const titleValue = form.title.trim()
@@ -443,7 +464,7 @@ export function TaskCreateDialog({
         updatedAt: nowIso,
       }
 
-      patchProjectTaskQueries(queryClient, projectId, (tasks) => [...tasks, optimisticTask])
+      patchProjectTaskQueries(queryClient, projectId, (tasks) => upsertById(tasks, optimisticTask))
       queryClient.setQueryData(queryKeys.tasks.detail(optimisticTaskId), optimisticTask)
 
       if (form.scheduleStart && form.scheduleEnd) {
@@ -460,8 +481,8 @@ export function TaskCreateDialog({
           updatedAt: nowIso,
         }
 
-        patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
-        patchTaskScheduleQueries(queryClient, optimisticTaskId, (schedules) => [...schedules, optimisticSchedule])
+        patchProjectCalendarQueries(queryClient, projectId, (schedules) => upsertById(schedules, optimisticSchedule))
+        patchTaskScheduleQueries(queryClient, optimisticTaskId, (schedules) => upsertById(schedules, optimisticSchedule))
       }
 
       onOpenChange(false)
@@ -474,7 +495,11 @@ export function TaskCreateDialog({
         taskScheduleSnapshot,
       }
     },
-    onSuccess: async (createdTask, _variables, context) => {
+    onSuccess: async (result, _variables, context) => {
+      const createdTask = result.task
+      const createdSchedule = result.schedule
+      const scheduleError = result.scheduleError
+
       if (
         context?.optimisticTaskId != null &&
         isOptimisticTaskCreateDiscarded(queryClient, context.optimisticTaskId)
@@ -521,12 +546,23 @@ export function TaskCreateDialog({
         })
 
         if (context.optimisticScheduleId != null) {
-          patchProjectCalendarQueries(queryClient, projectId, (schedules) =>
-            schedules.map((schedule) =>
-              schedule.id === context.optimisticScheduleId ? { ...schedule, taskId: createdTask.id } : schedule,
-            ),
-          )
+          patchProjectCalendarQueries(queryClient, projectId, (schedules) => {
+            const withoutOptimistic = removeOptimisticSchedulesForTask(
+              removeById(schedules, context.optimisticScheduleId!),
+              context.optimisticTaskId,
+            )
+            return createdSchedule ? upsertById(withoutOptimistic, createdSchedule) : withoutOptimistic
+          })
+
+          queryClient.setQueryData(queryKeys.schedules.byTask(context.optimisticTaskId), [])
+
+          if (createdSchedule) {
+            patchTaskScheduleQueries(queryClient, createdTask.id, (schedules) => upsertById(schedules, createdSchedule))
+          }
         }
+      } else if (createdSchedule) {
+        patchProjectCalendarQueries(queryClient, projectId, (schedules) => upsertById(schedules, createdSchedule))
+        patchTaskScheduleQueries(queryClient, createdTask.id, (schedules) => upsertById(schedules, createdSchedule))
       }
 
       await Promise.all([
@@ -540,7 +576,11 @@ export function TaskCreateDialog({
         await onCreated(createdTask)
       }
 
-      toast.success(t('task.createSuccess'))
+      if (scheduleError) {
+        toast.error(t('calendar.updateScheduleFailed'), { description: scheduleError })
+      } else {
+        toast.success(t('task.createSuccess'))
+      }
       onOpenChange(false)
     },
     onError: (error: Error, _variables, context) => {
