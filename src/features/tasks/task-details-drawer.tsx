@@ -57,6 +57,7 @@ import {
   snapshotProjectCalendarQueries,
   snapshotProjectTaskQueries,
   snapshotTaskScheduleQueries,
+  upsertById,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
@@ -632,8 +633,10 @@ export function TaskDetailsDrawer() {
             updatedAt: nowIso,
           }
 
-          patchProjectCalendarQueries(queryClient, currentTask.projectId, (schedules) => [...schedules, optimisticSchedule])
-          patchTaskScheduleQueries(queryClient, currentTask.id, (schedules) => [...schedules, optimisticSchedule])
+          patchProjectCalendarQueries(queryClient, currentTask.projectId, (schedules) =>
+            upsertById(schedules, optimisticSchedule),
+          )
+          patchTaskScheduleQueries(queryClient, currentTask.id, (schedules) => upsertById(schedules, optimisticSchedule))
         }
       }
 

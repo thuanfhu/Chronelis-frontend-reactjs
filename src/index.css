@@ -486,6 +486,29 @@
     background-clip: padding-box;
   }
 
+  .chronelis-calendar-frame .fc .fc-event,
+  .chronelis-calendar-frame .fc .fc-daygrid-event,
+  .chronelis-calendar-frame .fc .fc-timegrid-event,
+  .chronelis-calendar-frame .fc .chronelis-event {
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      box-shadow 0.12s ease,
+      color 0.12s ease,
+      opacity 0.12s ease !important;
+  }
+
+  .chronelis-calendar-frame .fc .fc-event.fc-event-dragging,
+  .chronelis-calendar-frame .fc .fc-event.fc-event-resizing,
+  .chronelis-calendar-frame .fc .fc-event-mirror {
+    transition: none !important;
+  }
+
+  .chronelis-calendar-frame .fc .chronelis-event--saving {
+    cursor: progress !important;
+    opacity: 0.72 !important;
+  }
+
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-main,
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-title,
   .chronelis-calendar-frame .fc .chronelis-event .fc-event-time {

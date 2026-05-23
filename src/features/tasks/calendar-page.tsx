@@ -17,15 +17,18 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { taskScheduleApi } from '@/lib/api/modules/task-schedule-api'
 import { taskApi } from '@/lib/api/modules/task-api'
 import { queryKeys } from '@/lib/api/query-keys'
+import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import {
   applyScheduleUpdate,
+  removeById,
   patchProjectCalendarQueries,
   patchTaskScheduleQueries,
   restoreProjectCalendarQueries,
   restoreTaskScheduleQueries,
   snapshotProjectCalendarQueries,
   snapshotTaskScheduleQueries,
+  upsertById,
 } from '@/lib/tasks/optimistic-task-cache'
 import { useUiStore } from '@/app/store/ui-store'
 import { useProjectRealtime } from '@/lib/websocket/use-domain-realtime'
@@ -148,6 +151,10 @@ interface CalendarEventInteractionArg {
     extendedProps: Record<string, unknown>
     title: string
   }
+  oldEvent?: {
+    start: Date | null
+    end: Date | null
+  }
   revert?: () => void
   jsEvent?: {
     preventDefault?: () => void
@@ -220,6 +227,24 @@ function resolveEventRange(start: Date | null, end: Date | null): { start: Date;
   }
 }
 
+function readPositiveNumber(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function toCalendarScheduleEventId(scheduleId: number): string {
+  return scheduleId > 0 ? `schedule:${scheduleId}` : `temp-schedule:${Math.abs(scheduleId)}`
+}
+
+function toDebugDate(date: Date | null | undefined): string | null {
+  return date ? date.toISOString() : null
+}
+
 function parseValidDate(dateValue: string | undefined): Date | null {
   if (!dateValue) {
     return null
@@ -256,7 +281,7 @@ export function CalendarPage() {
   const projectId = Number(params.projectId)
   const workspaceId = Number(params.workspaceId)
   const queryClient = useQueryClient()
-  const { currentUserId, canManageTask, canScheduleTask, permissionsReady } = useProjectPermissions({
+  const { canManageTask, canScheduleTask, permissionsReady } = useProjectPermissions({
     workspaceId,
     projectId,
     enabled: Number.isFinite(workspaceId) && Number.isFinite(projectId),
@@ -265,6 +290,7 @@ export function CalendarPage() {
   const openTaskDrawer = useUiStore((s) => s.openTaskDrawer)
   const openTaskDeleteConfirm = useUiStore((s) => s.openTaskDeleteConfirm)
   const calendarRef = useRef<FullCalendar | null>(null)
+  const updatingScheduleIdsRef = useRef<Set<number>>(new Set())
   const calendarMotionControls = useAnimationControls()
   const localeTag = i18n.language === 'vi' ? 'vi-VN' : 'en-US'
 
@@ -274,6 +300,7 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [navigationDirection, setNavigationDirection] = useState<1 | -1>(1)
   const [visibleRange, setVisibleRange] = useState(() => getRangeForView('week', new Date()))
+  const [updatingScheduleIds, setUpdatingScheduleIds] = useState<Set<number>>(() => new Set())
   const headerTitle =
     view === 'week' ? formatWeekRange(startOfWeek(currentDate), localeTag) : formatMonthYear(currentDate, localeTag)
 
@@ -282,13 +309,19 @@ export function CalendarPage() {
     x: number
     y: number
     taskId: number
+    scheduleId: number | null
     canManage: boolean
+    isDueDateOnly: boolean
+    isOptimistic: boolean
   } | null>(null)
 
   const openCalendarTaskContextMenu = (
     event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>,
     taskId: number,
+    scheduleId: number | null,
     canManage: boolean,
+    isDueDateOnly: boolean,
+    isOptimistic: boolean,
   ) => {
     event.preventDefault()
     const vw = window.innerWidth
@@ -297,7 +330,7 @@ export function CalendarPage() {
     const menuH = 120
     const x = event.clientX + menuW > vw ? vw - menuW - 8 : event.clientX
     const y = event.clientY + menuH > vh ? vh - menuH - 8 : event.clientY
-    setTaskContextMenu({ x, y, taskId, canManage })
+    setTaskContextMenu({ x, y, taskId, scheduleId, canManage, isDueDateOnly, isOptimistic })
   }
 
   // Create task+schedule from calendar slot click/select
@@ -312,72 +345,45 @@ export function CalendarPage() {
     ])
   }
 
-  const createScheduleMutation = useMutation({
-    mutationFn: async ({ taskId, start, end }: { taskId: number; start: Date; end: Date }) =>
-      taskScheduleApi.create({
-        taskId,
-        scheduledStart: toApiLocalDateTime(start),
-        scheduledEnd: toApiLocalDateTime(end),
-      }),
-    onMutate: async ({ taskId, start, end }) => {
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
-        queryClient.cancelQueries({ queryKey: ['task-schedules', 'task', taskId] }),
-      ])
+  const setScheduleUpdating = (scheduleId: number, isUpdating: boolean) => {
+    const currentlyUpdating = updatingScheduleIdsRef.current.has(scheduleId)
+    if (currentlyUpdating === isUpdating) {
+      return
+    }
 
-      const scheduledStart = toApiLocalDateTime(start)
-      const scheduledEnd = toApiLocalDateTime(end)
-      const scheduledDate = scheduledStart.slice(0, 10)
-      const optimisticId = -Date.now()
+    const next = new Set(updatingScheduleIdsRef.current)
+    if (isUpdating) {
+      next.add(scheduleId)
+    } else {
+      next.delete(scheduleId)
+    }
+    updatingScheduleIdsRef.current = next
+    setUpdatingScheduleIds(next)
+  }
 
-      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
-      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, taskId)
-
-      const optimisticSchedule: TaskSchedule = {
-        id: optimisticId,
-        taskId,
-        scheduledStart,
-        scheduledEnd,
-        scheduledDate,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: {
-          userId: currentUserId ?? '',
-          email: '',
-          firstName: '',
-          lastName: '',
-        },
-      }
-
-      patchProjectCalendarQueries(queryClient, projectId, (schedules) => [...schedules, optimisticSchedule])
-      patchTaskScheduleQueries(queryClient, taskId, (schedules) => [...schedules, optimisticSchedule])
-
-      return {
-        projectCalendarSnapshot,
-        taskScheduleSnapshot,
-      }
-    },
-    onSuccess: async (_data, variables) => {
-      await invalidateTaskAndCalendarQueries(variables.taskId)
-    },
-    onError: (error: Error, _variables, context) => {
-      if (context?.projectCalendarSnapshot) {
-        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
-      }
-      if (context?.taskScheduleSnapshot) {
-        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
-      }
-      toast.error(t('calendar.updateScheduleFailed'), { description: error.message })
-    },
-  })
+  const syncScheduleQueries = async (taskId?: number) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+      taskId
+        ? queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(taskId) })
+        : queryClient.invalidateQueries({ queryKey: ['task-schedules', 'task'] }),
+    ])
+  }
 
   const updateScheduleMutation = useMutation({
-    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) =>
-      taskScheduleApi.update(scheduleId, {
+    mutationFn: async ({ scheduleId, start, end }: { scheduleId: number; taskId: number; start: Date; end: Date }) => {
+      const payload = {
         scheduledStart: toApiLocalDateTime(start),
         scheduledEnd: toApiLocalDateTime(end),
-      }),
+      }
+      if (import.meta.env.DEV) {
+        console.debug('[Chronelis calendar] PATCH /task-schedules/%s', scheduleId, payload)
+      }
+      return taskScheduleApi.update(scheduleId, payload)
+    },
     onMutate: async ({ scheduleId, taskId, start, end }) => {
+      setScheduleUpdating(scheduleId, true)
+
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
         queryClient.cancelQueries({ queryKey: ['task-schedules', 'task', taskId] }),
@@ -403,6 +409,49 @@ export function CalendarPage() {
           scheduledEnd,
         }),
       )
+
+      return {
+        projectCalendarSnapshot,
+        taskScheduleSnapshot,
+      }
+    },
+    onError: (error: Error, variables, context) => {
+      if (context?.projectCalendarSnapshot) {
+        restoreProjectCalendarQueries(queryClient, context.projectCalendarSnapshot)
+      }
+      if (context?.taskScheduleSnapshot) {
+        restoreTaskScheduleQueries(queryClient, context.taskScheduleSnapshot)
+      }
+      if (isNotFoundError(error)) {
+        toast.info(t('calendar.scheduleSynced'))
+        void syncScheduleQueries(variables.taskId)
+        return
+      }
+
+      toast.error(t('calendar.scheduleUpdateFailedGeneric'))
+    },
+    onSuccess: (savedSchedule, variables) => {
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => upsertById(schedules, savedSchedule))
+      patchTaskScheduleQueries(queryClient, variables.taskId, (schedules) => upsertById(schedules, savedSchedule))
+    },
+    onSettled: (_data, _error, variables) => {
+      setScheduleUpdating(variables.scheduleId, false)
+    },
+  })
+
+  const deleteScheduleMutation = useMutation({
+    mutationFn: ({ scheduleId }: { scheduleId: number; taskId: number }) => taskScheduleApi.remove(scheduleId),
+    onMutate: async ({ scheduleId, taskId }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
+        queryClient.cancelQueries({ queryKey: ['task-schedules', 'task', taskId] }),
+      ])
+
+      const projectCalendarSnapshot = snapshotProjectCalendarQueries(queryClient, projectId)
+      const taskScheduleSnapshot = snapshotTaskScheduleQueries(queryClient, taskId)
+
+      patchProjectCalendarQueries(queryClient, projectId, (schedules) => removeById(schedules, scheduleId))
+      patchTaskScheduleQueries(queryClient, taskId, (schedules) => removeById(schedules, scheduleId))
 
       return {
         projectCalendarSnapshot,
@@ -440,43 +489,71 @@ export function CalendarPage() {
     placeholderData: keepPreviousData,
   })
 
+  const currentCalendarSchedules = useMemo(() => schedulesQuery.data?.content ?? [], [schedulesQuery.data?.content])
+  const currentProjectTasks = useMemo(() => tasksQuery.data?.content ?? [], [tasksQuery.data?.content])
+
   // Join schedules with task data
   const enrichedSchedules = useMemo<ScheduleWithResolvedTask[]>(() => {
-    const schedules = schedulesQuery.data?.content ?? []
-    const tasks = tasksQuery.data?.content ?? []
-    const taskMap = new Map(tasks.map((t) => [t.id, t]))
+    const taskMap = new Map(currentProjectTasks.map((t) => [t.id, t]))
 
-    return schedules.flatMap((schedule) => {
+    return currentCalendarSchedules.flatMap((schedule) => {
       const task = taskMap.get(schedule.taskId)
       return task ? [{ ...schedule, task }] : []
     })
-  }, [schedulesQuery.data, tasksQuery.data])
+  }, [currentCalendarSchedules, currentProjectTasks])
 
   const dueDateOnlyTasks = useMemo(() => {
-    const tasks = tasksQuery.data?.content ?? []
-    const scheduledTaskIds = new Set(enrichedSchedules.map((schedule) => schedule.taskId))
+    const scheduledTaskIds = new Set(currentCalendarSchedules.map((schedule) => schedule.taskId))
+    const pendingScheduledTaskIds = new Set(
+      currentCalendarSchedules.filter((schedule) => schedule.id < 0).map((schedule) => schedule.taskId),
+    )
+    const hasPendingSchedule = pendingScheduledTaskIds.size > 0
 
-    return tasks.filter((task) => Boolean(task.dueDate) && !scheduledTaskIds.has(task.id))
-  }, [enrichedSchedules, tasksQuery.data])
+    return currentProjectTasks.filter((task) => {
+      if (!task.dueDate || scheduledTaskIds.has(task.id) || pendingScheduledTaskIds.has(task.id)) {
+        return false
+      }
+
+      if (task.id < 0 && hasPendingSchedule) {
+        return false
+      }
+
+      if (task.sourceView === 'CALENDAR' && (hasPendingSchedule || schedulesQuery.isFetching)) {
+        return false
+      }
+
+      return true
+    })
+  }, [currentCalendarSchedules, currentProjectTasks, schedulesQuery.isFetching])
 
   const isLoading = schedulesQuery.isLoading || tasksQuery.isLoading
 
   const calendarEvents = useMemo<EventInput[]>(() => {
     const scheduledEvents = enrichedSchedules.map((schedule) => {
       const priority = schedule.task.priority
+      const isOptimistic = schedule.id < 0
+      const isUpdating = updatingScheduleIds.has(schedule.id)
+      const canEditSchedule = canScheduleTask() && !isOptimistic && !isUpdating
 
       return {
-        id: String(schedule.id),
+        id: toCalendarScheduleEventId(schedule.id),
         title: schedule.task.title,
         start: schedule.scheduledStart,
         end: schedule.scheduledEnd,
+        editable: canEditSchedule,
+        startEditable: canEditSchedule,
+        durationEditable: canEditSchedule,
         extendedProps: {
           scheduleId: schedule.id,
           taskId: schedule.taskId,
+          projectId,
+          workspaceId,
           priority,
-          canDelete: canManageTask(),
+          canDelete: canEditSchedule,
           task: schedule.task,
           isDueDateOnly: false,
+          isOptimistic,
+          isUpdating,
         },
       } satisfies EventInput
     })
@@ -489,19 +566,23 @@ export function CalendarPage() {
 
       const dueEnd = addMinutes(dueDate, 60)
       events.push({
-        id: `due-${task.id}`,
+        id: `due:${task.id}`,
         title: task.title,
         start: dueDate,
         end: dueEnd,
-        editable: canScheduleTask(),
-        durationEditable: canScheduleTask(),
+        editable: false,
+        startEditable: false,
+        durationEditable: false,
         extendedProps: {
           scheduleId: null,
           taskId: task.id,
+          projectId,
+          workspaceId,
           priority: task.priority,
           canDelete: canManageTask(),
           task,
           isDueDateOnly: true,
+          isOptimistic: false,
         },
       })
 
@@ -509,7 +590,36 @@ export function CalendarPage() {
     }, [])
 
     return [...scheduledEvents, ...dueDateEvents]
-  }, [canManageTask, dueDateOnlyTasks, enrichedSchedules])
+  }, [canManageTask, canScheduleTask, dueDateOnlyTasks, enrichedSchedules, projectId, updatingScheduleIds, workspaceId])
+
+  const hasScheduleInCurrentCalendarCache = (scheduleId: number) =>
+    currentCalendarSchedules.some((schedule) => schedule.id === scheduleId)
+
+  const debugCalendarInteraction = (
+    source: 'eventDrop' | 'eventResize',
+    arg: CalendarEventInteractionArg,
+    scheduleId: number | null,
+    taskId: number,
+    scheduleInCurrentCalendarCache: boolean,
+  ) => {
+    if (!import.meta.env.DEV) {
+      return
+    }
+
+    console.debug(`[Chronelis calendar] ${source}`, {
+      eventId: arg.event.id,
+      scheduleId,
+      rawScheduleId: arg.event.extendedProps.scheduleId,
+      taskId: Number.isFinite(taskId) ? taskId : null,
+      isOptimistic: Boolean(arg.event.extendedProps.isOptimistic),
+      isDueDateOnly: Boolean(arg.event.extendedProps.isDueDateOnly),
+      oldStart: toDebugDate(arg.oldEvent?.start),
+      oldEnd: toDebugDate(arg.oldEvent?.end),
+      newStart: toDebugDate(arg.event.start),
+      newEnd: toDebugDate(arg.event.end),
+      scheduleInCurrentCalendarCache,
+    })
+  }
 
   const runCalendarTransition = async (direction: 1 | -1, action: () => void) => {
     setNavigationDirection(direction)
@@ -569,6 +679,11 @@ export function CalendarPage() {
 
   const handleEventClick = (arg: CalendarEventInteractionArg) => {
     arg.jsEvent?.preventDefault?.()
+    if (arg.event.extendedProps.isOptimistic) {
+      toast.info(t('calendar.scheduleSaving'))
+      return
+    }
+
     const taskId = Number(arg.event.extendedProps.taskId)
     if (Number.isFinite(taskId)) {
       openTaskDrawer(taskId, 'view')
@@ -577,6 +692,12 @@ export function CalendarPage() {
 
   const handleEventDrop = async (arg: CalendarEventInteractionArg) => {
     const taskId = Number(arg.event.extendedProps.taskId)
+    const scheduleId = readPositiveNumber(arg.event.extendedProps.scheduleId)
+    const isOptimistic = Boolean(arg.event.extendedProps.isOptimistic)
+    const isDueDateOnly = Boolean(arg.event.extendedProps.isDueDateOnly)
+    const scheduleInCurrentCalendarCache = scheduleId != null && hasScheduleInCurrentCalendarCache(scheduleId)
+    debugCalendarInteraction('eventDrop', arg, scheduleId, taskId, scheduleInCurrentCalendarCache)
+
     const task = arg.event.extendedProps.task as Task | undefined
     const range = resolveEventRange(arg.event.start, arg.event.end)
     if (!Number.isFinite(taskId) || !range || !task) {
@@ -590,22 +711,35 @@ export function CalendarPage() {
       return
     }
 
-    if (arg.event.extendedProps.isDueDateOnly) {
-      try {
-        await createScheduleMutation.mutateAsync({
-          taskId,
-          start: range.start,
-          end: range.end,
-        })
-      } catch {
-        arg.revert?.()
-      }
+    if (isDueDateOnly) {
+      toast.info(t('calendar.scheduleRequiredToDrag'))
+      arg.revert?.()
       return
     }
 
-    const scheduleId = Number(arg.event.id)
-    if (!Number.isFinite(scheduleId)) {
+    if (isOptimistic) {
+      toast.info(t('calendar.scheduleSaving'))
       arg.revert?.()
+      return
+    }
+
+    if (scheduleId == null) {
+      toast.info(t('calendar.scheduleSynced'))
+      arg.revert?.()
+      void syncScheduleQueries(taskId)
+      return
+    }
+
+    if (updatingScheduleIdsRef.current.has(scheduleId) || Boolean(arg.event.extendedProps.isUpdating)) {
+      toast.info(t('calendar.scheduleSaving'))
+      arg.revert?.()
+      return
+    }
+
+    if (!scheduleInCurrentCalendarCache) {
+      toast.info(t('calendar.scheduleSynced'))
+      arg.revert?.()
+      void syncScheduleQueries(taskId)
       return
     }
 
@@ -623,6 +757,12 @@ export function CalendarPage() {
 
   const handleEventResize = async (arg: CalendarEventInteractionArg) => {
     const taskId = Number(arg.event.extendedProps.taskId)
+    const scheduleId = readPositiveNumber(arg.event.extendedProps.scheduleId)
+    const isOptimistic = Boolean(arg.event.extendedProps.isOptimistic)
+    const isDueDateOnly = Boolean(arg.event.extendedProps.isDueDateOnly)
+    const scheduleInCurrentCalendarCache = scheduleId != null && hasScheduleInCurrentCalendarCache(scheduleId)
+    debugCalendarInteraction('eventResize', arg, scheduleId, taskId, scheduleInCurrentCalendarCache)
+
     const task = arg.event.extendedProps.task as Task | undefined
     const range = resolveEventRange(arg.event.start, arg.event.end)
     if (!Number.isFinite(taskId) || !range || !task) {
@@ -636,22 +776,35 @@ export function CalendarPage() {
       return
     }
 
-    if (arg.event.extendedProps.isDueDateOnly) {
-      try {
-        await createScheduleMutation.mutateAsync({
-          taskId,
-          start: range.start,
-          end: range.end,
-        })
-      } catch {
-        arg.revert?.()
-      }
+    if (isDueDateOnly) {
+      toast.info(t('calendar.scheduleRequiredToDrag'))
+      arg.revert?.()
       return
     }
 
-    const scheduleId = Number(arg.event.id)
-    if (!Number.isFinite(scheduleId)) {
+    if (isOptimistic) {
+      toast.info(t('calendar.scheduleSaving'))
       arg.revert?.()
+      return
+    }
+
+    if (scheduleId == null) {
+      toast.info(t('calendar.scheduleSynced'))
+      arg.revert?.()
+      void syncScheduleQueries(taskId)
+      return
+    }
+
+    if (updatingScheduleIdsRef.current.has(scheduleId) || Boolean(arg.event.extendedProps.isUpdating)) {
+      toast.info(t('calendar.scheduleSaving'))
+      arg.revert?.()
+      return
+    }
+
+    if (!scheduleInCurrentCalendarCache) {
+      toast.info(t('calendar.scheduleSynced'))
+      arg.revert?.()
+      void syncScheduleQueries(taskId)
       return
     }
 
@@ -853,9 +1006,12 @@ export function CalendarPage() {
                 eventDidMount={(arg: CalendarEventMountArg) => {
                   arg.el.oncontextmenu = (event) => {
                     const taskId = Number(arg.event.extendedProps.taskId)
+                    const scheduleId = readFiniteNumber(arg.event.extendedProps.scheduleId)
                     const canManage = Boolean(arg.event.extendedProps.canDelete)
+                    const isDueDateOnly = Boolean(arg.event.extendedProps.isDueDateOnly)
+                    const isOptimistic = Boolean(arg.event.extendedProps.isOptimistic)
                     if (Number.isFinite(taskId)) {
-                      openCalendarTaskContextMenu(event as MouseEvent, taskId, canManage)
+                      openCalendarTaskContextMenu(event as MouseEvent, taskId, scheduleId, canManage, isDueDateOnly, isOptimistic)
                     }
                   }
                 }}
@@ -864,7 +1020,11 @@ export function CalendarPage() {
                 }}
                 eventClassNames={(arg) => {
                   const priority = String(arg.event.extendedProps.priority ?? 'MEDIUM') as TaskPriorityType
-                  return PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM
+                  const classNames = [...(PRIORITY_EVENT_CLASSNAMES[priority] ?? PRIORITY_EVENT_CLASSNAMES.MEDIUM)]
+                  if (arg.event.extendedProps.isOptimistic || arg.event.extendedProps.isUpdating) {
+                    classNames.push('chronelis-event--saving')
+                  }
+                  return classNames
                 }}
                 slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
                 eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false, meridiem: false }}
@@ -873,9 +1033,12 @@ export function CalendarPage() {
                     className="flex min-w-0 flex-col px-1 py-0.5"
                     onContextMenu={(event) => {
                       const taskId = Number(arg.event.extendedProps.taskId)
+                      const scheduleId = readFiniteNumber(arg.event.extendedProps.scheduleId)
                       const canManage = Boolean(arg.event.extendedProps.canDelete)
+                      const isDueDateOnly = Boolean(arg.event.extendedProps.isDueDateOnly)
+                      const isOptimistic = Boolean(arg.event.extendedProps.isOptimistic)
                       if (Number.isFinite(taskId)) {
-                        openCalendarTaskContextMenu(event.nativeEvent, taskId, canManage)
+                        openCalendarTaskContextMenu(event.nativeEvent, taskId, scheduleId, canManage, isDueDateOnly, isOptimistic)
                       }
                     }}
                   >
@@ -912,12 +1075,10 @@ export function CalendarPage() {
             ? {
                 scheduleStart: toInputDateTimeValue(createDialog.start),
                 scheduleEnd: toInputDateTimeValue(createDialog.end),
-                dueDate: toInputDateTimeValue(createDialog.end),
               }
             : undefined
         }
-        onCreated={async (task) => {
-          await invalidateTaskAndCalendarQueries(task.id)
+        onCreated={() => {
           setCreateDialog(null)
         }}
       />
@@ -953,6 +1114,16 @@ export function CalendarPage() {
 
           if (!menu.canManage) {
             toast.error(t('calendar.permissionDeleteTask'))
+            return
+          }
+
+          if (menu.isOptimistic) {
+            toast.info(t('calendar.scheduleSaving'))
+            return
+          }
+
+          if (menu.scheduleId != null && menu.scheduleId > 0) {
+            deleteScheduleMutation.mutate({ scheduleId: menu.scheduleId, taskId: menu.taskId })
             return
           }
 

@@ -40,6 +40,87 @@ interface ScheduleUpdateParams {
   scheduledEnd: string
 }
 
+interface IdentifiedEntity {
+  id: number
+}
+
+export function dedupeById<T extends IdentifiedEntity>(items: T[]): T[] {
+  const result: T[] = []
+  const indexById = new Map<number, number>()
+
+  for (const item of items) {
+    const existingIndex = indexById.get(item.id)
+    if (existingIndex === undefined) {
+      indexById.set(item.id, result.length)
+      result.push(item)
+      continue
+    }
+
+    result[existingIndex] = item
+  }
+
+  return result
+}
+
+export function upsertById<T extends IdentifiedEntity>(items: T[], item: T): T[] {
+  let replaced = false
+  const nextItems = items.map((current) => {
+    if (current.id !== item.id) {
+      return current
+    }
+
+    replaced = true
+    return item
+  })
+
+  return dedupeById(replaced ? nextItems : [...nextItems, item])
+}
+
+export function replaceById<T extends IdentifiedEntity>(items: T[], item: T): T[] {
+  return dedupeById(items.map((current) => (current.id === item.id ? item : current)))
+}
+
+export function replaceOptimisticById<T extends IdentifiedEntity>(items: T[], optimisticId: number, item: T): T[] {
+  let replaced = false
+  const nextItems = items.map((current) => {
+    if (current.id !== optimisticId) {
+      return current
+    }
+
+    replaced = true
+    return item
+  })
+
+  return dedupeById(replaced ? nextItems : [...nextItems, item])
+}
+
+export function removeById<T extends IdentifiedEntity>(items: T[], id: number): T[] {
+  return items.filter((item) => item.id !== id)
+}
+
+export function dedupeSchedulesById(schedules: TaskSchedule[]): TaskSchedule[] {
+  return dedupeById(schedules)
+}
+
+export function removeMatchingOptimisticSchedules(schedules: TaskSchedule[], savedSchedule: TaskSchedule): TaskSchedule[] {
+  return schedules.filter(
+    (schedule) => {
+      const sameTime =
+        schedule.scheduledStart === savedSchedule.scheduledStart && schedule.scheduledEnd === savedSchedule.scheduledEnd
+      const sameTask = schedule.taskId === savedSchedule.taskId
+      return !(schedule.id < 0 && sameTime && (sameTask || schedule.taskId < 0))
+    },
+  )
+}
+
+export function removeOptimisticSchedulesForTask(schedules: TaskSchedule[], optimisticTaskId: number): TaskSchedule[] {
+  return schedules.filter((schedule) => !(schedule.id < 0 && schedule.taskId === optimisticTaskId))
+}
+
+export function dedupeTasksById(tasks: Task[]): Task[] {
+  return dedupeById(tasks)
+}
+
 function sortByBoardPosition(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => a.boardPosition - b.boardPosition)
 }
@@ -82,7 +163,7 @@ function reindexBoardPositions(tasks: Task[]): Task[] {
 
 function resolveDefaultOpenStatus(statuses: TaskStatus[]): TaskStatus | null {
   const orderedOpenStatuses = [...statuses]
-    .filter((status) => !Boolean(status.isClosed))
+    .filter((status) => !status.isClosed)
     .sort((left, right) => left.position - right.position)
 
   if (orderedOpenStatuses.length === 0) {
@@ -126,17 +207,17 @@ export function applyTaskMove(tasks: Task[], params: MoveTaskParams): Task[] {
   const movedTask: Task = {
     ...movingTask,
     status: targetStatus ? { ...targetStatus } : movingTask.status,
-    isCompleted: targetStatus ? Boolean(targetStatus.isClosed) : movingTask.isCompleted,
+    isCompleted: targetStatus ? targetStatus.isClosed : movingTask.isCompleted,
     completedAt: targetStatus
-      ? Boolean(targetStatus.isClosed)
+      ? targetStatus.isClosed
         ? (movingTask.completedAt ?? new Date().toISOString())
         : undefined
       : movingTask.completedAt,
   }
 
   if (targetStatus) {
-    if (Boolean(targetStatus.isClosed)) {
-      if (!Boolean(movingTask.status.isClosed)) {
+    if (targetStatus.isClosed) {
+      if (!movingTask.status.isClosed) {
         rememberTaskOpenStatus(movedTask.id, movingTask.status.id)
       }
     } else {
@@ -196,13 +277,13 @@ export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Ta
 
   const sourceStatus = statusById.get(sourceStatusId) ?? movingTask.status
   const closedStatuses = [...params.statuses]
-    .filter((status) => Boolean(status.isClosed))
+    .filter((status) => status.isClosed)
     .sort((left, right) => left.position - right.position)
 
-  let targetStatus = sourceStatus
+  let targetStatus: TaskStatus
 
   if (params.isCompleted) {
-    if (!Boolean(sourceStatus.isClosed)) {
+    if (!sourceStatus.isClosed) {
       rememberTaskOpenStatus(movingTask.id, sourceStatus.id)
     }
 
@@ -218,11 +299,11 @@ export function applyTaskCompletion(tasks: Task[], params: CompletionParams): Ta
     const defaultOpenStatus = resolveDefaultOpenStatus(params.statuses)
 
     targetStatus =
-      rememberedOpenStatus && !Boolean(rememberedOpenStatus.isClosed)
+      rememberedOpenStatus && !rememberedOpenStatus.isClosed
         ? rememberedOpenStatus
         : (defaultOpenStatus ?? sourceStatus)
 
-    if (!Boolean(targetStatus.isClosed)) {
+    if (!targetStatus.isClosed) {
       rememberTaskOpenStatus(movingTask.id, targetStatus.id)
     }
 
@@ -307,7 +388,7 @@ export function patchProjectTaskQueries(
     if (!oldData) return oldData
     return {
       ...oldData,
-      content: updater(oldData.content),
+      content: dedupeTasksById(updater(oldData.content)),
     }
   })
 }
@@ -317,7 +398,7 @@ export function patchGoalTaskQueries(queryClient: QueryClient, updater: (tasks: 
     if (!oldData) return oldData
     return {
       ...oldData,
-      content: updater(oldData.content),
+      content: dedupeTasksById(updater(oldData.content)),
     }
   })
 }
@@ -343,7 +424,7 @@ export function patchProjectCalendarQueries(
       if (!oldData) return oldData
       return {
         ...oldData,
-        content: updater(oldData.content),
+        content: dedupeSchedulesById(updater(oldData.content)),
       }
     },
   )
@@ -366,20 +447,22 @@ export function patchTaskScheduleQueries(
 ): void {
   queryClient.setQueriesData<TaskSchedule[]>({ queryKey: ['task-schedules', 'task', taskId] }, (oldData) => {
     if (!oldData) return oldData
-    return updater(oldData)
+    return dedupeSchedulesById(updater(oldData))
   })
 }
 
 export function applyScheduleUpdate(schedules: TaskSchedule[], params: ScheduleUpdateParams): TaskSchedule[] {
   const updatedDate = params.scheduledStart.slice(0, 10)
-  return schedules.map((schedule) => {
-    if (schedule.id !== params.scheduleId) return schedule
+  return dedupeSchedulesById(
+    schedules.map((schedule) => {
+      if (schedule.id !== params.scheduleId) return schedule
 
-    return {
-      ...schedule,
-      scheduledStart: params.scheduledStart,
-      scheduledEnd: params.scheduledEnd,
-      scheduledDate: updatedDate,
-    }
-  })
+      return {
+        ...schedule,
+        scheduledStart: params.scheduledStart,
+        scheduledEnd: params.scheduledEnd,
+        scheduledDate: updatedDate,
+      }
+    }),
+  )
 }
