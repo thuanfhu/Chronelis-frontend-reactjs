@@ -36,7 +36,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
     >
       <div className="flex items-center gap-2 mb-2">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          {t('otherPermissions', 'Quyền chưa phân loại')}
+          {t('otherPermissions')}
         </h3>
         <Badge variant="secondary" className="rounded-full font-mono text-[10px]">
           {Array.isArray(children) ? children.length : children ? 1 : 0}
@@ -44,7 +44,7 @@ function DroppableArea({ children }: { children: React.ReactNode }) {
       </div>
       {children || (
         <div className="text-sm text-center max-w-sm opacity-60">
-          {t('dragPermissionHere', 'Kéo thả các quyền không thuộc module nào vào đây')}
+          {t('dragPermissionHere')}
         </div>
       )}
     </div>
@@ -214,7 +214,7 @@ export function PermissionsTable() {
           module: newModule || '',
         })
 
-        toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
+        toast.success(t('notification.permissionUpdateSuccess'))
         refetch()
       } catch (error) {
         queryClient.setQueryData(['admin-permissions'], (oldData: any) => {

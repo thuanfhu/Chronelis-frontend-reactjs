@@ -445,7 +445,7 @@ export function CalendarPage() {
       patchTaskScheduleQueries(queryClient, variables.taskId, (schedules) => upsertById(schedules, savedSchedule))
 
       const timeStr = formatScheduleTime(variables.start, localeTag)
-      toast.success(t('calendar.scheduleUpdatedWithTime', `Đã lên lịch lại cho sự kiện lúc ${timeStr}`))
+      toast.success(t('calendar.scheduleUpdatedWithTime', { time: timeStr }))
     },
     onSettled: (_data, _error, variables) => {
       setScheduleUpdating(variables.scheduleId, false)

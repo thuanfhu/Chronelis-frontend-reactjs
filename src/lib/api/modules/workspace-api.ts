@@ -4,6 +4,7 @@ import type { PageResult, Workspace, WorkspaceMember, WorkspaceMemberRoleType } 
 
 export interface WorkspacePayload {
   name: string
+  imageUrl?: string
 }
 
 export interface AddWorkspaceMemberPayload {

@@ -35,7 +35,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { goalApi } from '@/lib/api/modules/goal-api'
@@ -396,6 +396,7 @@ export function TaskDetailsDrawer() {
             email: currentUser.email,
             firstName: currentUser.firstName,
             lastName: currentUser.lastName,
+            avatarUrl: currentUser.avatarUrl,
           },
           content: newComment.trim(),
           createdAt: nowIso,
@@ -621,6 +622,7 @@ export function TaskDetailsDrawer() {
                 email: currentUser.email,
                 firstName: currentUser.firstName,
                 lastName: currentUser.lastName,
+                avatarUrl: currentUser.avatarUrl,
               }
             : currentTask.createdBy
           const optimisticSchedule: TaskSchedule = {
@@ -868,6 +870,7 @@ export function TaskDetailsDrawer() {
         searchText: `${member.user.email} ${member.role}`,
         prefix: (
           <Avatar className="size-6">
+            {member.user.avatarUrl && <AvatarImage src={member.user.avatarUrl} alt={member.user.firstName} />}
             <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
               {member.user.firstName.charAt(0)}
               {member.user.lastName.charAt(0)}
@@ -1651,6 +1654,7 @@ export function TaskDetailsDrawer() {
                                       {task.assignee ? (
                                         <div className="flex items-center gap-1.5">
                                           <Avatar className="size-5">
+                                            {task.assignee.avatarUrl && <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.firstName} />}
                                             <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
                                               {task.assignee.firstName.charAt(0)}
                                               {task.assignee.lastName.charAt(0)}

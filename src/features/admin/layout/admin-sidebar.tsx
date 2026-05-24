@@ -5,7 +5,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
 import { ConfirmModal } from '@/components/shared/confirm-modal'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils/cn'
 import { toast } from 'sonner'
@@ -164,6 +164,7 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: AdminSidebarProps) {
             }}
           >
             <Avatar className="size-9">
+              {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={fullName} />}
               <AvatarFallback className="bg-sidebar-primary/15 text-xs font-semibold text-sidebar-primary">
                 {getInitials(fullName)}
               </AvatarFallback>

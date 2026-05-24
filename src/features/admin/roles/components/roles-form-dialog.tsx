@@ -122,7 +122,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           handleClose()
         }
 
-        toast.success(t('notification.roleUpdateSuccess', 'Cập nhật vai trò thành công'))
+        toast.success(t('notification.roleUpdateSuccess'))
       } else {
         await createRole({
           name: data.name,
@@ -130,12 +130,12 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
           active: data.active,
           permissionIds: data.permissionIds,
         })
-        toast.success(t('notification.roleCreateSuccess', 'Tạo vai trò thành công'))
+        toast.success(t('notification.roleCreateSuccess'))
       }
       handleClose()
     } catch (error) {
       console.error('Submit error:', error)
-      toast.error(error instanceof Error ? error.message : t('notification.genericError', 'Có lỗi xảy ra'))
+      toast.error(error instanceof Error ? error.message : t('notification.genericError'))
     }
   }
 
@@ -157,7 +157,7 @@ export function RolesFormDialog({ open, onOpenChange, currentRow }: Props) {
         }))
         setAllPermissions(perms)
       } catch (error) {
-        toast.error(t('notification.permissionLoadError', 'Không thể tải danh sách quyền'))
+        toast.error(t('notification.permissionLoadError'))
       } finally {
         setIsLoading(false)
       }

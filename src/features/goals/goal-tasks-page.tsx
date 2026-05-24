@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { highlightMatch } from '@/lib/utils/highlight-match'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { LoadingPanel } from '@/components/shared/loading-panel'
@@ -427,6 +427,12 @@ export function GoalTasksPage() {
                       {task.assignee ? (
                         <>
                           <Avatar className="size-5 shrink-0">
+                            {task.assignee.avatarUrl && (
+                              <AvatarImage
+                                src={task.assignee.avatarUrl}
+                                alt={`${task.assignee.firstName} ${task.assignee.lastName}`}
+                              />
+                            )}
                             <AvatarFallback className="bg-primary/15 text-[9px] font-bold text-primary">
                               {task.assignee.firstName.charAt(0)}
                               {task.assignee.lastName.charAt(0)}

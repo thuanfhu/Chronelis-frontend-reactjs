@@ -144,7 +144,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
         }
 
         if (Object.keys(changedFields).length === 0) {
-          toast.info('Không có thông tin nào được thay đổi.')
+          toast.info(t('userManagement.noChanges'))
           setIsUploading(false)
           return
         }
@@ -172,7 +172,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
       onOpenChange(false)
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Đã xảy ra lỗi. Vui lòng thử lại.')
+      toast.error(t('userManagement.saveError'))
       setIsUploading(false)
     }
   }
@@ -189,14 +189,14 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
           <DialogHeader className="p-6 pb-2 border-b bg-slate-50 dark:bg-zinc-800">
             <DialogTitle className="text-xl">
               {isView
-                ? t('userManagement.viewUser', 'Xem thông tin người dùng')
+                ? t('userManagement.viewUser')
                 : isEdit
                   ? t('userManagement.editUser')
                   : t('userManagement.addUser')}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
               {isView
-                ? t('userManagement.viewUserDesc', 'Chi tiết thông tin người dùng')
+                ? t('userManagement.viewUserDesc')
                 : isEdit
                   ? t('userManagement.editUserDesc')
                   : t('userManagement.addUserDesc')}
@@ -406,7 +406,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
                             <FormItem>
                               <FormLabel>{t('userManagement.avatar')}</FormLabel>
                               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                                <Avatar className="h-20 w-20 rounded-md border-2 border-slate-200">
+                                <Avatar className="h-20 w-20 rounded-full border-2 border-slate-200">
                                   <AvatarImage
                                     src={
                                       previewUrl ||
@@ -414,7 +414,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
                                     }
                                     alt="Avatar preview"
                                   />
-                                  <AvatarFallback className="rounded-md bg-slate-100 dark:bg-slate-600">
+                                  <AvatarFallback className="rounded-full bg-slate-100 dark:bg-slate-600">
                                     <IconUserCircle className="h-10 w-10 text-slate-400" />
                                   </AvatarFallback>
                                 </Avatar>
@@ -505,7 +505,7 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
               onClick={() => onOpenChange(false)}
               className="transition-all duration-200 hover:bg-slate-100"
             >
-              {isView ? t('close', 'Đóng') : t('userManagement.cancel')}
+              {isView ? t('common.close') : t('userManagement.cancel')}
             </Button>
             {!isView && (
               <Button

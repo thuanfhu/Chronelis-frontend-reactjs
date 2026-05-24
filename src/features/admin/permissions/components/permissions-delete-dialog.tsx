@@ -35,15 +35,15 @@ export function PermissionsDeleteDialog({ open, onOpenChange, type, data }: Prop
       setIsDeleting(true)
       if (type === 'module' && data.name) {
         await adminPermissionApi.deleteModule(data.name)
-        toast.success(t('moduleDeleteSuccess', `Xóa module "${data.name}" thành công`))
+        toast.success(t('moduleDeleteSuccess', { moduleName: data.name }))
       } else if (data.permissionId) {
         await adminPermissionApi.remove(data.permissionId)
-        toast.success(t('permissionDeleteSuccess', 'Xóa permission thành công'))
+        toast.success(t('permissionDeleteSuccess'))
       }
       refetch()
       onOpenChange(false)
     } catch (error) {
-      toast.error(t('permissionDeleteError', 'Lỗi khi xóa permission'))
+      toast.error(t('permissionDeleteError'))
     } finally {
       setIsDeleting(false)
     }
@@ -54,25 +54,22 @@ export function PermissionsDeleteDialog({ open, onOpenChange, type, data }: Prop
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {type === 'module' ? t('moduleConfirmDelete', 'Xóa module') : t('permissionConfirmDelete')}
+            {type === 'module' ? t('moduleConfirmDelete') : t('permissionConfirmDelete')}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {type === 'module'
-              ? t('moduleDeleteDesc', {
-                  moduleName: data.name,
-                  defaultValue: `Xóa module "${data.name}" sẽ xóa tất cả permissions trong module này.`,
-                })
-              : t('permissionDeleteDesc', `Bạn có chắc muốn xóa permission "${data.name}"?`)}
+              ? t('moduleDeleteDesc', { moduleName: data.name })
+              : t('permissionDeleteDesc', { permissionName: data.name })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? t('permissionDeleting', 'Đang xóa...') : t('delete')}
+            {isDeleting ? t('permissionDeleting') : t('common.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

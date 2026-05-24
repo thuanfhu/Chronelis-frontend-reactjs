@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { activityLogApi } from '@/lib/api/modules/activity-log-api'
 import { queryKeys } from '@/lib/api/query-keys'
@@ -197,6 +197,9 @@ export function ActivityLogPage() {
 
                       <div className="flex items-start gap-4 p-4 rounded-2xl transition-all bg-background border border-border/80 dark:border-border/40 shadow-sm group-hover:shadow-md group-hover:border-primary/30 group-hover:bg-muted/5">
                         <Avatar className="size-10 shrink-0 shadow-sm border-2 border-background ring-1 ring-border/20">
+                          {log.actor.avatarUrl && (
+                            <AvatarImage src={log.actor.avatarUrl} alt={`${log.actor.firstName} ${log.actor.lastName}`} />
+                          )}
                           <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-xs font-bold text-primary">
                             {log.actor.firstName.charAt(0)}
                             {log.actor.lastName.charAt(0)}

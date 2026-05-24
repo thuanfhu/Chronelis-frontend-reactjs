@@ -50,6 +50,7 @@ import { useUiStore } from '@/app/store/ui-store'
 import { useAuthStore } from '@/app/store/auth-store'
 import { isAdminUser } from '@/lib/auth/role-utils'
 import { cn } from '@/lib/utils/cn'
+import { WorkspaceImageUpload } from '@/components/shared/workspace-image-upload'
 import { LanguageSwitcher } from '@/components/shared/language-switcher'
 
 export function AppTopbar() {
@@ -74,10 +75,13 @@ export function AppTopbar() {
   // Workspace CRUD state
   const [createOpen, setCreateOpen] = useState(false)
   const [createName, setCreateName] = useState('')
+  const [createImageUrl, setCreateImageUrl] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [editWsId, setEditWsId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
   const [editInitialName, setEditInitialName] = useState('')
+  const [editInitialImageUrl, setEditInitialImageUrl] = useState('')
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const unreadQuery = useQuery({
@@ -92,7 +96,7 @@ export function AppTopbar() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (name: string) => workspaceApi.create({ name }),
+    mutationFn: (payload: { name: string; imageUrl?: string }) => workspaceApi.create(payload),
     onSuccess: (created) => {
       setCreateName('')
       setCreateOpen(false)
@@ -108,9 +112,9 @@ export function AppTopbar() {
   })
 
   const editMutation = useMutation({
-    mutationFn: (name: string) => {
+    mutationFn: (payload: { name: string; imageUrl?: string }) => {
       if (!editWsId) throw new Error('Workspace không tồn tại')
-      return workspaceApi.update(editWsId, { name })
+      return workspaceApi.update(editWsId, payload)
     },
     onSuccess: () => {
       setEditOpen(false)
@@ -123,10 +127,12 @@ export function AppTopbar() {
     },
   })
 
-  const openEdit = (wsId: number, wsName: string) => {
+  const openEdit = (wsId: number, wsName: string, wsImageUrl?: string | null) => {
     setEditWsId(wsId)
     setEditName(wsName)
+    setEditImageUrl(wsImageUrl || '')
     setEditInitialName(wsName.trim())
+    setEditInitialImageUrl(wsImageUrl || '')
     setEditOpen(true)
   }
 
@@ -179,9 +185,13 @@ export function AppTopbar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75">
-                <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                  {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
-                </div>
+                {currentWorkspace?.imageUrl ? (
+                  <img src={currentWorkspace.imageUrl} alt={currentWorkspace.name} className="size-5 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                    {currentWorkspace?.name?.charAt(0).toUpperCase() ?? 'W'}
+                  </div>
+                )}
                 <span className="hidden max-w-28 truncate text-xs font-medium sm:inline">
                   {currentWorkspace?.name ??
                     (activeWorkspaceId ? `Workspace #${activeWorkspaceId}` : t('workspace.title'))}
@@ -194,7 +204,7 @@ export function AppTopbar() {
               sideOffset={8}
               className="w-[min(92vw,18rem)] max-h-[60vh] overflow-y-auto sm:w-56 sm:max-h-[300px]"
             >
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">{t('workspace.title')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {workspaces.map((ws) => (
                 <DropdownMenuItem
@@ -202,16 +212,20 @@ export function AppTopbar() {
                   onClick={() => handleWorkspaceSelect(ws.id)}
                   className="group flex items-center gap-2 pr-1"
                 >
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                    {ws.name.charAt(0).toUpperCase()}
-                  </div>
+                  {ws.imageUrl ? (
+                    <img src={ws.imageUrl} alt={ws.name} className="size-5 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                      {ws.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="flex-1 truncate text-sm">{ws.name}</span>
                   {ws.id === activeWorkspaceId && <Check className="size-3.5 shrink-0 text-primary" />}
                   <button
                     className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation()
-                      openEdit(ws.id, ws.name)
+                      openEdit(ws.id, ws.name, ws.imageUrl)
                     }}
                     title={t('common.edit')}
                   >
@@ -341,7 +355,10 @@ export function AppTopbar() {
         open={createOpen}
         onOpenChange={(open) => {
           setCreateOpen(open)
-          if (!open) setCreateName('')
+          if (!open) {
+            setCreateName('')
+            setCreateImageUrl('')
+          }
         }}
       >
         <DialogContent>
@@ -349,25 +366,34 @@ export function AppTopbar() {
             <DialogTitle>{t('workspace.create')}</DialogTitle>
             <DialogDescription>{t('workspace.title')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="create-ws-name">{t('workspace.title')}</Label>
-            <Input
-              id="create-ws-name"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="e.g. Team Product"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && createName.trim()) createMutation.mutate(createName.trim())
-              }}
-              autoFocus
+          <div className="mt-2 flex flex-col gap-6 sm:flex-row sm:items-start">
+            <WorkspaceImageUpload
+              value={createImageUrl}
+              onChange={setCreateImageUrl}
+              className="size-20 shadow-sm sm:size-24"
             />
+            <div className="flex-1 space-y-3">
+              <Label htmlFor="create-ws-name" className="text-sm font-semibold text-foreground/80">
+                {t('workspace.list.nameLabel')}
+              </Label>
+              <Input
+                id="create-ws-name"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                placeholder={t('workspace.list.namePlaceholder')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && createName.trim()) createMutation.mutate({ name: createName.trim(), imageUrl: createImageUrl.trim() })
+                }}
+                autoFocus
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               {t('common.cancel')}
             </Button>
             <Button
-              onClick={() => createMutation.mutate(createName.trim())}
+              onClick={() => createMutation.mutate({ name: createName.trim(), imageUrl: createImageUrl.trim() })}
               disabled={createMutation.isPending || !createName.trim()}
             >
               {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
@@ -385,35 +411,45 @@ export function AppTopbar() {
           if (!open) {
             setEditWsId(null)
             setEditInitialName('')
+            setEditInitialImageUrl('')
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('common.edit')} workspace</DialogTitle>
+            <DialogTitle>{t('workspace.dialog.editTitle')}</DialogTitle>
             <DialogDescription>{t('workspace.title')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="edit-ws-name">{t('workspace.title')}</Label>
-            <Input
-              id="edit-ws-name"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && editName.trim() && editName.trim() !== editInitialName) {
-                  editMutation.mutate(editName.trim())
-                }
-              }}
-              autoFocus
+          <div className="mt-2 flex flex-col gap-6 sm:flex-row sm:items-start">
+            <WorkspaceImageUpload
+              value={editImageUrl}
+              onChange={setEditImageUrl}
+              className="size-20 shadow-sm sm:size-24"
             />
+            <div className="flex-1 space-y-3">
+              <Label htmlFor="edit-ws-name" className="text-sm font-semibold text-foreground/80">
+                {t('workspace.list.nameLabel')}
+              </Label>
+              <Input
+                id="edit-ws-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && editName.trim() && (editName.trim() !== editInitialName || editImageUrl.trim() !== editInitialImageUrl)) {
+                    editMutation.mutate({ name: editName.trim(), imageUrl: editImageUrl.trim() })
+                  }
+                }}
+                autoFocus
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
               {t('common.cancel')}
             </Button>
             <Button
-              onClick={() => editMutation.mutate(editName.trim())}
-              disabled={editMutation.isPending || !editName.trim() || editName.trim() === editInitialName}
+              onClick={() => editMutation.mutate({ name: editName.trim(), imageUrl: editImageUrl.trim() })}
+              disabled={editMutation.isPending || !editName.trim() || (editName.trim() === editInitialName && editImageUrl.trim() === editInitialImageUrl)}
             >
               {editMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {t('common.save')}

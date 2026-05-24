@@ -80,14 +80,14 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (selectedPermissions.length === 0) {
-      toast.error(t('notification.selectAtLeastOnePermission', 'Vui lòng chọn ít nhất một quyền'))
+      toast.error(t('notification.selectAtLeastOnePermission'))
       return
     }
 
     setIsLoading(true)
     try {
       if (modules.includes(values.moduleName)) {
-        form.setError('moduleName', { message: 'Tên module đã tồn tại' })
+        form.setError('moduleName', { message: t('moduleNameExists') })
         setIsLoading(false)
         return
       }
@@ -97,11 +97,11 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
         permissionIds: selectedPermissions,
       })
 
-      toast.success(t('notification.moduleCreateSuccess', 'Tạo module thành công'))
+      toast.success(t('notification.moduleCreateSuccess'))
       onOpenChange(false)
       refetch()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('notification.moduleCreateError', 'Không thể tạo module'))
+      toast.error(error instanceof Error ? error.message : t('notification.moduleCreateError'))
     } finally {
       setIsLoading(false)
     }
@@ -210,10 +210,10 @@ export function CreateModuleDialog({ open, onOpenChange }: Props) {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {t('cancel')}
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? t('submitting') : t('submit')}
+                {isLoading ? t('submitting') : t('common.submit')}
               </Button>
             </DialogFooter>
           </form>

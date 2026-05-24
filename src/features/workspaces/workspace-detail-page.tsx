@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
+import { WorkspaceImageUpload } from '@/components/shared/workspace-image-upload'
 import { PageHeader } from '@/components/shared/page-header'
 import { LoadingPanel } from '@/components/shared/loading-panel'
 import { DeferredDeleteStack } from '@/components/shared/deferred-delete-stack'
@@ -37,7 +38,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ProjectFormFields } from '@/components/shared/project-form-fields'
@@ -74,6 +75,7 @@ import type {
   ProjectStatusType,
   Workspace,
   WorkspaceMemberRoleType,
+  WorkspaceTeam,
   WorkspaceTeamMember,
 } from '@/types/domain'
 import type { PageResult } from '@/types/domain'
@@ -160,6 +162,7 @@ export function WorkspaceDetailPage() {
 
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
+  const [projectImageUrl, setProjectImageUrl] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [projectVisibility, setProjectVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [projectManagerUserId, setProjectManagerUserId] = useState('')
@@ -176,15 +179,19 @@ export function WorkspaceDetailPage() {
   const [teamSearch, setTeamSearch] = useState('')
   const [editWsDialogOpen, setEditWsDialogOpen] = useState(false)
   const [editWsName, setEditWsName] = useState('')
+  const [editWsImageUrl, setEditWsImageUrl] = useState('')
   const [editWsInitialName, setEditWsInitialName] = useState('')
+  const [editWsInitialImageUrl, setEditWsInitialImageUrl] = useState('')
   const [editProjectDialogOpen, setEditProjectDialogOpen] = useState(false)
   const [editProjectId, setEditProjectId] = useState<number | null>(null)
   const [editProjectName, setEditProjectName] = useState('')
+  const [editProjectImageUrl, setEditProjectImageUrl] = useState('')
   const [editProjectDescription, setEditProjectDescription] = useState('')
   const [editProjectVisibility, setEditProjectVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [editProjectManagerUserId, setEditProjectManagerUserId] = useState('')
   const [editProjectManagerTeamId, setEditProjectManagerTeamId] = useState('')
   const [editProjectInitialName, setEditProjectInitialName] = useState('')
+  const [editProjectInitialImageUrl, setEditProjectInitialImageUrl] = useState('')
   const [editProjectInitialDescription, setEditProjectInitialDescription] = useState('')
   const [editProjectInitialVisibility, setEditProjectInitialVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [editProjectInitialManagerUserId, setEditProjectInitialManagerUserId] = useState('')
@@ -197,7 +204,16 @@ export function WorkspaceDetailPage() {
   const [inviteMaxUses, setInviteMaxUses] = useState('')
   const [teamDialogOpen, setTeamDialogOpen] = useState(false)
   const [teamName, setTeamName] = useState('')
+  const [teamImageUrl, setTeamImageUrl] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
+  const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false)
+  const [editTeamId, setEditTeamId] = useState<number | null>(null)
+  const [editTeamName, setEditTeamName] = useState('')
+  const [editTeamImageUrl, setEditTeamImageUrl] = useState('')
+  const [editTeamDescription, setEditTeamDescription] = useState('')
+  const [editTeamInitialName, setEditTeamInitialName] = useState('')
+  const [editTeamInitialImageUrl, setEditTeamInitialImageUrl] = useState('')
+  const [editTeamInitialDescription, setEditTeamInitialDescription] = useState('')
   const [teamMemberDraftByTeamId, setTeamMemberDraftByTeamId] = useState<Record<number, string>>({})
   const [teamMemberExpanded, setTeamMemberExpanded] = useState<Record<number, boolean>>({})
 
@@ -254,11 +270,23 @@ export function WorkspaceDetailPage() {
     enabled: Number.isFinite(workspaceId) && (teamsQuery.data?.length ?? 0) > 0,
   })
 
+  const openEditTeamDialog = (team: WorkspaceTeam) => {
+    setEditTeamId(team.id)
+    setEditTeamName(team.name)
+    setEditTeamImageUrl(team.imageUrl ?? '')
+    setEditTeamDescription(team.description ?? '')
+    setEditTeamInitialName(team.name.trim())
+    setEditTeamInitialImageUrl(team.imageUrl ?? '')
+    setEditTeamInitialDescription((team.description ?? '').trim())
+    setEditTeamDialogOpen(true)
+  }
+
   const createProjectMutation = useMutation({
     mutationFn: () => {
       const payload: {
         workspaceId: number
         name: string
+        imageUrl?: string
         description?: string
         visibility: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
@@ -266,6 +294,7 @@ export function WorkspaceDetailPage() {
       } = {
         workspaceId,
         name: projectName.trim(),
+        imageUrl: projectImageUrl.trim() || undefined,
         description: projectDescription.trim() || undefined,
         visibility: projectVisibility,
       }
@@ -285,6 +314,7 @@ export function WorkspaceDetailPage() {
         id: -Date.now(),
         workspaceId,
         name: projectName.trim(),
+        imageUrl: projectImageUrl.trim() || undefined,
         description: projectDescription.trim() || undefined,
         status: 'ACTIVE',
         visibility: 'PUBLIC',
@@ -293,6 +323,7 @@ export function WorkspaceDetailPage() {
           email: user?.email ?? '',
           firstName: user?.firstName ?? '',
           lastName: user?.lastName ?? '',
+          avatarUrl: user?.avatarUrl,
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -309,6 +340,7 @@ export function WorkspaceDetailPage() {
     },
     onSuccess: () => {
       setProjectName('')
+      setProjectImageUrl('')
       setProjectDescription('')
       setProjectVisibility('PUBLIC')
       setProjectManagerUserId('')
@@ -340,7 +372,7 @@ export function WorkspaceDetailPage() {
   })
 
   const updateWorkspaceMutation = useMutation({
-    mutationFn: () => workspaceApi.update(workspaceId, { name: editWsName.trim() }),
+    mutationFn: () => workspaceApi.update(workspaceId, { name: editWsName.trim(), imageUrl: editWsImageUrl.trim() }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['workspaces', 'list'] })
       await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.detail(workspaceId) })
@@ -363,6 +395,7 @@ export function WorkspaceDetailPage() {
               ? {
                   ...workspace,
                   name: editWsName.trim(),
+                  imageUrl: editWsImageUrl.trim(),
                   updatedAt: optimisticUpdatedAt,
                 }
               : workspace,
@@ -374,6 +407,7 @@ export function WorkspaceDetailPage() {
         queryClient.setQueryData<Workspace>(queryKeys.workspaces.detail(workspaceId), {
           ...workspaceDetailSnapshot,
           name: editWsName.trim(),
+          imageUrl: editWsImageUrl.trim(),
           updatedAt: optimisticUpdatedAt,
         })
       }
@@ -421,12 +455,14 @@ export function WorkspaceDetailPage() {
       if (!editProjectId) throw new Error(t('workspace.error.projectNotFound'))
       const payload: {
         name: string
+        imageUrl?: string
         description?: string
         visibility?: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
         managerTeamId?: number
       } = {
         name: editProjectName.trim(),
+        imageUrl: editProjectImageUrl.trim(),
         description: editProjectDescription.trim() || undefined,
       }
 
@@ -451,6 +487,7 @@ export function WorkspaceDetailPage() {
               ? {
                   ...p,
                   name: editProjectName.trim(),
+                  imageUrl: editProjectImageUrl.trim(),
                   description: editProjectDescription.trim() || undefined,
                   updatedAt: new Date().toISOString(),
                 }
@@ -463,6 +500,7 @@ export function WorkspaceDetailPage() {
     onSuccess: () => {
       setEditProjectDialogOpen(false)
       setEditProjectId(null)
+      setEditProjectImageUrl('')
       setEditProjectManagerUserId('')
       setEditProjectManagerTeamId('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
@@ -607,17 +645,48 @@ export function WorkspaceDetailPage() {
       workspaceTeamApi.create({
         workspaceId,
         name: teamName.trim(),
+        imageUrl: teamImageUrl.trim() || undefined,
         description: teamDescription.trim() || undefined,
       }),
     onSuccess: () => {
       setTeamDialogOpen(false)
       setTeamName('')
+      setTeamImageUrl('')
       setTeamDescription('')
       void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
       void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
       toast.success(t('workspace.toast.teamCreated'))
     },
     onError: (error: Error) => toast.error(t('workspace.toast.teamCreateFailed'), { description: error.message }),
+  })
+
+  const updateTeamMutation = useMutation({
+    mutationFn: () => {
+      if (!editTeamId) {
+        throw new Error(t('workspace.error.teamNotFound'))
+      }
+
+      return workspaceTeamApi.update(editTeamId, {
+        name: editTeamName.trim(),
+        imageUrl: editTeamImageUrl.trim(),
+        description: editTeamDescription.trim(),
+      })
+    },
+    onSuccess: () => {
+      setEditTeamDialogOpen(false)
+      setEditTeamId(null)
+      setEditTeamName('')
+      setEditTeamImageUrl('')
+      setEditTeamDescription('')
+      setEditTeamInitialName('')
+      setEditTeamInitialImageUrl('')
+      setEditTeamInitialDescription('')
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teams.byWorkspace(workspaceId) })
+      void queryClient.invalidateQueries({ queryKey: ['workspace-teams', 'members-map', workspaceId] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byWorkspace(workspaceId, 1, 50) })
+      toast.success(t('workspace.toast.teamUpdated'))
+    },
+    onError: (error: Error) => toast.error(t('workspace.toast.teamUpdateFailed'), { description: error.message }),
   })
 
   const addTeamMemberMutation = useMutation({
@@ -706,13 +775,18 @@ export function WorkspaceDetailPage() {
     return isOwner
   }
 
-  const isWorkspaceEditDirty = editWsName.trim() !== editWsInitialName
+  const isWorkspaceEditDirty = editWsName.trim() !== editWsInitialName || editWsImageUrl.trim() !== editWsInitialImageUrl
   const isProjectEditDirty =
     editProjectName.trim() !== editProjectInitialName ||
+    editProjectImageUrl.trim() !== editProjectInitialImageUrl ||
     editProjectDescription.trim() !== editProjectInitialDescription ||
     (isOwner && editProjectVisibility !== editProjectInitialVisibility) ||
     editProjectManagerUserId !== editProjectInitialManagerUserId ||
     editProjectManagerTeamId !== editProjectInitialManagerTeamId
+  const isTeamEditDirty =
+    editTeamName.trim() !== editTeamInitialName ||
+    editTeamImageUrl.trim() !== editTeamInitialImageUrl ||
+    editTeamDescription.trim() !== editTeamInitialDescription
 
   const filteredMembers = useMemo(() => {
     let list = members.slice()
@@ -780,9 +854,20 @@ export function WorkspaceDetailPage() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title={workspace.name}
+        title={
+          <div className="flex items-center gap-3">
+            {workspace.imageUrl ? (
+              <img src={workspace.imageUrl} alt={workspace.name} className="size-8 rounded-full object-cover shadow-sm" />
+            ) : (
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                {workspace.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span>{workspace.name}</span>
+          </div>
+        }
         description={
-          <span className="flex flex-wrap items-center gap-1.5 mt-0.5">
+          <span className="mt-2 flex flex-wrap items-center gap-1.5">
             {t('workspace.headerDesc', {
               owner: `${workspace.owner.firstName} ${workspace.owner.lastName}`,
               memberCount: members.length,
@@ -819,6 +904,7 @@ export function WorkspaceDetailPage() {
                   setEditWsDialogOpen(open)
                   if (!open) {
                     setEditWsInitialName('')
+                    setEditWsInitialImageUrl('')
                   }
                 }}
               >
@@ -829,7 +915,9 @@ export function WorkspaceDetailPage() {
                     className="w-full sm:w-auto"
                     onClick={() => {
                       setEditWsName(workspace.name)
+                      setEditWsImageUrl(workspace.imageUrl || '')
                       setEditWsInitialName(workspace.name.trim())
+                      setEditWsInitialImageUrl(workspace.imageUrl || '')
                     }}
                   >
                     <Pencil className="mr-1.5 size-3.5" />
@@ -841,16 +929,20 @@ export function WorkspaceDetailPage() {
                     <DialogTitle>{t('workspace.dialog.editTitle')}</DialogTitle>
                     <DialogDescription>{t('workspace.dialog.editDescription')}</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-2">
-                    <Label>{t('workspace.field.name')}</Label>
-                    <Input
-                      value={editWsName}
-                      onChange={(e) => setEditWsName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editWsName.trim() && isWorkspaceEditDirty)
-                          updateWorkspaceMutation.mutate()
-                      }}
-                    />
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <WorkspaceImageUpload value={editWsImageUrl} onChange={setEditWsImageUrl} />
+                    <div className="flex-1 space-y-2">
+                      <Label>{t('workspace.field.name')}</Label>
+                      <Input
+                        value={editWsName}
+                        onChange={(e) => setEditWsName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && editWsName.trim() && isWorkspaceEditDirty) {
+                            updateWorkspaceMutation.mutate()
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setEditWsDialogOpen(false)}>
@@ -926,7 +1018,15 @@ export function WorkspaceDetailPage() {
               )}
             </div>
             {canCreateProject && (
-              <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+              <Dialog
+                open={projectDialogOpen}
+                onOpenChange={(open) => {
+                  setProjectDialogOpen(open)
+                  if (!open) {
+                    setProjectImageUrl('')
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-1.5 size-3.5" />
@@ -940,11 +1040,13 @@ export function WorkspaceDetailPage() {
                   </DialogHeader>
                   <ProjectFormFields
                     name={projectName}
+                    imageUrl={projectImageUrl}
                     description={projectDescription}
                     visibility={projectVisibility}
                     managerUserId={projectManagerUserId}
                     managerTeamId={projectManagerTeamId}
                     onNameChange={setProjectName}
+                    onImageUrlChange={setProjectImageUrl}
                     onDescriptionChange={setProjectDescription}
                     onVisibilityChange={setProjectVisibility}
                     onManagerUserChange={setProjectManagerUserId}
@@ -995,8 +1097,12 @@ export function WorkspaceDetailPage() {
                           to={`/workspaces/${workspaceId}/projects/${project.id}`}
                           className="flex min-w-0 flex-1 items-start gap-3"
                         >
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-sm font-bold text-accent-foreground shadow-sm">
-                            {project.name.charAt(0).toUpperCase()}
+                          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent/20 text-sm font-bold text-accent-foreground shadow-sm">
+                            {project.imageUrl ? (
+                              <img src={project.imageUrl} alt={project.name} className="size-full object-cover" />
+                            ) : (
+                              project.name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="font-semibold text-foreground text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2 break-words">
@@ -1028,6 +1134,7 @@ export function WorkspaceDetailPage() {
                                     e.stopPropagation()
                                     setEditProjectId(project.id)
                                     setEditProjectName(project.name)
+                                    setEditProjectImageUrl(project.imageUrl ?? '')
                                     setEditProjectDescription(project.description ?? '')
                                     setEditProjectVisibility(project.visibility ?? 'PUBLIC')
                                     setEditProjectManagerUserId(project.managerUser?.userId ?? '')
@@ -1035,6 +1142,7 @@ export function WorkspaceDetailPage() {
                                       project.managerTeamId ? String(project.managerTeamId) : '',
                                     )
                                     setEditProjectInitialName(project.name.trim())
+                                    setEditProjectInitialImageUrl(project.imageUrl ?? '')
                                     setEditProjectInitialDescription((project.description ?? '').trim())
                                     setEditProjectInitialVisibility(project.visibility ?? 'PUBLIC')
                                     setEditProjectInitialManagerUserId(project.managerUser?.userId ?? '')
@@ -1196,9 +1304,11 @@ export function WorkspaceDetailPage() {
               if (!open) {
                 setEditProjectId(null)
                 setEditProjectVisibility('PUBLIC')
+                setEditProjectImageUrl('')
                 setEditProjectManagerUserId('')
                 setEditProjectManagerTeamId('')
                 setEditProjectInitialName('')
+                setEditProjectInitialImageUrl('')
                 setEditProjectInitialDescription('')
                 setEditProjectInitialVisibility('PUBLIC')
                 setEditProjectInitialManagerUserId('')
@@ -1215,11 +1325,13 @@ export function WorkspaceDetailPage() {
               </DialogHeader>
               <ProjectFormFields
                 name={editProjectName}
+                imageUrl={editProjectImageUrl}
                 description={editProjectDescription}
                 visibility={editProjectVisibility}
                 managerUserId={editProjectManagerUserId}
                 managerTeamId={editProjectManagerTeamId}
                 onNameChange={setEditProjectName}
+                onImageUrlChange={setEditProjectImageUrl}
                 onDescriptionChange={setEditProjectDescription}
                 onVisibilityChange={setEditProjectVisibility}
                 onManagerUserChange={setEditProjectManagerUserId}
@@ -1471,6 +1583,7 @@ export function WorkspaceDetailPage() {
                       className="grid grid-cols-[2.5rem_1fr_2rem_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
                     >
                       <Avatar className="size-9 shrink-0">
+                        {member.user.avatarUrl && <AvatarImage src={member.user.avatarUrl} alt={member.user.firstName} />}
                         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                           {member.user.firstName.charAt(0)}
                           {member.user.lastName.charAt(0)}
@@ -1746,7 +1859,17 @@ export function WorkspaceDetailPage() {
               {t('workspace.teams.count', { filtered: filteredTeams.length, total: visibleTeams.length })}
             </span>
             {canManageWorkspace && (
-              <Dialog open={teamDialogOpen} onOpenChange={setTeamDialogOpen}>
+              <Dialog
+                open={teamDialogOpen}
+                onOpenChange={(open) => {
+                  setTeamDialogOpen(open)
+                  if (!open) {
+                    setTeamName('')
+                    setTeamImageUrl('')
+                    setTeamDescription('')
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="mr-1.5 size-3.5" />
@@ -1759,13 +1882,22 @@ export function WorkspaceDetailPage() {
                     <DialogDescription>{t('workspace.dialog.createTeamDescription')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label>{t('workspace.field.teamName')}</Label>
-                      <Input
-                        value={teamName}
-                        onChange={(e) => setTeamName(e.target.value)}
-                        placeholder={t('workspace.placeholder.teamName')}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <WorkspaceImageUpload
+                        value={teamImageUrl}
+                        onChange={setTeamImageUrl}
+                        alt={teamName || t('workspace.field.teamImage')}
+                        folder="team-images"
+                        fileName="team.jpg"
                       />
+                      <div className="flex-1 space-y-2">
+                        <Label>{t('workspace.field.teamName')}</Label>
+                        <Input
+                          value={teamName}
+                          onChange={(e) => setTeamName(e.target.value)}
+                          placeholder={t('workspace.placeholder.teamName')}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>{t('workspace.field.descriptionOptional')}</Label>
@@ -1793,6 +1925,74 @@ export function WorkspaceDetailPage() {
               </Dialog>
             )}
           </div>
+
+          <Dialog
+            open={editTeamDialogOpen}
+            onOpenChange={(open) => {
+              setEditTeamDialogOpen(open)
+              if (!open) {
+                setEditTeamId(null)
+                setEditTeamName('')
+                setEditTeamImageUrl('')
+                setEditTeamDescription('')
+                setEditTeamInitialName('')
+                setEditTeamInitialImageUrl('')
+                setEditTeamInitialDescription('')
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('workspace.dialog.editTeamTitle')}</DialogTitle>
+                <DialogDescription>{t('workspace.dialog.editTeamDescription')}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <WorkspaceImageUpload
+                    value={editTeamImageUrl}
+                    onChange={setEditTeamImageUrl}
+                    alt={editTeamName || t('workspace.field.teamImage')}
+                    folder="team-images"
+                    fileName="team.jpg"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label>{t('workspace.field.teamName')}</Label>
+                    <Input
+                      value={editTeamName}
+                      onChange={(e) => setEditTeamName(e.target.value)}
+                      placeholder={t('workspace.placeholder.teamName')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && editTeamName.trim() && isTeamEditDirty) {
+                          updateTeamMutation.mutate()
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('workspace.field.descriptionOptional')}</Label>
+                  <Textarea
+                    value={editTeamDescription}
+                    onChange={(e) => setEditTeamDescription(e.target.value)}
+                    rows={3}
+                    placeholder={t('workspace.placeholder.teamDescription')}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditTeamDialogOpen(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={() => updateTeamMutation.mutate()}
+                  disabled={updateTeamMutation.isPending || !editTeamName.trim() || !isTeamEditDirty}
+                >
+                  {updateTeamMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  {t('common.save')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {filteredTeams.length === 0 ? (
             <Card className="border-dashed">
@@ -1842,8 +2042,12 @@ export function WorkspaceDetailPage() {
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
-                            {team.name.charAt(0).toUpperCase()}
+                          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary">
+                            {team.imageUrl ? (
+                              <img src={team.imageUrl} alt={team.name} className="size-full object-cover" />
+                            ) : (
+                              team.name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start gap-2">
@@ -1858,21 +2062,38 @@ export function WorkspaceDetailPage() {
                                 )}
                               </div>
                               {canManageWorkspace && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-7 shrink-0 text-muted-foreground/50 opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
-                                  onClick={() => {
-                                    void scheduleWorkspaceDelete({
-                                      key: `team-${team.id}`,
-                                      label: team.name,
-                                      payload: { kind: 'team', id: team.id, name: team.name },
-                                    })
-                                  }}
-                                  disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-7 shrink-0 text-muted-foreground/50 opacity-0 transition-all hover:text-foreground group-hover:opacity-100"
+                                      disabled={isWorkspaceDeleteQueued(`team-${team.id}`)}
+                                    >
+                                      <MoreHorizontal className="size-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openEditTeamDialog(team)}>
+                                      <Pencil className="mr-2 size-3.5" />
+                                      {t('common.edit')}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        void scheduleWorkspaceDelete({
+                                          key: `team-${team.id}`,
+                                          label: team.name,
+                                          payload: { kind: 'team', id: team.id, name: team.name },
+                                        })
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 size-3.5" />
+                                      {t('workspace.action.deleteTeam')}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
                             </div>
                             <div className="mt-1.5">
@@ -1901,6 +2122,7 @@ export function WorkspaceDetailPage() {
                                     className="flex items-center gap-2 rounded-md p-1.5 transition-colors hover:bg-muted/40"
                                   >
                                     <Avatar className="size-7 shrink-0">
+                                      {teamMember.user.avatarUrl && <AvatarImage src={teamMember.user.avatarUrl} alt={teamMember.user.firstName} />}
                                       <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
                                         {teamMember.user.firstName.charAt(0)}
                                         {teamMember.user.lastName.charAt(0)}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CornerDownRight, Loader2, MessageSquare, MoreHorizontal, Pencil, Send, Trash2, X } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -128,6 +128,9 @@ function ThreadCommentItem({
       >
         <div className="flex items-start gap-3">
           <Avatar className="mt-0.5 size-8 shrink-0">
+            {comment.user.avatarUrl && (
+              <AvatarImage src={comment.user.avatarUrl} alt={`${comment.user.firstName} ${comment.user.lastName}`} />
+            )}
             <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
               {comment.user.firstName.charAt(0)}
               {comment.user.lastName.charAt(0)}

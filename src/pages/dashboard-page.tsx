@@ -190,8 +190,12 @@ export function DashboardPage() {
                   <Card className="group transition-all hover:border-primary/30 hover:shadow-md">
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                          {ws.name.charAt(0).toUpperCase()}
+                        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                          {ws.imageUrl ? (
+                            <img src={ws.imageUrl} alt={ws.name} className="size-full object-cover" />
+                          ) : (
+                            ws.name.charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div className="min-w-0">
                           <CardTitle className="truncate text-base">{ws.name}</CardTitle>

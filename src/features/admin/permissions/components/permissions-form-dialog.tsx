@@ -115,7 +115,7 @@ export function PermissionsFormDialog({ open, onOpenChange, currentRow }: Permis
         }
 
         await adminPermissionApi.update(currentRow.permissionId, changedFields)
-        toast.success(t('notification.permissionUpdateSuccess', 'Cập nhật quyền thành công'))
+        toast.success(t('notification.permissionUpdateSuccess'))
       } else {
         const { name, apiPath, httpMethod, module } = values as z.infer<typeof addPermissionSchema>
         const createPayload: any = {
@@ -125,13 +125,13 @@ export function PermissionsFormDialog({ open, onOpenChange, currentRow }: Permis
           ...(module !== 'none' && module ? { module } : {}),
         }
         await adminPermissionApi.create(createPayload)
-        toast.success(t('notification.permissionCreateSuccess', 'Tạo quyền thành công'))
+        toast.success(t('notification.permissionCreateSuccess'))
       }
 
       await refetch()
       onOpenChange(false)
     } catch (error) {
-      const message = error instanceof Error ? error.message : t('notification.genericError', 'Có lỗi xảy ra')
+      const message = error instanceof Error ? error.message : t('notification.genericError')
       toast.error(message)
     } finally {
       setIsLoading(false)
@@ -214,7 +214,7 @@ export function PermissionsFormDialog({ open, onOpenChange, currentRow }: Permis
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">{t('none', 'Không có')}</SelectItem>
+                      <SelectItem value="none">{t('common.none')}</SelectItem>
                       {availableModules.map((module) => (
                         <SelectItem key={module} value={module}>
                           {module}
@@ -229,10 +229,10 @@ export function PermissionsFormDialog({ open, onOpenChange, currentRow }: Permis
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {t('cancel')}
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? t('permissionUpdating') : t('submit')}
+                {isLoading ? t('permissionUpdating') : t('common.submit')}
               </Button>
             </DialogFooter>
           </form>

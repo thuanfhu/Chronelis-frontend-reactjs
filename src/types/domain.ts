@@ -93,6 +93,7 @@ export interface UserSummary {
   email: string
   firstName: string
   lastName: string
+  avatarUrl?: string
 }
 
 export interface RoleSecure {
@@ -124,6 +125,7 @@ export interface AuthenticationPayload {
 export interface Workspace {
   id: number
   name: string
+  imageUrl?: string | null
   owner: UserSummary
   createdAt: string
   updatedAt: string
@@ -141,6 +143,7 @@ export interface Project {
   id: number
   workspaceId: number
   name: string
+  imageUrl?: string | null
   description?: string
   status: ProjectStatusType
   visibility: ProjectVisibilityType
@@ -323,6 +326,7 @@ export interface WorkspaceTeam {
   id: number
   workspaceId: number
   name: string
+  imageUrl?: string | null
   description?: string
   createdBy: UserSummary
   memberCount: number

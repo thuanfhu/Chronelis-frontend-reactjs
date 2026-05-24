@@ -220,6 +220,12 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {isOwnerOrManager && (
+              <Button className="w-full gap-2 sm:w-auto shrink-0" onClick={openCreateDialog}>
+                <Plus className="size-4" />
+                {t('taskTypes.create')}
+              </Button>
+            )}
             <div className="relative w-full max-w-md flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -229,12 +235,6 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                 className="pl-9"
               />
             </div>
-            {isOwnerOrManager && (
-              <Button className="w-full gap-2 sm:w-auto shrink-0" onClick={openCreateDialog}>
-                <Plus className="size-4" />
-                {t('taskTypes.create')}
-              </Button>
-            )}
           </div>
         </CardHeader>
 

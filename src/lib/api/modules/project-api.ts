@@ -14,6 +14,7 @@ import type {
 
 interface ProjectPayload {
   name: string
+  imageUrl?: string
   description?: string
   visibility?: ProjectVisibilityType
   managerUserId?: string
