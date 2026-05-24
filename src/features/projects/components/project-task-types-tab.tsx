@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Edit3, Loader2, Palette, Plus, Search, Tags, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -55,6 +56,7 @@ function isValidHexColor(value: string) {
 }
 
 export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }: ProjectTaskTypesTabProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -122,30 +124,30 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
     mutationFn: (payload: CreateTaskTypePayload) => taskTypeApi.create(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.taskTypes.byProject(projectId) })
-      toast.success('Đã tạo task type')
+      toast.success(t('taskTypes.toastCreateSuccess'))
       closeDialog()
     },
-    onError: (error: Error) => toast.error('Không thể tạo task type', { description: error.message }),
+    onError: (error: Error) => toast.error(t('taskTypes.toastCreateError'), { description: error.message }),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateTaskTypePayload }) => taskTypeApi.update(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.taskTypes.byProject(projectId) })
-      toast.success('Đã cập nhật task type')
+      toast.success(t('taskTypes.toastUpdateSuccess'))
       closeDialog()
     },
-    onError: (error: Error) => toast.error('Không thể cập nhật task type', { description: error.message }),
+    onError: (error: Error) => toast.error(t('taskTypes.toastUpdateError'), { description: error.message }),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => taskTypeApi.remove(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.taskTypes.byProject(projectId) })
-      toast.success('Đã xóa task type')
+      toast.success(t('taskTypes.toastDeleteSuccess'))
       setDeleteTarget(null)
     },
-    onError: (error: Error) => toast.error('Không thể xóa task type', { description: error.message }),
+    onError: (error: Error) => toast.error(t('taskTypes.toastDeleteError'), { description: error.message }),
   })
 
   const submitForm = () => {
@@ -154,12 +156,12 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
     const color = form.color.trim().toUpperCase()
 
     if (!name) {
-      toast.error('Tên task type không được để trống')
+      toast.error(t('taskTypes.validationNameRequired'))
       return
     }
 
     if (!isValidHexColor(color)) {
-      toast.error('Màu phải có định dạng #RRGGBB')
+      toast.error(t('taskTypes.validationColorInvalid'))
       return
     }
 
@@ -196,9 +198,9 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Metric label="Tổng loại" value={taskTypes.length} />
-        <Metric label="Gắn goal" value={scopedCount} />
-        <Metric label="Toàn project" value={taskTypes.length - scopedCount} />
+        <Metric label={t('taskTypes.total')} value={taskTypes.length} />
+        <Metric label={t('taskTypes.scoped')} value={scopedCount} />
+        <Metric label={t('taskTypes.global')} value={taskTypes.length - scopedCount} />
       </div>
 
       <Card className="overflow-hidden border-border/70 shadow-sm">
@@ -209,28 +211,28 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Tags className="size-5" />
                 </span>
-                Task Types
+                {t('taskTypes.title')}
               </CardTitle>
               <CardDescription>
-                Chuẩn hóa nhãn phân loại như Feature, Bug, Release hoặc Documentation để task dễ lọc và dễ đọc hơn.
+                {t('taskTypes.description')}
               </CardDescription>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full max-w-md">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full max-w-md flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Tìm theo tên, mô tả hoặc goal..."
+                placeholder={t('taskTypes.searchPlaceholder')}
                 className="pl-9"
               />
             </div>
             {isOwnerOrManager && (
-              <Button className="w-full gap-2 sm:w-auto" onClick={openCreateDialog}>
+              <Button className="w-full gap-2 sm:w-auto shrink-0" onClick={openCreateDialog}>
                 <Plus className="size-4" />
-                Tạo task type
+                {t('taskTypes.create')}
               </Button>
             )}
           </div>
@@ -240,7 +242,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
           {taskTypesQuery.isLoading ? (
             <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Đang tải task types...
+              {t('taskTypes.loading')}
             </div>
           ) : filteredTaskTypes.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
@@ -248,11 +250,11 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                 <Tags className="size-7" />
               </div>
               <div>
-                <p className="font-semibold">Chưa có task type phù hợp</p>
+                <p className="font-semibold">{t('taskTypes.emptyTitle')}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {isOwnerOrManager
-                    ? 'Tạo task type đầu tiên để phân loại công việc tốt hơn.'
-                    : 'Project chưa cấu hình task type.'}
+                    ? t('taskTypes.emptyDescManager')
+                    : t('taskTypes.emptyDescMember')}
                 </p>
               </div>
             </div>
@@ -261,7 +263,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
               {filteredTaskTypes.map((type) => {
                 const TypeIcon = resolveTaskTypeIcon(type.icon)
                 const goal = type.goalId ? goals.find((item) => item.id === type.goalId) : null
-                const goalLabel = goal ? goal.title : 'Toàn project'
+                const goalLabel = goal ? goal.title : t('taskTypes.global')
                 const color = type.color ?? '#3B82F6'
 
                 return (
@@ -301,7 +303,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                         {type.description ? (
                           <p className="line-clamp-2 text-sm text-muted-foreground">{type.description}</p>
                         ) : (
-                          <p className="text-sm text-muted-foreground/70">Không có mô tả</p>
+                          <p className="text-sm text-muted-foreground/70">{t('taskTypes.noDescription')}</p>
                         )}
                       </div>
                     </div>
@@ -315,7 +317,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                           onClick={() => openEditDialog(type)}
                         >
                           <Edit3 className="size-4" />
-                          Sửa
+                          {t('taskTypes.edit')}
                         </Button>
                         <Button
                           variant="ghost"
@@ -324,7 +326,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                           onClick={() => setDeleteTarget(type)}
                         >
                           <Trash2 className="size-4" />
-                          Xóa
+                          {t('taskTypes.delete')}
                         </Button>
                       </div>
                     )}
@@ -345,31 +347,31 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingTaskType ? 'Sửa task type' : 'Tạo task type'}</DialogTitle>
+            <DialogTitle>{editingTaskType ? t('taskTypes.dialogEditTitle') : t('taskTypes.dialogCreateTitle')}</DialogTitle>
             <DialogDescription>
-              Task type nên ngắn, rõ và có màu/icon đủ khác biệt để nhận diện nhanh trong task form.
+              {t('taskTypes.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-5 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="task-type-name">Tên</Label>
+              <Label htmlFor="task-type-name">{t('taskTypes.nameLabel')}</Label>
               <Input
                 id="task-type-name"
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Feature, Bug, Release..."
+                placeholder={t('taskTypes.namePlaceholder')}
                 maxLength={100}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="task-type-description">Mô tả</Label>
+              <Label htmlFor="task-type-description">{t('taskTypes.descLabel')}</Label>
               <Textarea
                 id="task-type-description"
                 value={form.description}
                 onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                placeholder="Task type này dùng khi nào?"
+                placeholder={t('taskTypes.descPlaceholder')}
                 className="min-h-24"
                 maxLength={2000}
               />
@@ -377,7 +379,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label>Màu</Label>
+                <Label>{t('taskTypes.colorLabel')}</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="color"
@@ -410,14 +412,14 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                       )}
                       style={{ backgroundColor: color }}
                       onClick={() => setForm((current) => ({ ...current, color }))}
-                      aria-label={`Chọn màu ${color}`}
+                      aria-label={`Select color ${color}`}
                     />
                   ))}
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label>Icon</Label>
+                <Label>{t('taskTypes.iconLabel')}</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {TASK_TYPE_ICON_OPTIONS.map((option) => {
                     const Icon = option.icon
@@ -442,16 +444,16 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
             </div>
 
             <div className="grid gap-2">
-              <Label>Phạm vi goal</Label>
+              <Label>{t('taskTypes.goalScopeLabel')}</Label>
               <Select
                 value={form.goalId}
                 onValueChange={(value) => setForm((current) => ({ ...current, goalId: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn phạm vi" />
+                  <SelectValue placeholder={t('taskTypes.goalScopePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__project">Toàn project</SelectItem>
+                  <SelectItem value="__project">{t('taskTypes.goalScopeGlobal')}</SelectItem>
                   {goals.map((goal) => (
                     <SelectItem key={goal.id} value={String(goal.id)}>
                       {goal.title}
@@ -462,24 +464,24 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
             </div>
 
             <div className="rounded-xl border border-border bg-muted/30 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('taskTypes.preview')}</p>
               <div
                 className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold"
                 style={{ backgroundColor: `${form.color}18`, borderColor: `${form.color}55`, color: form.color }}
               >
                 <SelectedIcon className="size-4" />
-                {form.name.trim() || 'Task type name'}
+                {form.name.trim() || t('taskTypes.defaultNamePreview')}
               </div>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog} disabled={isSubmitting}>
-              Hủy
+              {t('taskTypes.cancel')}
             </Button>
             <Button onClick={submitForm} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-              Lưu task type
+              {t('taskTypes.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -487,14 +489,13 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
       <ConfirmModal
         open={deleteTarget != null}
-        title="Xóa task type"
+        title={t('taskTypes.deleteTitle')}
         description={
           <>
-            Task type <strong>{deleteTarget?.name}</strong> sẽ bị xóa. Các task đang dùng type này sẽ được bỏ liên kết
-            type.
+            {t('taskTypes.deleteDesc1')} <strong>{deleteTarget?.name}</strong> {t('taskTypes.deleteDesc2')}
           </>
         }
-        confirmText="Xóa"
+        confirmText={t('taskTypes.deleteConfirm')}
         confirmVariant="destructive"
         loading={deleteMutation.isPending}
         onConfirm={() => {
