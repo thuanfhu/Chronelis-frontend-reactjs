@@ -18,6 +18,7 @@ import {
   NotebookText,
   Clock3,
   X,
+  ArrowUpRight,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -532,113 +533,118 @@ export function TodoPage() {
           ))}
         </div>
 
-        <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
-          <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-38 text-xs sm:w-40">
-              <SelectValue placeholder={t('task.goal')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('todo.allGoals')}</SelectItem>
-              <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
-              {(goalsQuery.data?.content ?? []).map((goal) => (
-                <SelectItem key={goal.id} value={String(goal.id)}>
-                  <span className="block max-w-60 truncate" title={goal.title}>
-                    {goal.title}
+        <div className="flex w-full flex-col gap-2 rounded-xl border border-border/60 bg-card/60 p-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:p-1">
+          <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:items-center sm:gap-2">
+            <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
+              <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-40">
+                <SelectValue placeholder={t('task.goal')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('todo.allGoals')}</SelectItem>
+                <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
+                {(goalsQuery.data?.content ?? []).map((goal) => (
+                  <SelectItem key={goal.id} value={String(goal.id)}>
+                    <span className="block max-w-60 truncate" title={goal.title}>
+                      {goal.title}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
+              <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-33">
+                <SelectValue placeholder={t('task.priority')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
+                    {t('todo.allPriorities')}
                   </span>
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <SelectItem value="LOW">
+                  <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">
+                    {getPriorityLabel(t, 'LOW')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="MEDIUM">
+                  <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">
+                    {getPriorityLabel(t, 'MEDIUM')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="HIGH">
+                  <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">
+                    {getPriorityLabel(t, 'HIGH')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="URGENT">
+                  <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">
+                    {getPriorityLabel(t, 'URGENT')}
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-31 text-xs sm:w-33">
-              <SelectValue placeholder={t('task.priority')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
-                  {t('todo.allPriorities')}
-                </span>
-              </SelectItem>
-              <SelectItem value="LOW">
-                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">
-                  {getPriorityLabel(t, 'LOW')}
-                </span>
-              </SelectItem>
-              <SelectItem value="MEDIUM">
-                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">
-                  {getPriorityLabel(t, 'MEDIUM')}
-                </span>
-              </SelectItem>
-              <SelectItem value="HIGH">
-                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">
-                  {getPriorityLabel(t, 'HIGH')}
-                </span>
-              </SelectItem>
-              <SelectItem value="URGENT">
-                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">
-                  {getPriorityLabel(t, 'URGENT')}
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant={isDateFiltered ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 w-full gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
+                >
+                  <CalendarIcon className="size-3.5" />
+                  <span className="truncate">{selectedDateLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-0">
+                <DatePickerCalendar mode="single" selected={selectedDate ?? undefined} onSelect={setTodoDateFilter} />
+              </PopoverContent>
+            </Popover>
 
-          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-            <PopoverTrigger asChild>
+            {isDateFiltered ? (
               <Button
                 type="button"
-                variant={isDateFiltered ? 'default' : 'outline'}
+                variant="ghost"
                 size="sm"
-                className="h-7 w-full min-w-40 gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
+                className="h-7 gap-1 px-2 text-xs shrink-0"
+                onClick={clearTodoDateFilter}
               >
-                <CalendarIcon className="size-3.5" />
-                <span className="truncate">{selectedDateLabel}</span>
+                <X className="size-3" />
+                {t('todo.clearDate')}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-auto p-0">
-              <DatePickerCalendar mode="single" selected={selectedDate ?? undefined} onSelect={setTodoDateFilter} />
-            </PopoverContent>
-          </Popover>
-
-          {isDateFiltered ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2 text-xs"
-              onClick={clearTodoDateFilter}
-            >
-              <X className="size-3" />
-              {t('todo.clearDate')}
-            </Button>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 
       {/* Quick add */}
       <div className="space-y-2">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
-              }}
-              placeholder={
-                canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')
-              }
-              disabled={!canManageProject}
-              className="pl-9"
-            />
-          </div>
+        <div className="relative w-full flex items-center">
+          <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground z-10" />
+          <Input
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
+            }}
+            placeholder={
+              canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')
+            }
+            disabled={!canManageProject}
+            className="pl-9 pr-11 sm:pr-[6.5rem] h-10 w-full rounded-xl bg-card border-border/70 focus-visible:ring-1"
+          />
           <Button
             onClick={() => setTaskDialogOpen(true)}
             disabled={!newTaskTitle.trim() || !canManageProject}
             size="sm"
+            className="absolute right-1 top-1 h-8 w-8 sm:w-auto rounded-lg px-0 sm:px-3 text-xs bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm transition-all flex items-center justify-center gap-1 shrink-0"
+            title={t('todo.createDetailed')}
           >
-            {t('todo.createDetailed')}
+            <span className="hidden sm:inline">{t('todo.createDetailedShort', 'Chi tiết')}</span>
+            <ArrowUpRight className="size-3.5 shrink-0" />
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t('todo.quickCreateHint')}</p>
