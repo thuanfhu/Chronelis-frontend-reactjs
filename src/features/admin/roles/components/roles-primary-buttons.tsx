@@ -8,8 +8,8 @@ export function RolesPrimaryButtons() {
   const { t } = useTranslation()
 
   return (
-    <div className="flex gap-2">
-      <Button className="space-x-1" onClick={() => setOpen('add')}>
+    <div className="w-full sm:w-auto">
+      <Button className="w-full sm:w-auto space-x-1" onClick={() => setOpen('add')}>
         <span>{t('addNewRole')}</span> <IconPlus size={18} />
       </Button>
     </div>

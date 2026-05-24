@@ -11,11 +11,11 @@ export function PermissionsPrimaryButtons() {
   const [addModuleOpen, setAddModuleOpen] = useState(false)
 
   return (
-    <div className="flex gap-2">
-      <Button variant="outline" className="space-x-1" onClick={() => setAddModuleOpen(true)}>
+    <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto">
+      <Button variant="outline" className="space-x-1 w-full sm:w-auto" onClick={() => setAddModuleOpen(true)}>
         <span>{t('moduleAdd')}</span> <IconFolder size={18} />
       </Button>
-      <Button className="space-x-1" onClick={() => setAddPermOpen(true)}>
+      <Button className="space-x-1 w-full sm:w-auto" onClick={() => setAddPermOpen(true)}>
         <span>{t('permissionAddTitle')}</span> <IconPlus size={18} />
       </Button>
       <PermissionsFormDialog open={addPermOpen} onOpenChange={setAddPermOpen} currentRow={null} />

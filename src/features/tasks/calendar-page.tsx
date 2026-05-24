@@ -984,6 +984,9 @@ export function CalendarPage() {
                 scrollTime="08:00:00"
                 selectable={canScheduleTask()}
                 selectMirror={canScheduleTask()}
+                selectLongPressDelay={250}
+                eventLongPressDelay={250}
+                longPressDelay={250}
                 editable={canScheduleTask()}
                 eventStartEditable={canScheduleTask()}
                 eventDurationEditable={canScheduleTask()}

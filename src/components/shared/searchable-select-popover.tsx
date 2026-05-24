@@ -104,7 +104,7 @@ export function SearchableSelectPopover({
           <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className={cn('w-(--radix-popover-trigger-width) min-w-72 p-0', contentClassName)}>
+      <PopoverContent align="start" className={cn('w-(--radix-popover-trigger-width) min-w-[var(--radix-popover-trigger-width)] sm:min-w-72 p-0', contentClassName)}>
         <Command shouldFilter={false}>
           <CommandInput value={search} onValueChange={setSearch} placeholder={searchPlaceholder} />
           <CommandList className="max-h-[250px] overflow-y-auto">

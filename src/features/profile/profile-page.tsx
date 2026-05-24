@@ -480,18 +480,18 @@ export function ProfilePage() {
       </motion.div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'profile' | 'email' | 'password')}>
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
-          <TabsTrigger value="profile" className="justify-start gap-1.5 sm:justify-center">
-            <User className="size-4" />
-            {t('profile.tabs.profile')}
+        <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-muted/60 rounded-xl">
+          <TabsTrigger value="profile" className="justify-center gap-1.5 rounded-lg text-xs sm:text-sm">
+            <User className="size-3.5 sm:size-4" />
+            <span className="truncate">{t('profile.tabs.profile')}</span>
           </TabsTrigger>
-          <TabsTrigger value="email" className="justify-start gap-1.5 sm:justify-center">
-            <Mail className="size-4" />
-            {t('profile.tabs.email')}
+          <TabsTrigger value="email" className="justify-center gap-1.5 rounded-lg text-xs sm:text-sm">
+            <Mail className="size-3.5 sm:size-4" />
+            <span className="truncate">{t('profile.tabs.email')}</span>
           </TabsTrigger>
-          <TabsTrigger value="password" className="justify-start gap-1.5 sm:justify-center">
-            <Lock className="size-4" />
-            {t('profile.tabs.password')}
+          <TabsTrigger value="password" className="justify-center gap-1.5 rounded-lg text-xs sm:text-sm">
+            <Lock className="size-3.5 sm:size-4" />
+            <span className="truncate">{t('profile.tabs.password')}</span>
           </TabsTrigger>
         </TabsList>
 

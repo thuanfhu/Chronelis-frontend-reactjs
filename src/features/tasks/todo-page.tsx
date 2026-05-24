@@ -232,7 +232,9 @@ export function TodoPage() {
   const selectedDateKey = useMemo(() => (selectedDate ? toDateKey(selectedDate) : null), [selectedDate])
   const isDateFiltered = Boolean(selectedDateKey)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
 
   const tasksQuery = useQuery({
     queryKey: queryKeys.tasks.byProject(projectId, 1, 500),
@@ -930,7 +932,7 @@ function SortableTodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `todo-${task.id}`,
     data: { type: 'task', task },
@@ -947,7 +949,7 @@ function SortableTodoItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-start gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm sm:items-center sm:py-3 sm:pr-4 sm:pl-3',
         TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
         isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
@@ -958,24 +960,87 @@ function SortableTodoItem({
         onContextAction(event)
       }}
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="shrink-0 cursor-grab text-muted-foreground/30 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggle()
-        }}
-        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-      >
-        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
-      </button>
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
+      <div className="flex shrink-0 items-center gap-2 self-start pt-0.5 sm:self-auto sm:pt-0">
+        <button
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab text-muted-foreground/30 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:cursor-grabbing touch-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+        >
+          {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
+        </button>
+      </div>
+
+      {/* Mobile-optimized structure */}
+      <div className="min-w-0 flex-1 cursor-pointer sm:hidden" onClick={onClick}>
+        <div className="flex flex-col gap-1 w-full">
+          <p className={cn('line-clamp-2 text-sm font-semibold text-foreground leading-snug', task.isCompleted && 'line-through text-muted-foreground')}>
+            {task.title}
+          </p>
+          
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span
+              className={cn(
+                'inline-flex h-5 items-center justify-center rounded px-2 text-[9px] font-bold uppercase tracking-wider',
+                TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+              )}
+            >
+              {getPriorityLabel(t, task.priority)}
+            </span>
+            
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {formatDisplayDate(task.dueDate, dateLocale)}
+              </span>
+            )}
+            
+            {scheduleLabel && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {scheduleLabel}
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNotebook()
+              }}
+              aria-label={t('task.openNotesButton')}
+            >
+              <NotebookText className="size-3" />
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPomodoro()
+              }}
+              aria-label={t('task.pomodoroTitle')}
+            >
+              <Timer className="size-3" />
+            </button>
+          </div>
+          <TaskBlockerBadge task={task} compact className="mt-1" />
+        </div>
+      </div>
+
+      {/* Desktop-optimized structure */}
+      <div className="hidden min-w-0 flex-1 cursor-pointer sm:block" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
@@ -990,12 +1055,15 @@ function SortableTodoItem({
         )}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
-      <TodoRowMetaActions
-        priority={task.priority}
-        assigneeName={task.assignee?.firstName}
-        onPomodoro={onPomodoro}
-        onNotebook={onNotebook}
-      />
+
+      <div className="hidden sm:block shrink-0">
+        <TodoRowMetaActions
+          priority={task.priority}
+          assigneeName={task.assignee?.firstName}
+          onPomodoro={onPomodoro}
+          onNotebook={onNotebook}
+        />
+      </div>
     </div>
   )
 }
@@ -1017,13 +1085,13 @@ function TodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dateLocale = resolveDateLocale(i18n.resolvedLanguage ?? i18n.language)
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-start gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm sm:items-center sm:py-3 sm:pr-4 sm:pl-3',
         TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
       )}
@@ -1033,16 +1101,86 @@ function TodoItem({
         onContextAction(event)
       }}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggle()
-        }}
-        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-      >
-        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
-      </button>
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
+      <div className="flex shrink-0 items-center pt-0.5 sm:pt-0">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+        >
+          {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
+        </button>
+      </div>
+
+      {/* Mobile-optimized structure */}
+      <div className="min-w-0 flex-1 cursor-pointer sm:hidden" onClick={onClick}>
+        <div className="flex flex-col gap-1 w-full">
+          <p className={cn('line-clamp-2 text-sm font-semibold text-foreground leading-snug', task.isCompleted && 'line-through text-muted-foreground')}>
+            {task.title}
+          </p>
+          
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span
+              className={cn(
+                'inline-flex h-5 items-center justify-center rounded px-2 text-[9px] font-bold uppercase tracking-wider',
+                TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+              )}
+            >
+              {getPriorityLabel(t, task.priority)}
+            </span>
+            
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {formatDisplayDate(task.dueDate, dateLocale)}
+              </span>
+            )}
+            
+            {scheduleLabel && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {scheduleLabel}
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNotebook()
+              }}
+              aria-label={t('task.openNotesButton')}
+            >
+              <NotebookText className="size-3" />
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPomodoro()
+              }}
+              aria-label={t('task.pomodoroTitle')}
+            >
+              <Timer className="size-3" />
+            </button>
+          </div>
+
+          {task.description && (
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground bg-slate-50/50 dark:bg-zinc-950/20 px-1.5 py-0.5 rounded border border-border/30 w-fit">
+              {task.description}
+            </p>
+          )}
+
+          <TaskBlockerBadge task={task} compact className="mt-1" />
+        </div>
+      </div>
+
+      {/* Desktop-optimized structure */}
+      <div className="hidden min-w-0 flex-1 cursor-pointer sm:block" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
@@ -1058,12 +1196,15 @@ function TodoItem({
         {task.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
-      <TodoRowMetaActions
-        priority={task.priority}
-        assigneeName={task.assignee?.firstName}
-        onPomodoro={onPomodoro}
-        onNotebook={onNotebook}
-      />
+
+      <div className="hidden sm:block shrink-0">
+        <TodoRowMetaActions
+          priority={task.priority}
+          assigneeName={task.assignee?.firstName}
+          onPomodoro={onPomodoro}
+          onNotebook={onNotebook}
+        />
+      </div>
     </div>
   )
 }
