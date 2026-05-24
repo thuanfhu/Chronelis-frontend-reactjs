@@ -18,6 +18,7 @@ import {
   NotebookText,
   Clock3,
   X,
+  ArrowUpRight,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -232,7 +233,9 @@ export function TodoPage() {
   const selectedDateKey = useMemo(() => (selectedDate ? toDateKey(selectedDate) : null), [selectedDate])
   const isDateFiltered = Boolean(selectedDateKey)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
 
   const tasksQuery = useQuery({
     queryKey: queryKeys.tasks.byProject(projectId, 1, 500),
@@ -530,113 +533,118 @@ export function TodoPage() {
           ))}
         </div>
 
-        <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-2 py-1 sm:ml-auto sm:w-auto">
-          <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-38 text-xs sm:w-40">
-              <SelectValue placeholder={t('task.goal')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('todo.allGoals')}</SelectItem>
-              <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
-              {(goalsQuery.data?.content ?? []).map((goal) => (
-                <SelectItem key={goal.id} value={String(goal.id)}>
-                  <span className="block max-w-60 truncate" title={goal.title}>
-                    {goal.title}
+        <div className="flex w-full flex-col gap-2 rounded-xl border border-border/60 bg-card/60 p-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:p-1">
+          <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:items-center sm:gap-2">
+            <Select value={goalFilter} onValueChange={(value) => setGoalFilter(value as GoalFilterValue)}>
+              <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-40">
+                <SelectValue placeholder={t('task.goal')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('todo.allGoals')}</SelectItem>
+                <SelectItem value="__nogoal">{t('task.goalNoneOption')}</SelectItem>
+                {(goalsQuery.data?.content ?? []).map((goal) => (
+                  <SelectItem key={goal.id} value={String(goal.id)}>
+                    <span className="block max-w-60 truncate" title={goal.title}>
+                      {goal.title}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
+              <SelectTrigger className="h-7 w-full min-w-0 text-xs sm:w-33">
+                <SelectValue placeholder={t('task.priority')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
+                    {t('todo.allPriorities')}
                   </span>
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <SelectItem value="LOW">
+                  <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">
+                    {getPriorityLabel(t, 'LOW')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="MEDIUM">
+                  <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">
+                    {getPriorityLabel(t, 'MEDIUM')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="HIGH">
+                  <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">
+                    {getPriorityLabel(t, 'HIGH')}
+                  </span>
+                </SelectItem>
+                <SelectItem value="URGENT">
+                  <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">
+                    {getPriorityLabel(t, 'URGENT')}
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as PriorityFilterValue)}>
-            <SelectTrigger className="h-7 w-full min-w-31 text-xs sm:w-33">
-              <SelectValue placeholder={t('task.priority')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <span className="inline-flex rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 dark:bg-slate-500/20 dark:text-slate-200">
-                  {t('todo.allPriorities')}
-                </span>
-              </SelectItem>
-              <SelectItem value="LOW">
-                <span className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-500/20 dark:text-blue-100">
-                  {getPriorityLabel(t, 'LOW')}
-                </span>
-              </SelectItem>
-              <SelectItem value="MEDIUM">
-                <span className="inline-flex rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-100">
-                  {getPriorityLabel(t, 'MEDIUM')}
-                </span>
-              </SelectItem>
-              <SelectItem value="HIGH">
-                <span className="inline-flex rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-800 dark:bg-red-500/20 dark:text-red-100">
-                  {getPriorityLabel(t, 'HIGH')}
-                </span>
-              </SelectItem>
-              <SelectItem value="URGENT">
-                <span className="inline-flex rounded bg-fuchsia-100 px-1.5 py-0.5 text-[11px] text-fuchsia-800 dark:bg-fuchsia-500/20 dark:text-fuchsia-100">
-                  {getPriorityLabel(t, 'URGENT')}
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant={isDateFiltered ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 w-full gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
+                >
+                  <CalendarIcon className="size-3.5" />
+                  <span className="truncate">{selectedDateLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-0">
+                <DatePickerCalendar mode="single" selected={selectedDate ?? undefined} onSelect={setTodoDateFilter} />
+              </PopoverContent>
+            </Popover>
 
-          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-            <PopoverTrigger asChild>
+            {isDateFiltered ? (
               <Button
                 type="button"
-                variant={isDateFiltered ? 'default' : 'outline'}
+                variant="ghost"
                 size="sm"
-                className="h-7 w-full min-w-40 gap-1.5 px-2 text-xs sm:w-auto sm:max-w-46"
+                className="h-7 gap-1 px-2 text-xs shrink-0"
+                onClick={clearTodoDateFilter}
               >
-                <CalendarIcon className="size-3.5" />
-                <span className="truncate">{selectedDateLabel}</span>
+                <X className="size-3" />
+                {t('todo.clearDate')}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-auto p-0">
-              <DatePickerCalendar mode="single" selected={selectedDate ?? undefined} onSelect={setTodoDateFilter} />
-            </PopoverContent>
-          </Popover>
-
-          {isDateFiltered ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2 text-xs"
-              onClick={clearTodoDateFilter}
-            >
-              <X className="size-3" />
-              {t('todo.clearDate')}
-            </Button>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
 
       {/* Quick add */}
       <div className="space-y-2">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
-              }}
-              placeholder={
-                canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')
-              }
-              disabled={!canManageProject}
-              className="pl-9"
-            />
-          </div>
+        <div className="relative w-full flex items-center">
+          <Plus className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground z-10" />
+          <Input
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newTaskTitle.trim() && canManageProject) setTaskDialogOpen(true)
+            }}
+            placeholder={
+              canManageProject ? t('todo.quickCreatePlaceholder') : t('todo.quickCreateDisabledPlaceholder')
+            }
+            disabled={!canManageProject}
+            className="pl-9 pr-11 sm:pr-[6.5rem] h-10 w-full rounded-xl bg-card border-border/70 focus-visible:ring-1"
+          />
           <Button
             onClick={() => setTaskDialogOpen(true)}
             disabled={!newTaskTitle.trim() || !canManageProject}
             size="sm"
+            className="absolute right-1 top-1 h-8 w-8 sm:w-auto rounded-lg px-0 sm:px-3 text-xs bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm transition-all flex items-center justify-center gap-1 shrink-0"
+            title={t('todo.createDetailed')}
           >
-            {t('todo.createDetailed')}
+            <span className="hidden sm:inline">{t('todo.createDetailedShort', 'Chi tiết')}</span>
+            <ArrowUpRight className="size-3.5 shrink-0" />
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{t('todo.quickCreateHint')}</p>
@@ -930,7 +938,7 @@ function SortableTodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `todo-${task.id}`,
     data: { type: 'task', task },
@@ -947,7 +955,7 @@ function SortableTodoItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-start gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm sm:items-center sm:py-3 sm:pr-4 sm:pl-3',
         TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
         isDragging && 'opacity-40 shadow-lg ring-2 ring-primary/20',
@@ -958,24 +966,87 @@ function SortableTodoItem({
         onContextAction(event)
       }}
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="shrink-0 cursor-grab text-muted-foreground/30 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggle()
-        }}
-        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-      >
-        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
-      </button>
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
+      <div className="flex shrink-0 items-center gap-2 self-start pt-0.5 sm:self-auto sm:pt-0">
+        <button
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab text-muted-foreground/30 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:cursor-grabbing touch-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+        >
+          {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
+        </button>
+      </div>
+
+      {/* Mobile-optimized structure */}
+      <div className="min-w-0 flex-1 cursor-pointer sm:hidden" onClick={onClick}>
+        <div className="flex flex-col gap-1 w-full">
+          <p className={cn('line-clamp-2 text-sm font-semibold text-foreground leading-snug', task.isCompleted && 'line-through text-muted-foreground')}>
+            {task.title}
+          </p>
+          
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span
+              className={cn(
+                'inline-flex h-5 items-center justify-center rounded px-2 text-[9px] font-bold uppercase tracking-wider',
+                TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+              )}
+            >
+              {getPriorityLabel(t, task.priority)}
+            </span>
+            
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {formatDisplayDate(task.dueDate, dateLocale)}
+              </span>
+            )}
+            
+            {scheduleLabel && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {scheduleLabel}
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNotebook()
+              }}
+              aria-label={t('task.openNotesButton')}
+            >
+              <NotebookText className="size-3" />
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPomodoro()
+              }}
+              aria-label={t('task.pomodoroTitle')}
+            >
+              <Timer className="size-3" />
+            </button>
+          </div>
+          <TaskBlockerBadge task={task} compact className="mt-1" />
+        </div>
+      </div>
+
+      {/* Desktop-optimized structure */}
+      <div className="hidden min-w-0 flex-1 cursor-pointer sm:block" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
@@ -990,12 +1061,15 @@ function SortableTodoItem({
         )}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
-      <TodoRowMetaActions
-        priority={task.priority}
-        assigneeName={task.assignee?.firstName}
-        onPomodoro={onPomodoro}
-        onNotebook={onNotebook}
-      />
+
+      <div className="hidden sm:block shrink-0">
+        <TodoRowMetaActions
+          priority={task.priority}
+          assigneeName={task.assignee?.firstName}
+          onPomodoro={onPomodoro}
+          onNotebook={onNotebook}
+        />
+      </div>
     </div>
   )
 }
@@ -1017,13 +1091,13 @@ function TodoItem({
   onNotebook: () => void
   scheduleLabel?: string
 }) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dateLocale = resolveDateLocale(i18n.resolvedLanguage ?? i18n.language)
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border bg-card py-3 pr-4 pl-3 transition-all hover:border-primary/30 hover:shadow-sm',
+        'group flex items-start gap-3 rounded-lg border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-sm sm:items-center sm:py-3 sm:pr-4 sm:pl-3',
         TODO_PRIORITY_BORDER_CLASSNAMES[task.priority],
         task.isCompleted && 'opacity-60',
       )}
@@ -1033,16 +1107,86 @@ function TodoItem({
         onContextAction(event)
       }}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onToggle()
-        }}
-        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-      >
-        {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
-      </button>
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
+      <div className="flex shrink-0 items-center pt-0.5 sm:pt-0">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggle()
+          }}
+          className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+        >
+          {task.isCompleted ? <CheckCircle2 className="size-5 text-primary" /> : <Circle className="size-5" />}
+        </button>
+      </div>
+
+      {/* Mobile-optimized structure */}
+      <div className="min-w-0 flex-1 cursor-pointer sm:hidden" onClick={onClick}>
+        <div className="flex flex-col gap-1 w-full">
+          <p className={cn('line-clamp-2 text-sm font-semibold text-foreground leading-snug', task.isCompleted && 'line-through text-muted-foreground')}>
+            {task.title}
+          </p>
+          
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span
+              className={cn(
+                'inline-flex h-5 items-center justify-center rounded px-2 text-[9px] font-bold uppercase tracking-wider',
+                TODO_PRIORITY_CHIP_CLASSNAMES[task.priority],
+              )}
+            >
+              {getPriorityLabel(t, task.priority)}
+            </span>
+            
+            {task.dueDate && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {formatDisplayDate(task.dueDate, dateLocale)}
+              </span>
+            )}
+            
+            {scheduleLabel && (
+              <span className="inline-flex items-center gap-1 rounded bg-slate-100/70 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground border border-border/40">
+                <Clock3 className="size-2.5" />
+                {scheduleLabel}
+              </span>
+            )}
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNotebook()
+              }}
+              aria-label={t('task.openNotesButton')}
+            >
+              <NotebookText className="size-3" />
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-100/70 hover:bg-slate-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 text-muted-foreground border border-border/40"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPomodoro()
+              }}
+              aria-label={t('task.pomodoroTitle')}
+            >
+              <Timer className="size-3" />
+            </button>
+          </div>
+
+          {task.description && (
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground bg-slate-50/50 dark:bg-zinc-950/20 px-1.5 py-0.5 rounded border border-border/30 w-fit">
+              {task.description}
+            </p>
+          )}
+
+          <TaskBlockerBadge task={task} compact className="mt-1" />
+        </div>
+      </div>
+
+      {/* Desktop-optimized structure */}
+      <div className="hidden min-w-0 flex-1 cursor-pointer sm:block" onClick={onClick}>
         <p className={cn('line-clamp-1 text-sm font-medium', task.isCompleted && 'line-through text-muted-foreground')}>
           {task.title}
         </p>
@@ -1058,12 +1202,15 @@ function TodoItem({
         {task.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>}
         <TaskBlockerBadge task={task} compact className="mt-2" />
       </div>
-      <TodoRowMetaActions
-        priority={task.priority}
-        assigneeName={task.assignee?.firstName}
-        onPomodoro={onPomodoro}
-        onNotebook={onNotebook}
-      />
+
+      <div className="hidden sm:block shrink-0">
+        <TodoRowMetaActions
+          priority={task.priority}
+          assigneeName={task.assignee?.firstName}
+          onPomodoro={onPomodoro}
+          onNotebook={onNotebook}
+        />
+      </div>
     </div>
   )
 }

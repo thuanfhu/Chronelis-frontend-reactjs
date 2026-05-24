@@ -68,8 +68,8 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3">
+    <div className="flex-1 flex flex-col min-h-0 gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
           <p className="text-sm text-muted-foreground">{sectionMeta.description}</p>
@@ -113,9 +113,9 @@ function NewUsersTabContent() {
   const { users, isLoading } = useUsers()
   const { t } = useTranslation()
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <Card className="flex-1 flex flex-col min-h-0">
+      <CardHeader className="shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{t('userManagement.title', 'Quản lý người dùng')}</CardTitle>
             <CardDescription>
@@ -125,7 +125,9 @@ function NewUsersTabContent() {
           {!isLoading && <UsersPrimaryButtons />}
         </div>
       </CardHeader>
-      <CardContent>{isLoading ? <DataTableSkeleton columns={7} rows={6} /> : <UsersTable data={users} />}</CardContent>
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {isLoading ? <DataTableSkeleton columns={7} rows={6} /> : <UsersTable data={users} />}
+      </CardContent>
       <UsersDialogs />
     </Card>
   )
@@ -135,9 +137,9 @@ function NewRolesTabContent() {
   const { roles, isLoading } = useRoles()
   const { t } = useTranslation()
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <Card className="flex-1 flex flex-col min-h-0">
+      <CardHeader className="shrink-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{t('roleManagement.title', 'Quản lý vai trò')}</CardTitle>
             <CardDescription>
@@ -147,7 +149,9 @@ function NewRolesTabContent() {
           {!isLoading && <RolesPrimaryButtons />}
         </div>
       </CardHeader>
-      <CardContent>{isLoading ? <DataTableSkeleton columns={6} rows={5} /> : <RolesTable data={roles} />}</CardContent>
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {isLoading ? <DataTableSkeleton columns={6} rows={5} /> : <RolesTable data={roles} />}
+      </CardContent>
       <RolesDialogs />
     </Card>
   )
@@ -165,55 +169,59 @@ function NewPermissionsTabContent() {
   const isAllCollapsed = modules.length > 0 && modules.every((m) => collapsedModules[m] !== false)
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <Card className="flex-1 flex flex-col min-h-0">
+      <CardHeader className="shrink-0">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle>{t('permissionManagement.title', 'Quản lý phân quyền')}</CardTitle>
             <CardDescription>
               {t('permissionManagement.description', 'Quản lý quyền truy cập API trong hệ thống')}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-64">
-              <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder={t('searchPlaceholder', 'Tìm kiếm...')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-slate-50 dark:bg-zinc-800"
-              />
+          <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64 sm:flex-none">
+                <IconSearch className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder={t('searchPlaceholder', 'Tìm kiếm...')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-50 dark:bg-zinc-800 w-full"
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => {
+                  if (isAllCollapsed) {
+                    expandAll()
+                  } else {
+                    collapseAll()
+                  }
+                }}
+                title={
+                  isAllCollapsed
+                    ? t('permissionManagement.expandAllModules', 'Hiển thị toàn bộ module')
+                    : t('permissionManagement.collapseAllModules', 'Đóng toàn bộ module')
+                }
+              >
+                {isAllCollapsed ? (
+                  <IconChevronsDown className="h-4 w-4 text-slate-600" />
+                ) : (
+                  <IconChevronsUp className="h-4 w-4 text-slate-600" />
+                )}
+              </Button>
             </div>
 
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => {
-                if (isAllCollapsed) {
-                  expandAll()
-                } else {
-                  collapseAll()
-                }
-              }}
-              title={
-                isAllCollapsed
-                  ? t('permissionManagement.expandAllModules', 'Hiển thị toàn bộ module')
-                  : t('permissionManagement.collapseAllModules', 'Đóng toàn bộ module')
-              }
-            >
-              {isAllCollapsed ? (
-                <IconChevronsDown className="h-4 w-4 text-slate-600" />
-              ) : (
-                <IconChevronsUp className="h-4 w-4 text-slate-600" />
-              )}
-            </Button>
-
-            <PermissionsPrimaryButtons />
+            <div className="w-full sm:w-auto">
+              <PermissionsPrimaryButtons />
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <PermissionsTable />
       </CardContent>
     </Card>

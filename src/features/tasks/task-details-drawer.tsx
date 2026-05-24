@@ -1097,9 +1097,9 @@ export function TaskDetailsDrawer() {
       >
         <SheetContent
           showCloseButton={false}
-          className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl task-detail-font"
+          className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden overflow-x-hidden p-0 sm:max-w-xl task-detail-font"
         >
-          <SheetHeader className="border-b px-6 py-4">
+          <SheetHeader className="border-b px-4 sm:px-6 py-3.5 sm:py-4">
             <div className="flex items-center gap-2">
               <SheetTitle className="text-base">
                 {isDuplicateMode ? t('task.duplicateTitle') : t('task.detailTitle')}
@@ -1158,11 +1158,11 @@ export function TaskDetailsDrawer() {
             </div>
           ) : task ? (
             <>
-              <div className="min-h-0 flex-1 overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-hidden overflow-x-hidden">
                 {isEditingTask ? (
                   /* ─── EDIT / DUPLICATE FORM ─── */
                   <ScrollArea className="h-full">
-                    <div className="space-y-5 px-6 py-5">
+                    <div className="space-y-4 sm:space-y-5 px-4 sm:px-6 py-4 sm:py-5">
                       {isDuplicateMode && (
                         <div className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
                           <span className="shrink-0 rounded bg-sky-500/20 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide">
@@ -1380,10 +1380,10 @@ export function TaskDetailsDrawer() {
                                         #{dependencyTask.id}
                                       </span>
                                     </div>
-                                    <div className="grid grid-cols-[80px_80px_auto] gap-1.5 text-xs items-center">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-xs mt-1 w-full">
                                       <span
                                         className={cn(
-                                          'inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full',
+                                          'inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-medium border shrink-0 w-fit',
                                           (() => {
                                             const name = (
                                               'status' in dependencyTask
@@ -1407,7 +1407,7 @@ export function TaskDetailsDrawer() {
 
                                       <span
                                         className={cn(
-                                          'inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium border w-full',
+                                          'inline-flex items-center justify-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border shrink-0 w-fit',
                                           dependencyTask.priority === 'LOW' &&
                                             'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
                                           dependencyTask.priority === 'MEDIUM' &&
@@ -1420,7 +1420,7 @@ export function TaskDetailsDrawer() {
                                       >
                                         <span
                                           className={cn(
-                                            'inline-block size-1 rounded-full',
+                                            'inline-block size-1 rounded-full shrink-0',
                                             dependencyTask.priority === 'LOW' && 'bg-emerald-800 dark:bg-emerald-200',
                                             dependencyTask.priority === 'MEDIUM' && 'bg-blue-700 dark:bg-blue-300',
                                             dependencyTask.priority === 'HIGH' && 'bg-orange-700 dark:bg-orange-300',
@@ -1431,12 +1431,10 @@ export function TaskDetailsDrawer() {
                                       </span>
 
                                       {dependencyTask.goalId ? (
-                                        <span className="inline-flex items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 w-fit justify-self-start">
+                                        <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700 border border-violet-200/50 dark:bg-violet-900/50 dark:text-violet-300 shrink-0 w-fit">
                                           {t('task.goalShort', { id: dependencyTask.goalId })}
                                         </span>
-                                      ) : (
-                                        <div />
-                                      )}
+                                      ) : null}
                                     </div>
                                   </div>
                                   <Button
@@ -1491,7 +1489,7 @@ export function TaskDetailsDrawer() {
                           <ScrollArea className="h-full">
                             <div className="divide-y divide-border/50 pb-6">
                               {/* Title + description + quick actions */}
-                              <div className="px-6 py-5">
+                              <div className="px-4 sm:px-6 py-4 sm:py-5">
                                 <h2
                                   className={`text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
                                   style={{ overflowWrap: 'anywhere' }}
@@ -1518,11 +1516,11 @@ export function TaskDetailsDrawer() {
                                   </div>
                                 )}
 
-                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <div className="mt-4 flex flex-row items-center gap-2 w-full">
                                   <Button
                                     size="sm"
                                     variant={task.isCompleted ? 'secondary' : 'default'}
-                                    className="h-8 gap-1.5 text-xs"
+                                    className="h-9 flex-1 gap-1.5 text-xs min-w-0"
                                     onClick={() => {
                                       if (!canManageCurrentTask) {
                                         toast.error(t('task.noPermission'))
@@ -1533,18 +1531,20 @@ export function TaskDetailsDrawer() {
                                     disabled={toggleCompletionMutation.isPending || !canManageCurrentTask}
                                   >
                                     {toggleCompletionMutation.isPending ? (
-                                      <Loader2 className="size-3.5 animate-spin" />
+                                      <Loader2 className="size-3.5 animate-spin shrink-0" />
                                     ) : task.isCompleted ? (
-                                      <CheckCircle2 className="size-3.5" />
+                                      <CheckCircle2 className="size-3.5 shrink-0" />
                                     ) : (
-                                      <Circle className="size-3.5" />
+                                      <Circle className="size-3.5 shrink-0" />
                                     )}
-                                    {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
+                                    <span className="truncate">
+                                      {task.isCompleted ? t('task.markIncomplete') : t('task.markComplete')}
+                                    </span>
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="size-8"
+                                    className="size-9 shrink-0"
                                     onClick={openPomodoro}
                                     title={t('task.pomodoroTitle')}
                                   >
@@ -1554,7 +1554,7 @@ export function TaskDetailsDrawer() {
                                   <Button
                                     variant="outline"
                                     size="icon"
-                                    className="size-8"
+                                    className="size-9 shrink-0"
                                     onClick={openNotes}
                                     title={t('task.notesButton')}
                                   >
@@ -1570,7 +1570,7 @@ export function TaskDetailsDrawer() {
                                       <MessageSquare className="size-4" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex flex-wrap items-start justify-between gap-3">
+                                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="min-w-0 flex-1">
                                           <div className="flex flex-wrap items-center gap-2">
                                             <p className="text-sm font-semibold">{t('common.commentSection')}</p>
@@ -1586,7 +1586,7 @@ export function TaskDetailsDrawer() {
                                         <Button
                                           variant="secondary"
                                           size="sm"
-                                          className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs"
+                                          className="h-8 w-fit shrink-0 gap-1.5 rounded-full px-3 text-xs"
                                           onClick={() => setActiveDrawerPanel('comments')}
                                         >
                                           <MessageSquare className="size-3.5" />
@@ -1617,7 +1617,7 @@ export function TaskDetailsDrawer() {
                               </div>
 
                               {/* Properties */}
-                              <div className="px-6 py-4">
+                              <div className="px-4 sm:px-6 py-3.5 sm:py-4">
                                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
                                   {t('task.info')}
                                 </p>
@@ -1706,7 +1706,7 @@ export function TaskDetailsDrawer() {
                                 </div>
                               </div>
 
-                              <div className="px-6 py-4">
+                              <div className="px-4 sm:px-6 py-3.5 sm:py-4">
                                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
                                   {t('task.dependenciesBlockers')}
                                 </p>
@@ -1746,7 +1746,7 @@ export function TaskDetailsDrawer() {
 
                               {/* Schedule */}
                               {primarySchedule && (
-                                <div className="px-6 py-4">
+                                <div className="px-4 sm:px-6 py-3.5 sm:py-4">
                                   <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
                                     {t('task.scheduleLabel')}
                                   </p>
@@ -1826,7 +1826,7 @@ export function TaskDetailsDrawer() {
               </div>
 
               {isEditingTask && (
-                <div className="border-t bg-background/95 px-6 py-3">
+                <div className="border-t bg-background/95 px-4 sm:px-6 py-3">
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={leaveEditMode}>
                       {t('task.cancel')}

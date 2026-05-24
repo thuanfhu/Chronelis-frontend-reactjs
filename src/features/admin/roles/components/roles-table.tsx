@@ -81,7 +81,7 @@ export function RolesTable({ data }: DataTableProps) {
   return (
     <div className="space-y-4">
       <DataTableToolbar table={table} />
-      <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-22rem)]">
+      <div className="rounded-md border overflow-y-auto overflow-x-auto w-full max-h-[calc(100vh-22rem)]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

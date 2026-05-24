@@ -3,14 +3,11 @@ import { Menu } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { AdminSidebar } from '@/features/admin/layout/admin-sidebar'
-import { useUiStore } from '@/app/store/ui-store'
-
 export function AdminShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const theme = useUiStore((state) => state.theme)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {mobileOpen && (
         <button
           type="button"
@@ -28,22 +25,15 @@ export function AdminShell() {
             <Menu className="size-4" />
           </Button>
 
-          <div className="flex flex-col gap-1">
-            <div className="relative h-4 w-32">
-              <img
-                src={
-                  theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
-                }
-                alt="Chronelis"
-                className={`h-28 w-auto absolute top-1/2 left-0 -translate-y-1/2 pointer-events-none max-w-none origin-left transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
-              />
-            </div>
-            <p className="text-sm font-semibold leading-none">Admin Console</p>
+          <div className="flex items-center ml-1">
+            <span className="text-sm font-extrabold tracking-wider bg-linear-to-r from-primary to-sky-500 bg-clip-text text-transparent uppercase">
+              Admin Console
+            </span>
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-hidden px-4 py-5 sm:px-6 sm:py-6 flex flex-col">
-          <div className="mx-auto w-full max-w-7xl flex-none">
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 flex flex-col">
+          <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 flex flex-col">
             <Outlet />
           </div>
         </main>

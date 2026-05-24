@@ -107,7 +107,7 @@ function SortableTaskCard({
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-current/40 opacity-0 transition-opacity hover:text-current/70 group-hover:opacity-100 active:cursor-grabbing"
+          className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-current/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-current/70 active:cursor-grabbing touch-none"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="size-3.5" />
@@ -239,7 +239,9 @@ export function KanbanPage() {
   const [overColumnId, setOverColumnId] = useState<number | null>(null)
   const [taskContextMenu, setTaskContextMenu] = useState<{ x: number; y: number; task: Task } | null>(null)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
 
   // Custom collision detection: prefer pointerWithin first (catches empty columns),
   // then fall back to closestCorners for task-level precision

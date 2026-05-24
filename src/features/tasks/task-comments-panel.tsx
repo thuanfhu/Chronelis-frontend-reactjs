@@ -74,7 +74,7 @@ export function TaskCommentsPanel({
 
   return (
     <div className="min-h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] dark:bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.18),transparent_32%),linear-gradient(180deg,rgba(9,14,25,0.98),rgba(9,14,25,0.94))]">
-      <div className="border-b border-border/70 bg-background/80 px-6 py-5 backdrop-blur-sm">
+      <div className="border-b border-border/70 bg-background/80 px-4 sm:px-6 py-4 sm:py-5 backdrop-blur-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -192,7 +192,7 @@ export function TaskCommentsPanel({
         )}
       </div>
 
-      <div className="space-y-4 px-6 py-5">
+      <div className="space-y-4 px-4 sm:px-6 py-4 sm:py-5">
         {orderedComments.length === 0 ? (
           <div className="rounded-[30px] border border-dashed bg-muted/15 px-5 py-10 text-center">
             <MessageSquare className="mx-auto size-10 text-muted-foreground/30" />

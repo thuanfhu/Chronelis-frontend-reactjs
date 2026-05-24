@@ -616,23 +616,25 @@ export function TaskCreateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(720px,92vh)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10">
-              <AlignLeft className="size-4 text-primary" />
+        <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <AlignLeft className="size-4" />
+              </div>
+              <DialogTitle className="text-sm font-bold sm:text-base pr-6 sm:pr-0 truncate">{resolvedTitle}</DialogTitle>
+              <span className="ml-auto rounded-full border border-border/70 bg-muted/50 px-2.5 py-0.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wide">
+                {t(SOURCE_VIEW_LABELS[defaultSourceView])}
+              </span>
             </div>
-            <div className="flex-1">
-              <DialogTitle className="text-base">{resolvedTitle}</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs leading-5">{resolvedDescription}</DialogDescription>
-            </div>
-            <span className="rounded-full border border-border/70 bg-muted/50 px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-              {t(SOURCE_VIEW_LABELS[defaultSourceView])}
-            </span>
+            <DialogDescription className="text-left text-xs leading-relaxed text-muted-foreground">
+              {resolvedDescription}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
         {/* Tab navigation */}
-        <div className="flex shrink-0 gap-1 border-b border-border/60 px-6">
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border/60 px-4 sm:px-6 scrollbar-none">
           {[
             { key: 'basic' as const, label: t('task.basicTab') },
             { key: 'schedule' as const, label: t('task.scheduleTab') },
@@ -642,7 +644,7 @@ export function TaskCreateDialog({
               key={tab.key}
               type="button"
               className={cn(
-                'relative px-3 py-2.5 text-sm font-medium transition-colors',
+                'relative px-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0',
                 activeTab === tab.key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80',
               )}
               onClick={() => setActiveTab(tab.key)}

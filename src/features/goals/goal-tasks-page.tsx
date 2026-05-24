@@ -201,7 +201,7 @@ export function GoalTasksPage() {
   const StatusIcon = statusCfg?.icon ?? CircleDashed
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0 w-full max-w-full overflow-hidden">
       {/* ─── Back nav + Goal header ─── */}
       <div>
         <Link
@@ -264,8 +264,8 @@ export function GoalTasksPage() {
       </div>
 
       {/* ─── Filter & Sort toolbar ─── */}
-      <div className="flex flex-wrap items-center gap-2.5 xl:flex-nowrap">
-        <div className="relative min-w-64 flex-1">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative w-full lg:max-w-xs xl:max-w-md">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -278,58 +278,60 @@ export function GoalTasksPage() {
           />
         </div>
 
-        <Select
-          value={priorityFilter}
-          onValueChange={(v) => {
-            setPriorityFilter(v as TaskPriorityType | 'ALL')
-            setPage(1)
-          }}
-        >
-          <SelectTrigger className="h-9 w-46 shrink-0 px-3 text-sm whitespace-nowrap">
-            <SelectValue placeholder={t('goals.tasksPage.priorityPlaceholder')} />
-          </SelectTrigger>
-          <SelectContent className="min-w-46">
-            <SelectItem value="ALL">{t('goals.tasksPage.allPriorities')}</SelectItem>
-            {(['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
-              <SelectItem key={p} value={p}>
-                {t(priorityConfig[p].translationKey)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:flex lg:items-center lg:gap-2.5 w-full lg:w-auto">
+          <Select
+            value={priorityFilter}
+            onValueChange={(v) => {
+              setPriorityFilter(v as TaskPriorityType | 'ALL')
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="h-9 w-full px-3 text-sm lg:w-44 xl:w-46 shrink-0 whitespace-nowrap">
+              <SelectValue placeholder={t('goals.tasksPage.priorityPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent className="min-w-46">
+              <SelectItem value="ALL">{t('goals.tasksPage.allPriorities')}</SelectItem>
+              {(['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => (
+                <SelectItem key={p} value={p}>
+                  {t(priorityConfig[p].translationKey)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => {
-            setStatusFilter(v as 'ALL' | 'OPEN' | 'CLOSED')
-            setPage(1)
-          }}
-        >
-          <SelectTrigger className="h-9 w-42 shrink-0 px-3 text-sm whitespace-nowrap">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="min-w-42">
-            <SelectItem value="ALL">{t('goals.tasksPage.allStatuses')}</SelectItem>
-            <SelectItem value="OPEN">{t('goals.tasksPage.statusOpen')}</SelectItem>
-            <SelectItem value="CLOSED">{t('goals.tasksPage.statusClosed')}</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v as 'ALL' | 'OPEN' | 'CLOSED')
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="h-9 w-full px-3 text-sm lg:w-40 xl:w-42 shrink-0 whitespace-nowrap">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="min-w-42">
+              <SelectItem value="ALL">{t('goals.tasksPage.allStatuses')}</SelectItem>
+              <SelectItem value="OPEN">{t('goals.tasksPage.statusOpen')}</SelectItem>
+              <SelectItem value="CLOSED">{t('goals.tasksPage.statusClosed')}</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-          <SelectTrigger className="h-9 w-43 shrink-0 px-3 text-sm whitespace-nowrap">
-            <ArrowUpDown className="mr-1.5 size-3" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="min-w-43">
-            <SelectItem value="status">{t('goals.tasksPage.sortByStatus')}</SelectItem>
-            <SelectItem value="priority">{t('goals.tasksPage.sortByPriority')}</SelectItem>
-            <SelectItem value="title">{t('goals.tasksPage.sortByTitle')}</SelectItem>
-            <SelectItem value="dueDate">{t('goals.tasksPage.sortByDueDate')}</SelectItem>
-            <SelectItem value="created">{t('goals.tasksPage.sortByCreated')}</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+            <SelectTrigger className="h-9 w-full px-3 text-sm lg:w-40 xl:w-43 shrink-0 whitespace-nowrap">
+              <ArrowUpDown className="mr-1.5 size-3" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="min-w-43">
+              <SelectItem value="status">{t('goals.tasksPage.sortByStatus')}</SelectItem>
+              <SelectItem value="priority">{t('goals.tasksPage.sortByPriority')}</SelectItem>
+              <SelectItem value="title">{t('goals.tasksPage.sortByTitle')}</SelectItem>
+              <SelectItem value="dueDate">{t('goals.tasksPage.sortByDueDate')}</SelectItem>
+              <SelectItem value="created">{t('goals.tasksPage.sortByCreated')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <span className="text-sm text-muted-foreground xl:ml-auto">
+        <span className="text-sm text-muted-foreground lg:ml-auto whitespace-nowrap">
           {t('goals.tasksPage.countSummary', { filtered: filteredTasks.length, total: allTasks.length })}
         </span>
       </div>
@@ -352,131 +354,113 @@ export function GoalTasksPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          {/* Table header */}
-          <div className="grid grid-cols-[2rem_1fr_auto] items-center gap-x-4 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]">
-            <span className="text-center">{t('goals.tasksPage.tableIndex')}</span>
-            <span>{t('goals.tasksPage.tableTaskName')}</span>
-            <span className="hidden text-center sm:block">{t('goals.tasksPage.tableStatus')}</span>
-            <span className="hidden text-center sm:block">{t('goals.tasksPage.tablePriority')}</span>
-            <span className="hidden text-center sm:block">{t('goals.tasksPage.tableAssignee')}</span>
-            <span className="hidden text-right sm:block">{t('goals.tasksPage.tableDueDate')}</span>
-          </div>
+        <div className="overflow-x-auto w-full rounded-xl border border-border bg-card shadow-sm">
+          <div className="min-w-[800px]">
+            {/* Table header */}
+            <div className="grid grid-cols-[2.5rem_1fr_8rem_6.5rem_8rem_8rem] items-center gap-x-4 border-b border-border/60 bg-muted/40 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <span className="text-center">{t('goals.tasksPage.tableIndex')}</span>
+              <span>{t('goals.tasksPage.tableTaskName')}</span>
+              <span className="text-center">{t('goals.tasksPage.tableStatus')}</span>
+              <span className="text-center">{t('goals.tasksPage.tablePriority')}</span>
+              <span className="pl-4">{t('goals.tasksPage.tableAssignee')}</span>
+              <span className="text-right">{t('goals.tasksPage.tableDueDate')}</span>
+            </div>
 
-          <div className="divide-y divide-border/30">
-            {paginatedTasks.map((task, index) => {
-              const pCfg = priorityConfig[task.priority]
-              const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1
-              const dueDateStr = task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: '2-digit',
-                  })
-                : null
-              const isPastDue = task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date()
-              const statusChipClass = task.status.isClosed
-                ? 'border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300'
-                : 'border-blue-300/60 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-300'
+            <div className="divide-y divide-border/30">
+              {paginatedTasks.map((task, index) => {
+                const pCfg = priorityConfig[task.priority]
+                const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1
+                const dueDateStr = task.dueDate
+                  ? new Date(task.dueDate).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                    })
+                  : null
+                const isPastDue = task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date()
+                const statusChipClass = task.status.isClosed
+                  ? 'border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                  : 'border-blue-300/60 bg-blue-500/10 text-blue-700 dark:border-blue-400/30 dark:bg-blue-500/15 dark:text-blue-300'
 
-              return (
-                <button
-                  key={task.id}
-                  type="button"
-                  onClick={() => openTaskDrawer(task.id)}
-                  className="group grid w-full grid-cols-[2rem_1fr_auto] items-center gap-x-4 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[2rem_1fr_7.5rem_6rem_7rem_6.5rem]"
-                >
-                  {/* Index */}
-                  <span className="text-center text-[11px] tabular-nums text-muted-foreground/50 group-hover:text-muted-foreground/80">
-                    {globalIndex}
-                  </span>
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    onClick={() => openTaskDrawer(task.id)}
+                    className="group grid w-full grid-cols-[2.5rem_1fr_8rem_6.5rem_8rem_8rem] items-center gap-x-4 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    {/* Index */}
+                    <span className="text-center text-[11px] tabular-nums text-muted-foreground/50 group-hover:text-muted-foreground/80">
+                      {globalIndex}
+                    </span>
 
-                  {/* Title + description */}
-                  <div className="min-w-0">
-                    <p
-                      className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}
-                    >
-                      {highlightMatch(task.title, searchQuery.trim())}
-                    </p>
-                    {task.description && (
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">
-                        {highlightMatch(task.description, searchQuery.trim())}
+                    {/* Title + description */}
+                    <div className="min-w-0">
+                      <p
+                        className={`truncate text-sm font-medium leading-snug ${task.status.isClosed ? 'text-muted-foreground line-through' : ''}`}
+                      >
+                        {highlightMatch(task.title, searchQuery.trim())}
                       </p>
-                    )}
-                    {/* Mobile-only inline badges */}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
-                      <span
-                        className={`inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium ${statusChipClass}`}
-                      >
-                        {task.status.name}
-                      </span>
-                      <span
-                        className={`inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold ${pCfg.className}`}
-                      >
-                        {t(pCfg.translationKey)}
-                      </span>
-                      {dueDateStr && (
-                        <span
-                          className={`text-[10px] font-medium ${isPastDue ? 'text-destructive' : 'text-muted-foreground'}`}
-                        >
-                          {dueDateStr}
-                        </span>
+                      {task.description && (
+                        <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/70">
+                          {highlightMatch(task.description, searchQuery.trim())}
+                        </p>
                       )}
                     </div>
-                  </div>
 
-                  {/* Status */}
-                  <span
-                    className={`hidden truncate sm:inline-flex h-6 items-center justify-center justify-self-center rounded-full border px-2.5 text-[11px] font-medium min-w-[5.5rem] ${statusChipClass}`}
-                  >
-                    {task.status.name}
-                  </span>
+                    {/* Status */}
+                    <span
+                      className={`truncate inline-flex h-6 items-center justify-center justify-self-center rounded-full border px-2.5 text-[11px] font-medium min-w-[6.5rem] ${statusChipClass}`}
+                    >
+                      {task.status.name}
+                    </span>
 
-                  {/* Priority */}
-                  <span
-                    className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none sm:inline-flex h-6 items-center justify-center justify-self-center min-w-[5rem] ${pCfg.className}`}
-                  >
-                    {t(pCfg.translationKey)}
-                  </span>
+                    {/* Priority */}
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none inline-flex h-6 items-center justify-center justify-self-center min-w-[5.5rem] ${pCfg.className}`}
+                    >
+                      {t(pCfg.translationKey)}
+                    </span>
 
-                  {/* Assignee */}
-                  <span className="hidden items-center justify-start gap-1.5 sm:flex pl-6">
-                    {task.assignee ? (
-                      <>
-                        <Avatar className="size-5 shrink-0">
-                          <AvatarFallback className="bg-primary/15 text-[9px] font-bold text-primary">
-                            {task.assignee.firstName.charAt(0)}
-                            {task.assignee.lastName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate text-[11px] text-muted-foreground max-w-[5rem]">
-                          {task.assignee.firstName} {task.assignee.lastName}
-                        </span>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-1.5 opacity-30 select-none">
-                        <div className="flex size-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/50">
-                          <User className="size-2.5" />
+                    {/* Assignee */}
+                    <span className="flex items-center justify-start gap-1.5 pl-4 min-w-0">
+                      {task.assignee ? (
+                        <>
+                          <Avatar className="size-5 shrink-0">
+                            <AvatarFallback className="bg-primary/15 text-[9px] font-bold text-primary">
+                              {task.assignee.firstName.charAt(0)}
+                              {task.assignee.lastName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-[11px] text-muted-foreground max-w-[6rem]">
+                            {task.assignee.firstName} {task.assignee.lastName}
+                          </span>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-1.5 opacity-30 select-none">
+                          <div className="flex size-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/50">
+                            <User className="size-2.5" />
+                          </div>
+                          <span className="text-[10px] italic">{t('task.notAssigned')}</span>
                         </div>
-                        <span className="text-[10px] italic">{t('task.notAssigned')}</span>
-                      </div>
-                    )}
-                  </span>
+                      )}
+                    </span>
 
-                  {/* Due date */}
-                  <span
-                    className={`hidden text-right text-[11px] tabular-nums sm:block ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}
-                  >
-                    {dueDateStr ?? (
-                      <span className="inline-flex items-center gap-1 opacity-30 select-none">
-                        <CalendarOff className="size-3" />
-                        <span className="text-[10px] italic">{t('task.noDueDate')}</span>
-                      </span>
-                    )}
-                  </span>
-                </button>
-              )
-            })}
+                    {/* Due date */}
+                    <span
+                      className={`text-right text-[11px] tabular-nums ${isPastDue ? 'font-bold text-destructive' : 'text-muted-foreground'}`}
+                    >
+                      {dueDateStr ?? (
+                        <span className="inline-flex items-center gap-1 opacity-30 select-none justify-end w-full">
+                          <CalendarOff className="size-3" />
+                          <span className="text-[10px] italic">{t('task.noDueDate')}</span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
