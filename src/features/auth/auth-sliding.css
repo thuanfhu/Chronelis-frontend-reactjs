@@ -203,28 +203,22 @@
 }
 
 .chronelis-auth-back-link {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 0.45rem;
   margin-bottom: 0.9rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
-  background: color-mix(in oklab, var(--card) 88%, transparent);
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 0.78rem;
   font-weight: 600;
   color: color-mix(in oklab, var(--foreground) 78%, var(--muted-foreground));
   text-decoration: none;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .chronelis-auth-back-link:hover {
-  background: color-mix(in oklab, var(--primary) 8%, var(--card));
-  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
-  transform: translateY(-1px);
+  color: color-mix(in oklab, var(--primary) 82%, var(--foreground));
   text-decoration: none;
 }
 
@@ -889,6 +883,11 @@
     width: 100%;
     max-width: none;
     height: 2.95rem;
+  }
+
+  .chronelis-auth-back-link {
+    display: inline-flex;
+    align-self: flex-start;
   }
 
   .chronelis-auth-mobile-switch {
