@@ -5,11 +5,13 @@ import type { WorkspaceTeam, WorkspaceTeamMember } from '@/types/domain'
 export interface CreateTeamPayload {
   workspaceId: number
   name: string
+  imageUrl?: string
   description?: string
 }
 
 export interface UpdateTeamPayload {
   name?: string
+  imageUrl?: string
   description?: string
 }
 

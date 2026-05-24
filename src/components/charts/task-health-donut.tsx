@@ -103,6 +103,15 @@ export function TaskHealthDonut({ assignedCount, blockedCount, overdueCount, due
           <Legend
             iconType="circle"
             iconSize={8}
+            wrapperStyle={{
+              fontSize: '11px',
+              paddingTop: '6px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              rowGap: '4px',
+              columnGap: '10px',
+            }}
             formatter={(value) => (
               <span className="text-xs text-muted-foreground">{t(`dashboard.segments.${value}`)}</span>
             )}

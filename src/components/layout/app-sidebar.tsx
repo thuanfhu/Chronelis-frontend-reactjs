@@ -129,11 +129,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
   const [projectDialogMode, setProjectDialogMode] = useState<'create' | 'edit'>('create')
   const [projectDialogTargetId, setProjectDialogTargetId] = useState<number | null>(null)
   const [projectFormName, setProjectFormName] = useState('')
+  const [projectFormImageUrl, setProjectFormImageUrl] = useState('')
   const [projectFormDescription, setProjectFormDescription] = useState('')
   const [projectFormVisibility, setProjectFormVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [projectFormManagerUserId, setProjectFormManagerUserId] = useState('')
   const [projectFormManagerTeamId, setProjectFormManagerTeamId] = useState('')
   const [projectInitialName, setProjectInitialName] = useState('')
+  const [projectInitialImageUrl, setProjectInitialImageUrl] = useState('')
   const [projectInitialDescription, setProjectInitialDescription] = useState('')
   const [projectInitialVisibility, setProjectInitialVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC')
   const [projectInitialManagerUserId, setProjectInitialManagerUserId] = useState('')
@@ -206,6 +208,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     projectDialogMode === 'create'
       ? Boolean(projectFormName.trim())
       : projectFormName.trim() !== projectInitialName ||
+        projectFormImageUrl.trim() !== projectInitialImageUrl ||
         projectFormDescription.trim() !== projectInitialDescription ||
         (isOwner && projectFormVisibility !== projectInitialVisibility) ||
         (isOwner && projectFormManagerUserId !== projectInitialManagerUserId) ||
@@ -222,11 +225,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     setProjectDialogMode('create')
     setProjectDialogTargetId(null)
     setProjectFormName('')
+    setProjectFormImageUrl('')
     setProjectFormDescription('')
     setProjectFormVisibility('PUBLIC')
     setProjectFormManagerUserId('')
     setProjectFormManagerTeamId('')
     setProjectInitialName('')
+    setProjectInitialImageUrl('')
     setProjectInitialDescription('')
     setProjectInitialVisibility('PUBLIC')
     setProjectInitialManagerUserId('')
@@ -238,11 +243,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     setProjectDialogMode('edit')
     setProjectDialogTargetId(project.id)
     setProjectFormName(project.name)
+    setProjectFormImageUrl(project.imageUrl ?? '')
     setProjectFormDescription(project.description ?? '')
     setProjectFormVisibility(project.visibility ?? 'PUBLIC')
     setProjectFormManagerUserId(project.managerUser?.userId ?? '')
     setProjectFormManagerTeamId(project.managerTeamId ? String(project.managerTeamId) : '')
     setProjectInitialName(project.name.trim())
+    setProjectInitialImageUrl(project.imageUrl ?? '')
     setProjectInitialDescription((project.description ?? '').trim())
     setProjectInitialVisibility(project.visibility ?? 'PUBLIC')
     setProjectInitialManagerUserId(project.managerUser?.userId ?? '')
@@ -325,6 +332,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       const payload: {
         workspaceId: number
         name: string
+        imageUrl?: string
         description?: string
         visibility: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
@@ -332,6 +340,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
       } = {
         workspaceId,
         name: projectFormName.trim(),
+        imageUrl: projectFormImageUrl.trim() || undefined,
         description: projectFormDescription.trim() || undefined,
         visibility: projectFormVisibility,
       }
@@ -359,6 +368,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
         id: optimisticProjectId,
         workspaceId,
         name: projectFormName.trim(),
+        imageUrl: projectFormImageUrl.trim() || undefined,
         description: projectFormDescription.trim() || undefined,
         status: 'ACTIVE',
         visibility: projectFormVisibility,
@@ -367,6 +377,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           email: currentUser?.email ?? '',
           firstName: currentUser?.firstName ?? '',
           lastName: currentUser?.lastName ?? '',
+          avatarUrl: currentUser?.avatarUrl,
         },
         createdAt: nowIso,
         updatedAt: nowIso,
@@ -394,6 +405,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
     onSuccess: (savedProject, _variables, context) => {
       setProjectDialogOpen(false)
       setProjectFormName('')
+      setProjectFormImageUrl('')
       setProjectFormDescription('')
       setProjectFormManagerUserId('')
       setProjectFormManagerTeamId('')
@@ -445,12 +457,14 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
       const payload: {
         name: string
+        imageUrl?: string
         description?: string
         visibility?: 'PUBLIC' | 'PRIVATE'
         managerUserId?: string
         managerTeamId?: number
       } = {
         name: projectFormName.trim(),
+        imageUrl: projectFormImageUrl.trim(),
         description: projectFormDescription.trim() || undefined,
       }
 
@@ -487,6 +501,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 ? {
                     ...project,
                     name: projectFormName.trim(),
+                    imageUrl: projectFormImageUrl.trim(),
                     description: projectFormDescription.trim() || undefined,
                     updatedAt: new Date().toISOString(),
                   }
@@ -571,6 +586,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           email: currentUser?.email ?? '',
           firstName: currentUser?.firstName ?? '',
           lastName: currentUser?.lastName ?? '',
+          avatarUrl: currentUser?.avatarUrl,
         },
         createdAt: nowIso,
         updatedAt: nowIso,
@@ -840,23 +856,18 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
               : 'justify-between border-sidebar-border bg-sidebar px-3',
           )}
         >
-          <Link
-            to="/dashboard"
-            className={cn(
-              'flex items-center overflow-visible relative h-7',
-              !collapsed ? 'gap-2.5 w-32' : 'w-10 justify-center',
-            )}
-          >
-            <img
-              src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
-              alt="Chronelis"
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2 pointer-events-none max-w-none h-28 w-auto transition-all duration-300',
-                collapsed ? 'left-1/2 -translate-x-1/2 origin-center' : 'left-0 origin-left',
-                theme === 'dark' && 'scale-[0.78]',
-              )}
-            />
-          </Link>
+          {!collapsed && (
+            <Link to="/dashboard" className="relative flex h-7 w-32 items-center gap-2.5 overflow-visible">
+              <img
+                src={theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'}
+                alt="Chronelis"
+                className={cn(
+                  'pointer-events-none absolute left-0 top-1/2 h-28 w-auto max-w-none origin-left -translate-y-1/2 transition-all duration-300',
+                  theme === 'dark' && 'scale-[0.78]',
+                )}
+              />
+            </Link>
+          )}
 
           {!collapsed && (
             <div className="hidden items-center gap-0.5 lg:flex">
@@ -1174,11 +1185,13 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
 
           <ProjectFormFields
             name={projectFormName}
+            imageUrl={projectFormImageUrl}
             description={projectFormDescription}
             visibility={projectFormVisibility}
             managerUserId={projectFormManagerUserId}
             managerTeamId={projectFormManagerTeamId}
             onNameChange={setProjectFormName}
+            onImageUrlChange={setProjectFormImageUrl}
             onDescriptionChange={setProjectFormDescription}
             onVisibilityChange={setProjectFormVisibility}
             onManagerUserChange={setProjectFormManagerUserId}

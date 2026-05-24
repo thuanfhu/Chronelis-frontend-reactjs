@@ -5,15 +5,18 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WorkspaceImageUpload } from '@/components/shared/workspace-image-upload'
 import type { WorkspaceMember, WorkspaceMemberRoleType, WorkspaceTeam } from '@/types/domain'
 
 interface ProjectFormFieldsProps {
   name: string
+  imageUrl: string
   description: string
   visibility: 'PUBLIC' | 'PRIVATE'
   managerUserId: string
   managerTeamId: string
   onNameChange: (value: string) => void
+  onImageUrlChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
   onManagerUserChange: (value: string) => void
@@ -25,11 +28,13 @@ interface ProjectFormFieldsProps {
 
 export function ProjectFormFields({
   name,
+  imageUrl,
   description,
   visibility,
   managerUserId,
   managerTeamId,
   onNameChange,
+  onImageUrlChange,
   onDescriptionChange,
   onVisibilityChange,
   onManagerUserChange,
@@ -54,14 +59,23 @@ export function ProjectFormFields({
   if (!isOwner) {
     return (
       <div className="space-y-3">
-        <div className="space-y-2">
-          <Label htmlFor={nameId}>{t('workspace.field.projectName')}</Label>
-          <Input
-            id={nameId}
-            value={name}
-            onChange={(event) => onNameChange(event.target.value)}
-            placeholder={t('workspace.placeholder.projectName')}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <WorkspaceImageUpload
+            value={imageUrl}
+            onChange={onImageUrlChange}
+            alt={name || t('workspace.field.projectImage')}
+            folder="project-images"
+            fileName="project.jpg"
           />
+          <div className="flex-1 space-y-2">
+            <Label htmlFor={nameId}>{t('workspace.field.projectName')}</Label>
+            <Input
+              id={nameId}
+              value={name}
+              onChange={(event) => onNameChange(event.target.value)}
+              placeholder={t('workspace.placeholder.projectName')}
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor={descriptionId}>{t('workspace.field.descriptionOptional')}</Label>
@@ -84,14 +98,23 @@ export function ProjectFormFields({
         <TabsTrigger value="manager">{t('common.manager')}</TabsTrigger>
       </TabsList>
       <TabsContent value="general" className="space-y-3 pt-3">
-        <div className="space-y-2">
-          <Label htmlFor={nameId}>{t('workspace.field.projectName')}</Label>
-          <Input
-            id={nameId}
-            value={name}
-            onChange={(event) => onNameChange(event.target.value)}
-            placeholder={t('workspace.placeholder.projectName')}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <WorkspaceImageUpload
+            value={imageUrl}
+            onChange={onImageUrlChange}
+            alt={name || t('workspace.field.projectImage')}
+            folder="project-images"
+            fileName="project.jpg"
           />
+          <div className="flex-1 space-y-2">
+            <Label htmlFor={nameId}>{t('workspace.field.projectName')}</Label>
+            <Input
+              id={nameId}
+              value={name}
+              onChange={(event) => onNameChange(event.target.value)}
+              placeholder={t('workspace.placeholder.projectName')}
+            />
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor={descriptionId}>{t('workspace.field.descriptionOptional')}</Label>

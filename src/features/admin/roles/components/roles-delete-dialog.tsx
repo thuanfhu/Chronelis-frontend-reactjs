@@ -35,13 +35,12 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
       toast.success(
         t('roleDeleteSuccess', {
           roleName: currentRow.name,
-          defaultValue: `Vai trò "${currentRow.name}" đã được xóa thành công`,
         }),
       )
       onOpenChange(false)
       setValue('')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('roleDeleteError', 'Lỗi khi xóa vai trò'))
+      toast.error(error instanceof Error ? error.message : t('roleDeleteError'))
     }
   }
 
@@ -63,7 +62,6 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             <DialogDescription className="mt-2 text-sm text-muted-foreground">
               {t('roleDeleteConfirmation', {
                 roleName: currentRow.name,
-                defaultValue: `Bạn có chắc chắn muốn xóa vai trò "${currentRow.name}"?`,
               })}
             </DialogDescription>
           </div>
@@ -74,14 +72,13 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             <Label htmlFor="role-name-confirm" className="text-sm font-medium mb-2.5 block">
               {t('enterRoleNameToConfirm', {
                 roleName: currentRow.name,
-                defaultValue: `Nhập tên vai trò "${currentRow.name}" để xác nhận`,
               })}
             </Label>
             <Input
               id="role-name-confirm"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={t('enterRoleNamePlaceholder', 'Nhập tên vai trò')}
+              placeholder={t('enterRoleNamePlaceholder')}
               className="border-red-200 focus-visible:ring-red-500"
             />
           </div>
@@ -90,10 +87,7 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             <IconAlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
             <AlertTitle className="text-red-700 dark:text-red-300 font-medium">{t('warning')}</AlertTitle>
             <AlertDescription className="text-red-600 dark:text-red-400 text-xs">
-              {t(
-                'roleDeleteWarning',
-                'Thao tác này không thể hoàn tác và có thể ảnh hưởng đến người dùng đang giữ vai trò này.',
-              )}
+              {t('roleDeleteWarning')}
             </AlertDescription>
           </Alert>
         </div>
@@ -107,7 +101,7 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             }}
             className="flex-1 sm:flex-none"
           >
-            {t('cancel')}
+            {t('common.cancel')}
           </Button>
           <Button
             variant="destructive"
@@ -115,7 +109,7 @@ export function RolesDeleteDialog({ open, onOpenChange }: Props) {
             disabled={value.trim() !== currentRow.name}
             className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white disabled:bg-red-200 dark:disabled:bg-red-900/50"
           >
-            {t('delete')}
+            {t('common.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

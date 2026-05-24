@@ -53,7 +53,7 @@ export function PriorityComposedChart({ data, height = 220 }: Props) {
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={chartData} margin={{ top: 6, right: 24, left: -24, bottom: 0 }}>
+      <ComposedChart data={chartData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
         <XAxis
           dataKey="priority"
@@ -107,7 +107,15 @@ export function PriorityComposedChart({ data, height = 220 }: Props) {
         <Legend
           iconType="circle"
           iconSize={7}
-          wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }}
+          wrapperStyle={{
+            fontSize: '11px',
+            paddingTop: '4px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            rowGap: '4px',
+            columnGap: '10px',
+          }}
           formatter={(v) => <span style={{ color: 'hsl(var(--muted-foreground))' }}>{v}</span>}
         />
         <Bar

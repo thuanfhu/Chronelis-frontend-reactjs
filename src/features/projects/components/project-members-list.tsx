@@ -246,7 +246,12 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                         >
                           <div className="flex items-center gap-4 mb-4 sm:mb-0">
                             <Avatar className="size-11 border border-border/50 shadow-sm ring-2 ring-background">
-                              <AvatarImage src={undefined} />
+                              {member.user.avatarUrl && (
+                                <AvatarImage
+                                  src={member.user.avatarUrl}
+                                  alt={`${member.user.firstName} ${member.user.lastName}`}
+                                />
+                              )}
                               <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
                                 {member.user.firstName?.[0]}
                                 {member.user.lastName?.[0]}
@@ -386,9 +391,12 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                           )}
                         >
                           <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                            <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm border border-primary/20">
-                              <Users2 className="size-5.5" />
-                            </div>
+                            <Avatar className="size-11 border border-primary/20 shadow-sm ring-2 ring-background">
+                              {team.imageUrl && <AvatarImage src={team.imageUrl} alt={team.name} />}
+                              <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
+                                {team.name.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
                             <div className="flex flex-col gap-0.5">
                               <span className="text-[15px] font-bold tracking-tight text-foreground">{team.name}</span>
                               <span className="text-sm text-muted-foreground/80 font-medium">

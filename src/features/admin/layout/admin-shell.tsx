@@ -32,8 +32,8 @@ export function AdminShell() {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 flex flex-col">
-          <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 flex flex-col">
+        <main className="min-h-0 flex-1 overflow-hidden px-4 py-5 sm:px-6 sm:py-6 flex flex-col">
+          <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl min-w-0 flex-col overflow-hidden">
             <Outlet />
           </div>
         </main>

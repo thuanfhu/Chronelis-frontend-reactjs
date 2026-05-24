@@ -136,7 +136,7 @@ export default function RolesProvider({ children }: Props) {
       setCurrentRow(null)
     },
     onError: (err: Error) => {
-      toast.error(err.message || t('notification.roleUpdateError', 'Lỗi khi cập nhật vai trò'))
+      toast.error(err.message || t('notification.roleUpdateError'))
     },
   })
 
@@ -146,12 +146,12 @@ export default function RolesProvider({ children }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] })
-      toast.success(t('notification.roleDeleteSuccess', 'Xóa vai trò thành công'))
+      toast.success(t('notification.roleDeleteSuccess'))
       setOpen(null)
       setCurrentRow(null)
     },
     onError: (err: Error) => {
-      toast.error(err.message || t('notification.roleDeleteError', 'Lỗi khi xóa vai trò'))
+      toast.error(err.message || t('notification.roleDeleteError'))
     },
   })
 

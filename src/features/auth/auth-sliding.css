@@ -202,6 +202,28 @@
   text-decoration: underline;
 }
 
+.chronelis-auth-back-link {
+  display: none;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: color-mix(in oklab, var(--foreground) 78%, var(--muted-foreground));
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.chronelis-auth-back-link:hover {
+  color: color-mix(in oklab, var(--primary) 82%, var(--foreground));
+  text-decoration: none;
+}
+
 .chronelis-auth-mobile-switch {
   display: none;
   align-items: center;
@@ -754,7 +776,7 @@
   .chronelis-auth-page {
     min-height: 100dvh;
     padding: 0;
-    overflow-y: auto;
+    overflow: hidden;
     overflow-x: hidden;
     background:
       radial-gradient(circle at 8% 10%, color-mix(in oklab, var(--primary) 20%, transparent), transparent 55%),
@@ -793,10 +815,11 @@
     position: relative;
     inset: auto;
     min-height: 100dvh;
+    height: 100dvh;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    padding: 1rem 0.85rem 1.35rem;
+    padding: 0.85rem;
     z-index: 6;
   }
 
@@ -806,14 +829,14 @@
     left: auto;
     width: 100%;
     max-width: 30rem;
-    min-height: 37.5rem;
-    height: min(43rem, calc(100dvh - 2.35rem));
+    min-height: 0;
+    height: 100%;
     transform: none !important;
   }
 
   .chronelis-auth-page.forgot-password-mode .chronelis-auth-signin-signup {
-    min-height: 34.5rem;
-    height: min(40rem, calc(100dvh - 2.35rem));
+    min-height: 0;
+    height: 100%;
   }
 
   .chronelis-auth-form {
@@ -864,6 +887,11 @@
     height: 2.95rem;
   }
 
+  .chronelis-auth-back-link {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+
   .chronelis-auth-mobile-switch {
     display: flex;
   }
@@ -905,7 +933,11 @@
 
 @media (max-width: 430px) {
   .chronelis-auth-forms-container {
-    padding: 0.75rem 0.55rem 1rem;
+    padding: 0.75rem 0.55rem;
+  }
+
+  .chronelis-auth-signin-signup {
+    height: 100%;
   }
 
   .chronelis-auth-form {

@@ -4,7 +4,7 @@ import { AlignLeft, Calendar, CalendarClock, Clock3, Flag, Loader2, Rows3, Shape
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/app/store/auth-store'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -271,6 +271,7 @@ export function TaskCreateDialog({
         searchText: `${member.user.email} ${member.user.firstName} ${member.user.lastName} ${member.role}`,
         prefix: (
           <Avatar className="size-6">
+            {member.user.avatarUrl && <AvatarImage src={member.user.avatarUrl} alt={member.user.firstName} />}
             <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
               {member.user.firstName.charAt(0)}
               {member.user.lastName.charAt(0)}
@@ -428,6 +429,7 @@ export function TaskCreateDialog({
             email: currentUser.email,
             firstName: currentUser.firstName,
             lastName: currentUser.lastName,
+            avatarUrl: currentUser.avatarUrl,
           }
         : {
             userId: '',

@@ -180,7 +180,7 @@ export function ProjectSettingsPage() {
                 onClick={() => setActiveTab('taskTypes')}
               >
                 <Settings className="size-4" />
-                <span className="text-[13px] font-bold">Loại công việc</span>
+                <span className="text-[13px] font-bold">{t('project.settings.tabTaskTypes')}</span>
               </Button>
             </nav>
 

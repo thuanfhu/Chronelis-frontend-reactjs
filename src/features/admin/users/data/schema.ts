@@ -41,6 +41,8 @@ export const userSchema = z.object({
   email: z.string().email(),
   firstName: z.string(),
   lastName: z.string(),
+  avatar: z.string().optional(),
+  avatarUrl: z.string().optional(),
   isVerified: z.boolean(),
   roles: z
     .array(

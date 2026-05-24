@@ -53,7 +53,8 @@ http.interceptors.response.use(
       if (tokenIsExpiredOrMissing) {
         useAuthStore.getState().clearSession()
         if (!window.location.pathname.startsWith('/login')) {
-          window.location.href = '/login'
+          window.sessionStorage.setItem('chronelis-session-expired', '1')
+          window.location.href = '/login?reason=session-expired'
         }
       }
       // If the token is still valid, let the error propagate normally (caught by mutation onError).

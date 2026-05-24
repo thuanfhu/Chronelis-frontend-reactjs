@@ -5,11 +5,13 @@ import ColorBends from '@/components/ColorBends'
 import { CheckCircle2, Layout, Zap, Users, ArrowRight, Star, LogOut, ArrowUp, User, ShieldCheck } from 'lucide-react'
 import { ThemeLanguageToggle } from '@/components/shared/ThemeLanguageToggle'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import TrueFocus from '@/components/TrueFocus'
 import { useAuthStore } from '@/app/store/auth-store'
 import { isAdminUser } from '@/lib/auth/role-utils'
 import { useUiStore } from '@/app/store/ui-store'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { marketingFooterGroups } from '@/pages/marketing-links'
 import {
   DropdownMenu,
@@ -21,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 export function LandingPage() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isVi = i18n.language === 'vi'
   const currentUser = useAuthStore((state) => state.currentUser)
   const clearSession = useAuthStore((state) => state.clearSession)
@@ -31,6 +33,7 @@ export function LandingPage() {
   const canAccessAdmin = isAdminUser(currentUser)
 
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const kanbanCols = [
     {
@@ -171,8 +174,16 @@ export function LandingPage() {
     })
   }
 
+  const handleLogout = () => {
+    clearSession()
+    toast.success(t('common.toast.logoutSuccess'))
+    setLogoutConfirmOpen(false)
+    navigate('/login')
+  }
+
   return (
-    <div className="relative min-h-screen w-full bg-background text-foreground selection:bg-primary/30 font-sans overflow-x-hidden transition-colors duration-300">
+    <>
+      <div className="relative min-h-screen w-full bg-background text-foreground selection:bg-primary/30 font-sans overflow-x-hidden transition-colors duration-300">
       {/* Background Animation - Hero Section Only */}
       <div className="absolute top-0 left-0 right-0 h-[100vh] z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0">
@@ -267,9 +278,8 @@ export function LandingPage() {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => {
-                      clearSession()
-                      navigate('/')
+                    onSelect={() => {
+                      window.setTimeout(() => setLogoutConfirmOpen(true), 0)
                     }}
                     className="text-destructive focus:text-destructive"
                   >
@@ -719,6 +729,16 @@ export function LandingPage() {
           </Button>
         )}
       </div>
-    </div>
+      </div>
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        title={t('admin.sidebar.logoutTitle')}
+        description={t('admin.sidebar.logoutDescription')}
+        confirmText={t('common.logout')}
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+      />
+    </>
   )
 }

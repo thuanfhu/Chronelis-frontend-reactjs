@@ -141,6 +141,15 @@ export function MyWorkPage() {
 
   const hasBlocked = filtBlocked.length > 0
   const hasReady = filtReady.length > 0
+  const subtitleParts = t('myWork.subtitle')
+    .split('·')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const subtitleTagClasses = [
+    'border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
+    'border-sky-200/70 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200',
+    'border-violet-200/70 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200',
+  ]
 
   /* ═══ Render ═══ */
   return (
@@ -150,35 +159,32 @@ export function MyWorkPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.24 }}
-        className="flex flex-col gap-3 border-b border-border/60 pb-5 md:flex-row md:items-center md:justify-between"
+        className="flex flex-col gap-2 border-b border-border/60 pb-5"
       >
-        <div className="flex items-center gap-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm">
-            <LayoutDashboard className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">{t('myWork.title')}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-              <TrendingUp className="size-3.5 text-emerald-500" />
-              {t('myWork.subtitle')
-                .split('·')
-                .map((part, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-                  >
-                    {part.trim()}
-                  </span>
-                ))}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm">
+              <LayoutDashboard className="size-5" />
             </div>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">{t('myWork.title')}</h1>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh}>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 shrink-0" onClick={refresh}>
             <RefreshCw className={cn('size-3.5', myWorkQuery.isFetching && 'animate-spin')} />
             {myWorkQuery.isFetching ? t('common.refreshing') : t('common.refresh')}
           </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {subtitleParts.map((part, index) => (
+            <span
+              key={index}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold sm:text-xs ${subtitleTagClasses[index % subtitleTagClasses.length]}`}
+            >
+              {index === 0 ? <TrendingUp className="size-3.5" /> : null}
+              {part}
+            </span>
+          ))}
         </div>
       </motion.div>
 
@@ -227,9 +233,9 @@ export function MyWorkPage() {
           </div>
 
           {/* ─── Charts row 1: Area + Composed ─── */}
-          <motion.div variants={fadeSlide} className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+          <motion.div variants={fadeSlide} className="grid min-w-0 gap-5 xl:grid-cols-[1fr_1fr]">
             {/* AREA CHART: daily task creation trend */}
-            <Card className="border-border/60 shadow-sm">
+            <Card className="min-w-0 border-border/60 shadow-sm">
               <CardHeader className="pb-2 pt-5">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
@@ -246,7 +252,7 @@ export function MyWorkPage() {
             </Card>
 
             {/* COMPOSED CHART: estimated hours + task count by priority */}
-            <Card className="border-border/60 shadow-sm">
+            <Card className="min-w-0 border-border/60 shadow-sm">
               <CardHeader className="pb-2 pt-5">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Flame className="size-4 text-orange-500" />
@@ -261,9 +267,9 @@ export function MyWorkPage() {
           </motion.div>
 
           {/* ─── Charts row 2: Pie + Bar + Line + Blockers ─── */}
-          <motion.div variants={fadeSlide} className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_18rem]">
+          <motion.div variants={fadeSlide} className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_18rem]">
             {/* PIE CHART: task health donut */}
-            <Card className="border-border/60 shadow-sm">
+            <Card className="min-w-0 border-border/60 shadow-sm">
               <CardHeader className="pb-1 pt-4">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="size-4 text-emerald-500" />
@@ -282,7 +288,7 @@ export function MyWorkPage() {
             </Card>
 
             {/* BAR CHART: priority breakdown */}
-            <Card className="border-border/60 shadow-sm">
+            <Card className="min-w-0 border-border/60 shadow-sm">
               <CardHeader className="pb-1 pt-4">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Workflow className="size-4 text-amber-500" />
@@ -296,7 +302,7 @@ export function MyWorkPage() {
             </Card>
 
             {/* LINE CHART: cumulative completions */}
-            <Card className="border-border/60 shadow-sm">
+            <Card className="min-w-0 border-border/60 shadow-sm">
               <CardHeader className="pb-1 pt-4">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <Rocket className="size-4 text-purple-500" />
@@ -320,18 +326,18 @@ export function MyWorkPage() {
           {/* Filter bar */}
           <motion.div variants={fadeSlide}>
             <Card className="border-border/60 shadow-sm">
-              <CardContent className="space-y-3.5 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardContent className="space-y-3.5 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-2">
                     <Filter className="size-4 text-muted-foreground" />
                     <p className="text-sm font-semibold">{t('myWork.filterTitle')}</p>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="ml-auto text-xs rounded-full">
                     {t('myWork.matchingTasks', { count: filtBlocked.length + filtReady.length })}
                   </Badge>
                 </div>
-                <div className="grid gap-3 xl:grid-cols-[1fr_12rem_12rem]">
-                  <div className="relative">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_12rem_12rem]">
+                  <div className="relative sm:col-span-2 lg:col-span-1">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={searchValue}
@@ -478,7 +484,7 @@ function BlockerDigestCard({
 }) {
   const { t } = useTranslation()
   return (
-    <Card className="border-border/60 shadow-sm">
+    <Card className="min-w-0 border-border/60 shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <span className="flex size-6 items-center justify-center rounded-md bg-rose-100 dark:bg-rose-500/20">

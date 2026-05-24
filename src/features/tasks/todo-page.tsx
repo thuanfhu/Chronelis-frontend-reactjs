@@ -643,7 +643,7 @@ export function TodoPage() {
             className="absolute right-1 top-1 h-8 w-8 sm:w-auto rounded-lg px-0 sm:px-3 text-xs bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm transition-all flex items-center justify-center gap-1 shrink-0"
             title={t('todo.createDetailed')}
           >
-            <span className="hidden sm:inline">{t('todo.createDetailedShort', 'Chi tiết')}</span>
+            <span className="hidden sm:inline">{t('todo.createDetailedShort')}</span>
             <ArrowUpRight className="size-3.5 shrink-0" />
           </Button>
         </div>

@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/utils/datetime'
@@ -115,9 +115,12 @@ export function TaskCommentsPanel({
                       key={comment.id}
                       className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground shadow-sm dark:bg-background/15"
                     >
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                        {comment.user.firstName.charAt(0)}
-                        {comment.user.lastName.charAt(0)}
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary overflow-hidden">
+                        {comment.user.avatarUrl ? (
+                          <img src={comment.user.avatarUrl} alt={comment.user.firstName} className="size-full object-cover" />
+                        ) : (
+                          <>{comment.user.firstName.charAt(0)}{comment.user.lastName.charAt(0)}</>
+                        )}
                       </span>
                       <span className="truncate" style={{ maxWidth: '10rem' }}>
                         {comment.user.firstName} {comment.user.lastName}
@@ -212,6 +215,7 @@ export function TaskCommentsPanel({
                   ) : null}
 
                   <Avatar className="absolute left-0 top-0 size-10 shrink-0 border border-border/70 shadow-sm">
+                    {comment.user.avatarUrl && <AvatarImage src={comment.user.avatarUrl} alt={comment.user.firstName} />}
                     <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
                       {comment.user.firstName.charAt(0)}
                       {comment.user.lastName.charAt(0)}

@@ -24,6 +24,7 @@ import {
   Link2,
   ArrowUpRight,
   ShieldAlert,
+  Shapes,
 } from 'lucide-react'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -34,7 +35,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { goalApi } from '@/lib/api/modules/goal-api'
@@ -395,6 +396,7 @@ export function TaskDetailsDrawer() {
             email: currentUser.email,
             firstName: currentUser.firstName,
             lastName: currentUser.lastName,
+            avatarUrl: currentUser.avatarUrl,
           },
           content: newComment.trim(),
           createdAt: nowIso,
@@ -620,6 +622,7 @@ export function TaskDetailsDrawer() {
                 email: currentUser.email,
                 firstName: currentUser.firstName,
                 lastName: currentUser.lastName,
+                avatarUrl: currentUser.avatarUrl,
               }
             : currentTask.createdBy
           const optimisticSchedule: TaskSchedule = {
@@ -867,6 +870,7 @@ export function TaskDetailsDrawer() {
         searchText: `${member.user.email} ${member.role}`,
         prefix: (
           <Avatar className="size-6">
+            {member.user.avatarUrl && <AvatarImage src={member.user.avatarUrl} alt={member.user.firstName} />}
             <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
               {member.user.firstName.charAt(0)}
               {member.user.lastName.charAt(0)}
@@ -1491,7 +1495,7 @@ export function TaskDetailsDrawer() {
                               {/* Title + description + quick actions */}
                               <div className="px-4 sm:px-6 py-4 sm:py-5">
                                 <h2
-                                  className={`text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
+                                  className={`break-words text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
                                   style={{ overflowWrap: 'anywhere' }}
                                 >
                                   {task.title}
@@ -1516,11 +1520,11 @@ export function TaskDetailsDrawer() {
                                   </div>
                                 )}
 
-                                <div className="mt-4 flex flex-row items-center gap-2 w-full">
+                                <div className="mt-4 flex w-full flex-wrap items-center gap-2">
                                   <Button
                                     size="sm"
                                     variant={task.isCompleted ? 'secondary' : 'default'}
-                                    className="h-9 flex-1 gap-1.5 text-xs min-w-0"
+                                    className="h-9 flex-1 gap-1.5 text-xs min-w-0 shrink"
                                     onClick={() => {
                                       if (!canManageCurrentTask) {
                                         toast.error(t('task.noPermission'))
@@ -1578,7 +1582,7 @@ export function TaskDetailsDrawer() {
                                               {t('common.commentCount', { count: comments.length })}
                                             </span>
                                           </div>
-                                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                          <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
                                             {t('common.commentSectionDesc')}
                                           </p>
                                         </div>
@@ -1604,7 +1608,7 @@ export function TaskDetailsDrawer() {
                                             })}
                                           </p>
                                           <p
-                                            className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80"
+                                            className="mt-1 line-clamp-2 min-w-0 break-words text-xs leading-6 text-foreground/80"
                                             style={{ overflowWrap: 'anywhere' }}
                                           >
                                             {latestCommentPreview.content}
@@ -1650,6 +1654,7 @@ export function TaskDetailsDrawer() {
                                       {task.assignee ? (
                                         <div className="flex items-center gap-1.5">
                                           <Avatar className="size-5">
+                                            {task.assignee.avatarUrl && <AvatarImage src={task.assignee.avatarUrl} alt={task.assignee.firstName} />}
                                             <AvatarFallback className="bg-primary/10 text-[9px] font-bold text-primary">
                                               {task.assignee.firstName.charAt(0)}
                                               {task.assignee.lastName.charAt(0)}
@@ -1688,9 +1693,8 @@ export function TaskDetailsDrawer() {
                                     <div className="min-w-0 flex-1">
                                       <p className="mb-1 text-xs text-muted-foreground">{t('task.goalLabel')}</p>
                                       {task.goalId ? (
-                                        <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                                          <Target className="size-3 shrink-0" />
-                                          <span className="truncate">
+                                        <span className="inline-flex max-w-full min-w-0 flex-wrap items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                                          <span className="min-w-0 break-words">
                                             {goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })}
                                           </span>
                                         </span>
@@ -1720,7 +1724,7 @@ export function TaskDetailsDrawer() {
                                           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-destructive">
                                             {t('task.blockerNoteLabel')}
                                           </p>
-                                          <p className="mt-1 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                                          <p className="mt-1 break-words text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
                                             {dependencyDetails.blockerNote}
                                           </p>
                                         </div>
@@ -1887,8 +1891,10 @@ function DependencyTaskList({
             >
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-foreground/90">{dependencyTask.title}</span>
-                  <span className="text-xs text-muted-foreground/70">#{dependencyTask.id}</span>
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium text-foreground/90">
+                    {dependencyTask.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground/70 shrink-0">#{dependencyTask.id}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
                   <Badge variant="outline" className="text-[10px] h-4 px-1.5">
@@ -1898,17 +1904,20 @@ function DependencyTaskList({
                   {dependencyTask.goalId ? <span>{t('task.goalShort', { id: dependencyTask.goalId })}</span> : null}
                 </div>
               </div>
-              <span className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-                {t('task.openTask')}
-                <ArrowUpRight className="size-3" />
+              <span
+                className="text-primary/70 transition-colors flex items-center justify-center rounded-md p-1 hover:text-primary"
+                title={t('task.openTask')}
+              >
+                <ArrowUpRight className="size-3.5" />
+                <span className="sr-only">{t('task.openTask')}</span>
               </span>
             </button>
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground/70">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground/70">
           <Link2 className="size-4 opacity-50" />
-          <span>{emptyLabel}</span>
+          <span className="min-w-0 flex-1 break-words">{emptyLabel}</span>
         </div>
       )}
     </div>
@@ -1921,18 +1930,16 @@ function TaskTypeInfoBlock({ taskType, label }: { taskType: TaskType; label: str
 
   return (
     <div className="flex items-start gap-3">
-      <div
-        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border"
-        style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}
-      >
-        <TaskTypeIcon className="size-3.5" />
-      </div>
+      <Shapes className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="mb-1 text-xs text-muted-foreground">{label}</p>
-        <Badge variant="secondary" className="gap-1 text-xs" style={{ backgroundColor: `${color}20`, color }}>
-          <TaskTypeIcon className="size-3.5" />
-          {taskType.name}
-        </Badge>
+        <span
+          className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+          style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}
+        >
+          <TaskTypeIcon className="size-3.5 shrink-0" />
+          <span className="min-w-0 break-words">{taskType.name}</span>
+        </span>
       </div>
     </div>
   )

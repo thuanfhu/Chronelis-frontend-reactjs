@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import Cropper from 'react-easy-crop'
 import type { Area } from 'react-easy-crop'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -7,18 +6,15 @@ import {
   Camera,
   CheckCircle2,
   Copy,
-  Crop,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
-  RotateCcw,
   Save,
   Settings2,
   Shield,
   User,
-  ZoomIn,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -28,8 +24,10 @@ import { LoadingPanel } from '@/components/shared/loading-panel'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog'
+import { AVATAR_CROP_CONTEXT_ERROR, AVATAR_CROP_EMPTY_ERROR, getCroppedImg } from '@/lib/utils/crop-image'
 import { SearchableSelectPopover } from '@/components/shared/searchable-select-popover'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -74,60 +72,7 @@ function buildInitials(firstName: string, lastName: string) {
 
 const EMAIL_PATTERN = /^[\w._%+-]+@(gmail\.com|yopmail\.com)$/i
 const STRONG_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
-const AVATAR_CROP_CONTEXT_ERROR = 'AVATAR_CROP_CONTEXT_ERROR'
-const AVATAR_CROP_EMPTY_ERROR = 'AVATAR_CROP_EMPTY_ERROR'
 
-// ─── Image crop helpers ───
-
-function createImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.addEventListener('load', () => resolve(img))
-    img.addEventListener('error', (e) => reject(e))
-    img.setAttribute('crossOrigin', 'anonymous')
-    img.src = url
-  })
-}
-
-async function getCroppedImg(imageSrc: string, pixelCrop: Area, rotation = 0): Promise<Blob> {
-  const image = await createImage(imageSrc)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error(AVATAR_CROP_CONTEXT_ERROR)
-
-  const maxSize = Math.max(image.width, image.height)
-  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
-  canvas.width = safeArea
-  canvas.height = safeArea
-
-  ctx.translate(safeArea / 2, safeArea / 2)
-  ctx.rotate((rotation * Math.PI) / 180)
-  ctx.translate(-safeArea / 2, -safeArea / 2)
-  ctx.drawImage(image, safeArea / 2 - image.width / 2, safeArea / 2 - image.height / 2)
-
-  const data = ctx.getImageData(0, 0, safeArea, safeArea)
-  canvas.width = pixelCrop.width
-  canvas.height = pixelCrop.height
-  ctx.putImageData(
-    data,
-    0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x,
-    0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y,
-  )
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error(AVATAR_CROP_EMPTY_ERROR))
-          return
-        }
-        resolve(blob)
-      },
-      'image/jpeg',
-      0.92,
-    )
-  })
-}
 
 // ─── Country/City API types ───
 
@@ -175,14 +120,6 @@ export function ProfilePage() {
   // ─── Image crop state ───
   const [cropDialogOpen, setCropDialogOpen] = useState(false)
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null)
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [rotation, setRotation] = useState(0)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
-
-  const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
-    setCroppedAreaPixels(croppedPixels)
-  }, [])
 
   const [profileForm, setProfileForm] = useState<ProfileFormState>(() =>
     mapUserToForm(
@@ -363,16 +300,13 @@ export function ProfilePage() {
     const reader = new FileReader()
     reader.addEventListener('load', () => {
       setRawImageSrc(reader.result as string)
-      setCrop({ x: 0, y: 0 })
-      setZoom(1)
-      setRotation(0)
       setCropDialogOpen(true)
     })
     reader.readAsDataURL(file)
   }
 
-  const handleCropConfirm = async () => {
-    if (!rawImageSrc || !croppedAreaPixels) return
+  const handleCropConfirm = async (croppedAreaPixels: Area, rotation: number) => {
+    if (!rawImageSrc) return
     setAvatarUploading(true)
     try {
       const blob = await getCroppedImg(rawImageSrc, croppedAreaPixels, rotation)
@@ -811,103 +745,16 @@ export function ProfilePage() {
       </Tabs>
 
       {/* ─── Avatar Crop Dialog ─── */}
-      <Dialog
+      <ImageCropDialog
         open={cropDialogOpen}
         onOpenChange={(open) => {
-          if (!open && !avatarUploading) {
-            setCropDialogOpen(false)
-            setRawImageSrc(null)
-          }
+          setCropDialogOpen(open)
+          if (!open) setRawImageSrc(null)
         }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Crop className="size-4" />
-              {t('profile.crop.title')}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="relative h-64 w-full overflow-hidden rounded-lg bg-black">
-            {rawImageSrc && (
-              <Cropper
-                image={rawImageSrc}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                cropShape="round"
-                showGrid={false}
-              />
-            )}
-          </div>
-
-          <div className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-1.5 text-xs">
-                  <ZoomIn className="size-3.5" />
-                  {t('profile.crop.zoom')}
-                </Label>
-                <span className="text-xs tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.05}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="flex items-center gap-1.5 text-xs">
-                  <RotateCcw className="size-3.5" />
-                  {t('profile.crop.rotate')}
-                </Label>
-                <span className="text-xs tabular-nums text-muted-foreground">{rotation}°</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={360}
-                step={1}
-                value={rotation}
-                onChange={(e) => setRotation(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCropDialogOpen(false)
-                setRawImageSrc(null)
-              }}
-              disabled={avatarUploading}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                void handleCropConfirm()
-              }}
-              disabled={avatarUploading}
-            >
-              {avatarUploading ? <Loader2 className="size-4 animate-spin" /> : <Crop className="size-4" />}
-              {t('profile.actions.applyAvatar')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        rawImageSrc={rawImageSrc}
+        onCropConfirm={handleCropConfirm}
+        isUploading={avatarUploading}
+      />
     </div>
   )
 }

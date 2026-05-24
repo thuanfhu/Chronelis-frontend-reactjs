@@ -275,6 +275,7 @@ export function GoalsPage() {
           email: user?.email ?? '',
           firstName: user?.firstName ?? '',
           lastName: user?.lastName ?? '',
+          avatarUrl: user?.avatarUrl,
         },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
