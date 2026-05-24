@@ -770,6 +770,13 @@ export function WorkspaceDetailPage() {
     )
   }
 
+  const headerPillClasses = [
+    'border-sky-200/70 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200',
+    'border-emerald-200/70 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200',
+    'border-amber-200/70 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
+    'border-violet-200/70 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200',
+  ]
+
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
@@ -786,7 +793,7 @@ export function WorkspaceDetailPage() {
               .map((part, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center rounded-full bg-muted/80 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${headerPillClasses[index % headerPillClasses.length]}`}
                 >
                   {part.trim()}
                 </span>
@@ -795,8 +802,13 @@ export function WorkspaceDetailPage() {
         }
         actions={
           canManageWorkspace ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button variant="destructive" size="sm" onClick={() => setDeleteWorkspaceDialogOpen(true)}>
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setDeleteWorkspaceDialogOpen(true)}
+              >
                 <Trash2 className="mr-1.5 size-3.5" />
                 {t('workspace.action.delete')}
               </Button>
@@ -814,6 +826,7 @@ export function WorkspaceDetailPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       setEditWsName(workspace.name)
                       setEditWsInitialName(workspace.name.trim())

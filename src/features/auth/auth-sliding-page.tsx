@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, Mail, Phone, UserRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -176,8 +176,6 @@ function AuthPanelContent({ side, content }: AuthPanelContentProps) {
 export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const theme = useUiStore((state) => state.theme)
-  const logoSrc = theme === 'dark' ? '/favicon/chronelis-logo-darkmode.png' : '/favicon/chronelis-logo-lightmode.png'
   const location = useLocation()
   const setSession = useAuthStore((state) => state.setSession)
   const [mode, setMode] = useState<AuthMode>(initialMode)
@@ -394,17 +392,6 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: 10 }}
             transition={FORM_TRANSITION}
           >
-            <Link
-              to="/login"
-              className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4"
-            >
-              <img
-                src={logoSrc}
-                alt="Chronelis"
-                className={`chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto origin-center transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
-              />
-            </Link>
-
             <h2 className="chronelis-auth-title">{t('auth.login')}</h2>
             <p className="chronelis-auth-subtitle">{t('auth.loginSubtitle')}</p>
 
@@ -657,15 +644,9 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: -10 }}
             transition={FORM_TRANSITION}
           >
-            <Link
-              to="/login"
-              className="chronelis-auth-brand chronelis-auth-brand--mobile relative h-8 w-32 flex items-center justify-center mx-auto mb-4"
-            >
-              <img
-                src={logoSrc}
-                alt="Chronelis"
-                className={`chronelis-auth-brand-logo h-28 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none max-w-none w-auto origin-center transition-all duration-300 ${theme === 'dark' ? 'scale-[0.78]' : ''}`}
-              />
+            <Link to="/login" className="chronelis-auth-back-link">
+              <ArrowLeft className="size-4" />
+              {t('auth.backToLogin')}
             </Link>
 
             <h2 className="chronelis-auth-title">{t('auth.forgotPassword')}</h2>

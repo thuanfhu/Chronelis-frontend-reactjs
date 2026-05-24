@@ -40,7 +40,7 @@ export function CompletionLineChart({ data, mode = 'cumulative', height = 200 }:
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={chartData} margin={{ top: 6, right: 6, left: -24, bottom: 0 }}>
+      <LineChart data={chartData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
         <XAxis
           dataKey="label"

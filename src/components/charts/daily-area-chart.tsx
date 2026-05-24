@@ -35,7 +35,7 @@ export function DailyAreaChart({ data, height = 220, showLegend = true }: Props)
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={formatted} margin={{ top: 6, right: 6, left: -24, bottom: 0 }}>
+      <AreaChart data={formatted} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={GRAD_CREATED} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
@@ -82,7 +82,15 @@ export function DailyAreaChart({ data, height = 220, showLegend = true }: Props)
           <Legend
             iconType="circle"
             iconSize={7}
-            wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }}
+            wrapperStyle={{
+              fontSize: '11px',
+              paddingTop: '6px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              rowGap: '4px',
+              columnGap: '10px',
+            }}
             formatter={(v) => <span style={{ color: 'hsl(var(--muted-foreground))' }}>{v}</span>}
           />
         )}

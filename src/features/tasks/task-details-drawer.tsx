@@ -1491,7 +1491,7 @@ export function TaskDetailsDrawer() {
                               {/* Title + description + quick actions */}
                               <div className="px-4 sm:px-6 py-4 sm:py-5">
                                 <h2
-                                  className={`text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
+                                  className={`break-words text-xl font-semibold leading-snug ${task.isCompleted ? 'text-muted-foreground line-through' : ''}`}
                                   style={{ overflowWrap: 'anywhere' }}
                                 >
                                   {task.title}
@@ -1516,11 +1516,11 @@ export function TaskDetailsDrawer() {
                                   </div>
                                 )}
 
-                                <div className="mt-4 flex flex-row items-center gap-2 w-full">
+                                <div className="mt-4 flex w-full flex-wrap items-center gap-2">
                                   <Button
                                     size="sm"
                                     variant={task.isCompleted ? 'secondary' : 'default'}
-                                    className="h-9 flex-1 gap-1.5 text-xs min-w-0"
+                                    className="h-9 flex-1 gap-1.5 text-xs min-w-0 shrink"
                                     onClick={() => {
                                       if (!canManageCurrentTask) {
                                         toast.error(t('task.noPermission'))
@@ -1578,7 +1578,7 @@ export function TaskDetailsDrawer() {
                                               {t('common.commentCount', { count: comments.length })}
                                             </span>
                                           </div>
-                                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                          <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
                                             {t('common.commentSectionDesc')}
                                           </p>
                                         </div>
@@ -1604,7 +1604,7 @@ export function TaskDetailsDrawer() {
                                             })}
                                           </p>
                                           <p
-                                            className="mt-1 line-clamp-2 text-xs leading-6 text-foreground/80"
+                                            className="mt-1 line-clamp-2 min-w-0 break-words text-xs leading-6 text-foreground/80"
                                             style={{ overflowWrap: 'anywhere' }}
                                           >
                                             {latestCommentPreview.content}
@@ -1688,9 +1688,8 @@ export function TaskDetailsDrawer() {
                                     <div className="min-w-0 flex-1">
                                       <p className="mb-1 text-xs text-muted-foreground">{t('task.goalLabel')}</p>
                                       {task.goalId ? (
-                                        <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                                          <Target className="size-3 shrink-0" />
-                                          <span className="truncate">
+                                        <span className="inline-flex max-w-full min-w-0 flex-wrap items-center rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                                          <span className="min-w-0 break-words">
                                             {goalTitleById.get(task.goalId) ?? t('task.goalShort', { id: task.goalId })}
                                           </span>
                                         </span>
@@ -1720,7 +1719,7 @@ export function TaskDetailsDrawer() {
                                           <p className="text-xs font-semibold uppercase tracking-[0.1em] text-destructive">
                                             {t('task.blockerNoteLabel')}
                                           </p>
-                                          <p className="mt-1 text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+                                          <p className="mt-1 break-words text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
                                             {dependencyDetails.blockerNote}
                                           </p>
                                         </div>
@@ -1887,8 +1886,10 @@ function DependencyTaskList({
             >
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-foreground/90">{dependencyTask.title}</span>
-                  <span className="text-xs text-muted-foreground/70">#{dependencyTask.id}</span>
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium text-foreground/90">
+                    {dependencyTask.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground/70 shrink-0">#{dependencyTask.id}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
                   <Badge variant="outline" className="text-[10px] h-4 px-1.5">
@@ -1898,17 +1899,20 @@ function DependencyTaskList({
                   {dependencyTask.goalId ? <span>{t('task.goalShort', { id: dependencyTask.goalId })}</span> : null}
                 </div>
               </div>
-              <span className="text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5">
-                {t('task.openTask')}
-                <ArrowUpRight className="size-3" />
+              <span
+                className="text-primary/70 transition-colors flex items-center justify-center rounded-md p-1 hover:text-primary"
+                title={t('task.openTask')}
+              >
+                <ArrowUpRight className="size-3.5" />
+                <span className="sr-only">{t('task.openTask')}</span>
               </span>
             </button>
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground/70">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground/70">
           <Link2 className="size-4 opacity-50" />
-          <span>{emptyLabel}</span>
+          <span className="min-w-0 flex-1 break-words">{emptyLabel}</span>
         </div>
       )}
     </div>
@@ -1929,9 +1933,12 @@ function TaskTypeInfoBlock({ taskType, label }: { taskType: TaskType; label: str
       </div>
       <div className="min-w-0 flex-1">
         <p className="mb-1 text-xs text-muted-foreground">{label}</p>
-        <Badge variant="secondary" className="gap-1 text-xs" style={{ backgroundColor: `${color}20`, color }}>
-          <TaskTypeIcon className="size-3.5" />
-          {taskType.name}
+        <Badge
+          variant="secondary"
+          className="text-xs max-w-full min-w-0 flex-wrap"
+          style={{ backgroundColor: `${color}20`, color }}
+        >
+          <span className="min-w-0 break-words">{taskType.name}</span>
         </Badge>
       </div>
     </div>

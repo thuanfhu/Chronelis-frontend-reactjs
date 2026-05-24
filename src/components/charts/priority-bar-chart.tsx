@@ -74,7 +74,7 @@ export function PriorityBarChart({ tasks, title }: Props) {
     <div>
       {title && <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</p>}
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 8, bottom: 4 }}>
           <XAxis
             type="number"
             domain={[0, maxVal]}
