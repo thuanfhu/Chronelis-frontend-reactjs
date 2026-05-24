@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmModal } from '@/components/shared/confirm-modal'
 import { goalApi } from '@/lib/api/modules/goal-api'
 import { taskTypeApi, type CreateTaskTypePayload, type UpdateTaskTypePayload } from '@/lib/api/modules/task-type-api'
@@ -202,7 +203,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
       <Card className="overflow-hidden border-border/70 shadow-sm">
         <CardHeader className="gap-4 border-b border-border/70 bg-muted/20">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-3">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2 text-xl">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -214,22 +215,24 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                 Chuẩn hóa nhãn phân loại như Feature, Bug, Release hoặc Documentation để task dễ lọc và dễ đọc hơn.
               </CardDescription>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm theo tên, mô tả hoặc goal..."
+                className="pl-9"
+              />
+            </div>
             {isOwnerOrManager && (
-              <Button className="gap-2" onClick={openCreateDialog}>
+              <Button className="w-full gap-2 sm:w-auto" onClick={openCreateDialog}>
                 <Plus className="size-4" />
                 Tạo task type
               </Button>
             )}
-          </div>
-
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Tìm theo tên, mô tả hoặc goal..."
-              className="pl-9"
-            />
           </div>
         </CardHeader>
 
@@ -258,6 +261,7 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
               {filteredTaskTypes.map((type) => {
                 const TypeIcon = resolveTaskTypeIcon(type.icon)
                 const goal = type.goalId ? goals.find((item) => item.id === type.goalId) : null
+                const goalLabel = goal ? goal.title : 'Toàn project'
                 const color = type.color ?? '#3B82F6'
 
                 return (
@@ -273,13 +277,26 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
                         <TypeIcon className="size-5" />
                       </div>
                       <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold">{type.name}</h3>
-                          <Badge variant="outline" className="gap-1">
+                        <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                          <h3 className="max-w-36 shrink-0 truncate font-semibold sm:max-w-52" title={type.name}>
+                            {type.name}
+                          </h3>
+                          <Badge variant="outline" className="shrink-0 gap-1">
                             <Palette className="size-3" />
                             {color}
                           </Badge>
-                          <Badge variant={goal ? 'secondary' : 'outline'}>{goal ? goal.title : 'Toàn project'}</Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant={goal ? 'secondary' : 'outline'}
+                                className="min-w-0 max-w-full flex-1 overflow-hidden sm:max-w-80 lg:max-w-96"
+                                title={goalLabel}
+                              >
+                                <span className="truncate">{goalLabel}</span>
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-80 break-words">{goalLabel}</TooltipContent>
+                          </Tooltip>
                         </div>
                         {type.description ? (
                           <p className="line-clamp-2 text-sm text-muted-foreground">{type.description}</p>
@@ -291,7 +308,12 @@ export function ProjectTaskTypesTab({ workspaceId, projectId, isOwnerOrManager }
 
                     {isOwnerOrManager && (
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => openEditDialog(type)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+                          onClick={() => openEditDialog(type)}
+                        >
                           <Edit3 className="size-4" />
                           Sửa
                         </Button>

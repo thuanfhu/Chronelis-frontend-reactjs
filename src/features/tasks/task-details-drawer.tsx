@@ -1930,10 +1930,10 @@ function TaskTypeInfoBlock({ taskType, label }: { taskType: TaskType; label: str
       <div className="min-w-0 flex-1">
         <p className="mb-1 text-xs text-muted-foreground">{label}</p>
         <span
-          className="inline-flex max-w-full min-w-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold"
+          className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
           style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}
         >
-          <TaskTypeIcon className="size-4 shrink-0" />
+          <TaskTypeIcon className="size-3.5 shrink-0" />
           <span className="min-w-0 break-words">{taskType.name}</span>
         </span>
       </div>
