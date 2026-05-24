@@ -644,10 +644,10 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
             exit={{ opacity: 0, x: -10 }}
             transition={FORM_TRANSITION}
           >
-            <Link to="/login" className="chronelis-auth-back-link">
+            <button type="button" className="chronelis-auth-back-link" onClick={() => switchMode('sign-in')}>
               <ArrowLeft className="size-4" />
               {t('auth.backToLogin')}
-            </Link>
+            </button>
 
             <h2 className="chronelis-auth-title">{t('auth.forgotPassword')}</h2>
             <p className="chronelis-auth-subtitle">{t('auth.forgotSubtitle')}</p>

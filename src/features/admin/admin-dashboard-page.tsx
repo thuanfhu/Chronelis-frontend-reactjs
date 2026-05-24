@@ -113,7 +113,7 @@ function NewUsersTabContent() {
   const { users, isLoading } = useUsers()
   const { t } = useTranslation()
   return (
-    <Card className="flex-1 flex flex-col min-h-0">
+    <Card className="flex flex-col">
       <CardHeader className="shrink-0">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -125,7 +125,7 @@ function NewUsersTabContent() {
           {!isLoading && <UsersPrimaryButtons />}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <CardContent className="flex flex-col">
         {isLoading ? <DataTableSkeleton columns={7} rows={6} /> : <UsersTable data={users} />}
       </CardContent>
       <UsersDialogs />
