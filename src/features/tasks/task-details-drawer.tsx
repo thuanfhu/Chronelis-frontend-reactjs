@@ -24,6 +24,7 @@ import {
   Link2,
   ArrowUpRight,
   ShieldAlert,
+  Shapes,
 } from 'lucide-react'
 import { useAuthStore } from '@/app/store/auth-store'
 import { useUiStore } from '@/app/store/ui-store'
@@ -1925,21 +1926,16 @@ function TaskTypeInfoBlock({ taskType, label }: { taskType: TaskType; label: str
 
   return (
     <div className="flex items-start gap-3">
-      <div
-        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border"
-        style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}
-      >
-        <TaskTypeIcon className="size-3.5" />
-      </div>
+      <Shapes className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="mb-1 text-xs text-muted-foreground">{label}</p>
-        <Badge
-          variant="secondary"
-          className="text-xs max-w-full min-w-0 flex-wrap"
-          style={{ backgroundColor: `${color}20`, color }}
+        <span
+          className="inline-flex max-w-full min-w-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold"
+          style={{ backgroundColor: `${color}18`, borderColor: `${color}55`, color }}
         >
+          <TaskTypeIcon className="size-4 shrink-0" />
           <span className="min-w-0 break-words">{taskType.name}</span>
-        </Badge>
+        </span>
       </div>
     </div>
   )

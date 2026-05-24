@@ -323,7 +323,9 @@ export function AppTopbar() {
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => setLogoutConfirmOpen(true)}
+                onSelect={() => {
+                  window.setTimeout(() => setLogoutConfirmOpen(true), 0)
+                }}
                 className="text-destructive focus:text-destructive"
               >
                 <LogOut className="mr-2 size-4" />

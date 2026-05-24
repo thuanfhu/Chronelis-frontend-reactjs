@@ -86,6 +86,7 @@
     },
     "toast": {
       "logoutSuccess": "Đăng xuất thành công!",
+      "sessionExpired": "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
       "updateSuccess": "Cập nhật hồ sơ thành công",
       "updateFailed": "Cập nhật hồ sơ thất bại",
       "emailRequestSuccess": "Yêu cầu đổi email đã được gửi",
@@ -1716,6 +1717,7 @@
       "tabGeneral": "Cài đặt chung",
       "tabAccess": "Quyền truy cập",
       "tabRoles": "Hướng dẫn vai trò",
+      "tabTaskTypes": "Loại công việc",
       "currentAccess": "Quyền truy cập hiện tại",
       "currentAccessDescription": "Mức độ quyền hạn thực tế của bạn trong dự án này.",
       "visibility": "Chế độ hiển thị",

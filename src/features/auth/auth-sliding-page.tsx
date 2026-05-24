@@ -201,6 +201,31 @@ export function AuthSlidingPage({ initialMode }: AuthSlidingPageProps) {
   )
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const redirectedByExpiredSession = searchParams.get('reason') === 'session-expired'
+    const storedExpiredSession = window.sessionStorage.getItem('chronelis-session-expired') === '1'
+
+    if (!redirectedByExpiredSession && !storedExpiredSession) {
+      return
+    }
+
+    window.sessionStorage.removeItem('chronelis-session-expired')
+    toast.warning(t('common.toast.sessionExpired'))
+
+    if (redirectedByExpiredSession) {
+      searchParams.delete('reason')
+      const nextSearch = searchParams.toString()
+      navigate(
+        {
+          pathname: location.pathname,
+          search: nextSearch ? `?${nextSearch}` : '',
+        },
+        { replace: true },
+      )
+    }
+  }, [location.pathname, location.search, navigate, t])
+
+  useEffect(() => {
     if (signUpResendCountdown <= 0 && forgotResendCountdown <= 0) {
       return
     }

@@ -86,6 +86,7 @@
     },
     "toast": {
       "logoutSuccess": "Logged out successfully!",
+      "sessionExpired": "Your session has expired. Please log in again.",
       "updateSuccess": "Profile updated successfully",
       "updateFailed": "Failed to update profile",
       "emailRequestSuccess": "Email change request sent",
@@ -1736,6 +1737,7 @@
       "tabGeneral": "General settings",
       "tabAccess": "Access management",
       "tabRoles": "Roles guide",
+      "tabTaskTypes": "Task types",
       "currentAccess": "Current Access",
       "currentAccessDescription": "Your effective access level for this project.",
       "visibility": "Visibility",

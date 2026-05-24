@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
-import { BadgeCheck, Bug, ClipboardList, FileText, Rocket, ShieldCheck, Sparkles, Tag, Wrench } from 'lucide-react'
+import { BadgeCheck, Blocks, Bug, ClipboardList, FileText, Rocket, ShieldCheck, Tag, Wrench } from 'lucide-react'
 
 export const TASK_TYPE_ICON_OPTIONS = [
   { value: 'tag', label: 'General', icon: Tag },
   { value: 'clipboard', label: 'Task', icon: ClipboardList },
-  { value: 'sparkles', label: 'Feature', icon: Sparkles },
+  { value: 'sparkles', label: 'Feature', icon: Blocks },
   { value: 'bug', label: 'Bug', icon: Bug },
   { value: 'wrench', label: 'Maintenance', icon: Wrench },
   { value: 'shield', label: 'Security', icon: ShieldCheck },
