@@ -1879,13 +1879,18 @@
       "searchTeamsPlaceholder": "Search teams by name...",
       "noResults": "No members found matching your search.",
       "noTeamsResults": "No teams found matching your search.",
+      "accessUpdateSuccess": "Project access updated successfully",
+      "accessUpdateFailed": "Failed to update project access",
+      "accessRevokeSuccess": "Project access revoked",
+      "accessRevokeFailed": "Failed to revoke project access",
       "editBasicInfo": "Basic Information",
       "editBasicInfoDescription": "Update your project name and purpose.",
       "projectNameLabel": "Project Name",
       "projectDescriptionLabel": "Project Description",
       "saveChanges": "Save Changes",
       "saveSuccess": "Project updated successfully",
-      "saveError": "Failed to update project"
+      "saveError": "Failed to update project",
+      "visibilityDescription": "Choose who can access this project inside the workspace."
     },
     "role": {
       "manager": "Manager",
@@ -1897,7 +1902,13 @@
       "public": "Public",
       "private": "Private",
       "publicDescription": "All workspace members can see and collaborate on this project.",
-      "privateDescription": "Only specifically granted users and teams can see this project."
+      "privateDescription": "Only explicitly granted users and teams can see this project.",
+      "helperTitle": "Public/Private applies inside the workspace",
+      "helperDescription": "Public: all workspace members can access this project by default. Private: only granted users/teams can see it. Neither option exposes the project outside the workspace.",
+      "publicDefault": "Default access: all members become Contributors.",
+      "publicScope": "Best for projects shared across the workspace.",
+      "privateDefault": "Default access: nobody has access until granted.",
+      "privateScope": "Best for sensitive or small-team work."
     },
     "status": {
       "ACTIVE": "Active",

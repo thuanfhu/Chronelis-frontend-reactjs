@@ -5,13 +5,13 @@ import { Shield, ShieldCheck, ShieldAlert, Lock, Users, Users2, Search, Crown } 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { workspaceApi } from '@/lib/api/modules/workspace-api'
-import { projectApi } from '@/lib/api/modules/project-api'
+import { projectApi, type ProjectAccess } from '@/lib/api/modules/project-api'
 import { workspaceTeamApi } from '@/lib/api/modules/workspace-team-api'
 import { queryKeys } from '@/lib/api/query-keys'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
@@ -27,7 +27,8 @@ interface ProjectAccessManagementProps {
 const roleBadgeColor: Record<EffectiveProjectAccessRoleType, string> = {
   MANAGER: 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-300/50 hover:bg-purple-500/20',
   CONTRIBUTOR: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-300/50 hover:bg-blue-500/20',
-  VIEWER: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-300/50 hover:bg-slate-500/20',
+  VIEWER:
+    'bg-amber-400/20 text-amber-700 dark:text-amber-300 border-amber-300/70 hover:bg-amber-400/30',
   NO_ACCESS:
     'bg-slate-200/50 text-slate-500 border-slate-300/50 dark:bg-slate-800/50 dark:text-slate-400 hover:bg-slate-200/80',
 }
@@ -38,6 +39,12 @@ const roleIcon: Record<EffectiveProjectAccessRoleType, React.ElementType> = {
   VIEWER: ShieldAlert,
   NO_ACCESS: Lock,
 }
+
+const accessRowClass =
+  'group grid min-h-[88px] grid-cols-1 gap-3 p-4 my-1 rounded-xl transition-all duration-200 hover:bg-background hover:shadow-sm border border-transparent hover:border-border/60 sm:grid-cols-[minmax(0,1fr)_188px] sm:items-center sm:gap-5'
+
+const roleControlClass =
+  'h-11 w-full min-w-0 px-3 text-sm font-semibold leading-5 antialiased shadow-sm rounded-lg sm:w-[188px]'
 
 export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAccessManagementProps) {
   const { t } = useTranslation()
@@ -69,36 +76,40 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
     queryFn: () => projectApi.detail(projectId),
   })
 
-  const upsertMutation = useMutation({
-    mutationFn: ({ userId, teamId, role }: { userId?: string; teamId?: number; role: ProjectAccessRoleType }) =>
-      projectApi.upsertAccess(projectId, {
+  const saveAccessMutation = useMutation({
+    mutationFn: ({
+      accessId,
+      userId,
+      teamId,
+      role,
+    }: {
+      accessId?: number
+      userId?: string
+      teamId?: number
+      role: ProjectAccessRoleType
+    }) => {
+      if (accessId) {
+        return projectApi.updateAccess(projectId, accessId, role)
+      }
+
+      return projectApi.upsertAccess(projectId, {
         subjectType: userId ? 'USER' : 'TEAM',
         userId,
         teamId,
         role,
-      }),
+      })
+    },
     onSuccess: () => {
       accessListQuery.refetch()
-      toast.success(t('workspace.toast.projectUpdated', { defaultValue: 'Cập nhật quyền thành công' }))
+      toast.success(t('project.settings.accessUpdateSuccess', { defaultValue: 'Cập nhật quyền truy cập thành công' }))
     },
     onError: () => {
-      toast.error(t('workspace.toast.projectUpdateFailed', { defaultValue: 'Cập nhật quyền thất bại' }))
+      toast.error(t('project.settings.accessUpdateFailed', { defaultValue: 'Cập nhật quyền truy cập thất bại' }))
     },
   })
 
-  const revokeMutation = useMutation({
-    mutationFn: (accessId: number) => projectApi.revokeAccess(projectId, accessId),
-    onSuccess: () => {
-      accessListQuery.refetch()
-      toast.success(t('workspace.toast.memberRemoved', { defaultValue: 'Đã thu hồi quyền truy cập' }))
-    },
-    onError: () => {
-      toast.error(t('workspace.toast.memberRemoveFailed', { defaultValue: 'Thu hồi quyền thất bại' }))
-    },
-  })
-
-  const members = membersQuery.data ?? []
-  const teams = teamsQuery.data ?? []
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data])
+  const teams = useMemo(() => teamsQuery.data ?? [], [teamsQuery.data])
   const directGrants = accessListQuery.data ?? []
   const project = projectQuery.data
   const workspace = workspaceQuery.data
@@ -155,6 +166,45 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
   const roleOptions: ProjectAccessRoleType[] = canGrantManager
     ? ['MANAGER', 'CONTRIBUTOR', 'VIEWER']
     : ['CONTRIBUTOR', 'VIEWER']
+
+  const canEditDirectGrant = (grant?: ProjectAccess) => {
+    if (!canManageProjectAccess) return false
+    return grant?.role !== 'MANAGER' || canGrantManager
+  }
+
+  const getRoleOptions = () => roleOptions
+
+  const changeAccess = ({
+    value,
+    directGrant,
+    userId,
+    teamId,
+  }: {
+    value: ProjectAccessRoleType
+    directGrant?: ProjectAccess
+    userId?: string
+    teamId?: number
+  }) => {
+    if (directGrant?.role === value) return
+
+    saveAccessMutation.mutate({
+      accessId: directGrant?.id,
+      userId,
+      teamId,
+      role: value,
+    })
+  }
+
+  const renderRoleContent = (role: EffectiveProjectAccessRoleType) => {
+    const Icon = roleIcon[role]
+
+    return (
+      <span className="grid min-w-0 flex-1 grid-cols-[1rem_minmax(0,1fr)] items-center gap-2 text-left">
+        <Icon className="size-4 justify-self-center" />
+        <span className="truncate">{t(`project.role.${role.toLowerCase()}`)}</span>
+      </span>
+    )
+  }
 
   return (
     <Card className="overflow-hidden border-none shadow-lg ring-1 ring-border/60 bg-background flex flex-col h-full">
@@ -232,20 +282,25 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                       const userId = member.user.userId
                       const directGrant = userDirectGrants.get(userId)
                       const effectiveRole = getEffectiveRole(userId)
-                      const RoleIcon = roleIcon[effectiveRole]
                       const isWorkspaceOwner = userId === workspace.owner.userId
                       const hasNoAccess = effectiveRole === 'NO_ACCESS'
+                      const selectedRole = (directGrant?.role ??
+                        (project.visibility === 'PUBLIC'
+                          ? 'CONTRIBUTOR'
+                          : 'NO_ACCESS')) as EffectiveProjectAccessRoleType
+                      const editable = canEditDirectGrant(directGrant)
+                      const availableRoles = getRoleOptions()
 
                       return (
                         <div
                           key={userId}
                           className={cn(
-                            'group flex flex-col sm:flex-row sm:items-center justify-between p-4 my-1 rounded-xl transition-all duration-200 hover:bg-background hover:shadow-sm border border-transparent hover:border-border/60',
+                            accessRowClass,
                             hasNoAccess && 'opacity-70',
                           )}
                         >
-                          <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                            <Avatar className="size-11 border border-border/50 shadow-sm ring-2 ring-background">
+                          <div className="flex min-w-0 items-center gap-4">
+                            <Avatar className="size-11 shrink-0 border border-border/50 shadow-sm ring-2 ring-background">
                               {member.user.avatarUrl && (
                                 <AvatarImage
                                   src={member.user.avatarUrl}
@@ -257,16 +312,16 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                 {member.user.lastName?.[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-[15px] font-bold tracking-tight text-foreground">
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              <div className="flex min-w-0 items-center gap-2.5">
+                                <span className="truncate text-[15px] font-bold tracking-tight text-foreground">
                                   {member.user.firstName} {member.user.lastName}
                                 </span>
                                 {isWorkspaceOwner && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="flex size-6 cursor-help items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm transition-colors hover:bg-amber-500/20">
-                                        <Crown className="size-3.5" />
+                                      <div className="flex size-5 cursor-help items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 shadow-sm transition-colors hover:bg-amber-500/20 dark:text-amber-400">
+                                        <Crown className="size-3" />
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent className="font-bold text-xs">
@@ -275,63 +330,45 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                   </Tooltip>
                                 )}
                               </div>
-                              <span className="text-sm text-muted-foreground/80 font-medium">{member.user.email}</span>
+                              <span className="truncate text-sm text-muted-foreground/80 font-medium">
+                                {member.user.email}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-end w-full sm:w-auto">
-                            <div className="flex items-center gap-2">
-                              {canManageProjectAccess && !isWorkspaceOwner ? (
+                          <div className="flex w-full items-center sm:justify-end">
+                            <div className="flex w-full items-center sm:w-[188px]">
+                              {editable && !isWorkspaceOwner ? (
                                 <Select
-                                  value={
-                                    directGrant?.role ?? (project.visibility === 'PUBLIC' ? 'CONTRIBUTOR' : 'NO_ACCESS')
-                                  }
+                                  value={selectedRole}
                                   onValueChange={(val) => {
-                                    if (val === 'NO_ACCESS') {
-                                      if (directGrant) revokeMutation.mutate(directGrant.id)
-                                    } else {
-                                      upsertMutation.mutate({ userId, role: val as ProjectAccessRoleType })
-                                    }
+                                    changeAccess({
+                                      value: val as ProjectAccessRoleType,
+                                      directGrant,
+                                      userId,
+                                    })
                                   }}
-                                  disabled={upsertMutation.isPending || revokeMutation.isPending}
+                                  disabled={saveAccessMutation.isPending}
                                 >
                                   <SelectTrigger
                                     className={cn(
-                                      'h-10 w-[180px] border border-border/50 shadow-sm text-[13px] font-bold transition-all focus:ring-primary focus:ring-offset-0',
-                                      roleBadgeColor[effectiveRole],
+                                      roleControlClass,
+                                      'border border-border/50 transition-all focus:ring-primary focus:ring-offset-0',
+                                      roleBadgeColor[selectedRole],
                                     )}
                                   >
-                                    <div className="flex items-center justify-center gap-2 truncate w-full">
-                                      <span className="truncate">
-                                        {!directGrant && project.visibility !== 'PUBLIC' ? (
-                                          <div className="flex items-center gap-2 text-muted-foreground">
-                                            <Lock className="size-4" />
-                                            {t('project.role.no_access')}
-                                          </div>
-                                        ) : (
-                                          <SelectValue />
-                                        )}
-                                      </span>
-                                    </div>
+                                    {renderRoleContent(selectedRole)}
                                   </SelectTrigger>
                                   <SelectContent className="font-medium rounded-xl shadow-xl">
-                                    <SelectItem
-                                      value="NO_ACCESS"
-                                      className="text-[13px] font-bold text-destructive py-2.5 focus:bg-destructive/10"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <Lock className="size-4" />
-                                        {t('project.role.no_access')}
-                                      </div>
-                                    </SelectItem>
-                                    {roleOptions.map((role) => {
-                                      const Icon = roleIcon[role as EffectiveProjectAccessRoleType]
+                                    {availableRoles.map((role) => {
+                                      const optionRole = role as EffectiveProjectAccessRoleType
                                       return (
-                                        <SelectItem key={role} value={role} className="text-[13px] font-bold py-2.5">
-                                          <div className="flex items-center gap-2">
-                                            <Icon className="size-4" />
-                                            {t(`project.role.${role.toLowerCase()}`)}
-                                          </div>
+                                        <SelectItem
+                                          key={role}
+                                          value={role}
+                                          className="py-2.5 text-sm font-semibold leading-5"
+                                        >
+                                          {renderRoleContent(optionRole)}
                                         </SelectItem>
                                       )
                                     })}
@@ -341,12 +378,12 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    'h-9 gap-2 px-3.5 text-[13px] font-bold border shadow-sm',
+                                    roleControlClass,
+                                    'justify-start gap-2 py-0 border',
                                     roleBadgeColor[effectiveRole],
                                   )}
                                 >
-                                  <RoleIcon className="size-4" />
-                                  {t(`project.role.${effectiveRole.toLowerCase()}`)}
+                                  {renderRoleContent(effectiveRole)}
                                 </Badge>
                               )}
                             </div>
@@ -379,84 +416,68 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                   ) : (
                     filteredTeams.map((team) => {
                       const directGrant = teamDirectGrants.get(team.id)
-                      const RoleIcon = directGrant ? roleIcon[directGrant.role as EffectiveProjectAccessRoleType] : Lock
                       const hasNoAccess = !directGrant
+                      const selectedRole = (directGrant?.role ?? 'NO_ACCESS') as EffectiveProjectAccessRoleType
+                      const editable = canEditDirectGrant(directGrant)
+                      const availableRoles = getRoleOptions()
 
                       return (
                         <div
                           key={team.id}
                           className={cn(
-                            'group flex flex-col sm:flex-row sm:items-center justify-between p-4 my-1 rounded-xl transition-all duration-200 hover:bg-background hover:shadow-sm border border-transparent hover:border-border/60',
+                            accessRowClass,
                             hasNoAccess && 'opacity-70',
                           )}
                         >
-                          <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                            <Avatar className="size-11 border border-primary/20 shadow-sm ring-2 ring-background">
+                          <div className="flex min-w-0 items-center gap-4">
+                            <Avatar className="size-11 shrink-0 border border-primary/20 shadow-sm ring-2 ring-background">
                               {team.imageUrl && <AvatarImage src={team.imageUrl} alt={team.name} />}
                               <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
                                 {team.name.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[15px] font-bold tracking-tight text-foreground">{team.name}</span>
-                              <span className="text-sm text-muted-foreground/80 font-medium">
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              <span className="truncate text-[15px] font-bold tracking-tight text-foreground">
+                                {team.name}
+                              </span>
+                              <span className="truncate text-sm text-muted-foreground/80 font-medium">
                                 {t('workspace.teams.memberCount', { count: team.memberCount })}
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                            {canManageProjectAccess ? (
+                          <div className="flex w-full items-center sm:justify-end">
+                            {editable ? (
                               <Select
-                                value={directGrant?.role ?? 'NO_ACCESS'}
+                                value={selectedRole}
                                 onValueChange={(val) => {
-                                  if (val === 'NO_ACCESS') {
-                                    if (directGrant) revokeMutation.mutate(directGrant.id)
-                                  } else {
-                                    upsertMutation.mutate({ teamId: team.id, role: val as ProjectAccessRoleType })
-                                  }
+                                  changeAccess({
+                                    value: val as ProjectAccessRoleType,
+                                    directGrant,
+                                    teamId: team.id,
+                                  })
                                 }}
-                                disabled={upsertMutation.isPending || revokeMutation.isPending}
+                                disabled={saveAccessMutation.isPending}
                               >
                                 <SelectTrigger
                                   className={cn(
-                                    'h-10 w-[180px] border border-border/50 shadow-sm text-[13px] font-bold transition-all focus:ring-primary focus:ring-offset-0',
-                                    directGrant
-                                      ? roleBadgeColor[directGrant.role as EffectiveProjectAccessRoleType]
-                                      : 'bg-muted/50 text-muted-foreground hover:bg-muted/80',
+                                    roleControlClass,
+                                    'border border-border/50 transition-all focus:ring-primary focus:ring-offset-0',
+                                    roleBadgeColor[selectedRole],
                                   )}
                                 >
-                                  <div className="flex items-center justify-center gap-2 truncate w-full">
-                                    <span className="truncate">
-                                      {!directGrant ? (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                          <Lock className="size-4" />
-                                          {t('project.role.no_access')}
-                                        </div>
-                                      ) : (
-                                        <SelectValue />
-                                      )}
-                                    </span>
-                                  </div>
+                                  {renderRoleContent(selectedRole)}
                                 </SelectTrigger>
                                 <SelectContent className="font-medium rounded-xl shadow-xl">
-                                  <SelectItem
-                                    value="NO_ACCESS"
-                                    className="text-[13px] font-bold text-destructive py-2.5 focus:bg-destructive/10"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Lock className="size-4" />
-                                      {t('project.role.no_access')}
-                                    </div>
-                                  </SelectItem>
-                                  {roleOptions.map((role) => {
-                                    const Icon = roleIcon[role as EffectiveProjectAccessRoleType]
+                                  {availableRoles.map((role) => {
+                                    const optionRole = role as EffectiveProjectAccessRoleType
                                     return (
-                                      <SelectItem key={role} value={role} className="text-[13px] font-bold py-2.5">
-                                        <div className="flex items-center gap-2">
-                                          <Icon className="size-4" />
-                                          {t(`project.role.${role.toLowerCase()}`)}
-                                        </div>
+                                      <SelectItem
+                                        key={role}
+                                        value={role}
+                                        className="py-2.5 text-sm font-semibold leading-5"
+                                      >
+                                        {renderRoleContent(optionRole)}
                                       </SelectItem>
                                     )
                                   })}
@@ -467,12 +488,12 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    'h-9 gap-2 px-3.5 text-[13px] font-bold border shadow-sm',
+                                    roleControlClass,
+                                    'justify-start gap-2 py-0 border',
                                     roleBadgeColor[directGrant.role as EffectiveProjectAccessRoleType],
                                   )}
                                 >
-                                  <RoleIcon className="size-4" />
-                                  {t(`project.role.${directGrant.role.toLowerCase()}`)}
+                                  {renderRoleContent(directGrant.role as EffectiveProjectAccessRoleType)}
                                 </Badge>
                               )
                             )}

@@ -1562,7 +1562,7 @@ export function TaskDetailsDrawer() {
                           className="absolute inset-0"
                         >
                           <ScrollArea className="h-full">
-                            <div className="divide-y divide-border/50 pb-6">
+                            <div className="pb-6">
                               {/* Title + description + quick actions */}
                               <div className="px-4 sm:px-6 py-4 sm:py-5">
                                 <h2
@@ -1693,9 +1693,13 @@ export function TaskDetailsDrawer() {
 
                               {/* Properties */}
                               <div className="px-4 sm:px-6 py-3.5 sm:py-4">
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-                                  {t('task.info')}
-                                </p>
+                                <div className="mb-3 flex items-center gap-3">
+                                  <div className="h-[2px] flex-1 bg-border/70" />
+                                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {t('task.info')}
+                                  </span>
+                                  <div className="h-[2px] flex-1 bg-border/70" />
+                                </div>
                                 <div className="space-y-3">
                                   <div className="flex items-start gap-3">
                                     <Flag className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
@@ -1761,29 +1765,44 @@ export function TaskDetailsDrawer() {
 
                                   <div className="flex items-start gap-3">
                                     <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleStartLabel')}</p>
-                                      {scheduleStartVal ? (
-                                        <span className="text-sm tabular-nums">
-                                          {formatDateTimeBeautiful(scheduleStartVal, locale)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-start gap-3">
-                                    <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleEndLabel')}</p>
-                                      {scheduleEndVal ? (
-                                        <span className="text-sm tabular-nums">
-                                          {formatDateTimeBeautiful(scheduleEndVal, locale)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
-                                      )}
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                      <p className="text-xs text-muted-foreground">{t('task.scheduleLabel')}</p>
+                                      <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                            <div className="flex items-center gap-1.5">
+                                              <Clock className="size-3 text-muted-foreground" />
+                                              <span className="text-xs text-muted-foreground">
+                                                {t('task.scheduleStartView')}
+                                              </span>
+                                              {scheduleStartVal ? (
+                                                <span className="text-xs font-medium tabular-nums">
+                                                  {formatDateTimeBeautiful(scheduleStartVal, locale)}
+                                                </span>
+                                              ) : (
+                                                <span className="text-xs text-muted-foreground/70">
+                                                  {t('task.focusNoSchedule') || 'Chưa thiết lập'}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                              <Clock className="size-3 text-muted-foreground" />
+                                              <span className="text-xs text-muted-foreground">
+                                                {t('task.scheduleEndView')}
+                                              </span>
+                                              {scheduleEndVal ? (
+                                                <span className="text-xs font-medium tabular-nums">
+                                                  {formatDateTimeBeautiful(scheduleEndVal, locale)}
+                                                </span>
+                                              ) : (
+                                                <span className="text-xs text-muted-foreground/70">
+                                                  {t('task.focusNoSchedule') || 'Chưa thiết lập'}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
 
@@ -1810,9 +1829,13 @@ export function TaskDetailsDrawer() {
                               </div>
 
                               <div className="px-4 sm:px-6 py-3.5 sm:py-4">
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-                                  {t('task.dependenciesBlockers')}
-                                </p>
+                                <div className="mb-3 flex items-center gap-3">
+                                  <div className="h-[2px] flex-1 bg-border/70" />
+                                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {t('task.dependenciesBlockers')}
+                                  </span>
+                                  <div className="h-[2px] flex-1 bg-border/70" />
+                                </div>
                                 <div className="space-y-3">
                                   {dependencyDetails?.blockerNote ? (
                                     <div className="relative overflow-hidden rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm">
@@ -1847,43 +1870,6 @@ export function TaskDetailsDrawer() {
                                 </div>
                               </div>
 
-                              {/* Schedule */}
-                              {(scheduleStartVal || scheduleEndVal) && (
-                                <div className="px-4 sm:px-6 py-3.5 sm:py-4">
-                                  <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-                                    {t('task.scheduleLabel')}
-                                  </p>
-                                  <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3.5 py-2.5 text-sm">
-                                    <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                        <div className="flex items-center gap-1.5">
-                                          <Clock className="size-3 text-muted-foreground" />
-                                          <span className="text-xs text-muted-foreground">
-                                            {t('task.scheduleStartView')}
-                                          </span>
-                                          {scheduleStartVal ? (
-                                            <span className="text-xs font-medium tabular-nums">
-                                              {formatDateTimeBeautiful(scheduleStartVal, locale)}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                          <Clock className="size-3 text-muted-foreground" />
-                                          <span className="text-xs text-muted-foreground">
-                                            {t('task.scheduleEndView')}
-                                          </span>
-                                          {scheduleEndVal ? (
-                                            <span className="text-xs font-medium tabular-nums">
-                                              {formatDateTimeBeautiful(scheduleEndVal, locale)}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
                             </div>
                           </ScrollArea>
                         </motion.div>
@@ -1977,7 +1963,7 @@ function DependencyTaskList({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/80">{title}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">{title}</p>
         <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 min-w-5 justify-center rounded-full">
           {tasks.length}
         </Badge>
