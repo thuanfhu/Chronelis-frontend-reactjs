@@ -62,7 +62,7 @@ import {
 } from '@/lib/tasks/optimistic-task-cache'
 import { useProjectPermissions } from '@/lib/permissions/use-project-permissions'
 import { useTaskRealtime } from '@/lib/websocket/use-domain-realtime'
-import { formatDateTime, toLocalDateTimePayload, isAfter } from '@/lib/utils/datetime'
+import { toLocalDateTimePayload, isAfter, formatDateTimeBeautiful } from '@/lib/utils/datetime'
 import { cn } from '@/lib/utils/cn'
 import { isNotFoundError } from '@/lib/errors/is-not-found-error'
 import { TaskCommentsPanel } from '@/features/tasks/task-comments-panel'
@@ -120,12 +120,13 @@ interface SaveTaskOptimisticContext {
 }
 
 export function TaskDetailsDrawer() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
   const routeWorkspaceId = Number(params.workspaceId)
   const routeProjectId = Number(params.projectId)
+  const locale = (i18n.resolvedLanguage ?? i18n.language).toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US'
 
   const taskDrawerTaskId = useUiStore((state) => state.taskDrawerTaskId)
   const taskDrawerMode = useUiStore((state) => state.taskDrawerMode)
@@ -462,6 +463,8 @@ export function TaskDetailsDrawer() {
         throw new Error(t('task.scheduleEndAfterStart'))
       }
 
+      let currentScheduleId = activeScheduleId ?? primarySchedule?.id ?? null
+
       if (taskDrawerMode === 'duplicate') {
         const createdTask = await taskApi.create({
           projectId: currentTask.projectId,
@@ -488,6 +491,12 @@ export function TaskDetailsDrawer() {
             scheduledStart: startIso,
             scheduledEnd: endIso,
           })
+
+          duplicatedTask = {
+            ...duplicatedTask,
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+          }
         }
 
         await taskApi.updateDependencies(duplicatedTask.id, {
@@ -518,8 +527,16 @@ export function TaskDetailsDrawer() {
       }
 
       if (startIso && endIso) {
-        if (activeScheduleId) {
-          await taskScheduleApi.update(activeScheduleId, {
+        if (!currentScheduleId) {
+          const existingSchedules = await taskScheduleApi.listByTask(taskId)
+          const existingPrimarySchedule = [...existingSchedules].sort(
+            (left, right) => new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime(),
+          )[0]
+          currentScheduleId = existingPrimarySchedule?.id ?? null
+        }
+
+        if (currentScheduleId) {
+          await taskScheduleApi.update(currentScheduleId, {
             scheduledStart: startIso,
             scheduledEnd: endIso,
           })
@@ -529,6 +546,12 @@ export function TaskDetailsDrawer() {
             scheduledStart: startIso,
             scheduledEnd: endIso,
           })
+        }
+
+        updatedTask = {
+          ...updatedTask,
+          scheduledStart: startIso,
+          scheduledEnd: endIso,
         }
       }
 
@@ -566,6 +589,8 @@ export function TaskDetailsDrawer() {
         return undefined
       }
 
+      const currentScheduleId = activeScheduleId ?? primarySchedule?.id ?? null
+
       await Promise.all([
         queryClient.cancelQueries({ queryKey: queryKeys.tasks.detail(currentTask.id) }),
         queryClient.cancelQueries({ queryKey: ['tasks', 'project', currentTask.projectId] }),
@@ -590,6 +615,8 @@ export function TaskDetailsDrawer() {
         priority: nextPriority,
         assignee: nextAssignee,
         dueDate: dueDateIso,
+        scheduledStart: startIso || currentTask.scheduledStart,
+        scheduledEnd: endIso || currentTask.scheduledEnd,
         updatedAt: nowIso,
       }
 
@@ -599,17 +626,17 @@ export function TaskDetailsDrawer() {
       )
 
       if (startIso && endIso) {
-        if (activeScheduleId) {
+        if (currentScheduleId) {
           patchProjectCalendarQueries(queryClient, currentTask.projectId, (schedules) =>
             applyScheduleUpdate(schedules, {
-              scheduleId: activeScheduleId,
+              scheduleId: currentScheduleId,
               scheduledStart: startIso,
               scheduledEnd: endIso,
             }),
           )
           patchTaskScheduleQueries(queryClient, currentTask.id, (schedules) =>
             applyScheduleUpdate(schedules, {
-              scheduleId: activeScheduleId,
+              scheduleId: currentScheduleId,
               scheduledStart: startIso,
               scheduledEnd: endIso,
             }),
@@ -618,12 +645,12 @@ export function TaskDetailsDrawer() {
           const optimisticScheduleId = -Date.now()
           const createdBy = currentUser
             ? {
-                userId: currentUser.userId,
-                email: currentUser.email,
-                firstName: currentUser.firstName,
-                lastName: currentUser.lastName,
-                avatarUrl: currentUser.avatarUrl,
-              }
+              userId: currentUser.userId,
+              email: currentUser.email,
+              firstName: currentUser.firstName,
+              lastName: currentUser.lastName,
+              avatarUrl: currentUser.avatarUrl,
+            }
             : currentTask.createdBy
           const optimisticSchedule: TaskSchedule = {
             id: optimisticScheduleId,
@@ -735,10 +762,10 @@ export function TaskDetailsDrawer() {
         (oldComments ?? []).map((comment) =>
           comment.id === editingCommentId
             ? {
-                ...comment,
-                content: editingCommentContent.trim(),
-                updatedAt: optimisticUpdatedAt,
-              }
+              ...comment,
+              content: editingCommentContent.trim(),
+              updatedAt: optimisticUpdatedAt,
+            }
             : comment,
         ),
       )
@@ -891,6 +918,8 @@ export function TaskDetailsDrawer() {
       (left, right) => new Date(left.scheduledStart).getTime() - new Date(right.scheduledStart).getTime(),
     )[0]
   }, [schedulesQuery.data])
+  const scheduleStartVal = primarySchedule?.scheduledStart ?? task?.scheduledStart ?? null
+  const scheduleEndVal = primarySchedule?.scheduledEnd ?? task?.scheduledEnd ?? null
 
   const dependencyTaskLookup = useMemo(() => {
     const map = new Map<number, Task | TaskDependencyTask>()
@@ -952,8 +981,8 @@ export function TaskDetailsDrawer() {
     const initialGoalId = task.goalId ?? null
     const initialAssigneeId = task.assignee?.userId ?? null
     const initialDueDate = toDateTimeLocalValue(task.dueDate)
-    const scheduleStart = toDateTimeLocalValue(primarySchedule?.scheduledStart ?? task.dueDate)
-    const scheduleEnd = toDateTimeLocalValue(primarySchedule?.scheduledEnd ?? task.dueDate)
+    const scheduleStart = toDateTimeLocalValue(scheduleStartVal ?? '')
+    const scheduleEnd = toDateTimeLocalValue(scheduleEndVal ?? '')
     const initialDependencyTaskIds =
       dependenciesQuery.data?.blockedByTasks.map((dependencyTask) => dependencyTask.id) ?? []
     const initialBlockerNote = dependenciesQuery.data?.blockerNote ?? ''
@@ -991,11 +1020,53 @@ export function TaskDetailsDrawer() {
     isEditingTask,
     schedulesQuery.isFetched,
     primarySchedule?.id,
-    primarySchedule?.scheduledEnd,
-    primarySchedule?.scheduledStart,
+    scheduleEndVal,
+    scheduleStartVal,
     task,
     taskDrawerMode,
   ])
+
+  useEffect(() => {
+    if (!isEditingTask || !editorSnapshot) {
+      return
+    }
+
+    if (editorSnapshot.scheduleStart || editorSnapshot.scheduleEnd || editScheduleStart || editScheduleEnd) {
+      return
+    }
+
+    const hydratedScheduleStart = toDateTimeLocalValue(scheduleStartVal ?? '')
+    const hydratedScheduleEnd = toDateTimeLocalValue(scheduleEndVal ?? '')
+    if (!hydratedScheduleStart && !hydratedScheduleEnd) {
+      return
+    }
+
+    setEditScheduleStart(hydratedScheduleStart)
+    setEditScheduleEnd(hydratedScheduleEnd)
+    setActiveScheduleId(primarySchedule?.id ?? activeScheduleId)
+    setEditorSnapshot({
+      ...editorSnapshot,
+      scheduleStart: hydratedScheduleStart,
+      scheduleEnd: hydratedScheduleEnd,
+    })
+  }, [
+    activeScheduleId,
+    editScheduleEnd,
+    editScheduleStart,
+    editorSnapshot,
+    isEditingTask,
+    primarySchedule?.id,
+    scheduleEndVal,
+    scheduleStartVal,
+  ])
+
+  useEffect(() => {
+    if (!isEditingTask || activeScheduleId != null || primarySchedule?.id == null) {
+      return
+    }
+
+    setActiveScheduleId(primarySchedule.id)
+  }, [activeScheduleId, isEditingTask, primarySchedule?.id])
 
   const enterEditMode = () => {
     if (!task || !canManageCurrentTask) return
@@ -1071,21 +1142,21 @@ export function TaskDetailsDrawer() {
   const hasEditorChanges = isDuplicateMode
     ? Boolean(normalizedEditorState.title)
     : Boolean(
-        editorSnapshot && normalizedEditorState.title === ''
-          ? false
-          : editorSnapshot
-            ? normalizedEditorState.title !== editorSnapshot.title ||
-              normalizedEditorState.description !== editorSnapshot.description ||
-              normalizedEditorState.priority !== editorSnapshot.priority ||
-              normalizedEditorState.goalId !== editorSnapshot.goalId ||
-              normalizedEditorState.assigneeId !== editorSnapshot.assigneeId ||
-              normalizedEditorState.dueDate !== editorSnapshot.dueDate ||
-              normalizedEditorState.scheduleStart !== editorSnapshot.scheduleStart ||
-              normalizedEditorState.scheduleEnd !== editorSnapshot.scheduleEnd ||
-              !areNumberArraysEqual(normalizedEditorState.dependencyTaskIds, editorSnapshot.dependencyTaskIds) ||
-              normalizedEditorState.blockerNote !== editorSnapshot.blockerNote.trim()
-            : false,
-      )
+      editorSnapshot && normalizedEditorState.title === ''
+        ? false
+        : editorSnapshot
+          ? normalizedEditorState.title !== editorSnapshot.title ||
+          normalizedEditorState.description !== editorSnapshot.description ||
+          normalizedEditorState.priority !== editorSnapshot.priority ||
+          normalizedEditorState.goalId !== editorSnapshot.goalId ||
+          normalizedEditorState.assigneeId !== editorSnapshot.assigneeId ||
+          normalizedEditorState.dueDate !== editorSnapshot.dueDate ||
+          normalizedEditorState.scheduleStart !== editorSnapshot.scheduleStart ||
+          normalizedEditorState.scheduleEnd !== editorSnapshot.scheduleEnd ||
+          !areNumberArraysEqual(normalizedEditorState.dependencyTaskIds, editorSnapshot.dependencyTaskIds) ||
+          normalizedEditorState.blockerNote !== editorSnapshot.blockerNote.trim()
+          : false,
+    )
 
   const hasLongDescription = Boolean(
     task?.description && (task.description.trim().length > 220 || task.description.includes('\n')),
@@ -1413,13 +1484,13 @@ export function TaskDetailsDrawer() {
                                         className={cn(
                                           'inline-flex items-center justify-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border shrink-0 w-fit',
                                           dependencyTask.priority === 'LOW' &&
-                                            'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
+                                          'border-emerald-800/60 bg-emerald-700/30 text-emerald-950 dark:border-emerald-200/70 dark:bg-emerald-500/44 dark:text-emerald-50',
                                           dependencyTask.priority === 'MEDIUM' &&
-                                            'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
+                                          'border-blue-700/60 bg-blue-600/30 text-blue-950 dark:border-blue-300/70 dark:bg-blue-500/40 dark:text-blue-50',
                                           dependencyTask.priority === 'HIGH' &&
-                                            'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
+                                          'border-orange-700/60 bg-orange-600/30 text-orange-950 dark:border-orange-300/70 dark:bg-orange-500/40 dark:text-orange-50',
                                           dependencyTask.priority === 'URGENT' &&
-                                            'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50',
+                                          'border-rose-700/60 bg-rose-600/30 text-rose-950 dark:border-rose-300/70 dark:bg-rose-500/42 dark:text-rose-50',
                                         )}
                                       >
                                         <span
@@ -1680,7 +1751,7 @@ export function TaskDetailsDrawer() {
                                         <span
                                           className={`text-sm tabular-nums ${task.dueDate && !task.status.isClosed && new Date(task.dueDate) < new Date() ? 'font-semibold text-destructive' : ''}`}
                                         >
-                                          {formatDateTime(task.dueDate)}
+                                          {formatDateTimeBeautiful(task.dueDate, locale)}
                                         </span>
                                       ) : (
                                         <span className="text-sm text-muted-foreground/50">{t('task.noDueDate')}</span>
@@ -1692,9 +1763,9 @@ export function TaskDetailsDrawer() {
                                     <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
                                       <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleStartLabel')}</p>
-                                      {primarySchedule?.scheduledStart ? (
+                                      {scheduleStartVal ? (
                                         <span className="text-sm tabular-nums">
-                                          {formatDateTime(primarySchedule.scheduledStart)}
+                                          {formatDateTimeBeautiful(scheduleStartVal, locale)}
                                         </span>
                                       ) : (
                                         <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
@@ -1706,9 +1777,9 @@ export function TaskDetailsDrawer() {
                                     <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
                                       <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleEndLabel')}</p>
-                                      {primarySchedule?.scheduledEnd ? (
+                                      {scheduleEndVal ? (
                                         <span className="text-sm tabular-nums">
-                                          {formatDateTime(primarySchedule.scheduledEnd)}
+                                          {formatDateTimeBeautiful(scheduleEndVal, locale)}
                                         </span>
                                       ) : (
                                         <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
@@ -1777,7 +1848,7 @@ export function TaskDetailsDrawer() {
                               </div>
 
                               {/* Schedule */}
-                              {primarySchedule && (
+                              {(scheduleStartVal || scheduleEndVal) && (
                                 <div className="px-4 sm:px-6 py-3.5 sm:py-4">
                                   <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
                                     {t('task.scheduleLabel')}
@@ -1791,18 +1862,22 @@ export function TaskDetailsDrawer() {
                                           <span className="text-xs text-muted-foreground">
                                             {t('task.scheduleStartView')}
                                           </span>
-                                          <span className="text-xs font-medium tabular-nums">
-                                            {formatDateTime(primarySchedule.scheduledStart)}
-                                          </span>
+                                          {scheduleStartVal ? (
+                                            <span className="text-xs font-medium tabular-nums">
+                                              {formatDateTimeBeautiful(scheduleStartVal, locale)}
+                                            </span>
+                                          ) : null}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                           <Clock className="size-3 text-muted-foreground" />
                                           <span className="text-xs text-muted-foreground">
                                             {t('task.scheduleEndView')}
                                           </span>
-                                          <span className="text-xs font-medium tabular-nums">
-                                            {formatDateTime(primarySchedule.scheduledEnd)}
-                                          </span>
+                                          {scheduleEndVal ? (
+                                            <span className="text-xs font-medium tabular-nums">
+                                              {formatDateTimeBeautiful(scheduleEndVal, locale)}
+                                            </span>
+                                          ) : null}
                                         </div>
                                       </div>
                                     </div>

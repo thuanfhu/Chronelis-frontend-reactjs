@@ -196,6 +196,8 @@ export interface Task {
   assignee?: UserSummary
   createdBy: UserSummary
   dueDate?: string
+  scheduledStart?: string
+  scheduledEnd?: string
   estimatedMinutes: number
   boardPosition: number
   isCompleted: boolean
