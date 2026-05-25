@@ -1689,6 +1689,34 @@ export function TaskDetailsDrawer() {
                                   </div>
 
                                   <div className="flex items-start gap-3">
+                                    <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleStartLabel')}</p>
+                                      {primarySchedule?.scheduledStart ? (
+                                        <span className="text-sm tabular-nums">
+                                          {formatDateTime(primarySchedule.scheduledStart)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
+                                    <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="mb-1 text-xs text-muted-foreground">{t('task.scheduleEndLabel')}</p>
+                                      {primarySchedule?.scheduledEnd ? (
+                                        <span className="text-sm tabular-nums">
+                                          {formatDateTime(primarySchedule.scheduledEnd)}
+                                        </span>
+                                      ) : (
+                                        <span className="text-sm text-muted-foreground/50">{t('task.focusNoSchedule') || 'Chưa thiết lập'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-3">
                                     <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                                     <div className="min-w-0 flex-1">
                                       <p className="mb-1 text-xs text-muted-foreground">{t('task.goalLabel')}</p>

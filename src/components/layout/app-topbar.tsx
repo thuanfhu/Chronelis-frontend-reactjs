@@ -161,7 +161,7 @@ export function AppTopbar() {
     <>
       <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-lg dark:border-border/85 dark:bg-background/92">
         {/* Mobile menu toggle */}
-        <Button variant="ghost" size="icon" className="size-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+        <Button variant="ghost" size="icon" className="size-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
           <Menu className="size-4" />
         </Button>
 
@@ -184,7 +184,7 @@ export function AppTopbar() {
           {/* Workspace selector dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75">
+              <button className="flex items-center gap-2 rounded-lg border border-input/60 bg-muted/40 px-2.5 py-1.5 text-sm transition-colors hover:bg-muted dark:border-border/90 dark:bg-card/70 dark:hover:bg-muted/75" aria-label="Select workspace">
                 {currentWorkspace?.imageUrl ? (
                   <img src={currentWorkspace.imageUrl} alt={currentWorkspace.name} className="size-5 shrink-0 rounded-full object-cover" />
                 ) : (
@@ -228,6 +228,7 @@ export function AppTopbar() {
                       openEdit(ws.id, ws.name, ws.imageUrl)
                     }}
                     title={t('common.edit')}
+                    aria-label={t('common.edit') || 'Edit workspace'}
                   >
                     <Pencil className="size-3 text-muted-foreground" />
                   </button>
@@ -252,7 +253,7 @@ export function AppTopbar() {
           {/* Theme toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="group size-8" onClick={toggleTheme}>
+              <Button variant="ghost" size="icon" className="group size-8" onClick={toggleTheme} aria-label="Toggle theme">
                 <Sun className="size-4 icon-hover-rotate dark:hidden" />
                 <Moon className="hidden size-4 icon-hover-rotate dark:block" />
               </Button>
@@ -267,7 +268,7 @@ export function AppTopbar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Link to="/notifications" className="relative">
-                <Button variant="ghost" size="icon" className="group size-8">
+                <Button variant="ghost" size="icon" className="group size-8" aria-label={t('notification.title') || 'Notifications'}>
                   <Bell
                     className={cn(
                       'size-4',
@@ -294,7 +295,7 @@ export function AppTopbar() {
           {/* User menu */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75">
+              <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted dark:hover:bg-muted/75" aria-label="User profile menu">
                 <Avatar className="size-7">
                   {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} alt={currentUser.firstName} />}
                   <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { IconCalendar, IconFlag, IconMail, IconPhone, IconShield, IconUser, IconUserCircle } from '@tabler/icons-react'
+import { IconCalendar, IconFlag, IconMail, IconPhone, IconUser, IconUserCircle } from '@tabler/icons-react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -25,6 +25,8 @@ import type { User } from '../data/schema'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { adminRoleApi } from '@/lib/api/modules/admin-role-api'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils/cn'
 
 const formSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -442,30 +444,56 @@ export function UsersActionDialog({ currentRow, open, onOpenChange, isView }: Pr
                         control={form.control}
                         name="roleIds"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('userManagement.role')}</FormLabel>
-                            <Select
-                              value={field.value?.length > 0 ? field.value[0] : ''}
-                              onValueChange={(value) => {
-                                if (value) field.onChange([value])
-                              }}
-                            >
-                              <FormControl>
-                                <div className="relative">
-                                  <IconShield className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 z-10" />
-                                  <SelectTrigger className="bg-slate-50 dark:bg-zinc-800 pl-10">
-                                    <SelectValue placeholder={t('userManagement.rolePlaceholder')} />
-                                  </SelectTrigger>
-                                </div>
-                              </FormControl>
-                              <SelectContent>
-                                {roles.map((role: any) => (
-                                  <SelectItem key={role.roleId} value={role.roleId || ''}>
-                                    {role.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <FormItem className="space-y-2">
+                            <FormLabel className="text-sm font-semibold">{t('userManagement.role')}</FormLabel>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                              {roles.map((role: any) => {
+                                const isChecked = field.value?.includes(role.roleId)
+                                return (
+                                  <div
+                                    key={role.roleId}
+                                    className={cn(
+                                      "flex items-start space-x-3 space-y-0 rounded-xl border p-4 shadow-sm transition-all duration-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-700/50",
+                                      isChecked 
+                                        ? "border-primary bg-primary/5 dark:bg-primary/10" 
+                                        : "border-slate-200 dark:border-zinc-700 bg-background"
+                                    )}
+                                    onClick={() => {
+                                      if (isView) return;
+                                      const currentIds = field.value || []
+                                      const nextIds = currentIds.includes(role.roleId)
+                                        ? currentIds.filter((id) => id !== role.roleId)
+                                        : [...currentIds, role.roleId]
+                                      field.onChange(nextIds)
+                                    }}
+                                  >
+                                    <div className="flex items-center h-5">
+                                      <Checkbox
+                                        checked={isChecked}
+                                        disabled={isView}
+                                        onCheckedChange={(checked) => {
+                                          const currentIds = field.value || []
+                                          const nextIds = checked
+                                            ? [...currentIds, role.roleId]
+                                            : currentIds.filter((id) => id !== role.roleId)
+                                          field.onChange(nextIds)
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="space-y-1 leading-none select-none">
+                                      <FormLabel className="text-sm font-medium cursor-pointer text-slate-900 dark:text-slate-100">
+                                        {role.name}
+                                      </FormLabel>
+                                      {role.description && (
+                                        <p className="text-xs text-muted-foreground/80 font-normal">
+                                          {role.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
