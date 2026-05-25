@@ -155,6 +155,8 @@ export function LandingPage() {
     },
   ]
 
+  const [loadWebGL, setLoadWebGL] = useState(false)
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 400) {
@@ -164,7 +166,14 @@ export function LandingPage() {
       }
     }
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    
+    // Delay loading WebGL bends to ensure instant FCP and LCP scores in Lighthouse
+    const webGlTimer = setTimeout(() => setLoadWebGL(true), 600)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(webGlTimer)
+    }
   }, [])
 
   const scrollToTop = () => {
@@ -187,22 +196,24 @@ export function LandingPage() {
       {/* Background Animation - Hero Section Only */}
       <div className="absolute top-0 left-0 right-0 h-[100vh] z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0">
-          <ColorBends
-            colors={['#ff5c7a', '#8a5cff', '#00ffd1']}
-            rotation={90}
-            speed={0.2}
-            scale={1.2}
-            frequency={1}
-            warpStrength={1}
-            mouseInfluence={1}
-            noise={0.15}
-            parallax={0.5}
-            iterations={1}
-            intensity={1}
-            bandWidth={6}
-            transparent
-            autoRotate={0}
-          />
+          {loadWebGL && (
+            <ColorBends
+              colors={['#ff5c7a', '#8a5cff', '#00ffd1']}
+              rotation={90}
+              speed={0.2}
+              scale={1.2}
+              frequency={1}
+              warpStrength={1}
+              mouseInfluence={1}
+              noise={0.15}
+              parallax={0.5}
+              iterations={1}
+              intensity={1}
+              bandWidth={6}
+              transparent
+              autoRotate={0}
+            />
+          )}
         </div>
         {/* Dynamic overlay to ensure text is always readable without completely hiding the background */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background dark:from-transparent dark:via-background/70 dark:to-background" />
@@ -512,11 +523,13 @@ export function LandingPage() {
                         src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&h=100&q=80"
                         alt="Member 1"
                         className="w-8 h-8 rounded-full border-2 border-background object-cover"
+                        loading="lazy"
                       />
                       <img
                         src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&h=100&q=80"
                         alt="Member 2"
                         className="w-8 h-8 rounded-full border-2 border-background object-cover"
+                        loading="lazy"
                       />
                       <div className="w-8 h-8 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-[10px] font-bold text-primary">
                         +3
@@ -565,6 +578,7 @@ export function LandingPage() {
                                 src={item.avatar}
                                 alt="JD"
                                 className="h-6 w-6 rounded-full object-cover border border-border/50"
+                                loading="lazy"
                               />
                             </div>
                           </div>
@@ -612,6 +626,7 @@ export function LandingPage() {
                         src={t.avatar}
                         alt={t.name}
                         className="w-11 h-11 rounded-full object-cover border border-border/50 animate-in fade-in zoom-in duration-300"
+                        loading="lazy"
                       />
                       <div>
                         <div className="font-bold text-sm text-foreground">{t.name}</div>
@@ -642,6 +657,7 @@ export function LandingPage() {
                         src={t.avatar}
                         alt={t.name}
                         className="w-11 h-11 rounded-full object-cover border border-border/50 animate-in fade-in zoom-in duration-300"
+                        loading="lazy"
                       />
                       <div>
                         <div className="font-bold text-sm text-foreground">{t.name}</div>

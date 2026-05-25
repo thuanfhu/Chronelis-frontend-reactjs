@@ -876,6 +876,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 size="icon"
                 className="size-7 text-muted-foreground hover:text-foreground"
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                aria-label="Collapse sidebar"
               >
                 <ChevronsLeft className="size-4" />
               </Button>
@@ -890,6 +891,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                   size="icon"
                   className="absolute -right-3 top-1/2 hidden size-6 -translate-y-1/2 rounded-full border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground lg:flex"
                   onClick={() => setSidebarCollapsed(false)}
+                  aria-label="Expand sidebar"
                 >
                   <ChevronsLeft className="size-3.5 rotate-180" />
                 </Button>
@@ -899,7 +901,7 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
           )}
 
           <div className="absolute right-1 flex items-center lg:hidden">
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => setSidebarOpen(false)}>
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar">
               <Menu className="size-4" />
             </Button>
           </div>
