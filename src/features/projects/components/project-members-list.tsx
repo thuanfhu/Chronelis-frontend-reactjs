@@ -41,10 +41,10 @@ const roleIcon: Record<EffectiveProjectAccessRoleType, React.ElementType> = {
 }
 
 const accessRowClass =
-  'group grid min-h-[88px] grid-cols-1 gap-3 p-4 my-1 rounded-xl transition-all duration-200 hover:bg-background hover:shadow-sm border border-transparent hover:border-border/60 sm:grid-cols-[minmax(0,1fr)_188px] sm:items-center sm:gap-5'
+  'group grid min-h-[88px] grid-cols-1 gap-3 p-4 my-1 rounded-xl transition-all duration-200 hover:bg-background hover:shadow-sm border border-transparent hover:border-border/60 sm:h-[88px] sm:grid-cols-[minmax(0,1fr)_188px] sm:items-center sm:gap-5'
 
 const roleControlClass =
-  'h-11 w-full min-w-0 px-3 text-sm font-semibold leading-5 antialiased shadow-sm rounded-lg sm:w-[188px]'
+  'box-border flex h-11 max-h-11 w-full min-w-0 shrink-0 items-center justify-between gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm font-semibold leading-5 antialiased shadow-sm transition-all sm:w-[188px]'
 
 export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAccessManagementProps) {
   const { t } = useTranslation()
@@ -320,9 +320,9 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                 {isWorkspaceOwner && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="flex size-5 cursor-help items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-600 shadow-sm transition-colors hover:bg-amber-500/20 dark:text-amber-400">
-                                        <Crown className="size-3" />
-                                      </div>
+                                      <span className="inline-flex size-4 shrink-0 cursor-help items-center justify-center text-amber-500 dark:text-amber-400">
+                                        <Crown className="size-3.5" />
+                                      </span>
                                     </TooltipTrigger>
                                     <TooltipContent className="font-bold text-xs">
                                       {t('project.settings.workspaceOwner')}
@@ -353,7 +353,7 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                   <SelectTrigger
                                     className={cn(
                                       roleControlClass,
-                                      'border border-border/50 transition-all focus:ring-primary focus:ring-offset-0',
+                                      'focus:ring-primary focus:ring-offset-0',
                                       roleBadgeColor[selectedRole],
                                     )}
                                   >
@@ -375,16 +375,18 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    roleControlClass,
-                                    'justify-start gap-2 py-0 border',
-                                    roleBadgeColor[effectiveRole],
-                                  )}
-                                >
-                                  {renderRoleContent(effectiveRole)}
-                                </Badge>
+                                <Select value={effectiveRole} disabled>
+                                  <SelectTrigger
+                                    className={cn(
+                                      roleControlClass,
+                                      'cursor-default focus:ring-primary focus:ring-offset-0 disabled:cursor-default disabled:opacity-100',
+                                      isWorkspaceOwner && '[&>svg]:invisible',
+                                      roleBadgeColor[effectiveRole],
+                                    )}
+                                  >
+                                    {renderRoleContent(effectiveRole)}
+                                  </SelectTrigger>
+                                </Select>
                               )}
                             </div>
                           </div>
@@ -462,7 +464,7 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                                 <SelectTrigger
                                   className={cn(
                                     roleControlClass,
-                                    'border border-border/50 transition-all focus:ring-primary focus:ring-offset-0',
+                                    'focus:ring-primary focus:ring-offset-0',
                                     roleBadgeColor[selectedRole],
                                   )}
                                 >
@@ -485,16 +487,17 @@ export function ProjectAccessManagement({ workspaceId, projectId }: ProjectAcces
                               </Select>
                             ) : (
                               directGrant && (
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    roleControlClass,
-                                    'justify-start gap-2 py-0 border',
-                                    roleBadgeColor[directGrant.role as EffectiveProjectAccessRoleType],
-                                  )}
-                                >
-                                  {renderRoleContent(directGrant.role as EffectiveProjectAccessRoleType)}
-                                </Badge>
+                                <Select value={directGrant.role} disabled>
+                                  <SelectTrigger
+                                    className={cn(
+                                      roleControlClass,
+                                      'cursor-default focus:ring-primary focus:ring-offset-0 disabled:cursor-default disabled:opacity-100',
+                                      roleBadgeColor[directGrant.role as EffectiveProjectAccessRoleType],
+                                    )}
+                                  >
+                                    {renderRoleContent(directGrant.role as EffectiveProjectAccessRoleType)}
+                                  </SelectTrigger>
+                                </Select>
                               )
                             )}
                           </div>
