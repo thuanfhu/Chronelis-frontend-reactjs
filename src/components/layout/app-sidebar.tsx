@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   ChevronsLeft,
+  ChevronsRight,
   ChevronDown,
   Target,
   LayoutGrid,
@@ -889,11 +890,11 @@ export function AppSidebar({ workspaceId, projectId }: AppSidebarProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute -right-3 top-1/2 hidden size-6 -translate-y-1/2 rounded-full border-border bg-background text-muted-foreground shadow-sm transition-colors hover:text-foreground lg:flex"
+                  className="hidden size-9 rounded-lg border-0 bg-transparent text-muted-foreground shadow-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:flex"
                   onClick={() => setSidebarCollapsed(false)}
                   aria-label="Expand sidebar"
                 >
-                  <ChevronsLeft className="size-3.5 rotate-180" />
+                  <ChevronsRight className="size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">{t('sidebar.expand')}</TooltipContent>

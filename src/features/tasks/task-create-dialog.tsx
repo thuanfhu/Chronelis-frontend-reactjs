@@ -359,13 +359,29 @@ export function TaskCreateDialog({
       }
 
       if (form.scheduleStart && form.scheduleEnd) {
+        const scheduledStart = toLocalDateTimePayload(form.scheduleStart)
+        const scheduledEnd = toLocalDateTimePayload(form.scheduleEnd)
         try {
           createdSchedule = await taskScheduleApi.create({
             taskId: createdTask.id,
-            scheduledStart: toLocalDateTimePayload(form.scheduleStart),
-            scheduledEnd: toLocalDateTimePayload(form.scheduleEnd),
+            scheduledStart,
+            scheduledEnd,
           })
+          createdTask = {
+            ...createdTask,
+            scheduledStart,
+            scheduledEnd,
+          }
         } catch (error) {
+          if (requireSchedule) {
+            try {
+              await taskApi.remove(createdTask.id)
+            } catch {
+              // The required schedule failed; the task refetch below will reconcile if cleanup is rejected.
+            }
+            throw new Error(getErrorMessage(error))
+          }
+
           scheduleError = getErrorMessage(error)
         }
       }
@@ -437,6 +453,10 @@ export function TaskCreateDialog({
             firstName: '',
             lastName: '',
           }
+      const optimisticScheduledStart =
+        form.scheduleStart && form.scheduleEnd ? toLocalDateTimePayload(form.scheduleStart) : undefined
+      const optimisticScheduledEnd =
+        form.scheduleStart && form.scheduleEnd ? toLocalDateTimePayload(form.scheduleEnd) : undefined
 
       const optimisticTask: Task = {
         id: optimisticTaskId,
@@ -452,6 +472,8 @@ export function TaskCreateDialog({
         assignee,
         createdBy,
         dueDate: form.dueDate ? toLocalDateTimePayload(form.dueDate) : undefined,
+        scheduledStart: optimisticScheduledStart,
+        scheduledEnd: optimisticScheduledEnd,
         estimatedMinutes: estimatedMinutes ?? 0,
         boardPosition:
           Math.max(
@@ -469,15 +491,13 @@ export function TaskCreateDialog({
       patchProjectTaskQueries(queryClient, projectId, (tasks) => upsertById(tasks, optimisticTask))
       queryClient.setQueryData(queryKeys.tasks.detail(optimisticTaskId), optimisticTask)
 
-      if (form.scheduleStart && form.scheduleEnd) {
-        const scheduledStart = toLocalDateTimePayload(form.scheduleStart)
-        const scheduledEnd = toLocalDateTimePayload(form.scheduleEnd)
+      if (optimisticScheduledStart && optimisticScheduledEnd) {
         const optimisticSchedule: TaskSchedule = {
           id: optimisticScheduleId,
           taskId: optimisticTaskId,
-          scheduledStart,
-          scheduledEnd,
-          scheduledDate: scheduledStart.slice(0, 10),
+          scheduledStart: optimisticScheduledStart,
+          scheduledEnd: optimisticScheduledEnd,
+          scheduledDate: optimisticScheduledStart.slice(0, 10),
           createdBy,
           createdAt: nowIso,
           updatedAt: nowIso,
@@ -569,6 +589,7 @@ export function TaskCreateDialog({
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['tasks', 'project', projectId] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(createdTask.id) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.myWork }),
         queryClient.invalidateQueries({ queryKey: ['task-schedules', 'calendar', 'project', projectId] }),
         queryClient.invalidateQueries({ queryKey: queryKeys.schedules.byTask(createdTask.id) }),

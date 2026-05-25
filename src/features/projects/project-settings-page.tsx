@@ -284,7 +284,7 @@ export function ProjectSettingsPage() {
                       </div>
                       {t('project.settings.visibility')}
                     </CardTitle>
-                    <CardDescription className="text-sm">{t('project.visibility.publicDescription')}</CardDescription>
+                    <CardDescription className="text-sm">{t('project.settings.visibilityDescription')}</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 bg-muted/20">
                     <div className="grid gap-5 sm:grid-cols-2">
@@ -316,6 +316,16 @@ export function ProjectSettingsPage() {
                           <p className="text-sm font-medium text-muted-foreground leading-relaxed">
                             {t('project.visibility.publicDescription')}
                           </p>
+                          <div className="mt-3 space-y-2 text-xs font-medium text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Check className="size-3.5 text-primary" />
+                              {t('project.visibility.publicDefault')}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Users className="size-3.5 text-muted-foreground" />
+                              {t('project.visibility.publicScope')}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -349,6 +359,16 @@ export function ProjectSettingsPage() {
                           <p className="text-sm font-medium text-muted-foreground leading-relaxed">
                             {t('project.visibility.privateDescription')}
                           </p>
+                          <div className="mt-3 space-y-2 text-xs font-medium text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Check className="size-3.5 text-primary" />
+                              {t('project.visibility.privateDefault')}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Lock className="size-3.5 text-muted-foreground" />
+                              {t('project.visibility.privateScope')}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

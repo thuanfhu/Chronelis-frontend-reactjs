@@ -1815,13 +1815,18 @@
       "searchTeamsPlaceholder": "Tìm nhóm theo tên...",
       "noResults": "Không tìm thấy thành viên nào khớp với tìm kiếm.",
       "noTeamsResults": "Không tìm thấy nhóm nào khớp với tìm kiếm.",
+      "accessUpdateSuccess": "Cập nhật quyền truy cập thành công",
+      "accessUpdateFailed": "Cập nhật quyền truy cập thất bại",
+      "accessRevokeSuccess": "Đã thu hồi quyền truy cập",
+      "accessRevokeFailed": "Thu hồi quyền truy cập thất bại",
       "editBasicInfo": "Thông tin cơ bản",
       "editBasicInfoDescription": "Cập nhật tên và mục tiêu của dự án.",
       "projectNameLabel": "Tên dự án",
       "projectDescriptionLabel": "Mô tả dự án",
       "saveChanges": "Lưu thay đổi",
       "saveSuccess": "Cập nhật dự án thành công",
-      "saveError": "Cập nhật dự án thất bại"
+      "saveError": "Cập nhật dự án thất bại",
+      "visibilityDescription": "Chọn phạm vi truy cập dự án trong workspace."
     },
     "role": {
       "manager": "Quản lý",
@@ -1833,7 +1838,13 @@
       "public": "Công khai",
       "private": "Riêng tư",
       "publicDescription": "Tất cả thành viên workspace có thể xem và cộng tác trong dự án này.",
-      "privateDescription": "Chỉ những người dùng và nhóm được cấp quyền cụ thể mới có thể thấy dự án này."
+      "privateDescription": "Chỉ người dùng/nhóm được cấp quyền mới có thể thấy dự án này.",
+      "helperTitle": "Public/Private chỉ áp dụng trong workspace",
+      "helperDescription": "Public: mọi thành viên workspace đều truy cập được dự án. Private: chỉ người/nhóm được cấp quyền mới thấy dự án. Cả hai chế độ không hiển thị ra ngoài workspace.",
+      "publicDefault": "Mặc định: mọi thành viên có quyền Cộng tác viên.",
+      "publicScope": "Phù hợp khi cần cộng tác rộng trong workspace.",
+      "privateDefault": "Mặc định: không ai có quyền cho đến khi bạn cấp.",
+      "privateScope": "Phù hợp cho dự án nhạy cảm hoặc team nhỏ."
     },
     "status": {
       "ACTIVE": "Đang hoạt động",
